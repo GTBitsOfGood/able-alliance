@@ -2,7 +2,7 @@
 
 ## Overview
 
-[DESCRIPTION: Add a short description of the nonprofit and what this repository is for.]
+Able Alliance is a GT student organization that is dedicated to improving on-campus disability inclusion via access & resource sharing, community & social support, etc. This is a transporation management system built for them. Learn more about the organization at https://sites.gatech.edu/gtablealliance/.
 
 ## Development Setup
 
@@ -50,14 +50,3 @@ Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `lo
 - [Next.js](https://nextjs.org)
 - [Tailwind CSS](https://tailwindcss.com)
 
-## Documentation
-
-### Databases
-
-We use Mongoose for schemas. To change the data model:
-
-- Update schemas in `src/server/db/models`.
-- Update business logic in `src/server/db/actions`.
-- The connection string is configured via the `MONGODB_URI` environment variable (e.g. in `.env` for local development or in Docker via Compose).
-
-To point at a different database, set `MONGODB_URI` and restart the app.
