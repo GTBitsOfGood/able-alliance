@@ -49,4 +49,3 @@ Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `lo
 - [MongoDB](https://www.mongodb.com/)
 - [Next.js](https://nextjs.org)
 - [Tailwind CSS](https://tailwindcss.com)
-

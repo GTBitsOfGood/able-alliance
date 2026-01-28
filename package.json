@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format:check": "prettier --check .",
-    "prettier-format": "prettier --write \"src/**/*.{ts,tsx}\""
+    "prettier-format": "prettier --write ."
   },
   "dependencies": {
     "dotenv": "^16.4.5",
