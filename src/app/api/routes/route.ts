@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const filters: any = {};
     if (studentId) filters.studentId = studentId;
     if (driverId) filters.driverId = driverId;
-    if (pickupTime) filters.pickupTime = new Date(pickupTime);
+    if (pickupTime) filters.scheduledPickupTime = new Date(pickupTime);
 
     const routes = await getRoutes(Object.keys(filters).length > 0 ? filters : undefined);
     return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });

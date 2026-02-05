@@ -33,7 +33,7 @@ export async function getRoutes(filters?: {
     const query: any = {};
 
     if (filters?.pickupTime) {
-        query.pickupTime = filters.pickupTime;
+        query.scheduledPickupTime = filters.pickupTime;
     }
 
     if (filters?.studentId) {

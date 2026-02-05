@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
-import { boolean } from "zod/v4";
 
 export type IRoute = RouteInput;
 
