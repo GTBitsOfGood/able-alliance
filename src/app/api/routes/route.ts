@@ -29,12 +29,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all routes with optional filters
-    const filters: any = {};
+    interface routeFilters {
+      studentId?: string;
+      driverId?: string;
+      scheduledPickupTime?: Date;
+    }
+    const filters: routeFilters = {};
     if (studentId) filters.studentId = studentId;
     if (driverId) filters.driverId = driverId;
     if (pickupTime) filters.scheduledPickupTime = new Date(pickupTime);
 
-    const routes = await getRoutes(Object.keys(filters).length > 0 ? filters : undefined);
+    const routes = await getRoutes(
+      Object.keys(filters).length > 0 ? filters : undefined,
+    );
     return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
     if (e instanceof RouteAlreadyExistsException) {

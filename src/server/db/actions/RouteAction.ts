@@ -4,46 +4,53 @@ import { routeSchema } from "@/utils/types";
 import { RouteAlreadyExistsException } from "@/utils/exceptions/route";
 
 export async function createRoute(data: IRoute) {
-    await connectMongoDB();
-    // assume a student can only be on one ride at once
-    const existing = await RouteModel.findOne({ student: data.student, });
-    if (existing) {
-        throw new RouteAlreadyExistsException();
-    }
-    // should validate route data before creating
-    const validatedData = routeSchema.parse(data);
-    const route = await RouteModel.create(validatedData);
-    return route.toObject();
+  await connectMongoDB();
+  // assume a student can only be on one ride at once
+  const existing = await RouteModel.findOne({
+    student: data.student._id || data.student,
+  });
+  if (existing) {
+    throw new RouteAlreadyExistsException();
+  }
+  // should validate route data before creating
+  const validatedData = routeSchema.parse(data);
+  const route = await RouteModel.create(validatedData);
+  return route.toObject();
 }
 
-
 export async function getRouteById(id: string) {
-    await connectMongoDB();
-    const route = await RouteModel.findById(id).lean();
-    return route;
+  await connectMongoDB();
+  const route = await RouteModel.findById(id).lean();
+  return route;
 }
 
 export async function getRoutes(filters?: {
-    pickupTime?: Date;
-    studentId?: string;
-    driverId?: string;
+  pickupTime?: Date;
+  studentId?: string;
+  driverId?: string;
 }) {
-    await connectMongoDB();
+  await connectMongoDB();
 
-    const query: any = {};
+  interface routeFilters {
+    student?: string;
+    driver?: string;
+    scheduledPickupTime?: Date;
+  }
 
-    if (filters?.pickupTime) {
-        query.scheduledPickupTime = filters.pickupTime;
-    }
+  const query: routeFilters = {};
 
-    if (filters?.studentId) {
-        query.student = filters.studentId;
-    }
+  if (filters?.pickupTime) {
+    query.scheduledPickupTime = filters.pickupTime;
+  }
 
-    if (filters?.driverId) {
-        query.driver = filters.driverId;
-    }
+  if (filters?.studentId) {
+    query.student = filters.studentId;
+  }
 
-    const routes = await RouteModel.find(query).lean();
-    return routes;
+  if (filters?.driverId) {
+    query.driver = filters.driverId;
+  }
+
+  const routes = await RouteModel.find(query).lean();
+  return routes;
 }
