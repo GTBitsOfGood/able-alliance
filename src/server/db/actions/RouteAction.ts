@@ -6,9 +6,7 @@ import { RouteAlreadyExistsException } from "@/utils/exceptions/route";
 export async function createRoute(data: IRoute) {
   await connectMongoDB();
   // assume a student can only be on one ride at once
-  const existing = await RouteModel.findOne({
-    student: data.student._id || data.student,
-  });
+  const existing = await RouteModel.findOne({ student: data.student });
   if (existing) {
     throw new RouteAlreadyExistsException();
   }
