@@ -1,4 +1,4 @@
-import Chatlog from '../models/ChatlogModel';
+import Chatlog from "../models/ChatlogModel";
 
 export const getChatlogById = async (id: string) => {
   return await Chatlog.findById(id);
