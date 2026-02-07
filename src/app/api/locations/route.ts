@@ -7,6 +7,8 @@ import { locationSchema } from "@/utils/types";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { LocationAlreadyExistsException } from "@/utils/exceptions/location";
 
+// GET /api/locations
+// Retrieves all locations
 export async function GET() {
   try {
     const locations = await getLocations();
@@ -22,6 +24,8 @@ export async function GET() {
   }
 }
 
+// POST /api/locations
+// Creates a new location
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
