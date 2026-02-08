@@ -17,4 +17,3 @@ export class UserNotFoundException extends Error {
     this.name = "UserNotFoundException";
   }
 }
-

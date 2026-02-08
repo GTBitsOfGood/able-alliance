@@ -41,4 +41,3 @@ const StudentModel =
 
 export { BaseUserModel as UserModel, StudentModel };
 export default BaseUserModel;
-

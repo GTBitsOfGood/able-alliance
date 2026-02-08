@@ -8,7 +8,12 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     //so you can filter by the type of user
-    const type = searchParams.get("type") as "Student" | "Driver" | "Admin" | "SuperAdmin" | null;
+    const type = searchParams.get("type") as
+      | "Student"
+      | "Driver"
+      | "Admin"
+      | "SuperAdmin"
+      | null;
 
     const users = await getUsers(type || undefined);
     return NextResponse.json(users, { status: HTTP_STATUS_CODE.OK });
@@ -55,4 +60,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

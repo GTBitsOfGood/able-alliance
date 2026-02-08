@@ -17,4 +17,3 @@ export const studentSchema = baseUserSchema.extend({
 
 export type BaseUserInput = z.infer<typeof baseUserSchema>;
 export type StudentInput = z.infer<typeof studentSchema>;
-

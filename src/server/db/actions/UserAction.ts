@@ -1,7 +1,14 @@
 import connectMongoDB from "../mongodb";
-import UserModel, { StudentModel, IBaseUser, IStudentUser } from "../models/UserModel";
+import UserModel, {
+  StudentModel,
+  IBaseUser,
+  IStudentUser,
+} from "../models/UserModel";
 import type { BaseUserInput, StudentInput } from "@/utils/types/user";
-import { UserAlreadyExistsException, UserNotFoundException } from "@/utils/exceptions/user";
+import {
+  UserAlreadyExistsException,
+  UserNotFoundException,
+} from "@/utils/exceptions/user";
 
 export async function createUser(data: BaseUserInput | StudentInput) {
   await connectMongoDB();
@@ -21,7 +28,9 @@ export async function createUser(data: BaseUserInput | StudentInput) {
   return user.toObject();
 }
 
-export async function getUsers(type?: "Student" | "Driver" | "Admin" | "SuperAdmin") {
+export async function getUsers(
+  type?: "Student" | "Driver" | "Admin" | "SuperAdmin",
+) {
   await connectMongoDB();
   const query = type ? { type } : {};
   const users = await UserModel.find(query).lean();
@@ -45,4 +54,3 @@ export async function deleteUser(id: string) {
   }
   return user;
 }
-
