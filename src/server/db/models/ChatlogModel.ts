@@ -27,7 +27,7 @@ const ChatlogSchema = new Schema({
 });
 
 const Chatlog =
-  (mongoose.models.Chatlog as mongoose.Model<any>) ??
+  (mongoose.models.Chatlog as mongoose.Model<typeof ChatlogSchema>) ??
   mongoose.model("Chatlog", ChatlogSchema);
 
 export default Chatlog;

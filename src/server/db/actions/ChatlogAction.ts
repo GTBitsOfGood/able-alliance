@@ -7,7 +7,7 @@ export const getChatlogById = async (id: string) => {
 
 export const getChatlogs = async (filters: Record<string, string>) => {
   await connectMongoDB();
-  const query: Record<string, any> = {};
+  const query: Record<string, unknown> = {}; // Replace 'any' with 'unknown' for better type safety
 
   if (filters.studentId) query.studentId = filters.studentId;
   if (filters.driverId) query.driverId = filters.driverId;
