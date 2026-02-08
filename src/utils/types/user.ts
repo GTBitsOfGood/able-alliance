@@ -11,7 +11,7 @@ export const studentSchema = baseUserSchema.extend({
   studentInfo: z.object({
     notes: z.string().optional(),
     accessibilityNeeds: z.enum(["Wheelchair", "LowMobility"]).optional(),
-    GTID: z.string().min(9, "GTID is required"),
+    GTID: z.string().min(9, "GTID must be 9 digits"),
   }),
 });
 

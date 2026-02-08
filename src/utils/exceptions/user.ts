@@ -10,7 +10,7 @@ export class UserAlreadyExistsException extends Error {
 }
 
 export class UserNotFoundException extends Error {
-  code: HTTP_STATUS_CODE = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
+  code: HTTP_STATUS_CODE = HTTP_STATUS_CODE.NOT_FOUND;
 
   constructor(message = "User not found") {
     super(message);

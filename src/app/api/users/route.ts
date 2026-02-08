@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createUser, getUsers } from "@/server/db/actions/UserAction";
 import { baseUserSchema, studentSchema } from "@/utils/types/user";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { UserAlreadyExistsException, UserNotFoundException } from "@/utils/exceptions/user";
+import { UserAlreadyExistsException } from "@/utils/exceptions/user";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,9 +13,6 @@ export async function GET(request: NextRequest) {
     const users = await getUsers(type || undefined);
     return NextResponse.json(users, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
-    if (e instanceof UserNotFoundException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
