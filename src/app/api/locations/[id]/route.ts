@@ -5,10 +5,11 @@ import { HTTP_STATUS_CODE } from "@/utils/consts";
 // GET /api/locations/:id
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await context.params; // Await params before accessing id
   try {
-    const location = await Location.findById(params.id);
+    const location = await Location.findById(id);
     if (!location) {
       return NextResponse.json(
         { error: "Location not found" },
@@ -28,10 +29,11 @@ export async function GET(
 // DELETE /api/locations/:id
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await context.params; // Await params before accessing id
   try {
-    const location = await Location.findById(params.id);
+    const location = await Location.findById(id);
     if (!location) {
       return NextResponse.json(
         { error: "Location not found" },

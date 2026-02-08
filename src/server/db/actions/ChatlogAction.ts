@@ -1,4 +1,5 @@
 import Chatlog from "../models/ChatlogModel";
+import connectMongoDB from '../mongodb';
 
 export const getChatlogById = async (id: string) => {
   await connectMongoDB();
@@ -14,9 +15,10 @@ export const getChatlogs = async (filters: Record<string, string>) => {
   if (filters.routeId) query.routeId = filters.routeId;
 
   if (filters.startDate || filters.endDate) {
-    query.time = {};
-    if (filters.startDate) query.time.$gte = new Date(filters.startDate);
-    if (filters.endDate) query.time.$lte = new Date(filters.endDate);
+    const timeQuery: { $gte?: Date; $lte?: Date } = {};
+    if (filters.startDate) timeQuery.$gte = new Date(filters.startDate);
+    if (filters.endDate) timeQuery.$lte = new Date(filters.endDate);
+    query.time = timeQuery;
   }
 
   return await Chatlog.find(query);

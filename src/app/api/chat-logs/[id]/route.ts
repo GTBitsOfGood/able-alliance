@@ -5,10 +5,11 @@ import { HTTP_STATUS_CODE } from "@/utils/consts";
 // GET /api/chat-logs/:id
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await context.params; // Await params before accessing id
   try {
-    const chatlog = await getChatlogById(params.id);
+    const chatlog = await getChatlogById(id);
     if (!chatlog) {
       return NextResponse.json(
         { error: "Chatlog not found" },

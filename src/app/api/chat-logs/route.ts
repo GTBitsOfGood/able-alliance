@@ -15,6 +15,11 @@ export async function GET(req: NextRequest) {
     endDate: url.searchParams.get("endDate"),
   };
 
+  // Remove null values
+  const validFilters = Object.fromEntries(
+    Object.entries(filters).filter(([_, value]) => value !== null),
+  ) as Record<string, string>;
+
   // Validate ObjectId fields
   if (filters.studentId && !isValidObjectId(filters.studentId)) {
     return NextResponse.json(
@@ -50,7 +55,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const chatlogs = await getChatlogs(filters);
+    const chatlogs = await getChatlogs(validFilters);
     return NextResponse.json(chatlogs);
   } catch (error) {
     return NextResponse.json(
