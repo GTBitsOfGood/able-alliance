@@ -1,11 +1,13 @@
 import Chatlog from "../models/ChatlogModel";
 
 export const getChatlogById = async (id: string) => {
+  await connectMongoDB();
   return await Chatlog.findById(id);
 };
 
-export const getChatlogs = async (filters: any) => {
-  const query: any = {};
+export const getChatlogs = async (filters: Record<string, string>) => {
+  await connectMongoDB();
+  const query: Record<string, any> = {};
 
   if (filters.studentId) query.studentId = filters.studentId;
   if (filters.driverId) query.driverId = filters.driverId;

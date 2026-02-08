@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const MessageSchema = new Schema({
   time: { type: Date, required: true },
@@ -26,6 +26,8 @@ const ChatlogSchema = new Schema({
   messages: [MessageSchema],
 });
 
-const Chatlog = mongoose.model("Chatlog", ChatlogSchema);
+const Chatlog =
+  (mongoose.models.Chatlog as mongoose.Model<any>) ??
+  mongoose.model("Chatlog", ChatlogSchema);
 
 export default Chatlog;
