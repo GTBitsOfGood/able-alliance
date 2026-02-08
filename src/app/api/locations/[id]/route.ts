@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Location from "@/server/db/models/LocationModel";
-import { HTTP_STATUS_CODE } from '@/utils/consts';
+import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 // GET /api/locations/:id
 export async function GET(

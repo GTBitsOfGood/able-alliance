@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getChatlogs } from "@/server/db/actions/ChatlogAction";
-import { isValidObjectId } from 'mongoose';
-import { HTTP_STATUS_CODE } from '@/utils/consts';
+import { isValidObjectId } from "mongoose";
+import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 // GET /api/chat-logs
 // Retrieves chatlogs with optional filters
@@ -18,19 +18,19 @@ export async function GET(req: NextRequest) {
   // Validate ObjectId fields
   if (filters.studentId && !isValidObjectId(filters.studentId)) {
     return NextResponse.json(
-      { error: 'Invalid studentId' },
+      { error: "Invalid studentId" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   if (filters.driverId && !isValidObjectId(filters.driverId)) {
     return NextResponse.json(
-      { error: 'Invalid driverId' },
+      { error: "Invalid driverId" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   if (filters.routeId && !isValidObjectId(filters.routeId)) {
     return NextResponse.json(
-      { error: 'Invalid routeId' },
+      { error: "Invalid routeId" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
@@ -38,13 +38,13 @@ export async function GET(req: NextRequest) {
   // Validate date fields
   if (filters.startDate && isNaN(Date.parse(filters.startDate))) {
     return NextResponse.json(
-      { error: 'Invalid startDate' },
+      { error: "Invalid startDate" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   if (filters.endDate && isNaN(Date.parse(filters.endDate))) {
     return NextResponse.json(
-      { error: 'Invalid endDate' },
+      { error: "Invalid endDate" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
