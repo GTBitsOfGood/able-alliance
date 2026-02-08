@@ -1,5 +1,5 @@
 import Chatlog from "../models/ChatlogModel";
-import connectMongoDB from '../mongodb';
+import connectMongoDB from "../mongodb";
 
 export const getChatlogById = async (id: string) => {
   await connectMongoDB();
