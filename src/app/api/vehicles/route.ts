@@ -41,7 +41,7 @@ export async function GET() {
   } catch (e) {
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.NOT_FOUND },
+      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
     );
   }
 }
