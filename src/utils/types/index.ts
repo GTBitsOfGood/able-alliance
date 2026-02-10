@@ -24,14 +24,20 @@ export const vehicleSchema = z.object({
 
 export type VehicleInput = z.infer<typeof vehicleSchema>;
 
+/** 24-char hex string for MongoDB ObjectId refs */
+const objectIdString = z
+  .string()
+  .length(24)
+  .regex(/^[a-f0-9]{24}$/i);
+
 export const routeSchema = z.object({
-  pickupLocation: locationSchema,
-  dropoffLocation: locationSchema,
-  student: userSchema,
-  driver: userSchema,
-  vehicle: vehicleSchema,
-  scheduledPickupTime: z.date(),
-  isActive: z.boolean(),
+  pickupLocation: objectIdString,
+  dropoffLocation: objectIdString,
+  student: objectIdString,
+  driver: objectIdString.optional(),
+  vehicle: objectIdString.optional(),
+  scheduledPickupTime: z.coerce.date(),
+  isActive: z.boolean().default(false),
 });
 
 export type RouteInput = z.infer<typeof routeSchema>;

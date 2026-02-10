@@ -8,3 +8,12 @@ export class RouteAlreadyExistsException extends Error {
     this.name = "RouteAlreadyExistsException";
   }
 }
+
+export class RouteReferenceNotFoundException extends Error {
+  code: HTTP_STATUS_CODE = HTTP_STATUS_CODE.BAD_REQUEST;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "RouteReferenceNotFoundException";
+  }
+}
