@@ -41,9 +41,12 @@ const StudentModel =
 
 // Blank discriminators so Mongoose accepts type "Driver" | "Admin" | "SuperAdmin" (no extra fields)
 const emptySchema = new Schema({});
-if (!mongoose.models.Driver) BaseUserModel.discriminator<IBaseUser>("Driver", emptySchema);
-if (!mongoose.models.Admin) BaseUserModel.discriminator<IBaseUser>("Admin", emptySchema);
-if (!mongoose.models.SuperAdmin) BaseUserModel.discriminator<IBaseUser>("SuperAdmin", emptySchema);
+if (!mongoose.models.Driver)
+  BaseUserModel.discriminator<IBaseUser>("Driver", emptySchema);
+if (!mongoose.models.Admin)
+  BaseUserModel.discriminator<IBaseUser>("Admin", emptySchema);
+if (!mongoose.models.SuperAdmin)
+  BaseUserModel.discriminator<IBaseUser>("SuperAdmin", emptySchema);
 
 export { BaseUserModel as UserModel, StudentModel };
 export default BaseUserModel;
