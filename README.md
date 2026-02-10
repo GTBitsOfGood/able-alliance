@@ -4,6 +4,10 @@
 
 Able Alliance is a GT student organization that is dedicated to improving on-campus disability inclusion via access & resource sharing, community & social support, etc. This is a transporation management system built for them. Learn more about the organization at https://sites.gatech.edu/gtablealliance/.
 
+## Deployment Preview
+
+A deployment preview  of the main branch from netlify is available [here](https://able-alliance.netlify.app/). Note that SSO login and websocket functionality may not work with the deployment preview, because those use alternate servers.
+
 ## Development Setup
 
 - Install [Node.js 24](https://nodejs.org/en/download/)
