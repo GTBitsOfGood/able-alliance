@@ -1,17 +1,19 @@
-// Dummy Vehicle Model
 import mongoose, { Schema } from "mongoose";
-import type { VehicleInput } from "@/utils/types";
+import { VehicleInput } from "@/utils/types/vehicle";
 
 export type IVehicle = VehicleInput;
 
-const VehicleSchema = new Schema<IVehicle>(
-  {
-    name: { type: String, required: true },
-    licensePlate: { type: String, required: true, unique: true },
-    capacity: { type: Number, required: true },
+const VehicleSchema: Schema<IVehicle> = new Schema({
+  name: { type: String, required: true },
+  licensePlate: { type: String, required: true, unique: true },
+  description: { type: String },
+  accessibility: {
+    type: String,
+    enum: ["None", "Wheelchair"],
+    required: true,
   },
-  { versionKey: false },
-);
+  seatCount: { type: Number, required: true, min: 1 },
+});
 
 const VehicleModel =
   (mongoose.models.Vehicle as mongoose.Model<IVehicle>) ??
