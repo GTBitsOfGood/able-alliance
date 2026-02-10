@@ -5,10 +5,7 @@ import UserModel, {
   IStudentUser,
 } from "../models/UserModel";
 import type { BaseUserInput, StudentInput } from "@/utils/types/user";
-import {
-  UserAlreadyExistsException,
-  UserNotFoundException,
-} from "@/utils/exceptions/user";
+import { UserAlreadyExistsException } from "@/utils/exceptions/user";
 
 export async function createUser(data: BaseUserInput | StudentInput) {
   await connectMongoDB();
@@ -40,17 +37,11 @@ export async function getUsers(
 export async function getUserById(id: string) {
   await connectMongoDB();
   const user = await UserModel.findById(id).lean();
-  if (!user) {
-    throw new UserNotFoundException();
-  }
   return user;
 }
 
 export async function deleteUser(id: string) {
   await connectMongoDB();
-  const user = await UserModel.findByIdAndDelete(id).lean();
-  if (!user) {
-    throw new UserNotFoundException();
-  }
-  return user;
+  const deleted = await UserModel.findByIdAndDelete(id).lean();
+  return deleted;
 }

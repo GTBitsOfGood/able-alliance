@@ -3,6 +3,7 @@ import { createUser, getUsers } from "@/server/db/actions/UserAction";
 import { baseUserSchema, studentSchema } from "@/utils/types/user";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { UserAlreadyExistsException } from "@/utils/exceptions/user";
+import { internalErrorPayload } from "@/utils/apiError";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,10 +19,9 @@ export async function GET(request: NextRequest) {
     const users = await getUsers(type || undefined);
     return NextResponse.json(users, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }
 
@@ -54,9 +54,8 @@ export async function POST(request: NextRequest) {
     if (e instanceof UserAlreadyExistsException) {
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }
