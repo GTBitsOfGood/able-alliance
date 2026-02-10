@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "dev:server": "node websocket-server/index.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -13,6 +14,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "express": "^4.21.0",
     "mongoose": "^8.1.2",
     "next": "16.1.5",
     "react": "19.2.3",

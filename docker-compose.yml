@@ -20,6 +20,25 @@ services:
         condition: service_healthy
     entrypoint: ["/bin/bash", "./app-init.sh"]
 
+  express:
+    container_name: able-alliance-express
+    build:
+      dockerfile: ./Dockerfile.dev
+    environment:
+      PORT: "3001"
+      MONGODB_URI: "mongodb://mongo:27017/able-alliance?replicaSet=rs0"
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "3001:3001"
+    networks:
+      - able-alliance-net
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: ["npm", "run", "dev:server"]
+
   mongo:
     image: mongo:7.0
     ports:
