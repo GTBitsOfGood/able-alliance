@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await createRoute(parsed.data);
-    const createdObj = created as Record<string, unknown> & {
+    const createdObj = created as unknown as Record<string, unknown> & {
       _id: { toString(): string };
     };
     return NextResponse.json(
