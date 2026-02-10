@@ -1,9 +1,5 @@
 import connectMongoDB from "../mongodb";
-import UserModel, {
-  StudentModel,
-  IBaseUser,
-  IStudentUser,
-} from "../models/UserModel";
+import UserModel, { StudentModel } from "../models/UserModel";
 import type { BaseUserInput, StudentInput } from "@/utils/types/user";
 import { UserAlreadyExistsException } from "@/utils/exceptions/user";
 

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
       );
     }
-  } catch (e) {
+  } catch (_e) {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },

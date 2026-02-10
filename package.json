@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "dev:server": "node websocket-server/index.js",
+    "dev:server": "node websocket-server/index.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
