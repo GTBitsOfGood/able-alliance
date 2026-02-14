@@ -6,7 +6,8 @@ Able Alliance is a GT student organization that is dedicated to improving on-cam
 
 ## Deployment Preview
 
-A deployment preview of the main branch from netlify is available [here](https://able-alliance.netlify.app/). Note that SSO login and websocket functionality may not work with the deployment preview, because those use alternate servers.
+A deployment preview of the main branch from netlify is available [here](https://able-alliance.netlify.app/). The
+websocket express js server is hosted seperately [here](https://able-alliance.onrender.com).
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/85fa2c6e-6dac-463a-8467-1d6d02d37cb3/deploy-status)](https://app.netlify.com/projects/able-alliance/deploys)
 
