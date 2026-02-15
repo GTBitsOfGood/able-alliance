@@ -9,13 +9,13 @@ export async function POST(request: NextRequest) {
     console.log("📨 Test email endpoint called");
     const body = await request.json();
     console.log("Request body:", body);
-    
+
     const { to, toName, subject, html } = body;
 
     if (!to) {
       return NextResponse.json(
         { error: "Recipient email (to) is required" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST }
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
 
@@ -30,30 +30,31 @@ export async function POST(request: NextRequest) {
     console.log("✅ Email sent successfully from API endpoint");
     return NextResponse.json(
       { success: true, message: "Email sent successfully" },
-      { status: HTTP_STATUS_CODE.OK }
+      { status: HTTP_STATUS_CODE.OK },
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ Email send error in API endpoint:", error);
-    console.error("Error stack:", error.stack);
+    console.error("Error stack:", error instanceof Error ? error.stack : "N/A");
     console.error("Error details:", {
-      name: error.name,
-      message: error.message,
-      code: error.code,
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      code:
+        error instanceof EmailFailedToSendException ? error.code : undefined,
     });
-    
+
     if (error instanceof EmailFailedToSendException) {
       return NextResponse.json(
         { error: error.message, details: error },
-        { status: error.code }
+        { status: error.code },
       );
     }
     return NextResponse.json(
-      { 
+      {
         error: internalErrorPayload(error),
-        errorMessage: error.message,
-        errorName: error.name,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : "Unknown",
       },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR }
+      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
     );
   }
 }

@@ -68,7 +68,9 @@ export async function sendEmail({
 
   if (!res.success) {
     console.error("❌ Email send failed. Response:", res);
-    throw new EmailFailedToSendException(`Email failed to send: ${JSON.stringify(res)}`);
+    throw new EmailFailedToSendException(
+      `Email failed to send: ${JSON.stringify(res)}`,
+    );
   }
 
   console.log("✅ Email sent successfully!");
@@ -78,7 +80,11 @@ export async function sendEmail({
  * Template helper functions for common email types
  */
 export const EmailTemplates = {
-  rideCancelled: (to: string, toName: string, rideDetails: { rideId: string; reason?: string }) => {
+  rideCancelled: (
+    to: string,
+    toName: string,
+    rideDetails: { rideId: string; reason?: string },
+  ) => {
     return sendEmail({
       to,
       toName,
@@ -92,7 +98,11 @@ export const EmailTemplates = {
     });
   },
 
-  driverArriving: (to: string, toName: string, driverDetails: { name: string; eta: string; vehicle: string }) => {
+  driverArriving: (
+    to: string,
+    toName: string,
+    driverDetails: { name: string; eta: string; vehicle: string },
+  ) => {
     return sendEmail({
       to,
       toName,
@@ -107,7 +117,11 @@ export const EmailTemplates = {
     });
   },
 
-  rideCompleted: (to: string, toName: string, rideDetails: { rideId: string; cost: string; distance: string }) => {
+  rideCompleted: (
+    to: string,
+    toName: string,
+    rideDetails: { rideId: string; cost: string; distance: string },
+  ) => {
     return sendEmail({
       to,
       toName,
