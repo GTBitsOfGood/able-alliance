@@ -24,8 +24,8 @@ export async function sendEmail({
   text?: string;
 }) {
   const sender = {
-    "email": process.env.JUNO_EMAIL_SENDER_EMAIL ?? "bitsgood85@gmail.com",
-    "name": process.env.JUNO_EMAIL_SENDER_NAME ?? "Able Alliance",
+    email: process.env.JUNO_EMAIL_SENDER_EMAIL ?? "bitsgood85@gmail.com",
+    name: process.env.JUNO_EMAIL_SENDER_NAME ?? "Able Alliance",
   };
 
   const recipients: EmailRecipient[] = [
