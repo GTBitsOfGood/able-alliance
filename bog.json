@@ -1,0 +1,67 @@
+{
+  "design-system": {
+    "path": "src/components",
+    "components": {
+      "checkbox": {
+        "version": "1.0.0"
+      },
+      "form": {
+        "version": "1.0.0"
+      },
+      "modal": {
+        "version": "1.0.0"
+      },
+      "table": {
+        "version": "1.0.0"
+      },
+      "button": {
+        "version": "1.0.0"
+      },
+      "icon": {
+        "version": "1.0.0"
+      },
+      "text-input": {
+        "version": "1.0.0"
+      },
+      "dropdown": {
+        "version": "1.0.0"
+      },
+      "chip": {
+        "version": "1.0.0"
+      },
+      "popover": {
+        "version": "1.0.0"
+      },
+      "radio-group": {
+        "version": "1.0.0"
+      },
+      "radio-item": {
+        "version": "1.0.0"
+      },
+      "switch": {
+        "version": "1.0.0"
+      },
+      "banner": {
+        "version": "1.0.0"
+      },
+      "card": {
+        "version": "1.0.0"
+      },
+      "date-picker": {
+        "version": "1.0.0"
+      },
+      "progress": {
+        "version": "1.0.0"
+      },
+      "tabs": {
+        "version": "1.0.0"
+      },
+      "toast": {
+        "version": "1.0.0"
+      },
+      "tooltip": {
+        "version": "1.0.0"
+      }
+    }
+  }
+}
