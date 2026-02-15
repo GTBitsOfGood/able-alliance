@@ -1,6 +1,6 @@
 import { EmailFailedToSendException } from "@/utils/exceptions/email";
 import { junoEmailClient } from "@/server/juno/init";
-import { EmailSender, EmailRecipient } from "juno-sdk/internal/api";
+import { EmailRecipient } from "juno-sdk/internal/api";
 
 /**
  * Send a transactional email via Juno
@@ -23,9 +23,9 @@ export async function sendEmail({
   html?: string;
   text?: string;
 }) {
-  const sender: EmailSender = {
-    email: process.env.JUNO_EMAIL_SENDER_EMAIL ?? "bitsgood85@gmail.com",
-    name: process.env.JUNO_EMAIL_SENDER_NAME ?? "Able Alliance",
+  const sender = {
+    "email": process.env.JUNO_EMAIL_SENDER_EMAIL ?? "bitsgood85@gmail.com",
+    "name": process.env.JUNO_EMAIL_SENDER_NAME ?? "Able Alliance",
   };
 
   const recipients: EmailRecipient[] = [
