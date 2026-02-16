@@ -18,27 +18,27 @@ export default function Admin() {
   const { columns, rows, rowIds, loading, error, deleteRows, refetch } =
     useAdminTableData(table);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-    const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-    // Add setSelectedRows(new Set()) inside switchTable
-    // after setTable(value);
+  // Add setSelectedRows(new Set()) inside switchTable
+  // after setTable(value);
 
-    const handleDelete = async () => {
+  const handleDelete = async () => {
     if (selectedRows.size === 0) return;
     setDeleting(true);
     try {
-        await deleteRows(selectedRows);
-        setSelectedRows(new Set());
+      await deleteRows(selectedRows);
+      setSelectedRows(new Set());
     } finally {
-        setDeleting(false);
+      setDeleting(false);
     }
-    };
+  };
 
-    const canDelete = selectedRows.size > 0 && rowIds.length > 0;
+  const canDelete = selectedRows.size > 0 && rowIds.length > 0;
 
   const switchTable = (
     event: React.MouseEvent<HTMLHeadingElement>,
-    value: AdminTableType
+    value: AdminTableType,
   ) => {
     setTable(value);
   };
@@ -47,10 +47,18 @@ export default function Admin() {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
-    const phone = (form.elements.namedItem("phone") as HTMLInputElement).value.trim();
-    const gtid = (form.elements.namedItem("gtid") as HTMLInputElement).value.trim();
+    const name = (
+      form.elements.namedItem("name") as HTMLInputElement
+    ).value.trim();
+    const email = (
+      form.elements.namedItem("email") as HTMLInputElement
+    ).value.trim();
+    const phone = (
+      form.elements.namedItem("phone") as HTMLInputElement
+    ).value.trim();
+    const gtid = (
+      form.elements.namedItem("gtid") as HTMLInputElement
+    ).value.trim();
     const ramp = (form.elements.namedItem("ramp") as HTMLInputElement).checked;
 
     if (!name || !email) {
@@ -62,7 +70,11 @@ export default function Admin() {
       return;
     }
 
-    const studentInfo: { GTID: string; notes?: string; accessibilityNeeds?: "Wheelchair" | "LowMobility" } = {
+    const studentInfo: {
+      GTID: string;
+      notes?: string;
+      accessibilityNeeds?: "Wheelchair" | "LowMobility";
+    } = {
       GTID: gtid,
       ...(phone && { notes: `Phone: ${phone}` }),
       ...(ramp && { accessibilityNeeds: "Wheelchair" }),
@@ -73,20 +85,33 @@ export default function Admin() {
       body: JSON.stringify({ type: "Student", name, email, studentInfo }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((body) => Promise.reject(new Error(body.error ?? body.message ?? res.statusText)));
+        if (!res.ok)
+          return res
+            .json()
+            .then((body) =>
+              Promise.reject(
+                new Error(body.error ?? body.message ?? res.statusText),
+              ),
+            );
         refetch();
         setModalOpen(false);
         form.reset();
       })
-      .catch((err: Error) => setSubmitError(err.message ?? "Failed to create student."));
+      .catch((err: Error) =>
+        setSubmitError(err.message ?? "Failed to create student."),
+      );
   };
 
   const handleAddAdmin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
+    const name = (
+      form.elements.namedItem("name") as HTMLInputElement
+    ).value.trim();
+    const email = (
+      form.elements.namedItem("email") as HTMLInputElement
+    ).value.trim();
 
     if (!name || !email) {
       setSubmitError("Name and email are required.");
@@ -99,20 +124,33 @@ export default function Admin() {
       body: JSON.stringify({ type: "Admin", name, email }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((body) => Promise.reject(new Error(body.error ?? body.message ?? res.statusText)));
+        if (!res.ok)
+          return res
+            .json()
+            .then((body) =>
+              Promise.reject(
+                new Error(body.error ?? body.message ?? res.statusText),
+              ),
+            );
         refetch();
         setModalOpen(false);
         form.reset();
       })
-      .catch((err: Error) => setSubmitError(err.message ?? "Failed to create admin."));
+      .catch((err: Error) =>
+        setSubmitError(err.message ?? "Failed to create admin."),
+      );
   };
 
   const handleAddDriver = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
+    const name = (
+      form.elements.namedItem("name") as HTMLInputElement
+    ).value.trim();
+    const email = (
+      form.elements.namedItem("email") as HTMLInputElement
+    ).value.trim();
 
     if (!name || !email) {
       setSubmitError("Name and email are required.");
@@ -125,23 +163,43 @@ export default function Admin() {
       body: JSON.stringify({ type: "Driver", name, email }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((body) => Promise.reject(new Error(body.error ?? body.message ?? res.statusText)));
+        if (!res.ok)
+          return res
+            .json()
+            .then((body) =>
+              Promise.reject(
+                new Error(body.error ?? body.message ?? res.statusText),
+              ),
+            );
         refetch();
         setModalOpen(false);
         form.reset();
       })
-      .catch((err: Error) => setSubmitError(err.message ?? "Failed to create driver."));
+      .catch((err: Error) =>
+        setSubmitError(err.message ?? "Failed to create driver."),
+      );
   };
 
   const handleAddVehicle = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const licensePlate = (form.elements.namedItem("licensePlate") as HTMLInputElement).value.trim();
-    const description = (form.elements.namedItem("description") as HTMLInputElement).value.trim();
-    const accessibility = (form.elements.namedItem("accessibility") as HTMLSelectElement).value as "None" | "Wheelchair";
-    const seatCount = parseInt((form.elements.namedItem("seatCount") as HTMLInputElement).value, 10);
+    const name = (
+      form.elements.namedItem("name") as HTMLInputElement
+    ).value.trim();
+    const licensePlate = (
+      form.elements.namedItem("licensePlate") as HTMLInputElement
+    ).value.trim();
+    const description = (
+      form.elements.namedItem("description") as HTMLInputElement
+    ).value.trim();
+    const accessibility = (
+      form.elements.namedItem("accessibility") as HTMLSelectElement
+    ).value as "None" | "Wheelchair";
+    const seatCount = parseInt(
+      (form.elements.namedItem("seatCount") as HTMLInputElement).value,
+      10,
+    );
 
     if (!name || !licensePlate) {
       setSubmitError("Name and license plate are required.");
@@ -164,12 +222,21 @@ export default function Admin() {
       }),
     })
       .then((res) => {
-        if (!res.ok) return res.json().then((body) => Promise.reject(new Error(body.error ?? body.message ?? res.statusText)));
+        if (!res.ok)
+          return res
+            .json()
+            .then((body) =>
+              Promise.reject(
+                new Error(body.error ?? body.message ?? res.statusText),
+              ),
+            );
         refetch();
         setModalOpen(false);
         form.reset();
       })
-      .catch((err: Error) => setSubmitError(err.message ?? "Failed to create vehicle."));
+      .catch((err: Error) =>
+        setSubmitError(err.message ?? "Failed to create vehicle."),
+      );
   };
 
   const addTitle = `Add ${table === "Students" ? "Student" : table === "Drivers" ? "Driver" : table === "Admins" ? "Admin" : "Vehicle"}`;
@@ -178,30 +245,87 @@ export default function Admin() {
   const formContent =
     table === "Students" ? (
       <BogForm onSubmit={handleAddStudent} submitLabel="Create student">
-        <BogTextInput name="name" label="Name" placeholder="Full name" required />
-        <BogTextInput name="email" type="email" label="Email" placeholder="email@example.com" required />
-        <BogTextInput name="phone" type="tel" label="Phone" placeholder="Optional" />
-        <BogTextInput name="gtid" label="GTID" placeholder="9 digits" required />
+        <BogTextInput
+          name="name"
+          label="Name"
+          placeholder="Full name"
+          required
+        />
+        <BogTextInput
+          name="email"
+          type="email"
+          label="Email"
+          placeholder="email@example.com"
+          required
+        />
+        <BogTextInput
+          name="phone"
+          type="tel"
+          label="Phone"
+          placeholder="Optional"
+        />
+        <BogTextInput
+          name="gtid"
+          label="GTID"
+          placeholder="9 digits"
+          required
+        />
         <BogCheckbox name="ramp" label="Ramp / wheelchair accessible" />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : table === "Drivers" ? (
       <BogForm onSubmit={handleAddDriver} submitLabel="Create driver">
-        <BogTextInput name="name" label="Name" placeholder="Full name" required />
-        <BogTextInput name="email" type="email" label="Email" placeholder="email@example.com" required />
+        <BogTextInput
+          name="name"
+          label="Name"
+          placeholder="Full name"
+          required
+        />
+        <BogTextInput
+          name="email"
+          type="email"
+          label="Email"
+          placeholder="email@example.com"
+          required
+        />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : table === "Admins" ? (
       <BogForm onSubmit={handleAddAdmin} submitLabel="Create admin">
-        <BogTextInput name="name" label="Name" placeholder="Full name" required />
-        <BogTextInput name="email" type="email" label="Email" placeholder="email@example.com" required />
+        <BogTextInput
+          name="name"
+          label="Name"
+          placeholder="Full name"
+          required
+        />
+        <BogTextInput
+          name="email"
+          type="email"
+          label="Email"
+          placeholder="email@example.com"
+          required
+        />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : (
       <BogForm onSubmit={handleAddVehicle} submitLabel="Create vehicle">
-        <BogTextInput name="name" label="Name" placeholder="Vehicle name" required />
-        <BogTextInput name="licensePlate" label="License plate" placeholder="Required" required />
-        <BogTextInput name="description" label="Make & model" placeholder="e.g. Honda Odyssey" />
+        <BogTextInput
+          name="name"
+          label="Name"
+          placeholder="Vehicle name"
+          required
+        />
+        <BogTextInput
+          name="licensePlate"
+          label="License plate"
+          placeholder="Required"
+          required
+        />
+        <BogTextInput
+          name="description"
+          label="Make & model"
+          placeholder="e.g. Honda Odyssey"
+        />
         <div className="flex flex-col gap-1">
           <label htmlFor="accessibility">Accessibility</label>
           <select
@@ -260,20 +384,18 @@ export default function Admin() {
       </div>
       <div className="py-20 px-10 relative flex-1">
         <div className="flex items-center gap-4 mb-[10vh]">
-            <h1>{table}</h1>
-            {canDelete && (
-                <BogButton
-                variant="primary"
-                size="medium"
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
-                >
-                {deleting
-                    ? "Deleting…"
-                    : `Delete ${selectedRows.size} selected`}
-                </BogButton>
-            )}
+          <h1>{table}</h1>
+          {canDelete && (
+            <BogButton
+              variant="primary"
+              size="medium"
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
+            >
+              {deleting ? "Deleting…" : `Delete ${selectedRows.size} selected`}
+            </BogButton>
+          )}
         </div>
         {error && (
           <p className="mb-4 text-sm text-amber-700" role="status">
@@ -283,22 +405,28 @@ export default function Admin() {
         {loading ? (
           <p className="text-gray-600">Loading…</p>
         ) : (
-        <div>
-            <BogTable style={{
-              "marginBottom": "5vh",
-            } as React.CSSProperties} columnHeaders={columns}
-            rows={rows} selectedRows={selectedRows}
-            onSelectedRowsChange={setSelectedRows}
-            selectable={true} />
+          <div>
+            <BogTable
+              style={
+                {
+                  marginBottom: "5vh",
+                } as React.CSSProperties
+              }
+              columnHeaders={columns}
+              rows={rows}
+              selectedRows={selectedRows}
+              onSelectedRowsChange={setSelectedRows}
+              selectable={true}
+            />
             <BogModal
-            openState={{ open: modalOpen, setOpen: setModalOpen }}
-            trigger={<BogButton>{triggerLabel}</BogButton>}
-            title={<h3>{addTitle}</h3>}
-            onOpenChange={(open) => !open && setSubmitError(null)}
+              openState={{ open: modalOpen, setOpen: setModalOpen }}
+              trigger={<BogButton>{triggerLabel}</BogButton>}
+              title={<h3>{addTitle}</h3>}
+              onOpenChange={(open) => !open && setSubmitError(null)}
             >
-            {formContent}
+              {formContent}
             </BogModal>
-        </div>
+          </div>
         )}
       </div>
     </div>

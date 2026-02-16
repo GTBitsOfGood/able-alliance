@@ -4,10 +4,10 @@ import React, {
   SetStateAction,
   CSSProperties,
   useState,
-} from 'react';
-import { Popover } from 'radix-ui';
-import BogIcon from '../BogIcon/BogIcon';
-import styles from './styles.module.css';
+} from "react";
+import { Popover } from "radix-ui";
+import BogIcon from "../BogIcon/BogIcon";
+import styles from "./styles.module.css";
 
 interface OpenState {
   /** Whether the popover is open or not */
@@ -16,24 +16,27 @@ interface OpenState {
   setOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-interface BogPopoverContentProps
-  extends React.ComponentProps<typeof Popover.Content> {
+interface BogPopoverContentProps extends React.ComponentProps<
+  typeof Popover.Content
+> {
   /** CSS or Tailwind class names to style the content */
   className?: string;
   /** CSS styles to style the content */
   style?: CSSProperties;
 }
 
-interface BogPopoverArrowProps
-  extends React.ComponentProps<typeof Popover.Arrow> {
+interface BogPopoverArrowProps extends React.ComponentProps<
+  typeof Popover.Arrow
+> {
   /** CSS or Tailwind class names to style the arrow */
   className?: string;
   /** CSS styles to style the arrow */
   style?: CSSProperties;
 }
 
-interface BogPopoverCloseProps
-  extends React.ComponentProps<typeof Popover.Close> {
+interface BogPopoverCloseProps extends React.ComponentProps<
+  typeof Popover.Close
+> {
   /** Custom close button element */
   closebutton?: ReactElement;
   /** CSS or Tailwind class names to style the close button */
@@ -96,7 +99,7 @@ export default function BogPopover({
     <BogIcon name="trash" size="24" />
   );
 
-  const finalContentProps = contentProps || { side: 'top' };
+  const finalContentProps = contentProps || { side: "top" };
 
   return (
     <Popover.Root

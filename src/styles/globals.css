@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @theme {
   --breakpoint-mobile: 640px;
@@ -70,10 +70,12 @@
   --text-mobile-paragraph-2--line-height: 22px;
   --text-mobile-small--line-height: 18px;
 
-  --font-heading: Visby Extra Bold, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-paragraph: Open Sans Regular, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-heading:
+    Visby Extra Bold, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-paragraph:
+    Open Sans Regular, ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   --animate-fade-in: fade-in 0.25s ease-out;
   --animate-fade-out: fade-out 0.25s ease-out;
@@ -147,7 +149,9 @@
     font-family: var(--font-heading);
   }
 
-  h4, h5, h6 {
+  h4,
+  h5,
+  h6 {
     line-height: var(--text-mobile-heading-4--line-height);
     font-size: var(--text-mobile-heading-4);
     font-family: var(--font-heading);
@@ -159,37 +163,43 @@
     font-family: var(--font-paragraph);
   }
 
-  p, pre, span, ul, ol, li, a {
+  p,
+  pre,
+  span,
+  ul,
+  ol,
+  li,
+  a {
     line-height: var(--text-mobile-paragraph-1--line-height);
     font-size: var(--text-mobile-paragraph-1);
     font-family: var(--font-paragraph);
   }
 
   @font-face {
-    font-family: 'Visby Extra Bold';
+    font-family: "Visby Extra Bold";
     src:
-      url('/fonts/visbyextrabold-webfont.woff2') format('woff2'),
-      url('/fonts/visbyextrabold-webfont.woff') format('woff');
+      url("/fonts/visbyextrabold-webfont.woff2") format("woff2"),
+      url("/fonts/visbyextrabold-webfont.woff") format("woff");
     font-weight: normal;
     font-style: normal;
   }
 
   @font-face {
-    font-family: 'Open Sans Regular';
+    font-family: "Open Sans Regular";
     src:
-      url('/fonts/opensans-regular-webfont.woff2') format('woff2'),
-      url('/fonts/opensans-regular-webfont.woff') format('woff');
+      url("/fonts/opensans-regular-webfont.woff2") format("woff2"),
+      url("/fonts/opensans-regular-webfont.woff") format("woff");
     font-weight: normal;
     font-style: normal;
   }
-  
+
   @font-face {
-    font-family: 'Open Sans Regular';
+    font-family: "Open Sans Regular";
     font-style: normal;
     font-weight: 300 800;
     font-stretch: 100%;
     font-display: swap;
-    src: url('/fonts/opensans-webfont.woff2') format('woff2');
+    src: url("/fonts/opensans-webfont.woff2") format("woff2");
   }
 
   html {
@@ -300,7 +310,9 @@
       font-size: var(--text-desktop-heading-3);
     }
 
-    h4, h5, h6 {
+    h4,
+    h5,
+    h6 {
       line-height: var(--text-desktop-heading-4--line-height);
       font-size: var(--text-desktop-heading-4);
     }
@@ -310,7 +322,13 @@
       font-size: var(--text-desktop-small);
     }
 
-    p, pre, span, ul, ol, li, a {
+    p,
+    pre,
+    span,
+    ul,
+    ol,
+    li,
+    a {
       line-height: var(--text-desktop-paragraph-1--line-height);
       font-size: var(--text-desktop-paragraph-1);
     }

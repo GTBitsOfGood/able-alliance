@@ -1,5 +1,5 @@
-import { breakpoints } from '..//breakpoints/breakpoints';
-import { useWindowSize } from 'react-use';
+import { breakpoints } from "..//breakpoints/breakpoints";
+import { useWindowSize } from "react-use";
 
 function getBreakpoint(width: number) {
   const entries = Object.entries(breakpoints).reverse();

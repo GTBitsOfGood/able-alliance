@@ -1,5 +1,5 @@
-import React from 'react';
-import type BogIcon from '@/components/BogIcon/BogIcon';
+import React from "react";
+import type BogIcon from "@/components/BogIcon/BogIcon";
 
 /**
  * IconProps describes a small configuration object used to render icons
@@ -12,7 +12,7 @@ export interface IconProps {
   iconProps: React.ComponentProps<typeof BogIconProps>;
 
   /** Position of the icon relative to the host component. */
-  position: 'left' | 'right';
+  position: "left" | "right";
 
   /** Optional click handler for interactive icons (e.g., inside text inputs). */
   onClick?: (e: React.MouseEvent) => void;

@@ -7,8 +7,9 @@
 
 @font-face {
   font-family: "Visby";
-  src: url("/fonts/visbyextrabold-webfont.woff") format("woff"),
-       url("/fonts/visbyextrabold-webfont.woff2") format("woff2");
+  src:
+    url("/fonts/visbyextrabold-webfont.woff") format("woff"),
+    url("/fonts/visbyextrabold-webfont.woff2") format("woff2");
   font-weight: 100;
   font-style: normal;
   font-display: swap;
@@ -16,7 +17,7 @@
 @font-face {
   font-family: "OpenSans";
   src: url("/font/opensans-regular-webfont.woff") format("woff")
-       url("/font/opensans-regular-webfont.woff2") format("woff2");
+    url("/font/opensans-regular-webfont.woff2") format("woff2");
   font-weight: 100;
   font-style: normal;
   font-display: swap;

@@ -39,11 +39,11 @@
         cursor: pointer;
       }
 
-      &[data-state='open'] {
+      &[data-state="open"] {
         border: solid 1px var(--color-brand-stroke-strong);
       }
 
-      &[data-disabled='true'],
+      &[data-disabled="true"],
       &:disabled {
         color: var(--color-grey-off-state);
         cursor: not-allowed;

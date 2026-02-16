@@ -1,27 +1,27 @@
-import { Table, Theme } from '@radix-ui/themes';
-import React, { ReactNode } from 'react';
-import './bogtable-radix.css';
-import styles from './styles.module.css';
-import { useResponsive } from '../../utils/design-system/hooks/useResponsive';
-import { getNumericalSizeFromBreakpoint } from '../../utils/design-system/breakpoints/breakpoints';
-import BogTextInput from '../BogTextInput/BogTextInput';
-import BogIcon from '../BogIcon/BogIcon';
-import BogButton from '../BogButton/BogButton';
-import BogPopover from '../BogPopover/BogPopover';
-import { Popover } from 'radix-ui';
-import BogCheckbox from '../BogCheckbox/BogCheckbox';
-import BogDropdown from '../BogDropdown/BogDropdown';
-import BogChip from '../BogChip/BogChip';
+import { Table, Theme } from "@radix-ui/themes";
+import React, { ReactNode } from "react";
+import "./bogtable-radix.css";
+import styles from "./styles.module.css";
+import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
+import { getNumericalSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
+import BogTextInput from "../BogTextInput/BogTextInput";
+import BogIcon from "../BogIcon/BogIcon";
+import BogButton from "../BogButton/BogButton";
+import BogPopover from "../BogPopover/BogPopover";
+import { Popover } from "radix-ui";
+import BogCheckbox from "../BogCheckbox/BogCheckbox";
+import BogDropdown from "../BogDropdown/BogDropdown";
+import BogChip from "../BogChip/BogChip";
 
-type ColumnDatatype = 'string' | 'string[]' | 'number' | 'number[]' | 'other';
+type ColumnDatatype = "string" | "string[]" | "number" | "number[]" | "other";
 
 type FilterCondition =
-  | 'Value is'
-  | 'Value is not'
-  | 'Value contains'
-  | 'Value does not contain'
-  | 'Value is blank'
-  | 'Value is not blank';
+  | "Value is"
+  | "Value is not"
+  | "Value contains"
+  | "Value does not contain"
+  | "Value is blank"
+  | "Value is not blank";
 
 type ColumnFilter = {
   condition: FilterCondition;
@@ -51,14 +51,16 @@ export type TableRow = {
   cells: RowCellContent[];
 };
 
-interface BogTableProps
-  extends Omit<React.ComponentProps<typeof Table.Root>, 'size'> {
+interface BogTableProps extends Omit<
+  React.ComponentProps<typeof Table.Root>,
+  "size"
+> {
   /** Column headers for the table (rendered in thead) */
   columnHeaders: ColumnHeaderCellContent[];
   /** Data rows (rendered in tbody) */
   rows: TableRow[];
   /** Visual size; responsive maps breakpoints -> small|medium|large */
-  size?: 'small' | 'medium' | 'large' | 'responsive';
+  size?: "small" | "medium" | "large" | "responsive";
   /** Tailwind / custom class names */
   className?: string;
   /** Inline styles */
@@ -73,32 +75,31 @@ interface BogTableProps
 
 // Helper functions moved outside component to be stable
 const extractText = (node: ReactNode): string => {
-  if (node == null || typeof node === 'boolean') return '';
-  if (typeof node === 'string' || typeof node === 'number')
-    return String(node);
-  if (Array.isArray(node)) return node.map(extractText).join(' ');
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join(" ");
   if (React.isValidElement(node)) {
     const { children } = (node.props as { children?: ReactNode }) ?? {};
     return extractText(children);
   }
-  return '';
+  return "";
 };
 
 const matchesFilter = (text: string, f: ColumnFilter): boolean => {
   const v = text.trim();
   const lc = v.toLowerCase();
   switch (f.condition) {
-    case 'Value is':
+    case "Value is":
       return f.value != null && lc === String(f.value).toLowerCase().trim();
-    case 'Value is not':
+    case "Value is not":
       return f.value != null && lc !== String(f.value).toLowerCase().trim();
-    case 'Value contains':
+    case "Value contains":
       return f.value != null && lc.includes(String(f.value).toLowerCase());
-    case 'Value does not contain':
+    case "Value does not contain":
       return f.value != null && !lc.includes(String(f.value).toLowerCase());
-    case 'Value is blank':
+    case "Value is blank":
       return v.length === 0;
-    case 'Value is not blank':
+    case "Value is not blank":
       return v.length > 0;
     default:
       return true;
@@ -111,13 +112,13 @@ const getSortValue = (
 ): number | string => {
   const text = extractText(node).trim();
   switch (datatype) {
-    case 'number':
-    case 'number[]': {
+    case "number":
+    case "number[]": {
       const nums = text.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
       return nums.length ? nums[0] : Number.NaN;
     }
-    case 'string':
-    case 'string[]':
+    case "string":
+    case "string[]":
     default:
       return text.toLowerCase();
   }
@@ -126,7 +127,7 @@ const getSortValue = (
 const BogTable: React.FC<BogTableProps> = ({
   columnHeaders,
   rows,
-  size = 'responsive',
+  size = "responsive",
   className,
   style,
   selectable = false,
@@ -135,11 +136,11 @@ const BogTable: React.FC<BogTableProps> = ({
   ...rootProps
 }) => {
   const breakpoint = useResponsive();
-  type SortDirection = 'asc' | 'desc';
+  type SortDirection = "asc" | "desc";
   type SortEntry = { index: number; direction: SortDirection };
 
   const [sorts, setSorts] = React.useState<SortEntry[]>([]);
-  const [query, setQuery] = React.useState('');
+  const [query, setQuery] = React.useState("");
 
   const [selectedColumns, setSelectedColumns] = React.useState<number[]>([]);
   const [draftFilterCols, setDraftFilterCols] = React.useState<number[]>([]);
@@ -207,12 +208,12 @@ const BogTable: React.FC<BogTableProps> = ({
     setSorts((prev) => {
       const i = prev.findIndex((s) => s.index === colIndex);
       if (i === -1) {
-        return [...prev, { index: colIndex, direction: 'asc' }];
+        return [...prev, { index: colIndex, direction: "asc" }];
       }
       const dir = prev[i].direction;
-      if (dir === 'asc') {
+      if (dir === "asc") {
         const next = [...prev];
-        next[i] = { index: colIndex, direction: 'desc' };
+        next[i] = { index: colIndex, direction: "desc" };
         return next;
       }
       return prev.filter((s) => s.index !== colIndex);
@@ -230,18 +231,18 @@ const BogTable: React.FC<BogTableProps> = ({
         const bv = getSortValue(b.row.cells[index]?.content, dt);
 
         let cmp = 0;
-        if (typeof av === 'number' && typeof bv === 'number') {
+        if (typeof av === "number" && typeof bv === "number") {
           const aNum = Number.isNaN(av) ? Number.POSITIVE_INFINITY : av;
           const bNum = Number.isNaN(bv) ? Number.POSITIVE_INFINITY : bv;
           cmp = aNum - bNum;
         } else {
           cmp = String(av).localeCompare(String(bv), undefined, {
             numeric: true,
-            sensitivity: 'base',
+            sensitivity: "base",
           });
         }
         if (cmp !== 0) {
-          return direction === 'asc' ? cmp : -cmp;
+          return direction === "asc" ? cmp : -cmp;
         }
       }
       return a.idx - b.idx;
@@ -251,13 +252,13 @@ const BogTable: React.FC<BogTableProps> = ({
 
   const handleSearchChange: React.FormEventHandler<HTMLDivElement> = (e) => {
     const el = e.target as HTMLInputElement;
-    if (el && typeof el.value === 'string') setQuery(el.value);
+    if (el && typeof el.value === "string") setQuery(el.value);
   };
 
-  const radixSize: '1' | '2' | '3' =
-    size === 'responsive'
+  const radixSize: "1" | "2" | "3" =
+    size === "responsive"
       ? getNumericalSizeFromBreakpoint(breakpoint)
-      : ({ small: '1', medium: '2', large: '3' } as const)[size];
+      : ({ small: "1", medium: "2", large: "3" } as const)[size];
 
   const sizeClass = `size${radixSize}`;
 
@@ -291,32 +292,32 @@ const BogTable: React.FC<BogTableProps> = ({
             }}
             contentProps={{
               className: styles.popoverContentRoot,
-              side: 'bottom',
-              align: 'end',
+              side: "bottom",
+              align: "end",
               sideOffset: 6,
             }}
             arrowProps={{
               className: styles.hiddenArrow,
               width: 0,
               height: 0,
-              style: { display: 'none' },
+              style: { display: "none" },
             }}
             closeProps={{
               closebutton: <span />,
-              style: { display: 'none' },
+              style: { display: "none" },
             }}
             trigger={
               <BogButton
                 className={styles.filterButton}
-                variant={hasChips ? 'primary' : 'secondary'}
+                variant={hasChips ? "primary" : "secondary"}
                 size="medium"
                 iconProps={{
                   iconProps: {
-                    name: 'funnel-simple',
+                    name: "funnel-simple",
                     size: 20,
                     className: styles.filterIcon,
                   },
-                  position: 'right',
+                  position: "right",
                 }}
               >
                 Filter
@@ -387,11 +388,11 @@ const BogTable: React.FC<BogTableProps> = ({
 
             const isActiveChip =
               !!active &&
-              (active.condition === 'Value is blank' ||
-                active.condition === 'Value is not blank' ||
-                (active.value ?? '').trim().length > 0);
+              (active.condition === "Value is blank" ||
+                active.condition === "Value is not blank" ||
+                (active.value ?? "").trim().length > 0);
             const chipText = active?.condition
-              ? `${header}: ${active.condition}${active.value ? `: ${active.value}` : ''}`
+              ? `${header}: ${active.condition}${active.value ? `: ${active.value}` : ""}`
               : header;
 
             return (
@@ -413,25 +414,25 @@ const BogTable: React.FC<BogTableProps> = ({
                 }}
                 contentProps={{
                   className: styles.chipPopoverContentRoot,
-                  side: 'bottom',
-                  align: 'start',
+                  side: "bottom",
+                  align: "start",
                   sideOffset: 6,
                 }}
                 arrowProps={{
                   className: styles.hiddenArrow,
                   width: 0,
                   height: 0,
-                  style: { display: 'none' },
+                  style: { display: "none" },
                 }}
                 closeProps={{
                   closebutton: <span />,
-                  style: { display: 'none' },
+                  style: { display: "none" },
                 }}
                 trigger={
                   <BogChip
                     size="responsive"
                     radius="full"
-                    className={`${styles.filterChip} ${isActiveChip ? styles.filterChipActive : ''}`}
+                    className={`${styles.filterChip} ${isActiveChip ? styles.filterChipActive : ""}`}
                     data-table-chip="true"
                     data-active={isActiveChip}
                   >
@@ -443,14 +444,14 @@ const BogTable: React.FC<BogTableProps> = ({
                   <div className={styles.chipPopoverContent}>
                     <div
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
                       <h4 style={{ margin: 0 }}>{`Filter: ${header}`}</h4>
                       <div
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: "pointer" }}
                         onClick={() => removeColumnFilter(colIdx)}
                       >
                         <BogIcon
@@ -468,12 +469,12 @@ const BogTable: React.FC<BogTableProps> = ({
                           type="radio"
                           className={styles.chipPopoverDropdownInput}
                           options={[
-                            'Value is',
-                            'Value is not',
-                            'Value contains',
-                            'Value does not contain',
-                            'Value is blank',
-                            'Value is not blank',
+                            "Value is",
+                            "Value is not",
+                            "Value contains",
+                            "Value does not contain",
+                            "Value is blank",
+                            "Value is not blank",
                           ]}
                           placeholder="Select Condition"
                           name={`chip-cond-${colIdx}`}
@@ -489,22 +490,22 @@ const BogTable: React.FC<BogTableProps> = ({
                             const cond = sel as FilterCondition;
                             setDraftColumnFilters((prev) => {
                               const current = prev[colIdx] ?? {
-                                condition: 'contains',
-                                value: '',
+                                condition: "contains",
+                                value: "",
                               };
                               const value =
-                                cond === 'Value is blank' ||
-                                cond === 'Value is not blank'
-                                  ? ''
-                                  : (current.value ?? '');
+                                cond === "Value is blank" ||
+                                cond === "Value is not blank"
+                                  ? ""
+                                  : (current.value ?? "");
                               return {
                                 ...prev,
                                 [colIdx]: { condition: cond, value },
                               };
                             });
                           }}
-                          value={draftColumnFilters[colIdx]?.condition ?? ''}
-                          style={{ width: '100%' }}
+                          value={draftColumnFilters[colIdx]?.condition ?? ""}
+                          style={{ width: "100%" }}
                         />
                       </div>
                       <div className={styles.chipInputWrapper}>
@@ -512,26 +513,26 @@ const BogTable: React.FC<BogTableProps> = ({
                         <BogTextInput
                           name={`chip-value-${colIdx}`}
                           className={styles.chipPopoverTextInput}
-                          value={draftColumnFilters[colIdx]?.value ?? ''}
+                          value={draftColumnFilters[colIdx]?.value ?? ""}
                           placeholder={
                             draftColumnFilters[colIdx]?.value ||
-                            'Enter Filter Value'
+                            "Enter Filter Value"
                           }
                           onChange={(e) => {
                             const v = (e.target as HTMLInputElement).value;
                             setDraftColumnFilters((prev) => ({
                               ...prev,
                               [colIdx]: {
-                                ...(prev[colIdx] ?? { condition: 'contains' }),
+                                ...(prev[colIdx] ?? { condition: "contains" }),
                                 value: v,
                               },
                             }));
                           }}
                           disabled={
                             draftColumnFilters[colIdx]?.condition ===
-                              'Value is blank' ||
+                              "Value is blank" ||
                             draftColumnFilters[colIdx]?.condition ===
-                              'Value is not blank'
+                              "Value is not blank"
                           }
                         />
                       </div>
@@ -558,10 +559,10 @@ const BogTable: React.FC<BogTableProps> = ({
                               const draft = draftColumnFilters[colIdx];
 
                               const isBlankCheck =
-                                draft?.condition === 'Value is blank' ||
-                                draft?.condition === 'Value is not blank';
+                                draft?.condition === "Value is blank" ||
+                                draft?.condition === "Value is not blank";
                               const hasValue =
-                                (draft?.value ?? '').trim().length > 0;
+                                (draft?.value ?? "").trim().length > 0;
 
                               if (!draft || (!isBlankCheck && !hasValue)) {
                                 delete next[colIdx];
@@ -587,7 +588,7 @@ const BogTable: React.FC<BogTableProps> = ({
           <Table.Root
             {...rootProps}
             size={radixSize}
-            className={`${styles.root} ${className || ''}`}
+            className={`${styles.root} ${className || ""}`}
             style={style}
           >
             <Table.Header>
@@ -603,7 +604,7 @@ const BogTable: React.FC<BogTableProps> = ({
                         selectedSet.size === sortedRows.length
                           ? true
                           : selectedSet.size > 0
-                            ? 'indeterminate'
+                            ? "indeterminate"
                             : false
                       }
                       onCheckedChange={() => toggleAll()}
@@ -612,7 +613,7 @@ const BogTable: React.FC<BogTableProps> = ({
                 )}
                 {columnHeaders.map((header, i) => {
                   const dir = getSortForColumn(i);
-                  const isSortable = header.datatype !== 'other';
+                  const isSortable = header.datatype !== "other";
                   return (
                     <Table.ColumnHeaderCell
                       key={`col-${i}`}
@@ -628,12 +629,12 @@ const BogTable: React.FC<BogTableProps> = ({
                           tabIndex={0}
                           aria-label={`Sort by ${header.content}${
                             dir
-                              ? `, ${dir === 'asc' ? 'ascending' : 'descending'}`
-                              : ''
+                              ? `, ${dir === "asc" ? "ascending" : "descending"}`
+                              : ""
                           }`}
                           onClick={() => toggleSort(i)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
+                            if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
                               toggleSort(i);
                             }
@@ -642,7 +643,7 @@ const BogTable: React.FC<BogTableProps> = ({
                           <BogIcon
                             name="caret-up"
                             className={
-                              dir === 'asc'
+                              dir === "asc"
                                 ? styles.sortChevronActive
                                 : styles.sortChevronInactive
                             }
@@ -650,7 +651,7 @@ const BogTable: React.FC<BogTableProps> = ({
                           <BogIcon
                             name="caret-down"
                             className={
-                              dir === 'desc'
+                              dir === "desc"
                                 ? styles.sortChevronActive
                                 : styles.sortChevronInactive
                             }

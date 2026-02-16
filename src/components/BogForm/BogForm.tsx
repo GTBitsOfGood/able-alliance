@@ -1,8 +1,8 @@
-import { Form } from 'radix-ui';
-import styles from './styles.module.css';
-import BogButton from '../BogButton/BogButton';
-import type { FormEventHandler } from 'react';
-import React from 'react';
+import { Form } from "radix-ui";
+import styles from "./styles.module.css";
+import BogButton from "../BogButton/BogButton";
+import type { FormEventHandler } from "react";
+import React from "react";
 
 interface BogFormProps extends React.ComponentProps<typeof Form.Root> {
   /** Function that gets called when the submit button is clicked. */
@@ -32,7 +32,7 @@ export default function BogForm({
     >
       {children}
       <Form.Submit asChild>
-        <BogButton type="submit">{submitLabel || 'Submit'}</BogButton>
+        <BogButton type="submit">{submitLabel || "Submit"}</BogButton>
       </Form.Submit>
     </Form.Root>
   );

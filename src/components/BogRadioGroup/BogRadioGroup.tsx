@@ -1,6 +1,6 @@
-import React, { ComponentProps } from 'react';
-import { RadioGroup } from 'radix-ui';
-import styles from './styles.module.css';
+import React, { ComponentProps } from "react";
+import { RadioGroup } from "radix-ui";
+import styles from "./styles.module.css";
 
 interface BogRadioGroupProps extends ComponentProps<typeof RadioGroup.Root> {
   /** The content that appears inside the radio group. */
@@ -18,7 +18,7 @@ export default function BogRadioGroup({
   return (
     <RadioGroup.Root
       {...props}
-      className={`${styles.root} ${props.className || ''}`}
+      className={`${styles.root} ${props.className || ""}`}
     >
       {children}
     </RadioGroup.Root>

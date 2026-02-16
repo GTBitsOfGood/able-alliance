@@ -1,9 +1,10 @@
-import { RadioGroup } from 'radix-ui';
-import React, { useId } from 'react';
-import styles from './styles.module.css';
+import { RadioGroup } from "radix-ui";
+import React, { useId } from "react";
+import styles from "./styles.module.css";
 
-interface BogRadioItemProps
-  extends React.ComponentProps<typeof RadioGroup.Item> {
+interface BogRadioItemProps extends React.ComponentProps<
+  typeof RadioGroup.Item
+> {
   /** The label text next to the radio button. */
   label: string;
   /** The value that will be stored in a form. */

@@ -1,13 +1,11 @@
 @layer base {
-
   .container {
     min-height: auto !important;
     border-radius: 0.8rem !important;
     overflow: hidden;
     font-family: var(--font-paragraph);
-
   }
-  .container .radix-themes:where([data-is-root-theme='true']) {
+  .container .radix-themes:where([data-is-root-theme="true"]) {
     min-height: auto !important;
   }
 
@@ -15,10 +13,9 @@
     border-bottom: 1px solid var(--color-grey-stroke-weak) !important;
     box-shadow: none !important;
     font-size: var(--text-desktop-small);
-
   }
 
-   .columnHeaderCell {
+  .columnHeaderCell {
     background-color: var(--color-grey-fill-weaker) !important;
     position: relative;
     padding: 0 1.2rem;
@@ -26,7 +23,6 @@
     font-weight: 600;
     vertical-align: middle;
     font-size: var(--text-desktop-small);
-
   }
   .sortIcons {
     position: absolute;
@@ -64,7 +60,7 @@
   }
 
   .columnHeaderCell:not(:last-child)::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 30%;
     bottom: 30%;
@@ -112,7 +108,7 @@
 
   .filterButton {
     font-family: var(--font-paragraph);
-    padding: 0.5rem .75rem .5rem 1rem !important;
+    padding: 0.5rem 0.75rem 0.5rem 1rem !important;
     font-size: 1.5rem !important;
     font-weight: 500 !important;
     box-sizing: border-box;
@@ -123,11 +119,9 @@
     gap: 0.3rem !important;
   }
 
-
   .searchWrapper {
     flex: 1;
     position: relative;
-
   }
 
   .searchWithIcon input {
@@ -137,7 +131,7 @@
   }
 
   .searchWrapper::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     bottom: 0;
@@ -159,7 +153,6 @@
   .bogTable {
     display: flex;
     flex-direction: column;
-
   }
   .popoverFooter {
     display: flex;
@@ -179,7 +172,7 @@
     flex-direction: column;
     gap: 0.8rem;
     padding: 1.2rem;
-    font-size: .5rem !important;
+    font-size: 0.5rem !important;
   }
 
   .popoverBody {
@@ -197,15 +190,12 @@
     background-color: var(--color-solid-bg-sunken);
   }
 
-
   .popoverContentRoot {
     background-color: #fff !important;
     border: 1px solid var(--color-grey-stroke-weak);
     border-radius: 0.8rem;
-    box-shadow: var(--shadow-2, 0 4px 12px rgba(0,0,0,0.08));
+    box-shadow: var(--shadow-2, 0 4px 12px rgba(0, 0, 0, 0.08));
     padding: 1.2rem;
-
-
   }
 
   .chipPopoverFooter {
@@ -221,13 +211,12 @@
     font-weight: 500;
   }
 
-
   .chipPopoverContent {
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
     padding: 1.2rem;
-    font-size: .5rem !important;
+    font-size: 0.5rem !important;
   }
 
   .chipPopoverBody {
@@ -260,7 +249,7 @@
     padding: 1rem 0.8rem;
   }
 
-  .chipPopoverTextInput.chipPopoverTextInput :global(input){
+  .chipPopoverTextInput.chipPopoverTextInput :global(input) {
     padding: 1rem 0.8rem;
   }
 
@@ -268,17 +257,14 @@
     background-color: #fff !important;
     border: 1px solid var(--color-grey-stroke-weak);
     border-radius: 0.8rem;
-    box-shadow: var(--shadow-2, 0 4px 12px rgba(0,0,0,0.08));
+    box-shadow: var(--shadow-2, 0 4px 12px rgba(0, 0, 0, 0.08));
     padding: 1.2rem;
-
-
   }
 
- .popoverContent h4 {
+  .popoverContent h4 {
     font-size: var(--text-desktop-paragraph-1) !important;
     line-height: var(--text-desktop-paragraph-1--line-height) !important;
   }
-
 
   .popoverBody :global(button[role="checkbox"]) {
     width: 1.4rem !important;
@@ -294,7 +280,7 @@
   }
 
   .popoverBody :global(button[role="checkbox"] svg) {
-    width: 1.4rem!important;
+    width: 1.4rem !important;
     height: 2rem !important;
   }
 
@@ -312,7 +298,6 @@
     font-size: var(--text-mobile-paragraph-1);
     --foreground: black;
     font-weight: 400 !important;
-
   }
 
   .filterChipActive.filterChipActive {
@@ -336,7 +321,4 @@
   .selectCell.selectCell::after {
     display: none;
   }
-
 }
-
-

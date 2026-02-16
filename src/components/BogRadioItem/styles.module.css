@@ -7,7 +7,7 @@
     font-family: var(--font-paragraph);
   }
 
-  .container[data-disabled='true']:hover {
+  .container[data-disabled="true"]:hover {
     cursor: not-allowed;
   }
 
@@ -29,7 +29,7 @@
     border-color: var(--color-brand-stroke-strong);
   }
 
-  .radio:not(:disabled)[data-state='checked'] {
+  .radio:not(:disabled)[data-state="checked"] {
     border-color: var(--color-brand-stroke-strong);
   }
 
@@ -51,7 +51,7 @@
   }
 
   .indicator::after {
-    content: '';
+    content: "";
     height: 10px;
     width: 10px;
     border-radius: 9999px;
@@ -70,11 +70,11 @@
     line-height: var(--text-desktop-paragraph-2--line-height);
   }
 
-  .label:not([data-disabled='true']) {
+  .label:not([data-disabled="true"]) {
     color: var(--color-grey-text-strong);
   }
 
-  .label[data-disabled='true'] {
+  .label[data-disabled="true"] {
     color: var(--color-grey-off-state);
     cursor: not-allowed;
   }

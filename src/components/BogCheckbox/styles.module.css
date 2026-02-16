@@ -30,18 +30,18 @@
   }
 
   /* hover state for checkboxes that are not disabled */
-  .checkbox:not(.disabled):not([data-state='indeterminate']):hover {
+  .checkbox:not(.disabled):not([data-state="indeterminate"]):hover {
     border-color: var(--color-brand-stroke-strong);
   }
 
   /* this is when the checkbox is clicked */
-  .checkbox[data-state='checked'] {
+  .checkbox[data-state="checked"] {
     background-color: var(--color-brand-text);
     border-color: var(--color-brand-stroke-strong);
   }
 
   /* checkbox is indeterminate and disabled hover, changed cursor*/
-  .checkbox[data-state='indeterminate'] {
+  .checkbox[data-state="indeterminate"] {
     background-color: var(--color-brand-text);
     border-color: var(--color-brand-stroke-strong);
     cursor: not-allowed;
@@ -53,12 +53,12 @@
     cursor: not-allowed;
   }
 
-  .checkbox.disabled[data-state='checked'] {
+  .checkbox.disabled[data-state="checked"] {
     border-color: var(--color-grey-off-state);
   }
 
   .checkboxIndicator {
-    color: var(--checkbox-indicator-color, #22070BB2);
+    color: var(--checkbox-indicator-color, #22070bb2);
     display: flex;
     align-items: center;
     justify-content: center;

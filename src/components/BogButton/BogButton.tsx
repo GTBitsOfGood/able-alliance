@@ -1,16 +1,16 @@
-import React, { ButtonHTMLAttributes, ReactNode, CSSProperties } from 'react';
-import type { IconProps } from '../../utils/design-system/types/types';
-import styles from './styles.module.css';
-import { useResponsive } from '../../utils/design-system/hooks/useResponsive';
-import { getSizeFromBreakpoint } from '../../utils/design-system/breakpoints/breakpoints';
-import BogIcon from '../BogIcon/BogIcon';
+import React, { ButtonHTMLAttributes, ReactNode, CSSProperties } from "react";
+import type { IconProps } from "../../utils/design-system/types/types";
+import styles from "./styles.module.css";
+import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
+import { getSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
+import BogIcon from "../BogIcon/BogIcon";
 
 interface BogButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** The type of the button. Values are "primary", "secondary", or "tertiary" */
-  variant?: 'primary' | 'secondary' | 'tertiary';
+  variant?: "primary" | "secondary" | "tertiary";
   /** The size of the button. Values are "small", "medium", "large", or "responsive" which
    * makes the button automatically resize with the screen. */
-  size?: 'small' | 'medium' | 'large' | 'responsive';
+  size?: "small" | "medium" | "large" | "responsive";
   /**
    * The icon to display in the button.
    * This is an object containing the React node of the icon
@@ -33,8 +33,8 @@ interface BogButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export default function BogButton({
-  variant = 'primary',
-  size = 'responsive',
+  variant = "primary",
+  size = "responsive",
   iconProps,
   name,
   value,
@@ -44,7 +44,7 @@ export default function BogButton({
 }: BogButtonProps) {
   const breakpoint = useResponsive();
   const responsiveSize =
-    size === 'responsive' ? getSizeFromBreakpoint(breakpoint) : size;
+    size === "responsive" ? getSizeFromBreakpoint(breakpoint) : size;
 
   return (
     <button
@@ -54,11 +54,11 @@ export default function BogButton({
       {...props}
     >
       <div className={`${styles.contentContainer}`}>
-        {iconProps && iconProps.position === 'left' && (
+        {iconProps && iconProps.position === "left" && (
           <BogIcon {...iconProps.iconProps} />
         )}
         {children}
-        {iconProps && iconProps.position === 'right' && (
+        {iconProps && iconProps.position === "right" && (
           <BogIcon {...iconProps.iconProps} />
         )}
       </div>

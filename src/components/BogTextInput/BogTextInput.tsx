@@ -1,13 +1,13 @@
-import styles from './styles.module.css';
-import React, { useState } from 'react';
-import type { IconProps } from '../../utils/design-system/types/types';
-import BogIcon from '../BogIcon/BogIcon';
+import styles from "./styles.module.css";
+import React, { useState } from "react";
+import type { IconProps } from "../../utils/design-system/types/types";
+import BogIcon from "../BogIcon/BogIcon";
 
 interface BogTextInputProps {
   /** Whether or not the text input has multiple lines. */
   multiline?: boolean;
   /** The type of text the input stores. */
-  type?: 'text' | 'email' | 'password' | 'tel' | 'search';
+  type?: "text" | "email" | "password" | "tel" | "search";
   /** The name of the data this text input represents for forms. */
   name: string;
   /** The label text next to the input. */
@@ -35,11 +35,11 @@ interface BogTextInputProps {
 }
 
 export default function BogTextInput({
-  type = 'text',
+  type = "text",
   name,
   label,
   multiline = false,
-  placeholder = 'Enter text here',
+  placeholder = "Enter text here",
   required = false,
   disabled = false,
   style,
@@ -50,7 +50,7 @@ export default function BogTextInput({
   onChange,
 }: BogTextInputProps) {
   const [internalValue, setInternalValue] = useState<string>(
-    defaultValue ?? '',
+    defaultValue ?? "",
   );
   const isControlled = value !== undefined;
   const currentValue = isControlled ? value : internalValue;
@@ -71,7 +71,7 @@ export default function BogTextInput({
       <div
         className={`${styles.inputWrapper} ${
           iconProps &&
-          (iconProps.position === 'right' ? styles.iconRight : styles.iconLeft)
+          (iconProps.position === "right" ? styles.iconRight : styles.iconLeft)
         }`}
       >
         {multiline ? (
@@ -100,7 +100,7 @@ export default function BogTextInput({
 
         {iconProps && (
           <div
-            className={`${styles.iconContainer} ${iconProps.onClick ? styles.clickable : ''}`}
+            className={`${styles.iconContainer} ${iconProps.onClick ? styles.clickable : ""}`}
             onClick={(e) => {
               if (iconProps.onClick) iconProps.onClick(e);
             }}

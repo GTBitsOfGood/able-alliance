@@ -1,13 +1,14 @@
-import React, { ReactElement, Dispatch, SetStateAction, useState } from 'react';
-import styles from './styles.module.css';
-import { Dialog } from 'radix-ui';
-import BogButton from '../BogButton/BogButton';
-import BogIcon from '../BogIcon/BogIcon';
-import { useResponsive } from '../../utils/design-system/hooks/useResponsive';
-import { getSizeFromBreakpoint } from '../../utils/design-system/breakpoints/breakpoints';
+import React, { ReactElement, Dispatch, SetStateAction, useState } from "react";
+import styles from "./styles.module.css";
+import { Dialog } from "radix-ui";
+import BogButton from "../BogButton/BogButton";
+import BogIcon from "../BogIcon/BogIcon";
+import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
+import { getSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
 
-interface BogModalContentProps
-  extends React.ComponentProps<typeof Dialog.Content> {
+interface BogModalContentProps extends React.ComponentProps<
+  typeof Dialog.Content
+> {
   /** Additional class names to apply styles to the modal. These can be tailwind classes or custom CSS classes. */
   className?: string;
   /** Additional CSS styles to apply to the modal. */
@@ -22,7 +23,7 @@ interface OpenState {
 interface BogModalProps extends React.ComponentProps<typeof Dialog.Root> {
   /** The size of the button. Values are "small", "medium", "large", or "responsive" which
    * makes the button automatically resize with the screen. */
-  size?: 'small' | 'medium' | 'large' | 'responsive';
+  size?: "small" | "medium" | "large" | "responsive";
   /** Controls modal's open/closed state. Takes both {open, setOpen}, which are to be defined by React's useState
    * where open is a boolean value. Alternatively, neither is passed in and a default {open, setOpen} is generated. */
   openState?: OpenState;
@@ -51,7 +52,7 @@ const defaultCloseButton = <BogIcon name="x" size="auto" />;
 const defaultTrigger = <BogButton>Click me!</BogButton>;
 
 export default function BogModal({
-  size = 'responsive',
+  size = "responsive",
   openState,
   defaultOpen = false,
   onOpenChange,
@@ -63,7 +64,7 @@ export default function BogModal({
   description = (
     <span>
       Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
-      tempor incididunt ut labore et dolore magna aliqua.{' '}
+      tempor incididunt ut labore et dolore magna aliqua.{" "}
     </span>
   ),
   children,
@@ -71,25 +72,25 @@ export default function BogModal({
 }: BogModalProps) {
   const breakpoint = useResponsive();
   const responsiveSize =
-    size === 'responsive' ? getSizeFromBreakpoint(breakpoint) : size;
+    size === "responsive" ? getSizeFromBreakpoint(breakpoint) : size;
 
   {
     /* Global CSS classes 'text-heading-n' and 'text-paragraph-n' handle responsiveness between desktop and mobile */
   }
   const headerSizeClass = `${
-    responsiveSize === 'small'
-      ? 'text-heading-4'
-      : responsiveSize === 'medium'
-        ? 'text-heading-3'
-        : 'text-heading-2'
+    responsiveSize === "small"
+      ? "text-heading-4"
+      : responsiveSize === "medium"
+        ? "text-heading-3"
+        : "text-heading-2"
   }`;
 
   const descriptionClass = `${styles.description} ${
-    responsiveSize === 'small' ? 'text-paragraph-2' : 'text-paragraph-1'
+    responsiveSize === "small" ? "text-paragraph-2" : "text-paragraph-1"
   }`;
 
-  const buttonSize: 'small' | 'medium' | 'large' | 'responsive' =
-    responsiveSize === 'large' ? 'large' : 'medium';
+  const buttonSize: "small" | "medium" | "large" | "responsive" =
+    responsiveSize === "large" ? "large" : "medium";
 
   const [internalOpen, internalSetOpen] = useState(defaultOpen);
   const open = openState ? openState.open : internalOpen;

@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react"; // Add useCallback import
-import type { ColumnHeaderCellContent, TableRow } from "@/components/BogTable/BogTable";
+import type {
+  ColumnHeaderCellContent,
+  TableRow,
+} from "@/components/BogTable/BogTable";
 import BogCheckbox from "@/components/BogCheckbox/BogCheckbox";
 import {
   STUDENT_COLUMNS,
@@ -43,19 +46,13 @@ function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
 
 function driverRawToTableRows(rows: DriverRowRaw[]): TableRow[] {
   return rows.map((row) => ({
-    cells: [
-      { content: row.name },
-      { content: row.email },
-    ],
+    cells: [{ content: row.name }, { content: row.email }],
   }));
 }
 
 function adminRawToTableRows(rows: AdminRowRaw[]): TableRow[] {
   return rows.map((row) => ({
-    cells: [
-      { content: row.name },
-      { content: row.email },
-    ],
+    cells: [{ content: row.name }, { content: row.email }],
   }));
 }
 
@@ -74,13 +71,18 @@ function vehicleRawToTableRows(rows: VehicleRowRaw[]): TableRow[] {
 function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
   if (!Array.isArray(data)) return [];
   return data.map((u: Record<string, unknown>) => {
-    const studentInfo = (u.studentInfo ?? {}) as { notes?: string; accessibilityNeeds?: string };
+    const studentInfo = (u.studentInfo ?? {}) as {
+      notes?: string;
+      accessibilityNeeds?: string;
+    };
     const accessibilityNeeds = studentInfo.accessibilityNeeds;
     return {
       name: String(u.name ?? ""),
       email: String(u.email ?? ""),
       phone: String(studentInfo.notes ?? ""),
-      ramp: accessibilityNeeds === "Wheelchair" || accessibilityNeeds === "LowMobility",
+      ramp:
+        accessibilityNeeds === "Wheelchair" ||
+        accessibilityNeeds === "LowMobility",
     };
   });
 }
@@ -111,14 +113,17 @@ function adaptVehiclesToRows(data: unknown): VehicleRowRaw[] {
     return {
       licensePlate: String(v.licensePlate ?? ""),
       makeModel: String(v.description ?? v.name ?? "—"),
-      accessibilityFeatures: String((v as { accessibility?: string }).accessibility ?? "—"),
+      accessibilityFeatures: String(
+        (v as { accessibility?: string }).accessibility ?? "—",
+      ),
       seatCount: Number.isFinite(seatCount) && seatCount >= 0 ? seatCount : 0,
     };
   });
 }
 
 export function useAdminTableData(tableType: AdminTableType) {
-  const [columns, setColumns] = useState<ColumnHeaderCellContent[]>(STUDENT_COLUMNS);
+  const [columns, setColumns] =
+    useState<ColumnHeaderCellContent[]>(STUDENT_COLUMNS);
   const [rows, setRows] = useState<TableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +195,11 @@ export function useAdminTableData(tableType: AdminTableType) {
         }
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : `Failed to load ${tableType.toLowerCase()}.`);
+        setError(
+          err instanceof Error
+            ? err.message
+            : `Failed to load ${tableType.toLowerCase()}.`,
+        );
         setRows([]);
         setRowIds([]);
         setLoading(false);
@@ -226,53 +235,69 @@ export function useAdminTableData(tableType: AdminTableType) {
     setError(null);
     if (tableType === "Students") {
       fetch("/api/users?type=Student")
-        .then((res) => res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)))
+        .then((res) =>
+          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
+        )
         .then((data) => {
           const raw = adaptUsersToStudentRows(data);
           setColumns(STUDENT_COLUMNS);
           setRows(studentRawToTableRows(raw));
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to load students.");
+          setError(
+            err instanceof Error ? err.message : "Failed to load students.",
+          );
           setRows([]);
         })
         .finally(() => setLoading(false));
     } else if (tableType === "Drivers") {
       fetch("/api/users?type=Driver")
-        .then((res) => res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)))
+        .then((res) =>
+          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
+        )
         .then((data) => {
           const raw = adaptUsersToDriverRows(data);
           setColumns(DRIVER_COLUMNS);
           setRows(driverRawToTableRows(raw));
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to load drivers.");
+          setError(
+            err instanceof Error ? err.message : "Failed to load drivers.",
+          );
           setRows([]);
         })
         .finally(() => setLoading(false));
     } else if (tableType === "Admins") {
       fetch("/api/users?type=Admin")
-        .then((res) => res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)))
+        .then((res) =>
+          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
+        )
         .then((data) => {
           const raw = adaptUsersToAdminRows(data);
           setColumns(ADMIN_COLUMNS);
           setRows(adminRawToTableRows(raw));
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to load admins.");
+          setError(
+            err instanceof Error ? err.message : "Failed to load admins.",
+          );
           setRows([]);
         })
         .finally(() => setLoading(false));
     } else {
       fetch("/api/vehicles")
-        .then((res) => res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)))
+        .then((res) =>
+          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
+        )
         .then((data) => {
           const raw = adaptVehiclesToRows(data);
           setColumns(VEHICLE_COLUMNS);
           setRows(vehicleRawToTableRows(raw));
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to load vehicles.");
+          setError(
+            err instanceof Error ? err.message : "Failed to load vehicles.",
+          );
           setRows([]);
         })
         .finally(() => setLoading(false));

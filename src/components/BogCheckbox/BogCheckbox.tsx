@@ -1,7 +1,7 @@
-import React from 'react';
-import * as Checkbox from '@radix-ui/react-checkbox';
-import { Cross2Icon, CheckIcon } from '@radix-ui/react-icons';
-import styles from './styles.module.css';
+import React from "react";
+import * as Checkbox from "@radix-ui/react-checkbox";
+import { Cross2Icon, CheckIcon } from "@radix-ui/react-icons";
+import styles from "./styles.module.css";
 
 interface BogCheckboxProps extends React.ComponentProps<typeof Checkbox.Root> {
   /** The label text that appears to the right of the checkbox. */
@@ -9,7 +9,7 @@ interface BogCheckboxProps extends React.ComponentProps<typeof Checkbox.Root> {
   /** Whether the checkbox is disabled or not. */
   disabled?: boolean;
   /** Whether the checkbox is checked or not. Values are true, false, or "indeterminate" */
-  checked?: boolean | 'indeterminate';
+  checked?: boolean | "indeterminate";
   /** Whether it is required to check this checkbox to submit the form. */
   required?: boolean;
   /** The name of the data this checkbox represents for forms. */
@@ -26,7 +26,7 @@ interface BogCheckboxProps extends React.ComponentProps<typeof Checkbox.Root> {
 }
 
 const BogCheckbox = ({
-  label = '',
+  label = "",
   disabled = false,
   checked,
   required = false,
@@ -38,10 +38,10 @@ const BogCheckbox = ({
   return (
     <div
       style={style}
-      className={`${styles.checkboxContainer} ${disabled ? styles.disabled : ''} ${checked === 'indeterminate' ? styles.indeterminate : ''} ${className}`}
+      className={`${styles.checkboxContainer} ${disabled ? styles.disabled : ""} ${checked === "indeterminate" ? styles.indeterminate : ""} ${className}`}
     >
       <Checkbox.Root
-        className={`${styles.checkbox} ${disabled ? styles.disabled : ''}`}
+        className={`${styles.checkbox} ${disabled ? styles.disabled : ""}`}
         disabled={disabled}
         checked={checked}
         required={required}
@@ -49,7 +49,7 @@ const BogCheckbox = ({
         {...props}
       >
         <Checkbox.Indicator className={styles.checkboxIndicator}>
-          {checked === 'indeterminate' ? (
+          {checked === "indeterminate" ? (
             <Cross2Icon className={styles.checkboxIcon} />
           ) : (
             <CheckIcon className={styles.checkboxIcon} />
@@ -58,7 +58,7 @@ const BogCheckbox = ({
       </Checkbox.Root>
       {label && (
         <label
-          className={`${styles.checkboxLabel} ${disabled ? styles.disabled : ''} ${checked === 'indeterminate' ? styles.indeterminate : ''}`}
+          className={`${styles.checkboxLabel} ${disabled ? styles.disabled : ""} ${checked === "indeterminate" ? styles.indeterminate : ""}`}
         >
           {label}
         </label>

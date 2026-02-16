@@ -1,7 +1,7 @@
-import * as Tabs from '@radix-ui/react-tabs';
-import React from 'react';
-import styles from './styles.module.css';
-import { useResponsive } from '../../utils/design-system/hooks/useResponsive';
+import * as Tabs from "@radix-ui/react-tabs";
+import React from "react";
+import styles from "./styles.module.css";
+import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
 
 export type BogTab = {
   label: string;
@@ -24,24 +24,24 @@ export interface BogTabsProps extends React.ComponentProps<typeof Tabs.Root> {
 }
 
 function getTabsSizeClass(size: 1 | 2) {
-  return size === 2 ? styles['bog-tabs-desktop'] : styles['bog-tabs-mobile'];
+  return size === 2 ? styles["bog-tabs-desktop"] : styles["bog-tabs-mobile"];
 }
 
 export const BogTabs: React.FC<BogTabsProps> = ({
   defaultValue,
   tabContents,
   size,
-  className = '',
+  className = "",
   style,
   ...rootProps
 }) => {
   const breakpoint = useResponsive();
   // Map responsive breakpoint to size if not provided
-  const responsiveSize = size ?? (breakpoint === 'desktop' ? 2 : 1);
+  const responsiveSize = size ?? (breakpoint === "desktop" ? 2 : 1);
 
-  const rootClass = `${styles['bog-tabs-root']} ${className}`.trim();
+  const rootClass = `${styles["bog-tabs-root"]} ${className}`.trim();
   const listClass =
-    `${styles['bog-tabs-list']} ${getTabsSizeClass(responsiveSize)}`.trim();
+    `${styles["bog-tabs-list"]} ${getTabsSizeClass(responsiveSize)}`.trim();
   return (
     <Tabs.Root
       defaultValue={defaultValue}
@@ -54,17 +54,17 @@ export const BogTabs: React.FC<BogTabsProps> = ({
           <Tabs.Trigger
             key={value}
             value={value}
-            className={`${styles['bog-tabs-trigger']} ${href ? '' : styles['bog-tabs-label-wrapper']}`}
+            className={`${styles["bog-tabs-trigger"]} ${href ? "" : styles["bog-tabs-label-wrapper"]}`}
           >
             {href ? (
               <a
                 href={href}
-                className={`${styles['bog-tabs-href']} ${styles['bog-tabs-label-wrapper']}`}
+                className={`${styles["bog-tabs-href"]} ${styles["bog-tabs-label-wrapper"]}`}
               >
-                <div className={styles['bog-tabs-label']}>{label}</div>
+                <div className={styles["bog-tabs-label"]}>{label}</div>
               </a>
             ) : (
-              <div className={styles['bog-tabs-label']}>{label}</div>
+              <div className={styles["bog-tabs-label"]}>{label}</div>
             )}
           </Tabs.Trigger>
         ))}
@@ -77,7 +77,7 @@ export const BogTabs: React.FC<BogTabsProps> = ({
           <Tabs.Content
             key={value}
             value={value}
-            className={styles['bog-tabs-content']}
+            className={styles["bog-tabs-content"]}
           >
             {content}
           </Tabs.Content>

@@ -6,7 +6,7 @@
     font-family: var(--font-paragraph);
     color: var(--color-grey-text-strong);
 
-    &:has(.bog-switch[data-disabled][data-state='unchecked']) {
+    &:has(.bog-switch[data-disabled][data-state="unchecked"]) {
       color: var(--color-grey-off-state);
     }
 
@@ -23,9 +23,12 @@
     border: none;
     cursor: pointer;
 
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, --tw-gradient-from,
-      --tw-gradient-via, --tw-gradient-to;
-    transition-timing-function: var(--ease-in-out); /* cubic-bezier(0.4, 0, 0.2, 1) */
+    transition-property:
+      color, background-color, border-color, text-decoration-color, fill,
+      stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+    transition-timing-function: var(
+      --ease-in-out
+    ); /* cubic-bezier(0.4, 0, 0.2, 1) */
     transition-duration: 200ms;
 
     background-color: var(--color-grey-off-state);
@@ -47,7 +50,7 @@
     transition-duration: 200ms;
   }
 
-  .bog-switch[data-state='checked'] {
+  .bog-switch[data-state="checked"] {
     background-color: var(--color-brand-text);
   }
 
@@ -57,7 +60,7 @@
     background-color: var(--color-grey-fill-weak);
   }
 
-  .bog-switch[data-disabled][data-state='checked'] {
+  .bog-switch[data-disabled][data-state="checked"] {
     pointer-events: none;
     cursor: not-allowed;
     background-color: var(--color-brand-stroke-weak);
@@ -83,7 +86,7 @@
     height: 1.35rem;
   }
 
-  .bog-switch-small[data-state='checked'] .bog-switch-thumb-small {
+  .bog-switch-small[data-state="checked"] .bog-switch-thumb-small {
     translate: 100%;
   }
 
@@ -107,7 +110,7 @@
     height: 1.8rem;
   }
 
-  .bog-switch-medium[data-state='checked'] .bog-switch-thumb-medium {
+  .bog-switch-medium[data-state="checked"] .bog-switch-thumb-medium {
     translate: 100%;
   }
 
@@ -131,7 +134,7 @@
     height: 2.05rem;
   }
 
-  .bog-switch-large[data-state='checked'] .bog-switch-thumb-large {
+  .bog-switch-large[data-state="checked"] .bog-switch-thumb-large {
     translate: 100%;
   }
 }

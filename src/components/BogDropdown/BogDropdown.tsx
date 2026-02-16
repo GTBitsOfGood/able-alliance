@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { DropdownMenu } from 'radix-ui';
-import styles from './styles.module.css';
-import BogIcon from '../BogIcon/BogIcon';
-import BogCheckbox from '../BogCheckbox/BogCheckbox';
-import BogRadioItem from '../BogRadioItem/BogRadioItem';
-import BogRadioGroup from '../BogRadioGroup/BogRadioGroup';
-import { CheckedState } from '@radix-ui/react-checkbox';
+import React, { useState, useEffect, useRef } from "react";
+import { DropdownMenu } from "radix-ui";
+import styles from "./styles.module.css";
+import BogIcon from "../BogIcon/BogIcon";
+import BogCheckbox from "../BogCheckbox/BogCheckbox";
+import BogRadioItem from "../BogRadioItem/BogRadioItem";
+import BogRadioGroup from "../BogRadioGroup/BogRadioGroup";
+import { CheckedState } from "@radix-ui/react-checkbox";
 
 interface BogDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
@@ -15,7 +15,7 @@ interface BogDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
    * Radio dropdowns allow for single selection from a list of options, but only one item can be selected at a time.
    * Search dropdowns allow for filtering options based on user input.
    */
-  type?: 'normal' | 'checkbox' | 'radio' | 'search';
+  type?: "normal" | "checkbox" | "radio" | "search";
   /** The options to choose from in the dropdown. */
   options: string[];
   /** The name of the data this dropdown represents for forms. */
@@ -39,11 +39,11 @@ interface BogDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export default function BogDropdown({
-  type = 'normal',
+  type = "normal",
   options,
   name,
   label,
-  placeholder = 'Placeholder',
+  placeholder = "Placeholder",
   disabled = false,
   onSelectionChange,
   style,
@@ -51,16 +51,18 @@ export default function BogDropdown({
   value,
   defaultValue,
 }: BogDropdownProps) {
-  const isCheckbox = type === 'checkbox';
+  const isCheckbox = type === "checkbox";
   const isControlled = value !== undefined;
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [internalSelected, setInternalSelected] = useState<string | string[]>(
-    defaultValue !== undefined ? defaultValue : isCheckbox ? [] : '',
+    defaultValue !== undefined ? defaultValue : isCheckbox ? [] : "",
   );
 
   // Use controlled value if provided, otherwise use internal state
-  const selected = isControlled ? (value as string | string[]) : internalSelected;
+  const selected = isControlled
+    ? (value as string | string[])
+    : internalSelected;
   const setSelected = (newValue: string | string[]) => {
     if (!isControlled) {
       setInternalSelected(newValue);
@@ -70,7 +72,7 @@ export default function BogDropdown({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
-  const [filter, setFilter] = useState<string>('');
+  const [filter, setFilter] = useState<string>("");
 
   useEffect(() => {
     const updateWidth = () => {
@@ -96,7 +98,7 @@ export default function BogDropdown({
     value: string,
   ) => {
     let newSelected = selected;
-    if (type === 'checkbox') {
+    if (type === "checkbox") {
       const checked = e as CheckedState;
       if (Array.isArray(selected)) {
         if (checked === true) {
@@ -123,19 +125,19 @@ export default function BogDropdown({
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (type === 'checkbox') {
+    if (type === "checkbox") {
       setSelected([]);
       if (onSelectionChange) {
         onSelectionChange([]);
       }
     } else {
-      setSelected('');
+      setSelected("");
       if (onSelectionChange) {
-        onSelectionChange('');
+        onSelectionChange("");
       }
     }
-    if (type === 'search') {
-      setFilter('');
+    if (type === "search") {
+      setFilter("");
     }
   };
 
@@ -143,11 +145,11 @@ export default function BogDropdown({
     if (Array.isArray(selected)) {
       return selected.length > 0;
     }
-    return selected != '';
+    return selected != "";
   };
 
   const renderItems = (): React.ReactElement[] => {
-    if (type === 'search') {
+    if (type === "search") {
       return options
         .filter((option) => option.includes(filter))
         .map((option) => (
@@ -159,7 +161,7 @@ export default function BogDropdown({
             {option}
           </DropdownMenu.Item>
         ));
-    } else if (type === 'checkbox') {
+    } else if (type === "checkbox") {
       return options.map((option) => (
         <DropdownMenu.Item
           onSelect={(e) => {
@@ -179,7 +181,7 @@ export default function BogDropdown({
           />
         </DropdownMenu.Item>
       ));
-    } else if (type === 'radio') {
+    } else if (type === "radio") {
       return options.map((option) => (
         <DropdownMenu.Item
           onSelect={(e) => handleSelect(e, option)}
@@ -218,7 +220,7 @@ export default function BogDropdown({
           disabled={disabled}
           onClick={() => openInput()}
         >
-          {type === 'search' ? (
+          {type === "search" ? (
             <>
               <input
                 type="text"
@@ -228,7 +230,7 @@ export default function BogDropdown({
                 placeholder={
                   selected.length > 0
                     ? Array.isArray(selected)
-                      ? selected.join(', ')
+                      ? selected.join(", ")
                       : selected
                     : placeholder
                 }
@@ -251,7 +253,7 @@ export default function BogDropdown({
             <>
               {selected.length > 0
                 ? Array.isArray(selected)
-                  ? selected.join(', ')
+                  ? selected.join(", ")
                   : selected
                 : placeholder}
               <div className={styles.iconHolder}>
@@ -286,11 +288,11 @@ export default function BogDropdown({
           align="start"
           sideOffset={4}
           className={styles.dropdownContent}
-          style={{ width: triggerWidth || 'auto' }}
+          style={{ width: triggerWidth || "auto" }}
         >
-          {type === 'radio' ? (
+          {type === "radio" ? (
             <BogRadioGroup
-              value={Array.isArray(selected) ? selected.join(', ') : selected}
+              value={Array.isArray(selected) ? selected.join(", ") : selected}
               onValueChange={(e) => handleSelect(e, e)}
             >
               {renderItems()}

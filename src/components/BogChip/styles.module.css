@@ -38,7 +38,7 @@
   }
 
   &.bronze {
-    --foreground: rgba(205, 127, 50, 1.0);
+    --foreground: rgba(205, 127, 50, 1);
     --background: rgba(205, 127, 50, 0.05);
   }
 
@@ -53,7 +53,7 @@
   }
 
   &.amber {
-    --foreground: rgba(255, 191, 0, 1.0);
+    --foreground: rgba(255, 191, 0, 1);
     --background: rgba(255, 191, 0, 0.05);
   }
 
@@ -73,7 +73,7 @@
   }
 
   &.ruby {
-    --foreground: rgba(225, 23, 99, 1.0);
+    --foreground: rgba(225, 23, 99, 1);
     --background: rgba(225, 23, 99, 0.05);
   }
 
@@ -128,7 +128,7 @@
   }
 
   &.jade {
-    --foreground: rgba(0, 168, 107, 1.0);
+    --foreground: rgba(0, 168, 107, 1);
     --background: rgba(0, 168, 107, 0.05);
   }
 
@@ -138,7 +138,7 @@
   }
 
   &.grass {
-    --foreground: rgba(52, 140, 49, 1.0);
+    --foreground: rgba(52, 140, 49, 1);
     --background: rgba(52, 140, 49, 0.05);
   }
 
@@ -148,7 +148,7 @@
   }
 
   &.mint {
-    --foreground: rgba(152, 255, 152, 1.0);
+    --foreground: rgba(152, 255, 152, 1);
     --background: rgba(152, 255, 152, 0.05);
   }
 
@@ -160,14 +160,17 @@
   &.small {
     height: 2.4rem;
 
-    p, span, pre, a {
+    p,
+    span,
+    pre,
+    a {
       font-size: var(--text-mobile-small);
       line-height: var(--text-mobile-small--line-height);
       font-family: var(--font-paragraph);
       font-weight: 600;
       @media (width >= 1024px) {
-          font-size: var(--text-desktop-small);
-          line-height: var(--text-desktop-small--line-height);
+        font-size: var(--text-desktop-small);
+        line-height: var(--text-desktop-small--line-height);
       }
     }
   }
@@ -175,14 +178,17 @@
   &.medium {
     height: 3.2rem;
 
-    p, span, pre, a {
+    p,
+    span,
+    pre,
+    a {
       font-size: var(--text-mobile-paragraph-2);
       line-height: var(--text-mobile-paragraph-2--line-height);
       font-family: var(--font-paragraph);
       font-weight: 600;
       @media (width >= 1024px) {
-          font-size: var(--text-desktop-paragraph-2);
-          line-height: var(--text-desktop-paragraph-2--line-height);
+        font-size: var(--text-desktop-paragraph-2);
+        line-height: var(--text-desktop-paragraph-2--line-height);
       }
     }
   }
@@ -194,8 +200,8 @@
     font-family: var(--font-paragraph);
     font-weight: 600;
     @media (width >= 1024px) {
-        font-size: var(--text-desktop-paragraph-1);
-        line-height: var(--text-desktop-paragraph-1--line-height);
+      font-size: var(--text-desktop-paragraph-1);
+      line-height: var(--text-desktop-paragraph-1--line-height);
     }
   }
 
