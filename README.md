@@ -6,7 +6,8 @@ Able Alliance is a GT student organization that is dedicated to improving on-cam
 
 ## Deployment Preview
 
-A deployment preview of the main branch from netlify is available [here](https://able-alliance.netlify.app/). Note that SSO login and websocket functionality may not work with the deployment preview, because those use alternate servers.
+A deployment preview of the main branch from netlify is available [here](https://able-alliance.netlify.app/). The
+websocket express js server is hosted seperately [here](https://able-alliance.onrender.com).
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/85fa2c6e-6dac-463a-8467-1d6d02d37cb3/deploy-status)](https://app.netlify.com/projects/able-alliance/deploys)
 
@@ -43,10 +44,9 @@ A deployment preview of the main branch from netlify is available [here](https:/
    ```
    The app service receives `MONGODB_URI` from the Compose file (`mongodb://mongo:27017/able-alliance?replicaSet=rs0`). No extra env file is required for Docker.
 3. To rebuild after changing dependencies, run:
-   ```sh
-   docker compose up --build
-   ```
-   The app has live-reloading for code changes when the project is mounted into the container.
+   `docker compose down -v`
+   to delete the old containers and volumes and then rebuild with
+   ` docker compose up --build`
 
 Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `localhost:27017`; Compose will start Mongo inside the stack and expose it.
 

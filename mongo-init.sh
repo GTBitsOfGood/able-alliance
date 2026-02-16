@@ -8,7 +8,8 @@ log() {
     echo "[$(date)] $1"
 }
 
-mongod --replSet rs0 --bind_ip_all --quiet --setParameter logLevel=0 &
+# Run mongod in background; redirect its logs so container output stays quiet
+mongod --replSet rs0 --bind_ip_all --quiet --setParameter logLevel=0 >> /data/db/mongod.log 2>&1 &
 
 log "Waiting for MongoDB to start..."
 max_attempts=30
