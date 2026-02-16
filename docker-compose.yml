@@ -49,6 +49,8 @@ services:
     volumes:
       - mongodb-data:/data/db
       - ./mongo-init.sh:/app/mongo-init.sh
+    logging:
+      driver: "none"
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "rs.status().ok", "--quiet"]
       interval: 10s
