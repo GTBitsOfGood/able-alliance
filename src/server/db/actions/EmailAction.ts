@@ -49,12 +49,6 @@ export async function sendEmail({
     });
   }
 
-  console.log("📧 Attempting to send email via Juno...");
-  console.log("Sender:", sender);
-  console.log("Recipients:", recipients);
-  console.log("Subject:", subject);
-  console.log("Contents:", contents);
-
   const res = await junoEmailClient.sendEmail({
     sender,
     recipients,
@@ -64,16 +58,11 @@ export async function sendEmail({
     contents,
   });
 
-  console.log("✅ Juno response:", JSON.stringify(res, null, 2));
-
   if (!res.success) {
-    console.error("❌ Email send failed. Response:", res);
     throw new EmailFailedToSendException(
       `Email failed to send: ${JSON.stringify(res)}`,
     );
   }
-
-  console.log("✅ Email sent successfully!");
 }
 
 /**
