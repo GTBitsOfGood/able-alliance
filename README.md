@@ -46,8 +46,7 @@ websocket express js server is hosted seperately [here](https://able-alliance.on
 3. To rebuild after changing dependencies, run:
    `docker compose down -v`
    to delete the old containers and volumes and then rebuild with
-   `  docker compose up --build
- `
+   ` docker compose up --build`
 
 Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `localhost:27017`; Compose will start Mongo inside the stack and expose it.
 
