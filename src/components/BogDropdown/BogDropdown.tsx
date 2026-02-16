@@ -55,25 +55,34 @@ export default function BogDropdown({
   const isControlled = value !== undefined;
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [selected, setSelected] = useState<string | string[]>(
+  const [internalSelected, setInternalSelected] = useState<string | string[]>(
     defaultValue !== undefined ? defaultValue : isCheckbox ? [] : '',
   );
+
+  // Use controlled value if provided, otherwise use internal state
+  const selected = isControlled ? (value as string | string[]) : internalSelected;
+  const setSelected = (newValue: string | string[]) => {
+    if (!isControlled) {
+      setInternalSelected(newValue);
+    }
+  };
+
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>('');
 
   useEffect(() => {
-    if (triggerRef.current) {
-      setTriggerWidth(triggerRef.current.offsetWidth);
+    const updateWidth = () => {
+      if (triggerRef.current) {
+        setTriggerWidth(triggerRef.current.offsetWidth);
+      }
+    };
+
+    if (isOpen) {
+      updateWidth();
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (isControlled) {
-      setSelected(value as any);
-    }
-  }, [isControlled, value]);
 
   const openInput = () => {
     if (inputRef.current) {

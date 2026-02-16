@@ -140,11 +140,13 @@ const BogIcon: React.FC<BogIconProps> = ({
   const isCaret = name.startsWith('caret-');
   let iconName: string | undefined = iconMap[name];
 
+  const phosphorIconLookup = PhosphorIcons as Record<string, unknown>;
+
   if (isChevron) {
     const dir = name.split('-')[1];
     const chevronName = 'Chevron' + dir.charAt(0).toUpperCase() + dir.slice(1);
     const caretName = 'Caret' + dir.charAt(0).toUpperCase() + dir.slice(1);
-    iconName = (PhosphorIcons as any)[chevronName] ? chevronName : caretName;
+    iconName = chevronName in phosphorIconLookup ? chevronName : caretName;
   } else if (isCaret) {
     const dir = name.split('-')[1];
     iconName = 'Caret' + dir.charAt(0).toUpperCase() + dir.slice(1);

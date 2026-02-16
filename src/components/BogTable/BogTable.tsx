@@ -71,6 +71,58 @@ interface BogTableProps
   onSelectedRowsChange?: (selected: Set<number>) => void;
 }
 
+// Helper functions moved outside component to be stable
+const extractText = (node: ReactNode): string => {
+  if (node == null || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number')
+    return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join(' ');
+  if (React.isValidElement(node)) {
+    const { children } = (node.props as { children?: ReactNode }) ?? {};
+    return extractText(children);
+  }
+  return '';
+};
+
+const matchesFilter = (text: string, f: ColumnFilter): boolean => {
+  const v = text.trim();
+  const lc = v.toLowerCase();
+  switch (f.condition) {
+    case 'Value is':
+      return f.value != null && lc === String(f.value).toLowerCase().trim();
+    case 'Value is not':
+      return f.value != null && lc !== String(f.value).toLowerCase().trim();
+    case 'Value contains':
+      return f.value != null && lc.includes(String(f.value).toLowerCase());
+    case 'Value does not contain':
+      return f.value != null && !lc.includes(String(f.value).toLowerCase());
+    case 'Value is blank':
+      return v.length === 0;
+    case 'Value is not blank':
+      return v.length > 0;
+    default:
+      return true;
+  }
+};
+
+const getSortValue = (
+  node: ReactNode,
+  datatype?: ColumnDatatype,
+): number | string => {
+  const text = extractText(node).trim();
+  switch (datatype) {
+    case 'number':
+    case 'number[]': {
+      const nums = text.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
+      return nums.length ? nums[0] : Number.NaN;
+    }
+    case 'string':
+    case 'string[]':
+    default:
+      return text.toLowerCase();
+  }
+};
+
 const BogTable: React.FC<BogTableProps> = ({
   columnHeaders,
   rows,
@@ -122,39 +174,6 @@ const BogTable: React.FC<BogTableProps> = ({
     }
   };
 
-  const extractText = (node: ReactNode): string => {
-    if (node == null || typeof node === 'boolean') return '';
-    if (typeof node === 'string' || typeof node === 'number')
-      return String(node);
-    if (Array.isArray(node)) return node.map(extractText).join(' ');
-    if (React.isValidElement(node)) {
-      const { children } = (node.props as { children?: ReactNode }) ?? {};
-      return extractText(children);
-    }
-    return '';
-  };
-
-  const matchesFilter = (text: string, f: ColumnFilter): boolean => {
-    const v = text.trim();
-    const lc = v.toLowerCase();
-    switch (f.condition) {
-      case 'Value is':
-        return f.value != null && lc === String(f.value).toLowerCase().trim();
-      case 'Value is not':
-        return f.value != null && lc !== String(f.value).toLowerCase().trim();
-      case 'Value contains':
-        return f.value != null && lc.includes(String(f.value).toLowerCase());
-      case 'Value does not contain':
-        return f.value != null && !lc.includes(String(f.value).toLowerCase());
-      case 'Value is blank':
-        return v.length === 0;
-      case 'Value is not blank':
-        return v.length > 0;
-      default:
-        return true;
-    }
-  };
-
   const filteredRows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     const afterSearch = !q
@@ -200,24 +219,7 @@ const BogTable: React.FC<BogTableProps> = ({
     });
   };
 
-  const getSortValue = (
-    node: ReactNode,
-    datatype?: ColumnDatatype,
-  ): number | string => {
-    const text = extractText(node).trim();
-    switch (datatype) {
-      case 'number':
-      case 'number[]': {
-        const nums = text.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
-        return nums.length ? nums[0] : Number.NaN;
-      }
-      case 'string':
-      case 'string[]':
-      default:
-        return text.toLowerCase();
-    }
-  };
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sortedRows = React.useMemo(() => {
     if (sorts.length === 0) return filteredRows;
     const decorated = filteredRows.map((row, idx) => ({ row, idx }));
