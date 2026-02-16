@@ -5,7 +5,7 @@ export type StudentRowRaw = {
   name: string;
   email: string;
   phone: string;
-  ramp: boolean;
+  accessibilityNeeds: string;
 };
 
 /** Raw row shape for Drivers table. */
@@ -32,7 +32,7 @@ export const STUDENT_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Name", datatype: "string" },
   { content: "Email", datatype: "string" },
   { content: "Phone", datatype: "string" },
-  { content: "Ramp", datatype: "other" },
+  { content: "Accessibility needs", datatype: "string" },
 ];
 
 export const DRIVER_COLUMNS: ColumnHeaderCellContent[] = [

@@ -1,6 +1,7 @@
 import React, {
   Dispatch,
   ReactElement,
+  ReactNode,
   SetStateAction,
   CSSProperties,
   useState,
@@ -51,7 +52,7 @@ interface BogPopoverProps extends React.ComponentProps<typeof Popover.Root> {
   /** Content inside the popover */
   content: ReactElement;
   /** The title of the modal. */
-  title?: ReactElement;
+  title?: ReactNode;
   /** The open state and function to set the open state */
   openState?: OpenState;
   /** The default value for the open state */

@@ -9,7 +9,7 @@ export interface IconProps {
   /**
    * The React component props for the icon to render.
    */
-  iconProps: React.ComponentProps<typeof BogIconProps>;
+  iconProps: React.ComponentProps<typeof BogIcon>;
 
   /** Position of the icon relative to the host component. */
   position: "left" | "right";

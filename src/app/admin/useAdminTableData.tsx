@@ -5,7 +5,6 @@ import type {
   ColumnHeaderCellContent,
   TableRow,
 } from "@/components/BogTable/BogTable";
-import BogCheckbox from "@/components/BogCheckbox/BogCheckbox";
 import {
   STUDENT_COLUMNS,
   DRIVER_COLUMNS,
@@ -19,27 +18,13 @@ import {
 
 export type AdminTableType = "Students" | "Drivers" | "Vehicles" | "Admins";
 
-const CHECKBOX_RAMP_STYLE = {
-  "--color-brand-text": "#0a7b4033",
-  "--checkbox-indicator-color": "#22070BB2",
-} as React.CSSProperties;
-
 function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
   return rows.map((row) => ({
     cells: [
       { content: row.name },
       { content: row.email },
       { content: row.phone },
-      {
-        content: (
-          <BogCheckbox
-            checked={row.ramp}
-            disabled
-            name="ramp"
-            style={CHECKBOX_RAMP_STYLE}
-          />
-        ),
-      },
+      { content: row.accessibilityNeeds || "—" },
     ],
   }));
 }
@@ -80,9 +65,9 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
       name: String(u.name ?? ""),
       email: String(u.email ?? ""),
       phone: String(studentInfo.notes ?? ""),
-      ramp:
-        accessibilityNeeds === "Wheelchair" ||
-        accessibilityNeeds === "LowMobility",
+      accessibilityNeeds: accessibilityNeeds
+        ? String(accessibilityNeeds)
+        : "",
     };
   });
 }

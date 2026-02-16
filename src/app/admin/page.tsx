@@ -5,8 +5,11 @@ import BogModal from "@/components/BogModal/BogModal";
 import BogForm from "@/components/BogForm/BogForm";
 import BogButton from "@/components/BogButton/BogButton";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
-import BogCheckbox from "@/components/BogCheckbox/BogCheckbox";
+import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState } from "react";
+
+const STUDENT_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair", "LowMobility"] as const;
+const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
 
 const selected_gradient = "bg-gradient-to-r from-[#EDEDED] to-[#EDEDED00]";
@@ -19,6 +22,10 @@ export default function Admin() {
     useAdminTableData(table);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] =
+    useState<string>("None");
+  const [vehicleAccessibility, setVehicleAccessibility] =
+    useState<string>("None");
 
   // Add setSelectedRows(new Set()) inside switchTable
   // after setTable(value);
@@ -41,6 +48,7 @@ export default function Admin() {
     value: AdminTableType,
   ) => {
     setTable(value);
+    setSelectedRows(new Set());
   };
 
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,7 +67,6 @@ export default function Admin() {
     const gtid = (
       form.elements.namedItem("gtid") as HTMLInputElement
     ).value.trim();
-    const ramp = (form.elements.namedItem("ramp") as HTMLInputElement).checked;
 
     if (!name || !email) {
       setSubmitError("Name and email are required.");
@@ -77,7 +84,11 @@ export default function Admin() {
     } = {
       GTID: gtid,
       ...(phone && { notes: `Phone: ${phone}` }),
-      ...(ramp && { accessibilityNeeds: "Wheelchair" }),
+      ...(studentAccessibilityNeeds &&
+        studentAccessibilityNeeds !== "None" && {
+          accessibilityNeeds:
+            studentAccessibilityNeeds as "Wheelchair" | "LowMobility",
+        }),
     };
     fetch("/api/users", {
       method: "POST",
@@ -193,9 +204,6 @@ export default function Admin() {
     const description = (
       form.elements.namedItem("description") as HTMLInputElement
     ).value.trim();
-    const accessibility = (
-      form.elements.namedItem("accessibility") as HTMLSelectElement
-    ).value as "None" | "Wheelchair";
     const seatCount = parseInt(
       (form.elements.namedItem("seatCount") as HTMLInputElement).value,
       10,
@@ -217,7 +225,7 @@ export default function Admin() {
         name,
         licensePlate,
         description: description || undefined,
-        accessibility,
+        accessibility: vehicleAccessibility as "None" | "Wheelchair",
         seatCount,
       }),
     })
@@ -270,7 +278,16 @@ export default function Admin() {
           placeholder="9 digits"
           required
         />
-        <BogCheckbox name="ramp" label="Ramp / wheelchair accessible" />
+        <BogDropdown
+          name="accessibilityNeeds"
+          label="Accessibility needs"
+          options={[...STUDENT_ACCESSIBILITY_OPTIONS]}
+          placeholder="Select accessibility needs"
+          value={studentAccessibilityNeeds}
+          onSelectionChange={(v) =>
+            setStudentAccessibilityNeeds(typeof v === "string" ? v : v[0] ?? "None")
+          }
+        />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : table === "Drivers" ? (
@@ -326,18 +343,16 @@ export default function Admin() {
           label="Make & model"
           placeholder="e.g. Honda Odyssey"
         />
-        <div className="flex flex-col gap-1">
-          <label htmlFor="accessibility">Accessibility</label>
-          <select
-            id="accessibility"
-            name="accessibility"
-            className="rounded border border-gray-300 px-3 py-2"
-            required
-          >
-            <option value="None">None</option>
-            <option value="Wheelchair">Wheelchair</option>
-          </select>
-        </div>
+        <BogDropdown
+          name="accessibility"
+          label="Accessibility"
+          options={[...VEHICLE_ACCESSIBILITY_OPTIONS]}
+          placeholder="Select accessibility"
+          value={vehicleAccessibility}
+          onSelectionChange={(v) =>
+            setVehicleAccessibility(typeof v === "string" ? v : v[0] ?? "None")
+          }
+        />
         <BogTextInput
           name="seatCount"
           label="Seat count"
@@ -422,7 +437,13 @@ export default function Admin() {
               openState={{ open: modalOpen, setOpen: setModalOpen }}
               trigger={<BogButton>{triggerLabel}</BogButton>}
               title={<h3>{addTitle}</h3>}
-              onOpenChange={(open) => !open && setSubmitError(null)}
+              onOpenChange={(open) => {
+              if (!open) {
+                setSubmitError(null);
+                setStudentAccessibilityNeeds("None");
+                setVehicleAccessibility("None");
+              }
+            }}
             >
               {formContent}
             </BogModal>
