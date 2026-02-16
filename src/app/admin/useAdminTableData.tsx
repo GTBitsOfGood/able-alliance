@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react"; // Add useCallback import
+import React, { useEffect, useState, useCallback } from "react";
 import type {
   ColumnHeaderCellContent,
   TableRow,
@@ -115,13 +115,13 @@ export function useAdminTableData(tableType: AdminTableType) {
   const [rowIds, setRowIds] = useState<string[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  /** Force a re-fetch of the current table data. */
-  const refresh = () => setRefreshKey((k) => k + 1);
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    // Wrap state updates in async function
     const loadData = async () => {
       setLoading(true);
       setError(null);
@@ -215,79 +215,5 @@ export function useAdminTableData(tableType: AdminTableType) {
     return deleted;
   };
 
-  const refetch = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    if (tableType === "Students") {
-      fetch("/api/users?type=Student")
-        .then((res) =>
-          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
-        )
-        .then((data) => {
-          const raw = adaptUsersToStudentRows(data);
-          setColumns(STUDENT_COLUMNS);
-          setRows(studentRawToTableRows(raw));
-        })
-        .catch((err) => {
-          setError(
-            err instanceof Error ? err.message : "Failed to load students.",
-          );
-          setRows([]);
-        })
-        .finally(() => setLoading(false));
-    } else if (tableType === "Drivers") {
-      fetch("/api/users?type=Driver")
-        .then((res) =>
-          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
-        )
-        .then((data) => {
-          const raw = adaptUsersToDriverRows(data);
-          setColumns(DRIVER_COLUMNS);
-          setRows(driverRawToTableRows(raw));
-        })
-        .catch((err) => {
-          setError(
-            err instanceof Error ? err.message : "Failed to load drivers.",
-          );
-          setRows([]);
-        })
-        .finally(() => setLoading(false));
-    } else if (tableType === "Admins") {
-      fetch("/api/users?type=Admin")
-        .then((res) =>
-          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
-        )
-        .then((data) => {
-          const raw = adaptUsersToAdminRows(data);
-          setColumns(ADMIN_COLUMNS);
-          setRows(adminRawToTableRows(raw));
-        })
-        .catch((err) => {
-          setError(
-            err instanceof Error ? err.message : "Failed to load admins.",
-          );
-          setRows([]);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      fetch("/api/vehicles")
-        .then((res) =>
-          res.ok ? res.json() : Promise.reject(new Error(`API ${res.status}`)),
-        )
-        .then((data) => {
-          const raw = adaptVehiclesToRows(data);
-          setColumns(VEHICLE_COLUMNS);
-          setRows(vehicleRawToTableRows(raw));
-        })
-        .catch((err) => {
-          setError(
-            err instanceof Error ? err.message : "Failed to load vehicles.",
-          );
-          setRows([]);
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [tableType]);
-
-  return { columns, rows, rowIds, loading, error, deleteRows, refetch };
+  return { columns, rows, rowIds, loading, error, deleteRows, refetch: refresh };
 }
