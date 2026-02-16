@@ -65,9 +65,7 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
       name: String(u.name ?? ""),
       email: String(u.email ?? ""),
       phone: String(studentInfo.notes ?? ""),
-      accessibilityNeeds: accessibilityNeeds
-        ? String(accessibilityNeeds)
-        : "",
+      accessibilityNeeds: accessibilityNeeds ? String(accessibilityNeeds) : "",
     };
   });
 }
@@ -215,5 +213,13 @@ export function useAdminTableData(tableType: AdminTableType) {
     return deleted;
   };
 
-  return { columns, rows, rowIds, loading, error, deleteRows, refetch: refresh };
+  return {
+    columns,
+    rows,
+    rowIds,
+    loading,
+    error,
+    deleteRows,
+    refetch: refresh,
+  };
 }

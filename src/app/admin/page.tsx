@@ -8,7 +8,11 @@ import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState } from "react";
 
-const STUDENT_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair", "LowMobility"] as const;
+const STUDENT_ACCESSIBILITY_OPTIONS = [
+  "None",
+  "Wheelchair",
+  "LowMobility",
+] as const;
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
 
@@ -86,8 +90,9 @@ export default function Admin() {
       ...(phone && { notes: `Phone: ${phone}` }),
       ...(studentAccessibilityNeeds &&
         studentAccessibilityNeeds !== "None" && {
-          accessibilityNeeds:
-            studentAccessibilityNeeds as "Wheelchair" | "LowMobility",
+          accessibilityNeeds: studentAccessibilityNeeds as
+            | "Wheelchair"
+            | "LowMobility",
         }),
     };
     fetch("/api/users", {
@@ -285,7 +290,9 @@ export default function Admin() {
           placeholder="Select accessibility needs"
           value={studentAccessibilityNeeds}
           onSelectionChange={(v) =>
-            setStudentAccessibilityNeeds(typeof v === "string" ? v : v[0] ?? "None")
+            setStudentAccessibilityNeeds(
+              typeof v === "string" ? v : (v[0] ?? "None"),
+            )
           }
         />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
@@ -350,7 +357,9 @@ export default function Admin() {
           placeholder="Select accessibility"
           value={vehicleAccessibility}
           onSelectionChange={(v) =>
-            setVehicleAccessibility(typeof v === "string" ? v : v[0] ?? "None")
+            setVehicleAccessibility(
+              typeof v === "string" ? v : (v[0] ?? "None"),
+            )
           }
         />
         <BogTextInput
@@ -438,12 +447,12 @@ export default function Admin() {
               trigger={<BogButton>{triggerLabel}</BogButton>}
               title={<h3>{addTitle}</h3>}
               onOpenChange={(open) => {
-              if (!open) {
-                setSubmitError(null);
-                setStudentAccessibilityNeeds("None");
-                setVehicleAccessibility("None");
-              }
-            }}
+                if (!open) {
+                  setSubmitError(null);
+                  setStudentAccessibilityNeeds("None");
+                  setVehicleAccessibility("None");
+                }
+              }}
             >
               {formContent}
             </BogModal>
