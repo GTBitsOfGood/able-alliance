@@ -40,8 +40,10 @@ interface BogModalProps extends React.ComponentProps<typeof Dialog.Root> {
   contentProps?: BogModalContentProps;
   /** The title of the modal. */
   title?: ReactElement;
-  /** The description of the modal. */
+  /** The description of the modal. Ignored when children is provided. */
   description?: ReactElement;
+  /** Custom body content (e.g. a form). When provided, replaces description and default action buttons. */
+  children?: React.ReactNode;
 }
 
 const defaultCloseButton = <BogIcon name="x" size="auto" />;
@@ -64,6 +66,7 @@ export default function BogModal({
       tempor incididunt ut labore et dolore magna aliqua.{' '}
     </span>
   ),
+  children,
   ...props
 }: BogModalProps) {
   const breakpoint = useResponsive();
@@ -130,25 +133,31 @@ export default function BogModal({
               {title}
             </Dialog.Title>
           </div>
-          <Dialog.Description className={descriptionClass} asChild>
-            {description}
-          </Dialog.Description>
-          <div className={styles.buttonsContainer}>
-            <BogButton
-              variant="secondary"
-              size={buttonSize}
-              onClick={() => handleOpenChange(false)}
-            >
-              Secondary
-            </BogButton>
-            <BogButton
-              variant="primary"
-              size={buttonSize}
-              onClick={() => handleOpenChange(false)}
-            >
-              Primary
-            </BogButton>
-          </div>
+          {children !== undefined ? (
+            <div className={styles.description}>{children}</div>
+          ) : (
+            <>
+              <Dialog.Description className={descriptionClass} asChild>
+                {description}
+              </Dialog.Description>
+              <div className={styles.buttonsContainer}>
+                <BogButton
+                  variant="secondary"
+                  size={buttonSize}
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Secondary
+                </BogButton>
+                <BogButton
+                  variant="primary"
+                  size={buttonSize}
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Primary
+                </BogButton>
+              </div>
+            </>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

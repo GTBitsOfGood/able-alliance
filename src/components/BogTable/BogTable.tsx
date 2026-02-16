@@ -63,6 +63,12 @@ interface BogTableProps
   className?: string;
   /** Inline styles */
   style?: React.CSSProperties;
+  /** Enable row selection with checkboxes */
+  selectable?: boolean;
+  /** Indices of currently selected rows (controlled) */
+  selectedRows?: Set<number>;
+  /** Called when selection changes */
+  onSelectedRowsChange?: (selected: Set<number>) => void;
 }
 
 const BogTable: React.FC<BogTableProps> = ({
@@ -71,6 +77,9 @@ const BogTable: React.FC<BogTableProps> = ({
   size = 'responsive',
   className,
   style,
+  selectable = false,
+  selectedRows: controlledSelected,
+  onSelectedRowsChange,
   ...rootProps
 }) => {
   const breakpoint = useResponsive();
@@ -88,6 +97,30 @@ const BogTable: React.FC<BogTableProps> = ({
   const [draftColumnFilters, setDraftColumnFilters] = React.useState<
     Record<number, ColumnFilter>
   >({});
+  // --- Row selection ---
+  const [internalSelected, setInternalSelected] = React.useState<Set<number>>(
+    new Set(),
+  );
+  const selectedSet = controlledSelected ?? internalSelected;
+  const setSelected = (next: Set<number>) => {
+    if (onSelectedRowsChange) onSelectedRowsChange(next);
+    else setInternalSelected(next);
+  };
+
+  const toggleRow = (rowIndex: number) => {
+    const next = new Set(selectedSet);
+    if (next.has(rowIndex)) next.delete(rowIndex);
+    else next.add(rowIndex);
+    setSelected(next);
+  };
+
+  const toggleAll = () => {
+    if (selectedSet.size === sortedRows.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(sortedRows.map((_, i) => i)));
+    }
+  };
 
   const extractText = (node: ReactNode): string => {
     if (node == null || typeof node === 'boolean') return '';
@@ -557,6 +590,24 @@ const BogTable: React.FC<BogTableProps> = ({
           >
             <Table.Header>
               <Table.Row className={styles.headerRow}>
+                {selectable && (
+                  <Table.ColumnHeaderCell
+                    className={`${styles.columnHeaderCell} ${styles.cellBase} ${styles[sizeClass]} ${styles.selectCell}`}
+                  >
+                    <BogCheckbox
+                      name="select-all"
+                      checked={
+                        sortedRows.length > 0 &&
+                        selectedSet.size === sortedRows.length
+                          ? true
+                          : selectedSet.size > 0
+                            ? 'indeterminate'
+                            : false
+                      }
+                      onCheckedChange={() => toggleAll()}
+                    />
+                  </Table.ColumnHeaderCell>
+                )}
                 {columnHeaders.map((header, i) => {
                   const dir = getSortForColumn(i);
                   const isSortable = header.datatype !== 'other';
@@ -612,6 +663,17 @@ const BogTable: React.FC<BogTableProps> = ({
             <Table.Body>
               {sortedRows.map((row, rIdx) => (
                 <Table.Row key={`row-${rIdx}`} {...row.styleProps}>
+                  {selectable && (
+                    <Table.Cell
+                      className={`${styles.cell} ${styles.cellBase} ${styles[sizeClass]} ${styles.selectCell}`}
+                    >
+                      <BogCheckbox
+                        name={`select-row-${rIdx}`}
+                        checked={selectedSet.has(rIdx)}
+                        onCheckedChange={() => toggleRow(rIdx)}
+                      />
+                    </Table.Cell>
+                  )}
                   {row.cells.map((cell, cIdx) =>
                     cIdx === 0 ? (
                       <Table.RowHeaderCell
