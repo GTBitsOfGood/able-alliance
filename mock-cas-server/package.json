@@ -1,0 +1,14 @@
+{
+  "name": "mock-cas-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mock CAS 3.0 server for local development",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "uuid": "^9.0.0"
+  }
+}

@@ -3,6 +3,12 @@ import UserModel, { StudentModel } from "../models/UserModel";
 import type { BaseUserInput, StudentInput } from "@/utils/types/user";
 import { UserAlreadyExistsException } from "@/utils/exceptions/user";
 
+interface CASUserData {
+  email: string;
+  name: string;
+  gtid: string;
+}
+
 export async function createUser(data: BaseUserInput | StudentInput) {
   await connectMongoDB();
 
@@ -18,6 +24,58 @@ export async function createUser(data: BaseUserInput | StudentInput) {
   }
 
   const user = await UserModel.create(data);
+  return user.toObject();
+}
+
+export async function getUserByEmail(email: string) {
+  await connectMongoDB();
+  const user = await UserModel.findOne({ email }).lean();
+  return user;
+}
+
+/**
+ * Look up a user by email, or auto-create them from CAS attributes.
+ * - If GTID is present, creates a Student user.
+ * - Otherwise, creates an Admin user (default for non-students).
+ */
+export async function getOrCreateUserFromCAS(data: CASUserData) {
+  await connectMongoDB();
+
+  console.log(`[UserAction] getUserByEmail: ${data.email}`);
+  const existing = await UserModel.findOne({ email: data.email }).lean();
+  if (existing) {
+    console.log(`[UserAction] User found: ${existing._id}`);
+    return existing;
+  }
+
+  console.log(`[UserAction] User not found, creating new user...`);
+
+  // Auto-create user based on CAS attributes
+  if (data.gtid && data.gtid.length >= 9) {
+    // Student user
+    const studentData: StudentInput = {
+      name: data.name,
+      email: data.email,
+      type: "Student",
+      studentInfo: {
+        GTID: data.gtid,
+      },
+    };
+    const user = await StudentModel.create(studentData);
+    console.log(
+      `[UserAction] Created Student user: ${user._id} (GTID: ${data.gtid})`,
+    );
+    return user.toObject();
+  }
+
+  // Non-student user (no GTID) — default to Admin
+  const userData: BaseUserInput = {
+    name: data.name,
+    email: data.email,
+    type: "Admin",
+  };
+  const user = await UserModel.create(userData);
+  console.log(`[UserAction] Created Admin user: ${user._id}`);
   return user.toObject();
 }
 
