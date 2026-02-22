@@ -1,0 +1,270 @@
+.ridesPage {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 12rem;
+  min-width: 12rem;
+  padding: 2rem 1.5rem;
+  background-color: #d3d3d3;
+  color: white;
+}
+
+.sidebarLabel {
+  font-size: 2rem;
+  color: black;
+}
+
+.sidebarNav {
+  margin-top: 1.5rem;
+}
+
+.sidebarLink {
+  display: block;
+  padding: 0.5rem 0;
+  font-weight: 500;
+  font-size: 1.5rem;
+  color: #4a4a4a;
+  text-decoration: none;
+  border-radius: 0.25rem;
+}
+
+.sidebarLink:hover {
+  text-decoration: underline;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: auto;
+  padding: 2rem 2.5rem;
+  background-color: var(--color-solid-bg-base);
+  min-width: 0;
+}
+
+.mainHeader {
+  margin-bottom: 1rem;
+}
+
+.tabsLayout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 1.5rem;
+}
+
+.tabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.tabsRow > [role="tablist"] {
+  flex: 0 0 auto;
+}
+
+/* keep tab labels on one line (like "Next week") */
+.tabsRow [role="tablist"] [role="tab"] {
+  white-space: nowrap;
+}
+
+.tabContentPanel {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  box-sizing: border-box;
+}
+
+/* request button parallel to the tabs */
+.tabsRow > *:last-child {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.pageTitle {
+  color: var(--color-grey-text-strong);
+  font-size: var(--text-desktop-heading-1);
+  font-weight: 700;
+  line-height: var(--text-desktop-heading-1--line-height);
+}
+
+.requestRideButton {
+  background-color: #c73a3a;
+  border-color: #c73a3a;
+  width: fit-content;
+}
+
+.requestRideButton:hover:not(:disabled) {
+  background-color: #a82f2f;
+  border-color: #a82f2f;
+}
+
+.errorMessage {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: var(--color-status-red-text, #c73a3a);
+}
+
+.rideList {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.rideListEmpty {
+  color: var(--color-grey-text-weak);
+}
+
+.rideListLoading {
+  color: var(--color-grey-text-weak);
+}
+
+.dateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.dateHeader {
+  font-size: var(--text-desktop-heading-4);
+  font-weight: 700;
+  line-height: var(--text-desktop-heading-3--line-height);
+  color: var(--color-grey-text-strong);
+  margin: 0;
+}
+
+.rideCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.75rem 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  background-color: var(--color-solid-bg-base);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+}
+
+.rideCardHeader {
+  display: flex;
+  align-items: center;
+}
+
+.rideCardTimeValue {
+  font-size: var(--text-desktop-paragraph-2);
+  font-weight: 800;
+  color: var(--color-grey-text-strong);
+}
+
+.rideCardRoute {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.rideCardRouteIconColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.rideCardRouteIcon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-grey-text-strong);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.rideCardRouteLine {
+  width: 2px;
+  flex: 1;
+  min-height: 0.5rem;
+  background-color: var(--color-grey-stroke-weak);
+  margin: 0.125rem 0;
+}
+
+.rideCardRouteIconDropoff {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--color-grey-text-strong);
+}
+
+.rideCardRouteStops {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rideCardStop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rideCardRouteLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-weak);
+}
+
+.rideCardRouteName {
+  font-size: var(--text-desktop-paragraph-2);
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+}
+
+.rideCardFooter {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-desktop-paragraph-2);
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formLabel {
+  color: var(--color-grey-text-strong);
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+}
+
+.formDateTimeInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem 0.5rem;
+  min-height: 2.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  color: var(--color-grey-text-strong);
+  font-size: 1rem;
+}
+
+.formError {
+  font-size: 0.875rem;
+  color: var(--color-status-red-text);
+}
