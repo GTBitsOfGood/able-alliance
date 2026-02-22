@@ -48,6 +48,40 @@ function getDateKey(iso: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+function getWeekRange(offset: 0 | 1): [Date, Date] {
+  const now = new Date();
+  const day = now.getDay();
+  const start = new Date(now);
+  start.setDate(now.getDate() - day + offset * 7);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return [start, end];
+}
+
+function isInRange(iso: string, [start, end]: [Date, Date]): boolean {
+  const t = new Date(iso).getTime();
+  return t >= start.getTime() && t <= end.getTime();
+}
+
+function groupRoutesByDate(routes: Route[]): Record<string, Route[]> {
+  const map: Record<string, Route[]> = {};
+  for (const route of routes) {
+    const key = getDateKey(route.scheduledPickupTime);
+    if (!map[key]) map[key] = [];
+    map[key].push(route);
+  }
+  for (const arr of Object.values(map)) {
+    arr.sort(
+      (a, b) =>
+        new Date(a.scheduledPickupTime).getTime() -
+        new Date(b.scheduledPickupTime).getTime(),
+    );
+  }
+  return map;
+}
+
 export default function RidesPage() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -87,46 +121,53 @@ export default function RidesPage() {
     {} as Record<string, string>,
   );
 
-  const routesByDate = React.useMemo(() => {
-    const map: Record<string, Route[]> = {};
-    for (const route of routes) {
-      const key = getDateKey(route.scheduledPickupTime);
-      if (!map[key]) map[key] = [];
-      map[key].push(route);
-    }
-    for (const arr of Object.values(map)) {
-      arr.sort(
-        (a, b) =>
-          new Date(a.scheduledPickupTime).getTime() -
-          new Date(b.scheduledPickupTime).getTime(),
-      );
-    }
-    return map;
-  }, [routes]);
+  const thisWeekRange = React.useMemo(() => getWeekRange(0), []);
+  const nextWeekRange = React.useMemo(() => getWeekRange(1), []);
 
-  const dateKeys = Object.keys(routesByDate).sort();
+  const routesByDateThisWeek = React.useMemo(() => {
+    const filtered = routes.filter((r) =>
+      isInRange(r.scheduledPickupTime, thisWeekRange),
+    );
+    return groupRoutesByDate(filtered);
+  }, [routes, thisWeekRange]);
 
-  const rideListContent = (
-    <div className={styles.rideList}>
-      {routes.length === 0 && !loading && (
-        <p className={styles.rideListEmpty}>No rides yet.</p>
-      )}
-      {dateKeys.map((dateKey) => (
-        <div key={dateKey} className={styles.dateGroup}>
-          <h2 className={styles.dateHeader}>
-            {formatDateHeader(routesByDate[dateKey][0].scheduledPickupTime)}
-          </h2>
-          {routesByDate[dateKey].map((route) => (
-            <RideCard
-              key={route._id}
-              route={route}
-              locationIdToName={locationIdToName}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
+  const routesByDateNextWeek = React.useMemo(() => {
+    const filtered = routes.filter((r) =>
+      isInRange(r.scheduledPickupTime, nextWeekRange),
+    );
+    return groupRoutesByDate(filtered);
+  }, [routes, nextWeekRange]);
+
+  const dateKeysThisWeek = Object.keys(routesByDateThisWeek).sort();
+  const dateKeysNextWeek = Object.keys(routesByDateNextWeek).sort();
+
+  function renderRideList(
+    routesByDate: Record<string, Route[]>,
+    dateKeys: string[],
+  ) {
+    const isEmpty = dateKeys.length === 0;
+    return (
+      <div className={styles.rideList}>
+        {isEmpty && !loading && (
+          <p className={styles.rideListEmpty}>No rides yet.</p>
+        )}
+        {dateKeys.map((dateKey) => (
+          <div key={dateKey} className={styles.dateGroup}>
+            <h2 className={styles.dateHeader}>
+              {formatDateHeader(routesByDate[dateKey][0].scheduledPickupTime)}
+            </h2>
+            {routesByDate[dateKey].map((route) => (
+              <RideCard
+                key={route._id}
+                route={route}
+                locationIdToName={locationIdToName}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className={styles.ridesPage}>
@@ -201,14 +242,14 @@ export default function RidesPage() {
             {loading ? (
               <p className={styles.rideListLoading}>Loading…</p>
             ) : (
-              rideListContent
+              renderRideList(routesByDateThisWeek, dateKeysThisWeek)
             )}
           </Tabs.Content>
           <Tabs.Content value="next-week" className={styles.tabContentPanel}>
             {loading ? (
               <p className={styles.rideListLoading}>Loading…</p>
             ) : (
-              rideListContent
+              renderRideList(routesByDateNextWeek, dateKeysNextWeek)
             )}
           </Tabs.Content>
         </Tabs.Root>

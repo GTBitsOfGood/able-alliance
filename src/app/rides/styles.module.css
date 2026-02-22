@@ -10,13 +10,13 @@
   width: 12rem;
   min-width: 12rem;
   padding: 2rem 1.5rem;
-  background-color: #d3d3d3;
-  color: white;
+  background-color: var(--color-grey-fill-weak);
+  color: var(--color-grey-text-strong);
 }
 
 .sidebarLabel {
   font-size: 2rem;
-  color: black;
+  color: var(--color-grey-text-strong);
 }
 
 .sidebarNav {
@@ -28,7 +28,7 @@
   padding: 0.5rem 0;
   font-weight: 500;
   font-size: 1.5rem;
-  color: #4a4a4a;
+  color: var(--color-grey-text-weak);
   text-decoration: none;
   border-radius: 0.25rem;
 }
@@ -99,14 +99,14 @@
 }
 
 .requestRideButton {
-  background-color: #c73a3a;
-  border-color: #c73a3a;
+  background-color: var(--color-status-red-text);
+  border-color: var(--color-status-red-text);
   width: fit-content;
 }
 
 .requestRideButton:hover:not(:disabled) {
-  background-color: #a82f2f;
-  border-color: #a82f2f;
+  background-color: var(--color-status-red-stroke-strong);
+  border-color: var(--color-status-red-stroke-strong);
 }
 
 .errorMessage {
@@ -154,9 +154,9 @@
   gap: 1.5rem;
   padding: 1.75rem 2rem;
   border-radius: 0.5rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   background-color: var(--color-solid-bg-base);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.06);
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -189,16 +189,16 @@
 }
 
 .rideCardRouteIcon {
-  width: 12px;
-  height: 12px;
+  width: 1.2rem;
+  height: 1.2rem;
   border-radius: 50%;
-  border: 1.5px solid var(--color-grey-text-strong);
+  border: 0.15rem solid var(--color-grey-text-strong);
   background: transparent;
   flex-shrink: 0;
 }
 
 .rideCardRouteLine {
-  width: 2px;
+  width: 0.2rem;
   flex: 1;
   min-height: 0.5rem;
   background-color: var(--color-grey-stroke-weak);
@@ -206,8 +206,8 @@
 }
 
 .rideCardRouteIconDropoff {
-  width: 14px;
-  height: 14px;
+  width: 1.4rem;
+  height: 1.4rem;
   flex-shrink: 0;
   color: var(--color-grey-text-strong);
 }
@@ -259,7 +259,7 @@
   padding: 0.75rem 0.5rem;
   min-height: 2.75rem;
   border-radius: 0.25rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   color: var(--color-grey-text-strong);
   font-size: 1rem;
 }

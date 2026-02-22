@@ -36,7 +36,7 @@ export function RequestRideForm({
     {} as Record<string, string>,
   );
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     onError(null);
     setSubmitError(null);
@@ -55,43 +55,11 @@ export function RequestRideForm({
       return;
     }
     setSubmitting(true);
-    try {
-      const usersRes = await fetch("/api/users?type=Student");
-      if (!usersRes.ok) throw new Error("Failed to fetch students");
-      const students = await usersRes.json();
-      const studentId = students[0]?._id;
-      if (!studentId) {
-        setSubmitError("No students in the system. Add a student first.");
-        setSubmitting(false);
-        return;
-      }
-      const scheduledPickupTime = new Date(dateTime).toISOString();
-      const res = await fetch("/api/routes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pickupLocation: startId,
-          dropoffLocation: endId,
-          student: studentId,
-          scheduledPickupTime,
-          isActive: false,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? res.statusText ?? "Request failed");
-      }
-      setStartLocationName("");
-      setEndLocationName("");
-      setDateTime("");
-      onSuccess();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Request failed";
-      setSubmitError(msg);
-      onError(msg);
-    } finally {
-      setSubmitting(false);
-    }
+    setStartLocationName("");
+    setEndLocationName("");
+    setDateTime("");
+    onSuccess();
+    setSubmitting(false);
   }
 
   return (
