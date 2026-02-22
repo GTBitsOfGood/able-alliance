@@ -1,12 +1,55 @@
-const express = require("express");
-const { v4: uuidv4 } = require("uuid");
-const users = require("./users.json");
+import path from "node:path";
+import { readFileSync } from "node:fs";
+import express, { type Request, type Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+
+interface CASUserAttributes {
+  email: string;
+  displayName: string;
+  gtid: string;
+}
+
+interface MockUser {
+  username: string;
+  password: string;
+  attributes: CASUserAttributes;
+}
+
+interface TicketData {
+  username: string;
+  attributes: CASUserAttributes;
+  service: string;
+  createdAt: number;
+}
+
+interface LoginBody {
+  username?: string;
+  password?: string;
+}
+
+type EmptyParams = Record<string, never>;
+type EmptyResBody = Record<string, never>;
+
+function getQueryString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function loadUsers(): MockUser[] {
+  const usersPath = path.join(process.cwd(), "users.json");
+  const parsed = JSON.parse(readFileSync(usersPath, "utf8")) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error("users.json must contain an array");
+  }
+  return parsed as MockUser[];
+}
+
+const users = loadUsers();
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 
 // In-memory ticket store: ticket -> { username, attributes, service, createdAt }
-const tickets = new Map();
+const tickets = new Map<string, TicketData>();
 
 // Ticket expiration: 30 seconds
 const TICKET_TTL_MS = 30_000;
@@ -21,10 +64,9 @@ setInterval(() => {
   }
 }, 10_000);
 
-// ─── GET /cas/login ─────────────────────────────────────────────────────────
 // Displays a login form. The `service` query param is the callback URL.
-app.get("/cas/login", (req, res) => {
-  const service = req.query.service || "";
+app.get("/cas/login", (req: Request, res: Response) => {
+  const service = getQueryString(req.query.service);
 
   res.setHeader("Content-Type", "text/html");
   res.send(`<!DOCTYPE html>
@@ -146,19 +188,20 @@ app.get("/cas/login", (req, res) => {
 </html>`);
 });
 
-// ─── POST /cas/login ────────────────────────────────────────────────────────
 // Validates credentials, generates a service ticket, redirects back to service.
-app.post("/cas/login", (req, res) => {
-  const { username, password } = req.body;
-  const service = req.query.service || "";
+app.post(
+  "/cas/login",
+  (req: Request<EmptyParams, EmptyResBody, LoginBody>, res: Response) => {
+    const { username, password } = req.body;
+    const service = getQueryString(req.query.service);
 
-  const user = users.find(
-    (u) => u.username === username && u.password === password,
-  );
+    const user = users.find(
+      (u) => u.username === username && u.password === password,
+    );
 
-  if (!user) {
-    res.setHeader("Content-Type", "text/html");
-    return res.send(`<!DOCTYPE html>
+    if (!user) {
+      res.setHeader("Content-Type", "text/html");
+      return res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -177,28 +220,29 @@ app.post("/cas/login", (req, res) => {
   </div>
 </body>
 </html>`);
-  }
+    }
 
-  // Generate CAS service ticket
-  const ticket = `ST-${uuidv4()}`;
-  tickets.set(ticket, {
-    username: user.username,
-    attributes: user.attributes,
-    service,
-    createdAt: Date.now(),
-  });
+    // Generate CAS service ticket.
+    const ticket = `ST-${uuidv4()}`;
+    tickets.set(ticket, {
+      username: user.username,
+      attributes: user.attributes,
+      service,
+      createdAt: Date.now(),
+    });
 
-  // Redirect back to the service with the ticket
-  const separator = service.includes("?") ? "&" : "?";
-  const redirectUrl = `${service}${separator}ticket=${ticket}`;
-  console.log(`[CAS] Ticket issued: ${ticket} for user: ${user.username}`);
-  res.redirect(302, redirectUrl);
-});
+    // Redirect back to the service with the ticket.
+    const separator = service.includes("?") ? "&" : "?";
+    const redirectUrl = `${service}${separator}ticket=${ticket}`;
+    console.log(`[CAS] Ticket issued: ${ticket} for user: ${user.username}`);
+    return res.redirect(302, redirectUrl);
+  },
+);
 
-// ─── GET /cas/p3/serviceValidate ────────────────────────────────────────────
 // CAS 3.0 ticket validation endpoint. Returns XML.
-app.get("/cas/p3/serviceValidate", (req, res) => {
-  const { ticket, service } = req.query;
+app.get("/cas/p3/serviceValidate", (req: Request, res: Response) => {
+  const ticket = getQueryString(req.query.ticket);
+  const service = getQueryString(req.query.service);
 
   res.setHeader("Content-Type", "application/xml");
 
@@ -223,14 +267,14 @@ app.get("/cas/p3/serviceValidate", (req, res) => {
 </cas:serviceResponse>`);
   }
 
-  // Invalidate ticket (single use per CAS spec)
+  // Invalidate ticket (single use per CAS spec).
   tickets.delete(ticket);
 
   console.log(
     `[CAS] Ticket validated: ${ticket} for user: ${ticketData.username}`,
   );
 
-  res.send(`<cas:serviceResponse xmlns:cas="http://www.yale.edu/tp/cas">
+  return res.send(`<cas:serviceResponse xmlns:cas="http://www.yale.edu/tp/cas">
   <cas:authenticationSuccess>
     <cas:user>${ticketData.username}</cas:user>
     <cas:attributes>
@@ -242,9 +286,8 @@ app.get("/cas/p3/serviceValidate", (req, res) => {
 </cas:serviceResponse>`);
 });
 
-// ─── GET /cas/logout ────────────────────────────────────────────────────────
-app.get("/cas/logout", (req, res) => {
-  const service = req.query.service || "";
+app.get("/cas/logout", (req: Request, res: Response) => {
+  const service = getQueryString(req.query.service);
   res.setHeader("Content-Type", "text/html");
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -267,13 +310,13 @@ app.get("/cas/logout", (req, res) => {
 </html>`);
 });
 
-// ─── Health check ───────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => {
+app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", service: "mock-cas-server" });
 });
 
-// ─── Start server ───────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 8443;
+const rawPort = process.env.PORT;
+const PORT = rawPort ? Number(rawPort) : 8443;
+
 app.listen(PORT, () => {
   console.log(`Mock CAS 3.0 server running on port ${PORT}`);
   console.log(`Login page: http://localhost:${PORT}/cas/login`);

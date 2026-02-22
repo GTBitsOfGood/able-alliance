@@ -6,6 +6,8 @@ import { Suspense } from "react";
 const ERROR_MESSAGES: Record<string, string> = {
   no_ticket: "No authentication ticket was provided. Please try again.",
   invalid_ticket: "Your login ticket was invalid or expired. Please try again.",
+  user_not_found:
+    "Your GT account is valid, but it is not provisioned in this application.",
   cas_unavailable:
     "The authentication server is unavailable. Please try again later.",
   server_error: "An unexpected error occurred. Please try again.",

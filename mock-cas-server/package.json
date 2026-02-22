@@ -2,13 +2,23 @@
   "name": "mock-cas-server",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Mock CAS 3.0 server for local development",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js"
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx server.ts"
   },
   "dependencies": {
     "express": "^4.21.0",
     "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.0",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }

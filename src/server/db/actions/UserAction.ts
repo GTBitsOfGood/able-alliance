@@ -35,8 +35,8 @@ export async function getUserByEmail(email: string) {
 
 /**
  * Look up a user by email, or auto-create them from CAS attributes.
- * - If GTID is present, creates a Student user.
- * - Otherwise, creates an Admin user (default for non-students).
+ * - If GTID is present, create a Student user.
+ * - Otherwise, create an Admin user (default for non-students).
  */
 export async function getOrCreateUserFromCAS(data: CASUserData) {
   await connectMongoDB();
@@ -48,11 +48,9 @@ export async function getOrCreateUserFromCAS(data: CASUserData) {
     return existing;
   }
 
-  console.log(`[UserAction] User not found, creating new user...`);
+  console.log(`[UserAction] User not found, creating from CAS attributes...`);
 
-  // Auto-create user based on CAS attributes
-  if (data.gtid && data.gtid.length >= 9) {
-    // Student user
+  if (data.gtid && data.gtid.trim().length > 0) {
     const studentData: StudentInput = {
       name: data.name,
       email: data.email,
@@ -61,6 +59,7 @@ export async function getOrCreateUserFromCAS(data: CASUserData) {
         GTID: data.gtid,
       },
     };
+
     const user = await StudentModel.create(studentData);
     console.log(
       `[UserAction] Created Student user: ${user._id} (GTID: ${data.gtid})`,
@@ -68,12 +67,12 @@ export async function getOrCreateUserFromCAS(data: CASUserData) {
     return user.toObject();
   }
 
-  // Non-student user (no GTID) — default to Admin
   const userData: BaseUserInput = {
     name: data.name,
     email: data.email,
     type: "Admin",
   };
+
   const user = await UserModel.create(userData);
   console.log(`[UserAction] Created Admin user: ${user._id}`);
   return user.toObject();

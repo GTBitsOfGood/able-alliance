@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
+import { XMLParser } from "fast-xml-parser";
 import { getOrCreateUserFromCAS } from "@/server/db/actions/UserAction";
+import { UserNotFoundException } from "@/utils/exceptions/user";
 
 interface CASAttributes {
   email: string;
@@ -15,44 +17,79 @@ interface CASValidationResult {
   error?: string;
 }
 
-/**
- * Parse CAS 3.0 XML response to extract user info.
- * CAS 3.0 returns XML, not JSON. We parse it with simple regex
- * since we control the mock server's output format.
- */
-function parseCASResponse(xml: string): CASValidationResult {
-  // Check for authentication failure
-  const failureMatch = xml.match(
-    /<cas:authenticationFailure[^>]*>([\s\S]*?)<\/cas:authenticationFailure>/,
-  );
-  if (failureMatch) {
-    return { success: false, error: failureMatch[1].trim() };
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  removeNSPrefix: true,
+  trimValues: true,
+});
+
+function extractText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
   }
 
-  // Check for authentication success
-  const successMatch = xml.match(/<cas:authenticationSuccess>/);
-  if (!successMatch) {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? extractText(value[0]) : "";
+  }
+
+  if (value && typeof value === "object" && "#text" in value) {
+    const textValue = (value as { "#text"?: unknown })["#text"];
+    return typeof textValue === "string" ? textValue : "";
+  }
+
+  return "";
+}
+
+function parseCASResponse(xml: string): CASValidationResult {
+  const parsed = xmlParser.parse(xml) as {
+    serviceResponse?: {
+      authenticationFailure?: unknown;
+      authenticationSuccess?: {
+        user?: unknown;
+        attributes?: {
+          email?: unknown;
+          displayName?: unknown;
+          gtid?: unknown;
+        };
+      };
+    };
+  };
+
+  const serviceResponse = parsed.serviceResponse;
+  if (!serviceResponse) {
     return { success: false, error: "Unexpected CAS response format" };
   }
 
-  const userMatch = xml.match(/<cas:user>(.*?)<\/cas:user>/);
-  const emailMatch = xml.match(/<cas:email>(.*?)<\/cas:email>/);
-  const displayNameMatch = xml.match(
-    /<cas:displayName>(.*?)<\/cas:displayName>/,
-  );
-  const gtidMatch = xml.match(/<cas:gtid>(.*?)<\/cas:gtid>/);
+  if (serviceResponse.authenticationFailure) {
+    return {
+      success: false,
+      error:
+        extractText(serviceResponse.authenticationFailure) ||
+        "CAS authentication failed",
+    };
+  }
 
-  if (!userMatch) {
+  const authSuccess = serviceResponse.authenticationSuccess;
+  if (!authSuccess) {
+    return { success: false, error: "Unexpected CAS response format" };
+  }
+
+  const username = extractText(authSuccess.user);
+  const email = extractText(authSuccess.attributes?.email);
+  const displayName = extractText(authSuccess.attributes?.displayName);
+  const gtid = extractText(authSuccess.attributes?.gtid);
+
+  if (!username) {
     return { success: false, error: "No user found in CAS response" };
   }
 
   return {
     success: true,
-    username: userMatch[1],
+    username,
     attributes: {
-      email: emailMatch?.[1] || "",
-      displayName: displayNameMatch?.[1] || "",
-      gtid: gtidMatch?.[1] || "",
+      email,
+      displayName,
+      gtid,
     },
   };
 }
@@ -76,11 +113,38 @@ export async function GET(request: NextRequest) {
   const serviceUrl = `${appUrl}/api/auth/cas/callback`;
   // Use the internal Docker URL for server-to-server validation
   const casBaseUrl = process.env.CAS_BASE_URL || "http://localhost:8443/cas";
-  const validateUrl = `${casBaseUrl}/p3/serviceValidate?ticket=${encodeURIComponent(ticket)}&service=${encodeURIComponent(serviceUrl)}`;
+  const buildValidateUrl = (baseUrl: string) =>
+    `${baseUrl}/p3/serviceValidate?ticket=${encodeURIComponent(ticket)}&service=${encodeURIComponent(serviceUrl)}`;
+
+  const validateUrl = buildValidateUrl(casBaseUrl);
+
+  const fetchCASValidation = async () => {
+    try {
+      return await fetch(validateUrl);
+    } catch (error) {
+      // In local dev, users often copy Docker env values (cas:8443) into .env.
+      // Retry against localhost once so local and Docker workflows both work.
+      const shouldRetryLocalhost =
+        casBaseUrl.includes("cas:8443") && !casBaseUrl.includes("localhost");
+
+      if (!shouldRetryLocalhost) {
+        throw error;
+      }
+
+      const fallbackBaseUrl = casBaseUrl.replace("cas:8443", "localhost:8443");
+      const fallbackValidateUrl = buildValidateUrl(fallbackBaseUrl);
+      console.warn(
+        "[CAS Callback] CAS host unreachable, retrying with localhost:",
+        fallbackValidateUrl,
+      );
+
+      return fetch(fallbackValidateUrl);
+    }
+  };
 
   try {
     // Server-to-server: validate the ticket with the CAS server
-    const casResponse = await fetch(validateUrl);
+    const casResponse = await fetchCASValidation();
     if (!casResponse.ok) {
       console.error(
         "[CAS Callback] CAS validation request failed:",
@@ -96,16 +160,31 @@ export async function GET(request: NextRequest) {
       console.error("[CAS Callback] CAS validation failed:", result.error);
       return NextResponse.redirect(`${loginUrl}?error=invalid_ticket`);
     }
+    const attributes = result.attributes;
 
-    // Look up or create the user in our database
-    console.log(`[CAS Callback] Looking up user: ${result.attributes.email}`);
-    const user = await getOrCreateUserFromCAS({
-      email: result.attributes.email,
-      name: result.attributes.displayName,
-      gtid: result.attributes.gtid,
-    });
+    // Look up the user in our database (do not auto-provision from CAS).
+    console.log(`[CAS Callback] Looking up user: ${attributes.email}`);
+    const user = await (async () => {
+      try {
+        return await getOrCreateUserFromCAS({
+          email: attributes.email,
+          name: attributes.displayName,
+          gtid: attributes.gtid,
+        });
+      } catch (error) {
+        if (error instanceof UserNotFoundException) {
+          console.error("[CAS Callback] CAS user not provisioned in app DB");
+          return NextResponse.redirect(`${loginUrl}?error=user_not_found`);
+        }
+        throw error;
+      }
+    })();
+
+    if (user instanceof NextResponse) {
+      return user;
+    }
     console.log(
-      `[CAS Callback] User ${user._id} retrieved/created (type: ${user.type})`,
+      `[CAS Callback] User ${user._id} retrieved (type: ${user.type})`,
     );
 
     const userId = (user._id as object).toString();
@@ -122,9 +201,9 @@ export async function GET(request: NextRequest) {
         sub: userId,
         userId,
         type: userType,
-        email: result.attributes.email,
-        gtid: result.attributes.gtid || "",
-        name: result.attributes.displayName,
+        email: attributes.email,
+        gtid: attributes.gtid || "",
+        name: attributes.displayName,
       },
       secret,
       salt: "authjs.session-token",
