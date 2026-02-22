@@ -12,6 +12,7 @@ interface IRouteDocument {
   vehicle?: mongoose.Types.ObjectId;
   scheduledPickupTime: Date;
   isActive: boolean;
+  status: "Standby" | "En-route";
 }
 
 const RouteSchema = new Schema<IRouteDocument>(
@@ -31,6 +32,7 @@ const RouteSchema = new Schema<IRouteDocument>(
     vehicle: { type: Schema.Types.ObjectId, ref: "Vehicle", required: false },
     scheduledPickupTime: { type: Date, required: true },
     isActive: { type: Boolean, default: false },
+    status: { type: String, enum: ["Standby", "En-route"] },
   },
   { versionKey: false },
 );

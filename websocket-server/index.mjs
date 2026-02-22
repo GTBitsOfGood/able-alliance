@@ -39,7 +39,7 @@ io.use(async (socket, next) => {
     }
     const userInRoute =
       route.driver?.toString() === userId ||
-      route.students?.some(id => id.toString() === userId);
+      route.student.toString() === userId;
 
     if (!userInRoute) {
       return next(new Error("User not assigned to this route"));
