@@ -1,17 +1,35 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
+import {
+  BaseUserSchema,
+  IBaseUser,
+  StudentSchema,
+} from "./UserModel";
+import { IVehicle, VehicleSchema } from "./VehicleModel";
 
 export type IRoute = RouteInput;
 
-/** Document type for schema (refs as ObjectId); create() accepts RouteInput (string refs). */
+export enum RouteStatus {
+  Requested = "Requested",
+  Scheduled = "Scheduled",
+  EnRoute = "En-route",
+  Pickedup = "Pickedup",
+  Completed = "Completed",
+  Missing = "Missing",
+  CancelledByDriver = "Cancelled by Driver",
+  CancelledByStudent = "Cancelled by Student",
+  CancelledByAdmin = "Cancelled by Admin",
+}
+
 interface IRouteDocument {
   pickupLocation: mongoose.Types.ObjectId;
   dropoffLocation: mongoose.Types.ObjectId;
-  student: mongoose.Types.ObjectId;
-  driver?: mongoose.Types.ObjectId;
-  vehicle?: mongoose.Types.ObjectId;
+  student: IBaseUser;
+  driver?: IBaseUser;
+  vehicle?: IVehicle;
   scheduledPickupTime: Date;
   isActive: boolean;
+  status: RouteStatus;
 }
 
 const RouteSchema = new Schema<IRouteDocument>(
@@ -26,11 +44,17 @@ const RouteSchema = new Schema<IRouteDocument>(
       ref: "Location",
       required: true,
     },
-    student: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    driver: { type: Schema.Types.ObjectId, ref: "User", required: false },
-    vehicle: { type: Schema.Types.ObjectId, ref: "Vehicle", required: false },
+    student: { type: StudentSchema, required: true },
+    driver: { type: BaseUserSchema, required: false },
+    vehicle: { type: VehicleSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
     isActive: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: Object.values(RouteStatus),
+      default: RouteStatus.Requested,
+      required: true,
+    },
   },
   { versionKey: false },
 );

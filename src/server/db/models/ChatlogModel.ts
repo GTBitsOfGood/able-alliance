@@ -1,4 +1,8 @@
 import mongoose, { Schema } from "mongoose";
+import {
+  BaseUserSchema,
+  StudentSchema,
+} from "./UserModel";
 
 const MessageSchema = new Schema({
   time: { type: Date, required: true },
@@ -12,14 +16,12 @@ const ChatlogSchema = new Schema({
     ref: "Route",
     required: true,
   },
-  studentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Student",
+  student: {
+    type: StudentSchema,
     required: true,
   },
-  driverId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Driver",
+  driver: {
+    type: BaseUserSchema,
     required: true,
   },
   time: { type: Date, required: true },

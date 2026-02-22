@@ -2,7 +2,13 @@ import { z } from "zod";
 
 export const baseUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Email is required"),
+  email: z
+    .string()
+    .email("Email is required")
+    .regex(
+      /^[\w-.]+@gatech\.edu$/,
+      "Email must be a valid Georgia Tech email ending with @gatech.edu",
+    ),
   type: z.enum(["Student", "Driver", "Admin", "SuperAdmin"]),
 });
 

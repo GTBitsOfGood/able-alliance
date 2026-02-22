@@ -1,5 +1,5 @@
 import connectMongoDB from "../mongodb";
-import RouteModel, { IRoute } from "../models/RouteModel";
+import RouteModel, { IRoute, RouteStatus } from "../models/RouteModel";
 import LocationModel from "../models/LocationModel";
 import UserModel from "../models/UserModel";
 import VehicleModel from "../models/VehicleModel";
@@ -23,44 +23,33 @@ export async function createRoute(data: IRoute) {
   if (!dropoffLoc) {
     throw new RouteReferenceNotFoundException("Dropoff location not found");
   }
-  const student = await UserModel.findById(validatedData.student).lean();
-  if (!student) {
+  const studentObj = await UserModel.findById(validatedData.student).lean();
+  if (!studentObj) {
     throw new RouteReferenceNotFoundException("Student not found");
   }
-  const studentType = (student as { type?: string }).type;
+  const studentType = (studentObj as { type?: string }).type;
   if (studentType !== "Student") {
     throw new RouteReferenceNotFoundException(
       "Referenced user is not a student",
     );
   }
-  if (validatedData.driver) {
-    const driver = await UserModel.findById(validatedData.driver).lean();
-    if (!driver) {
-      throw new RouteReferenceNotFoundException("Driver not found");
-    }
-    const driverType = (driver as { type?: string }).type;
-    if (driverType !== "Driver") {
-      throw new RouteReferenceNotFoundException(
-        "Referenced user is not a driver",
-      );
-    }
-  }
-  if (validatedData.vehicle) {
-    const vehicle = await VehicleModel.findById(validatedData.vehicle);
-    if (!vehicle) {
-      throw new RouteReferenceNotFoundException("Vehicle not found");
-    }
-  }
 
   const existing = await RouteModel.findOne({
-    student: validatedData.student,
+    "student._id": studentObj._id,
     scheduledPickupTime: validatedData.scheduledPickupTime,
   });
   if (existing) {
     throw new RouteAlreadyExistsException();
   }
 
-  const route = await RouteModel.create(validatedData);
+  const route = await RouteModel.create({
+    pickupLocation: validatedData.pickupLocation,
+    dropoffLocation: validatedData.dropoffLocation,
+    student: studentObj, // embed full student object
+    scheduledPickupTime: validatedData.scheduledPickupTime,
+    isActive: false,
+    status: "Requested",
+  });
   return route.toObject();
 }
 
@@ -106,4 +95,54 @@ export async function getRoutes(filters?: {
 
   const routes = await RouteModel.find(query).lean();
   return routes;
+}
+
+export async function completeRoute(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) {
+    return null;
+  }
+  route.status = RouteStatus.Completed;
+  await route.save();
+  return route.toObject();
+}
+export async function cancelRoute(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) {
+    return null;
+  }
+  route.status = RouteStatus.CancelledByStudent;
+  await route.save();
+  return route.toObject();
+}
+export async function scheduleRoute(
+  routeId: string,
+  driverId: string,
+  vehicleId: string,
+) {
+  await connectMongoDB();
+  // Find the route and ensure it's in Requested state
+  const route = await RouteModel.findById(routeId);
+  if (!route || route.status !== RouteStatus.Requested) {
+    return null;
+  }
+  // Find driver and vehicle
+  const driver = await UserModel.findById(driverId).lean();
+  if (!driver || driver.type !== "Driver") {
+    throw new RouteReferenceNotFoundException(
+      "Driver not found or not a driver",
+    );
+  }
+  const vehicle = await VehicleModel.findById(vehicleId).lean();
+  if (!vehicle) {
+    throw new RouteReferenceNotFoundException("Vehicle not found");
+  }
+  // Embed driver and vehicle, update status
+  route.driver = driver;
+  route.vehicle = vehicle;
+  route.status = RouteStatus.Scheduled;
+  await route.save();
+  return route.toObject();
 }
