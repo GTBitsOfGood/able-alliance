@@ -49,4 +49,5 @@ if (!mongoose.models.SuperAdmin)
   BaseUserModel.discriminator<IBaseUser>("SuperAdmin", emptySchema);
 
 export { BaseUserModel as UserModel, StudentModel };
+export { BaseUserSchema, StudentSchema };
 export default BaseUserModel;

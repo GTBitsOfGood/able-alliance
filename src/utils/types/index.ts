@@ -30,6 +30,18 @@ const objectIdString = z
   .length(24)
   .regex(/^[a-f0-9]{24}$/i);
 
+export const routeStatusEnum = z.enum([
+  "Requested",
+  "Scheduled",
+  "En-route",
+  "Pickedup",
+  "Completed",
+  "Missing",
+  "Cancelled by Driver",
+  "Cancelled by Student",
+  "Cancelled by Admin",
+]);
+
 export const routeSchema = z.object({
   pickupLocation: objectIdString,
   dropoffLocation: objectIdString,
@@ -38,6 +50,7 @@ export const routeSchema = z.object({
   vehicle: objectIdString.optional(),
   scheduledPickupTime: z.coerce.date(),
   isActive: z.boolean().default(false),
+  status: routeStatusEnum.default("Requested"),
 });
 
 export type RouteInput = z.infer<typeof routeSchema>;
