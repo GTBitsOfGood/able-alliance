@@ -43,5 +43,4 @@ export async function POST(request: NextRequest) {
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
     );
   }
-  }
 }

@@ -76,10 +76,10 @@ export async function getRoutes(filters?: {
   const query: Record<string, unknown> = {};
 
   if (filters?.student) {
-    query.student = filters.student;
+    query["student._id"] = filters.student;
   }
   if (filters?.driver) {
-    query.driver = filters.driver;
+    query["driver._id"] = filters.driver;
   }
   if (filters?.start_time != null || filters?.end_time != null) {
     query.scheduledPickupTime = {};

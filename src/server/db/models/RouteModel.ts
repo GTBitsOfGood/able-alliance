@@ -1,10 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
-import {
-  BaseUserSchema,
-  IBaseUser,
-  StudentSchema,
-} from "./UserModel";
+import { BaseUserSchema, IBaseUser, StudentSchema } from "./UserModel";
 import { IVehicle, VehicleSchema } from "./VehicleModel";
 
 export type IRoute = RouteInput;

@@ -1,8 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import {
-  BaseUserSchema,
-  StudentSchema,
-} from "./UserModel";
+import { BaseUserSchema, StudentSchema } from "./UserModel";
 
 const MessageSchema = new Schema({
   time: { type: Date, required: true },
