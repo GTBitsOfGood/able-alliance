@@ -32,9 +32,16 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
+    if (e instanceof Error && e.name === "RouteReferenceNotFoundException") {
+      return NextResponse.json(
+        { error: e.message },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
     );
+  }
   }
 }
