@@ -8,7 +8,7 @@ services:
     environment:
       MONGODB_URI: "mongodb://mongo:27017/able-alliance?replicaSet=rs0"
       NEXTAUTH_SECRET: "dev-secret-change-in-production"
-      NEXTAUTH_URL: "http://localhost:3000"
+      DEPLOY_PRIME_URL: "http://localhost:3000"
       CAS_BASE_URL: "http://cas:8443/cas"
       CAS_BASE_URL_BROWSER: "http://localhost:8443/cas"
     volumes:

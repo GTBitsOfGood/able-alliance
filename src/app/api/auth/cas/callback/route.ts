@@ -102,7 +102,10 @@ function parseCASResponse(xml: string): CASValidationResult {
  */
 export async function GET(request: NextRequest) {
   const ticket = request.nextUrl.searchParams.get("ticket");
-  const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const appUrl = process.env.DEPLOY_PRIME_URL;
+  if (!appUrl) {
+    throw new Error("DEPLOY_PRIME_URL environment variable is required");
+  }
   const loginUrl = `${appUrl}/login`;
 
   if (!ticket) {
@@ -112,7 +115,10 @@ export async function GET(request: NextRequest) {
   // The service URL must match what was originally sent to CAS
   const serviceUrl = `${appUrl}/api/auth/cas/callback`;
   // Use the internal Docker URL for server-to-server validation
-  const casBaseUrl = process.env.CAS_BASE_URL || "http://localhost:8443/cas";
+  const casBaseUrl = process.env.CAS_BASE_URL;
+  if (!casBaseUrl) {
+    throw new Error("CAS_BASE_URL environment variable is required");
+  }
   const buildValidateUrl = (baseUrl: string) =>
     `${baseUrl}/p3/serviceValidate?ticket=${encodeURIComponent(ticket)}&service=${encodeURIComponent(serviceUrl)}`;
 

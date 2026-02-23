@@ -1,10 +1,17 @@
 import juno from "juno-sdk";
 
+const apiKey = process.env.JUNO_API_KEY;
+const baseURL = process.env.JUNO_BASE_URL;
+if (!apiKey) {
+  throw new Error("JUNO_API_KEY environment variable is required");
+}
+if (!baseURL) {
+  throw new Error("JUNO_BASE_URL environment variable is required");
+}
+
 juno.init({
-  apiKey: process.env.JUNO_API_KEY ?? "",
-  baseURL:
-    process.env.JUNO_BASE_URL ||
-    "https://api-gateway.whitesmoke-cea9a269.eastus.azurecontainerapps.io/",
+  apiKey,
+  baseURL,
 });
 
 const junoEmailClient = juno.email;
