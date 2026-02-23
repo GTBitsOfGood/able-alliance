@@ -1,14 +1,17 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 
-// NextAuth reads DEPLOY_PRIME_URL for redirects/URLs;
+// NextAuth reads NEXTAUTH_URL for redirects/URLs; use DEPLOY_PRIME_URL as single source of truth.
+if (process.env.DEPLOY_PRIME_URL) {
+  process.env.NEXTAUTH_URL = process.env.DEPLOY_PRIME_URL;
+}
 
-if (!process.env.DEPLOY_PRIME_URL) {
+if (!process.env.NEXTAUTH_SECRET) {
   throw new Error("NEXTAUTH_SECRET environment variable is required");
 }
 
 export const authConfig: NextAuthConfig = {
-  secret: process.env.DEPLOY_PRIME_URL,
+  secret: process.env.NEXTAUTH_SECRET,
 
   // We don't use built-in providers — CAS is handled via custom route handlers
   providers: [],
