@@ -44,10 +44,9 @@ websocket express js server is hosted seperately [here](https://able-alliance.on
    ```
    The app service receives `MONGODB_URI` from the Compose file (`mongodb://mongo:27017/able-alliance?replicaSet=rs0`). No extra env file is required for Docker.
 3. To rebuild after changing dependencies, run:
-   ```sh
-   docker compose up --build
-   ```
-   The app has live-reloading for code changes when the project is mounted into the container.
+   `docker compose down -v`
+   to delete the old containers and volumes and then rebuild with
+   ` docker compose up --build`
 
 Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `localhost:27017`; Compose will start Mongo inside the stack and expose it.
 

@@ -6,12 +6,14 @@ import {
 import { locationSchema } from "@/utils/types";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { LocationAlreadyExistsException } from "@/utils/exceptions/location";
+import { EmailTemplates } from "@/server/db/actions/EmailAction";
 
 // GET /api/locations
 // Retrieves all locations
 export async function GET() {
   try {
     const locations = await getLocations();
+
     return NextResponse.json(locations, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
     if (e instanceof LocationAlreadyExistsException) {

@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import Link from "next/link";
 
 const ERROR_MESSAGES: Record<string, string> = {
   no_ticket: "No authentication ticket was provided. Please try again.",
@@ -36,7 +37,7 @@ function LoginContent() {
         )}
 
         {/* Sign-in button */}
-        <a
+        <Link
           href="/api/auth/cas/login"
           className="flex w-full items-center justify-center rounded-md bg-[#003057] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[#004080]"
         >
@@ -54,7 +55,7 @@ function LoginContent() {
             />
           </svg>
           Sign in with Georgia Tech
-        </a>
+        </Link>
 
         <p className="mt-6 text-center text-xs text-gray-500">
           You will be redirected to Georgia Tech&apos;s Central Authentication
