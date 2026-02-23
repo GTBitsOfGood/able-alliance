@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig: NextAuthConfig = {
+  secret: process.env.NEXTAUTH_SECRET,
+
   // We don't use built-in providers — CAS is handled via custom route handlers
   providers: [],
 
