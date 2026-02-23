@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { XMLParser } from "fast-xml-parser";
-import { getOrCreateUserFromCAS } from "@/server/db/actions/UserAction";
+import { getProvisionedUserFromCAS } from "@/server/db/actions/UserAction";
 import { UserNotFoundException } from "@/utils/exceptions/user";
 
 interface CASAttributes {
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
     console.log(`[CAS Callback] Looking up user: ${attributes.email}`);
     const user = await (async () => {
       try {
-        return await getOrCreateUserFromCAS({
+        return await getProvisionedUserFromCAS({
           email: attributes.email,
           name: attributes.displayName,
           gtid: attributes.gtid,

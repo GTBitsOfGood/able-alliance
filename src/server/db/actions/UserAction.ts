@@ -1,7 +1,10 @@
 import connectMongoDB from "../mongodb";
 import UserModel, { StudentModel } from "../models/UserModel";
 import type { BaseUserInput, StudentInput } from "@/utils/types/user";
-import { UserAlreadyExistsException } from "@/utils/exceptions/user";
+import {
+  UserAlreadyExistsException,
+  UserNotFoundException,
+} from "@/utils/exceptions/user";
 
 interface CASUserData {
   email: string;
@@ -34,11 +37,10 @@ export async function getUserByEmail(email: string) {
 }
 
 /**
- * Look up a user by email, or auto-create them from CAS attributes.
- * - If GTID is present, create a Student user.
- * - Otherwise, create an Admin user (default for non-students).
+ * Look up an existing user by their CAS email.
+ * Throws UserNotFoundException if the user has not been pre-provisioned.
  */
-export async function getOrCreateUserFromCAS(data: CASUserData) {
+export async function getProvisionedUserFromCAS(data: CASUserData) {
   await connectMongoDB();
 
   console.log(`[UserAction] getUserByEmail: ${data.email}`);
@@ -48,34 +50,10 @@ export async function getOrCreateUserFromCAS(data: CASUserData) {
     return existing;
   }
 
-  console.log(`[UserAction] User not found, creating from CAS attributes...`);
-
-  if (data.gtid && data.gtid.trim().length > 0) {
-    const studentData: StudentInput = {
-      name: data.name,
-      email: data.email,
-      type: "Student",
-      studentInfo: {
-        GTID: data.gtid,
-      },
-    };
-
-    const user = await StudentModel.create(studentData);
-    console.log(
-      `[UserAction] Created Student user: ${user._id} (GTID: ${data.gtid})`,
-    );
-    return user.toObject();
-  }
-
-  const userData: BaseUserInput = {
-    name: data.name,
-    email: data.email,
-    type: "Admin",
-  };
-
-  const user = await UserModel.create(userData);
-  console.log(`[UserAction] Created Admin user: ${user._id}`);
-  return user.toObject();
+  console.log(`[UserAction] User not found: ${data.email}`);
+  throw new UserNotFoundException(
+    `No provisioned user found for CAS email: ${data.email}`,
+  );
 }
 
 export async function getUsers(
