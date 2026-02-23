@@ -1,19 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/auth/cas/logout
  *
  * Clears the session cookie and redirects to CAS logout.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const casBaseUrl = process.env.CAS_BASE_URL_BROWSER;
   if (!casBaseUrl) {
     throw new Error("CAS_BASE_URL_BROWSER environment variable is required");
   }
-  const appUrl = process.env.DEPLOY_PRIME_URL;
-  if (!appUrl) {
-    throw new Error("DEPLOY_PRIME_URL environment variable is required");
-  }
+  const appUrl = process.env.DEPLOY_PRIME_URL ?? request.nextUrl.origin;
 
   const casLogoutUrl = `${casBaseUrl}/logout?service=${encodeURIComponent(`${appUrl}/login`)}`;
 
