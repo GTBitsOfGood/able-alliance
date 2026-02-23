@@ -1,6 +1,6 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import express, { type Request, type Response } from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 
 interface CASUserAttributes {
@@ -47,6 +47,32 @@ const users = loadUsers();
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
+
+// CORS: allow the Next.js app (and deploy previews) to fetch this CAS server
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const allowOrigin = (req: Request) => {
+  const origin = req.headers.origin;
+  if (!origin) return null;
+  if (allowedOrigins.length === 0) return origin; // allow any if not configured (mock server)
+  return allowedOrigins.includes(origin) ? origin : null;
+};
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = allowOrigin(req);
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Max-Age", "86400");
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // In-memory ticket store: ticket -> { username, attributes, service, createdAt }
 const tickets = new Map<string, TicketData>();
