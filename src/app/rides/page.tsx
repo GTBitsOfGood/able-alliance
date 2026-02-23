@@ -23,7 +23,7 @@ type Route = {
   driver?: string;
   vehicle?: string;
   scheduledPickupTime: string;
-  isActive: boolean;
+  status: string;
 };
 
 function formatDateHeader(iso: string): string {

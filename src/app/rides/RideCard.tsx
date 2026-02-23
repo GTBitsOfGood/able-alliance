@@ -11,6 +11,7 @@ export type RideCardRoute = {
   dropoffLocation: string;
   driver?: string;
   scheduledPickupTime: string;
+  status: string;
 };
 
 function formatTime(iso: string): string {
@@ -22,8 +23,26 @@ function formatTime(iso: string): string {
   });
 }
 
-function getStatus(route: RideCardRoute): string {
-  return route.driver ? "Scheduled" : "Requested";
+function getStatusChipColor(
+  status: string,
+): "green" | "red" | "amber" | "blue" | "gray" {
+  switch (status) {
+    case "Completed":
+      return "green";
+    case "Cancelled by Driver":
+    case "Cancelled by Student":
+    case "Cancelled by Admin":
+    case "Missing":
+      return "red";
+    case "Requested":
+    case "Scheduled":
+      return "blue";
+    case "En-route":
+    case "Pickedup":
+      return "amber";
+    default:
+      return "gray";
+  }
 }
 
 export function RideCard({
@@ -66,8 +85,8 @@ export function RideCard({
         </div>
       </div>
       <div className={styles.rideCardFooter}>
-        <BogChip color="gray" size="2">
-          {getStatus(route)}
+        <BogChip color={getStatusChipColor(route.status)} size="2">
+          {route.status}
         </BogChip>
       </div>
     </div>
