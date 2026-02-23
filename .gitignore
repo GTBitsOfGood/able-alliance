@@ -1,5 +1,6 @@
 
 # dependencies
+/mock-cas-server/node_modules
 /node_modules
 /.pnp
 .pnp.*
