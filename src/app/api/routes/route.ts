@@ -5,12 +5,13 @@ import {
   getRouteById,
   getRoutes,
 } from "@/server/db/actions/RouteAction";
-import { routeSchema } from "@/utils/types";
+import { createRouteSchema } from "@/utils/types";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import {
   RouteAlreadyExistsException,
   RouteReferenceNotFoundException,
 } from "@/utils/exceptions/route";
+import { internalErrorPayload } from "@/utils/apiError";
 
 export async function GET(req: NextRequest) {
   try {
@@ -98,11 +99,22 @@ export async function GET(req: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const parsed = routeSchema.safeParse(body);
+    const parsed = createRouteSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(parsed.error.format(), {
         status: HTTP_STATUS_CODE.BAD_REQUEST,
       });
+    }
+
+    // Driver and vehicle must not be set on create; use POST /api/routes/schedule instead.
+    if (body.driver != null || body.vehicle != null) {
+      return NextResponse.json(
+        {
+          error:
+            "driver and vehicle cannot be set when creating a route; use POST /api/routes/schedule to assign them after creation",
+        },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
     }
 
     const created = await createRoute(parsed.data);
@@ -120,9 +132,9 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    const payload = internalErrorPayload(e);
+    return NextResponse.json(payload, {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }

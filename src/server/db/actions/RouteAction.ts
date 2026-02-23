@@ -1,17 +1,17 @@
 import connectMongoDB from "../mongodb";
-import RouteModel, { IRoute, RouteStatus } from "../models/RouteModel";
+import RouteModel, { RouteStatus } from "../models/RouteModel";
 import LocationModel from "../models/LocationModel";
 import UserModel from "../models/UserModel";
 import VehicleModel from "../models/VehicleModel";
-import { routeSchema } from "@/utils/types";
+import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import {
   RouteAlreadyExistsException,
   RouteReferenceNotFoundException,
 } from "@/utils/exceptions/route";
 
-export async function createRoute(data: IRoute) {
+export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
-  const validatedData = routeSchema.parse(data);
+  const validatedData = createRouteSchema.parse(data);
 
   const pickupLoc = await LocationModel.findById(validatedData.pickupLocation);
   if (!pickupLoc) {
@@ -42,12 +42,39 @@ export async function createRoute(data: IRoute) {
     throw new RouteAlreadyExistsException();
   }
 
+  const studentEmbed = {
+    _id: studentObj._id,
+    name: studentObj.name,
+    email: studentObj.email,
+    type: studentObj.type,
+    studentInfo:
+      (
+        studentObj as {
+          studentInfo?: {
+            notes?: string;
+            accessibilityNeeds?: string;
+            GTID?: string;
+          };
+        }
+      ).studentInfo &&
+      typeof (studentObj as { studentInfo?: unknown }).studentInfo === "object"
+        ? {
+            ...(
+              studentObj as unknown as { studentInfo: Record<string, unknown> }
+            ).studentInfo,
+          }
+        : {
+            GTID:
+              (studentObj as { studentInfo?: { GTID?: string } }).studentInfo
+                ?.GTID ?? "000000000",
+          },
+  };
+
   const route = await RouteModel.create({
     pickupLocation: validatedData.pickupLocation,
     dropoffLocation: validatedData.dropoffLocation,
-    student: studentObj, // embed full student object
+    student: studentEmbed,
     scheduledPickupTime: validatedData.scheduledPickupTime,
-    isActive: false,
     status: "Requested",
   });
   return route.toObject();
@@ -139,9 +166,23 @@ export async function scheduleRoute(
   if (!vehicle) {
     throw new RouteReferenceNotFoundException("Vehicle not found");
   }
-  // Embed driver and vehicle, update status
-  route.driver = driver;
-  route.vehicle = vehicle;
+  // Plain objects for embedding so Mongoose accepts them
+  const driverEmbed = {
+    _id: driver._id,
+    name: driver.name,
+    email: driver.email,
+    type: driver.type,
+  };
+  const vehicleEmbed = {
+    _id: vehicle._id,
+    name: vehicle.name,
+    licensePlate: vehicle.licensePlate,
+    description: vehicle.description,
+    accessibility: vehicle.accessibility,
+    seatCount: vehicle.seatCount,
+  };
+  route.driver = driverEmbed;
+  route.vehicle = vehicleEmbed;
   route.status = RouteStatus.Scheduled;
   await route.save();
   return route.toObject();

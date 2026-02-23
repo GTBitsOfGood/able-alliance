@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { scheduleRoute } from "@/server/db/actions/RouteAction";
+import { RouteReferenceNotFoundException } from "@/utils/exceptions/route";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 export async function POST(request: NextRequest) {
@@ -32,11 +33,8 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
-    if (e instanceof Error && e.name === "RouteReferenceNotFoundException") {
-      return NextResponse.json(
-        { error: e.message },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
+    if (e instanceof RouteReferenceNotFoundException) {
+      return NextResponse.json({ error: e.message }, { status: e.code });
     }
     return NextResponse.json(
       { error: "Internal server error" },

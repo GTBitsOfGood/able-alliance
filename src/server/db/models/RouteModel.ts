@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
-import { BaseUserSchema, IBaseUser, StudentSchema } from "./UserModel";
+import type { IBaseUser } from "./UserModel";
 import { IVehicle, VehicleSchema } from "./VehicleModel";
 
 export type IRoute = RouteInput;
@@ -24,9 +24,37 @@ interface IRouteDocument {
   driver?: IBaseUser;
   vehicle?: IVehicle;
   scheduledPickupTime: Date;
-  isActive: boolean;
   status: RouteStatus;
 }
+
+// Embedded user/student schemas WITHOUT unique indexes (same structure as UserModel
+// but for subdocuments; unique on email only makes sense in the users collection).
+const EmbeddedBaseUserSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    type: {
+      type: String,
+      required: true,
+      enum: ["Student", "Driver", "Admin", "SuperAdmin"],
+    },
+  },
+  { _id: true, versionKey: false },
+);
+
+const EmbeddedStudentSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    type: { type: String, required: true, enum: ["Student"] },
+    studentInfo: {
+      notes: { type: String },
+      accessibilityNeeds: { type: String, enum: ["Wheelchair", "LowMobility"] },
+      GTID: { type: String, required: true },
+    },
+  },
+  { _id: true, versionKey: false },
+);
 
 const RouteSchema = new Schema<IRouteDocument>(
   {
@@ -40,11 +68,10 @@ const RouteSchema = new Schema<IRouteDocument>(
       ref: "Location",
       required: true,
     },
-    student: { type: StudentSchema, required: true },
-    driver: { type: BaseUserSchema, required: false },
+    student: { type: EmbeddedStudentSchema, required: true },
+    driver: { type: EmbeddedBaseUserSchema, required: false },
     vehicle: { type: VehicleSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
-    isActive: { type: Boolean, default: false },
     status: {
       type: String,
       enum: Object.values(RouteStatus),

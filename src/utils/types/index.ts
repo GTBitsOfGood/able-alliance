@@ -49,8 +49,18 @@ export const routeSchema = z.object({
   driver: objectIdString.optional(),
   vehicle: objectIdString.optional(),
   scheduledPickupTime: z.coerce.date(),
-  isActive: z.boolean().default(false),
   status: routeStatusEnum.default("Requested"),
 });
 
+/** Schema for POST /api/routes only: no status, driver, or vehicle (use schedule for those). */
+export const createRouteSchema = z
+  .object({
+    pickupLocation: objectIdString,
+    dropoffLocation: objectIdString,
+    student: objectIdString,
+    scheduledPickupTime: z.coerce.date(),
+  })
+  .strict();
+
 export type RouteInput = z.infer<typeof routeSchema>;
+export type CreateRouteInput = z.infer<typeof createRouteSchema>;
