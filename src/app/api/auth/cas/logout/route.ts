@@ -16,10 +16,14 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(casLogoutUrl);
 
-  // Clear the session cookie
-  response.cookies.set("authjs.session-token", "", {
+  // Clear the session cookie (same name Auth.js uses: __Secure- prefix in production)
+  const useSecureCookies = process.env.NODE_ENV === "production";
+  const sessionCookieName = useSecureCookies
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
+  response.cookies.set(sessionCookieName, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: useSecureCookies,
     sameSite: "lax",
     path: "/",
     maxAge: 0,

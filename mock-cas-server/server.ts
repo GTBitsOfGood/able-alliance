@@ -98,6 +98,7 @@ setInterval(() => {
 app.get("/cas/login", (req: Request, res: Response) => {
   const service = getQueryString(req.query.service);
 
+  setCorsHeaders(req, res);
   res.setHeader("Content-Type", "text/html");
   res.send(`<!DOCTYPE html>
 <html lang="en">

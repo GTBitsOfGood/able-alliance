@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { encode } from "next-auth/jwt";
 import { XMLParser } from "fast-xml-parser";
 import { getProvisionedUserFromCAS } from "@/server/db/actions/UserAction";
@@ -199,6 +200,12 @@ export async function GET(request: NextRequest) {
       throw new Error("NEXTAUTH_SECRET must be set");
     }
 
+    // Auth.js uses __Secure-authjs.session-token in production (HTTPS); salt must match cookie name
+    const useSecureCookies = process.env.NODE_ENV === "production";
+    const sessionCookieName = useSecureCookies
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
+
     const token = await encode({
       token: {
         sub: userId,
@@ -209,21 +216,21 @@ export async function GET(request: NextRequest) {
         name: attributes.displayName,
       },
       secret,
-      salt: "authjs.session-token",
+      salt: sessionCookieName,
       maxAge: 24 * 60 * 60, // 24 hours
     });
 
-    // Set the session cookie and redirect to home
-    const response = NextResponse.redirect(appUrl);
-    response.cookies.set("authjs.session-token", token, {
+    // Redirect to same origin so cookie domain matches; set cookie via next/headers for better compatibility with Netlify
+    const redirectTo = request.nextUrl.origin;
+    const cookieStore = await cookies();
+    cookieStore.set(sessionCookieName, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: useSecureCookies,
       sameSite: "lax",
       path: "/",
       maxAge: 24 * 60 * 60,
     });
-
-    return response;
+    return NextResponse.redirect(redirectTo, 302);
   } catch (error) {
     console.error("[CAS Callback] Error during CAS validation:", error);
     return NextResponse.redirect(`${loginUrl}?error=server_error`);
