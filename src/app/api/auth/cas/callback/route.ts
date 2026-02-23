@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     // Encode a JWT with the user's info
     const secret = process.env.NEXTAUTH_SECRET;
     if (!secret) {
-      throw new Error("NEXTAUTH_SECRET is not set");
+      throw new Error("NEXTAUTH_SECRET must be set");
     }
 
     const token = await encode({

@@ -1,17 +1,17 @@
 import connectMongoDB from "../mongodb";
-import RouteModel, { IRoute } from "../models/RouteModel";
+import RouteModel, { RouteStatus } from "../models/RouteModel";
 import LocationModel from "../models/LocationModel";
 import UserModel from "../models/UserModel";
 import VehicleModel from "../models/VehicleModel";
-import { routeSchema } from "@/utils/types";
+import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import {
   RouteAlreadyExistsException,
   RouteReferenceNotFoundException,
 } from "@/utils/exceptions/route";
 
-export async function createRoute(data: IRoute) {
+export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
-  const validatedData = routeSchema.parse(data);
+  const validatedData = createRouteSchema.parse(data);
 
   const pickupLoc = await LocationModel.findById(validatedData.pickupLocation);
   if (!pickupLoc) {
@@ -23,44 +23,60 @@ export async function createRoute(data: IRoute) {
   if (!dropoffLoc) {
     throw new RouteReferenceNotFoundException("Dropoff location not found");
   }
-  const student = await UserModel.findById(validatedData.student).lean();
-  if (!student) {
+  const studentObj = await UserModel.findById(validatedData.student).lean();
+  if (!studentObj) {
     throw new RouteReferenceNotFoundException("Student not found");
   }
-  const studentType = (student as { type?: string }).type;
+  const studentType = (studentObj as { type?: string }).type;
   if (studentType !== "Student") {
     throw new RouteReferenceNotFoundException(
       "Referenced user is not a student",
     );
   }
-  if (validatedData.driver) {
-    const driver = await UserModel.findById(validatedData.driver).lean();
-    if (!driver) {
-      throw new RouteReferenceNotFoundException("Driver not found");
-    }
-    const driverType = (driver as { type?: string }).type;
-    if (driverType !== "Driver") {
-      throw new RouteReferenceNotFoundException(
-        "Referenced user is not a driver",
-      );
-    }
-  }
-  if (validatedData.vehicle) {
-    const vehicle = await VehicleModel.findById(validatedData.vehicle);
-    if (!vehicle) {
-      throw new RouteReferenceNotFoundException("Vehicle not found");
-    }
-  }
 
   const existing = await RouteModel.findOne({
-    student: validatedData.student,
+    "student._id": studentObj._id,
     scheduledPickupTime: validatedData.scheduledPickupTime,
   });
   if (existing) {
     throw new RouteAlreadyExistsException();
   }
 
-  const route = await RouteModel.create(validatedData);
+  const studentEmbed = {
+    _id: studentObj._id,
+    name: studentObj.name,
+    email: studentObj.email,
+    type: studentObj.type,
+    studentInfo:
+      (
+        studentObj as {
+          studentInfo?: {
+            notes?: string;
+            accessibilityNeeds?: string;
+            GTID?: string;
+          };
+        }
+      ).studentInfo &&
+      typeof (studentObj as { studentInfo?: unknown }).studentInfo === "object"
+        ? {
+            ...(
+              studentObj as unknown as { studentInfo: Record<string, unknown> }
+            ).studentInfo,
+          }
+        : {
+            GTID:
+              (studentObj as { studentInfo?: { GTID?: string } }).studentInfo
+                ?.GTID ?? "000000000",
+          },
+  };
+
+  const route = await RouteModel.create({
+    pickupLocation: validatedData.pickupLocation,
+    dropoffLocation: validatedData.dropoffLocation,
+    student: studentEmbed,
+    scheduledPickupTime: validatedData.scheduledPickupTime,
+    status: "Requested",
+  });
   return route.toObject();
 }
 
@@ -87,10 +103,10 @@ export async function getRoutes(filters?: {
   const query: Record<string, unknown> = {};
 
   if (filters?.student) {
-    query.student = filters.student;
+    query["student._id"] = filters.student;
   }
   if (filters?.driver) {
-    query.driver = filters.driver;
+    query["driver._id"] = filters.driver;
   }
   if (filters?.start_time != null || filters?.end_time != null) {
     query.scheduledPickupTime = {};
@@ -106,4 +122,68 @@ export async function getRoutes(filters?: {
 
   const routes = await RouteModel.find(query).lean();
   return routes;
+}
+
+export async function completeRoute(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) {
+    return null;
+  }
+  route.status = RouteStatus.Completed;
+  await route.save();
+  return route.toObject();
+}
+export async function cancelRoute(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) {
+    return null;
+  }
+  route.status = RouteStatus.CancelledByStudent;
+  await route.save();
+  return route.toObject();
+}
+export async function scheduleRoute(
+  routeId: string,
+  driverId: string,
+  vehicleId: string,
+) {
+  await connectMongoDB();
+  // Find the route and ensure it's in Requested state
+  const route = await RouteModel.findById(routeId);
+  if (!route || route.status !== RouteStatus.Requested) {
+    return null;
+  }
+  // Find driver and vehicle
+  const driver = await UserModel.findById(driverId).lean();
+  if (!driver || driver.type !== "Driver") {
+    throw new RouteReferenceNotFoundException(
+      "Driver not found or not a driver",
+    );
+  }
+  const vehicle = await VehicleModel.findById(vehicleId).lean();
+  if (!vehicle) {
+    throw new RouteReferenceNotFoundException("Vehicle not found");
+  }
+  // Plain objects for embedding so Mongoose accepts them
+  const driverEmbed = {
+    _id: driver._id,
+    name: driver.name,
+    email: driver.email,
+    type: driver.type,
+  };
+  const vehicleEmbed = {
+    _id: vehicle._id,
+    name: vehicle.name,
+    licensePlate: vehicle.licensePlate,
+    description: vehicle.description,
+    accessibility: vehicle.accessibility,
+    seatCount: vehicle.seatCount,
+  };
+  route.driver = driverEmbed;
+  route.vehicle = vehicleEmbed;
+  route.status = RouteStatus.Scheduled;
+  await route.save();
+  return route.toObject();
 }
