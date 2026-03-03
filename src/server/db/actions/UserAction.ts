@@ -1,7 +1,16 @@
 import connectMongoDB from "../mongodb";
 import UserModel, { StudentModel } from "../models/UserModel";
 import type { BaseUserInput, StudentInput } from "@/utils/types/user";
-import { UserAlreadyExistsException } from "@/utils/exceptions/user";
+import {
+  UserAlreadyExistsException,
+  UserNotFoundException,
+} from "@/utils/exceptions/user";
+
+interface CASUserData {
+  email: string;
+  name: string;
+  gtid: string;
+}
 
 export async function createUser(data: BaseUserInput | StudentInput) {
   await connectMongoDB();
@@ -19,6 +28,32 @@ export async function createUser(data: BaseUserInput | StudentInput) {
 
   const user = await UserModel.create(data);
   return user.toObject();
+}
+
+export async function getUserByEmail(email: string) {
+  await connectMongoDB();
+  const user = await UserModel.findOne({ email }).lean();
+  return user;
+}
+
+/**
+ * Look up an existing user by their CAS email.
+ * Throws UserNotFoundException if the user has not been pre-provisioned.
+ */
+export async function getProvisionedUserFromCAS(data: CASUserData) {
+  await connectMongoDB();
+
+  console.log(`[UserAction] getUserByEmail: ${data.email}`);
+  const existing = await UserModel.findOne({ email: data.email }).lean();
+  if (existing) {
+    console.log(`[UserAction] User found: ${existing._id}`);
+    return existing;
+  }
+
+  console.log(`[UserAction] User not found: ${data.email}`);
+  throw new UserNotFoundException(
+    `No provisioned user found for CAS email: ${data.email}`,
+  );
 }
 
 export async function getUsers(

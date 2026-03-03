@@ -19,4 +19,5 @@ const VehicleModel =
   (mongoose.models.Vehicle as mongoose.Model<IVehicle>) ??
   mongoose.model("Vehicle", VehicleSchema);
 
+export { VehicleSchema };
 export default VehicleModel;
