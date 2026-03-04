@@ -55,7 +55,9 @@ export async function POST(request: NextRequest) {
 
       if (!driverId || driverId !== userId) {
         return NextResponse.json(
-          { error: "Forbidden: you are not the assigned driver for this route" },
+          {
+            error: "Forbidden: you are not the assigned driver for this route",
+          },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
