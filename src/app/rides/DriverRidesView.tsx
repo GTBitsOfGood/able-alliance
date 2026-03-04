@@ -251,7 +251,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
       const res = await fetch("/api/routes/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId, cancelledBy: "Driver" }),
+        body: JSON.stringify({ routeId }),
       });
       if (!res.ok) {
         const data = await res.json();

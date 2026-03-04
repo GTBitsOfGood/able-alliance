@@ -169,7 +169,7 @@
   gap: 1.25rem;
   padding: 2.2rem 2.4rem;
   border-radius: 0.9rem;
-  border: 0.1rem solid #d2d2d2;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   box-shadow: none;
 }
 
@@ -199,8 +199,8 @@
 }
 
 .driverStatusPillNeutral {
-  background-color: #d8d8d8;
-  color: #1a1a1a;
+  background-color: var(--color-grey-off-state);
+  color: var(--color-grey-text-strong);
 }
 
 .driverStatusPillComplete {
@@ -359,7 +359,7 @@
   line-height: var(--text-desktop-paragraph-2--line-height);
   font-weight: 500;
   color: var(--color-grey-text-strong);
-  background-color: #fff;
+  background-color: var(--color-solid-bg-base);
   border: 0.1rem solid var(--color-grey-text-strong);
   border-radius: 1rem;
   padding: 0.8rem 1.8rem;
@@ -517,7 +517,7 @@
   align-items: center;
   justify-content: center;
   border: 0.1rem dashed var(--color-grey-stroke-weak);
-  background-color: rgba(255, 255, 255, 0.65);
+  background-color: var(--color-grey-fill-weaker);
   padding: 1rem;
   border-radius: 0.4rem;
 }
@@ -555,7 +555,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .rideCardDriver {
     padding: 1.4rem;
   }
