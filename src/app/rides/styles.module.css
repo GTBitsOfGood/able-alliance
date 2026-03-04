@@ -165,20 +165,75 @@
   line-height: var(--text-desktop-paragraph-2--line-height);
 }
 
+.rideCardDriver {
+  gap: 1.25rem;
+  padding: 2.2rem 2.4rem;
+  border-radius: 0.9rem;
+  border: 0.1rem solid #d2d2d2;
+  box-shadow: none;
+}
+
 .rideCardHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
 .rideCardTimeValue {
-  font-size: var(--text-desktop-paragraph-2);
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
   font-weight: 800;
   color: var(--color-grey-text-strong);
+}
+
+.driverStatusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14rem;
+  padding: 0.8rem 1.6rem;
+  border-radius: 999rem;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-weight: 500;
+}
+
+.driverStatusPillNeutral {
+  background-color: #d8d8d8;
+  color: #1a1a1a;
+}
+
+.driverStatusPillComplete {
+  background-color: var(--color-status-green-fill);
+  color: var(--color-status-green-text);
+}
+
+.driverStatusPillFailure {
+  background-color: var(--color-status-red-fill);
+  color: var(--color-status-red-text);
+}
+
+.driverStatusPillProgress {
+  background-color: var(--color-status-amber-fill);
+  color: var(--color-status-amber-text);
+}
+
+.rideCardBodyWithActions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
 }
 
 .rideCardRoute {
   display: flex;
   gap: 0.75rem;
+}
+
+.rideCardDriver .rideCardRoute {
+  flex: 1;
+  min-width: 0;
+  gap: 1rem;
 }
 
 .rideCardRouteIconColumn {
@@ -200,9 +255,13 @@
 .rideCardRouteLine {
   width: 0.2rem;
   flex: 1;
-  min-height: 0.5rem;
+  min-height: 0.8rem;
   background-color: var(--color-grey-stroke-weak);
   margin: 0.125rem 0;
+}
+
+.rideCardDriver .rideCardRouteLine {
+  min-height: 4.4rem;
 }
 
 .rideCardRouteIconDropoff {
@@ -218,6 +277,20 @@
   gap: 0.75rem;
 }
 
+.rideCardDriver .rideCardRouteStops {
+  gap: 1.2rem;
+}
+
+.rideCardDriver .rideCardRouteLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+}
+
+.rideCardDriver .rideCardRouteName {
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+}
+
 .rideCardStop {
   display: flex;
   flex-direction: column;
@@ -225,12 +298,14 @@
 }
 
 .rideCardRouteLabel {
-  font-size: var(--text-desktop-paragraph-2);
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   color: var(--color-grey-text-weak);
 }
 
 .rideCardRouteName {
-  font-size: var(--text-desktop-paragraph-2);
+  font-size: var(--text-desktop-heading-4);
+  line-height: var(--text-desktop-heading-4--line-height);
   font-weight: 600;
   color: var(--color-grey-text-strong);
 }
@@ -238,7 +313,314 @@
 .rideCardFooter {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   font-size: var(--text-desktop-paragraph-2);
+}
+
+.rideCardActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rideCardActionsDock {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.4rem;
+  margin-left: auto;
+  padding-bottom: 0.2rem;
+}
+
+.cancelRideButton {
+  color: var(--color-status-red-text);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  padding: 0;
+}
+
+.cancelRideButton:hover:not(:disabled) {
+  text-decoration: none;
+  color: var(--color-status-red-stroke-strong);
+}
+
+.cancelRideButton:disabled,
+.startRideButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.startRideButton {
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  font-weight: 500;
+  color: var(--color-grey-text-strong);
+  background-color: #fff;
+  border: 0.1rem solid var(--color-grey-text-strong);
+  border-radius: 1rem;
+  padding: 0.8rem 1.8rem;
+  min-width: 11.4rem;
+  cursor: pointer;
+}
+
+.startRideButton:hover:not(:disabled) {
+  background-color: var(--color-grey-fill-weaker);
+}
+
+/* Driver view styles */
+.driverMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: auto;
+  padding: 2rem 2.5rem;
+  background-color: var(--color-solid-bg-base);
+  min-width: 0;
+}
+
+.vehicleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.vehicleCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2rem;
+  background-color: var(--color-solid-bg-base);
+  border-radius: 0.4rem;
+}
+
+.driverWeekToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.driverWeekToggleRow > [role="tablist"] {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+}
+
+.driverWeekToggleRow [role="tablist"] [role="tab"] {
+  width: auto;
+  white-space: nowrap;
+}
+
+.driverWeekHeading {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-desktop-heading-2);
+  line-height: var(--text-desktop-heading-2--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+}
+
+.driverDayGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.driverDayCards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.driverDayHeading {
+  margin: 0;
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+}
+
+.vehicleCardContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.vehicleHeader {
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  margin: 0;
+}
+
+.vehicleInfoRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4rem;
+  margin-top: 2rem;
+}
+
+.vehicleInfoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.vehicleInfoLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  color: var(--color-grey-text-weak);
+}
+
+.vehiclePlateValue {
+  font-size: var(--text-desktop-heading-1);
+  line-height: var(--text-desktop-heading-1--line-height);
+  font-weight: 700;
+  letter-spacing: 0.05rem;
+  color: var(--color-grey-text-strong);
+}
+
+.vehicleInfoValue {
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-weight: 500;
+  color: var(--color-grey-text-strong);
+}
+
+.vehicleAccessibilitySection {
+  margin-top: 2.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.vehicleAccessibilityValue {
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-weight: 500;
+  color: var(--color-grey-text-strong);
+}
+
+.vehicleImageSlot {
+  width: min(28rem, 34%);
+  min-width: 16rem;
+  min-height: 16rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.1rem dashed var(--color-grey-stroke-weak);
+  background-color: rgba(255, 255, 255, 0.65);
+  padding: 1rem;
+  border-radius: 0.4rem;
+}
+
+.vehicleImageText {
+  font-size: var(--text-desktop-heading-4);
+  line-height: var(--text-desktop-heading-4--line-height);
+  font-weight: 600;
+  color: var(--color-grey-text-weak);
+  text-align: center;
+}
+
+.vehicleRides {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .vehicleCard {
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+
+  .vehicleInfoRow {
+    flex-wrap: wrap;
+    gap: 1.25rem 2rem;
+  }
+
+  .vehicleImageSlot {
+    width: 100%;
+    min-height: 10rem;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .rideCardDriver {
+    padding: 1.4rem;
+  }
+
+  .rideCardTimeValue {
+    font-size: var(--text-mobile-heading-3);
+    line-height: var(--text-mobile-heading-3--line-height);
+  }
+
+  .driverStatusPill {
+    min-width: auto;
+    padding: 0.6rem 1rem;
+    font-size: var(--text-mobile-paragraph-2);
+    line-height: var(--text-mobile-paragraph-2--line-height);
+  }
+
+  .rideCardBodyWithActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rideCardActionsDock {
+    justify-content: flex-start;
+    gap: 1rem;
+  }
+
+  .vehicleHeader {
+    font-size: var(--text-mobile-heading-3);
+    line-height: var(--text-mobile-heading-3--line-height);
+  }
+
+  .driverWeekHeading {
+    font-size: var(--text-mobile-heading-2);
+    line-height: var(--text-mobile-heading-2--line-height);
+  }
+
+  .driverDayHeading {
+    font-size: var(--text-mobile-heading-3);
+    line-height: var(--text-mobile-heading-3--line-height);
+  }
+
+  .driverDayCards {
+    gap: 1rem;
+  }
+
+  .vehicleInfoLabel {
+    font-size: var(--text-mobile-paragraph-2);
+    line-height: var(--text-mobile-paragraph-2--line-height);
+  }
+
+  .vehiclePlateValue {
+    font-size: var(--text-mobile-heading-1);
+    line-height: var(--text-mobile-heading-1--line-height);
+  }
+
+  .vehicleInfoValue,
+  .vehicleAccessibilityValue {
+    font-size: var(--text-mobile-paragraph-1);
+    line-height: var(--text-mobile-paragraph-1--line-height);
+  }
+
+  .vehicleImageText {
+    font-size: var(--text-mobile-heading-4);
+    line-height: var(--text-mobile-heading-4--line-height);
+  }
 }
 
 .formField {

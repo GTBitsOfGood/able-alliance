@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { cancelRoute } from "@/server/db/actions/RouteAction";
+import {
+  cancelRoute,
+  cancelRouteByDriver,
+} from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { routeId } = body;
+    const { routeId, cancelledBy } = body;
     if (!routeId) {
       return NextResponse.json(
         { error: "routeId is required" },
@@ -19,7 +22,10 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    const updated = await cancelRoute(routeId);
+    const updated =
+      cancelledBy === "Driver"
+        ? await cancelRouteByDriver(routeId)
+        : await cancelRoute(routeId);
     if (!updated) {
       return NextResponse.json(
         { error: "Route not found" },

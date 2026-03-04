@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
 import BogButton from "@/components/BogButton/BogButton";
 import BogModal from "@/components/BogModal/BogModal";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import { RequestRideForm } from "./RequestRideForm";
+import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 
 type Location = {
@@ -83,6 +85,7 @@ function groupRoutesByDate(routes: Route[]): Record<string, Route[]> {
 }
 
 export default function RidesPage() {
+  const { data: session, status: sessionStatus } = useSession();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,6 +143,25 @@ export default function RidesPage() {
 
   const dateKeysThisWeek = Object.keys(routesByDateThisWeek).sort();
   const dateKeysNextWeek = Object.keys(routesByDateNextWeek).sort();
+
+  // Driver users see the driver-specific view
+  if (sessionStatus === "loading") {
+    return (
+      <div className={styles.ridesPage}>
+        <main className={styles.main}>
+          <p className={styles.rideListLoading}>Loading…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (session?.user?.type === "Driver") {
+    return (
+      <div className={styles.ridesPage}>
+        <DriverRidesView userId={session.user.userId} />
+      </div>
+    );
+  }
 
   function renderRideList(
     routesByDate: Record<string, Route[]>,

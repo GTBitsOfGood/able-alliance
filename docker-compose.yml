@@ -1,9 +1,8 @@
-version: "3.8"
-
 services:
   app:
     container_name: able-alliance-app
     build:
+      context: .
       dockerfile: ./Dockerfile.dev
     environment:
       MONGODB_URI: "mongodb://mongo:27017/able-alliance?replicaSet=rs0"
@@ -11,10 +10,22 @@ services:
       DEPLOY_PRIME_URL: "http://localhost:3000"
       CAS_BASE_URL: "http://cas:8443/cas"
       CAS_BASE_URL_BROWSER: "http://localhost:8443/cas"
-    volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - ./app-init.sh:/app/app-init.sh
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - node_modules/
+            - .git/
+            - .next/
+            - .env
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: package-lock.json
+        - action: rebuild
+          path: Dockerfile.dev
     ports:
       - "3000:3000"
     networks:
@@ -29,13 +40,22 @@ services:
   express:
     container_name: able-alliance-express
     build:
+      context: .
       dockerfile: ./Dockerfile.dev
     environment:
       PORT: "3001"
       MONGODB_URI: "mongodb://mongo:27017/able-alliance?replicaSet=rs0"
-    volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
+    develop:
+      watch:
+        - action: sync
+          path: ./websocket-server
+          target: /app/websocket-server
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: package-lock.json
+        - action: rebuild
+          path: Dockerfile.dev
     ports:
       - "3001:3001"
     networks:
@@ -82,4 +102,3 @@ networks:
 
 volumes:
   mongodb-data:
-  node_modules:
