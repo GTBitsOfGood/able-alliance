@@ -220,8 +220,7 @@ const BogTable: React.FC<BogTableProps> = ({
     });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const sortedRows = React.useMemo(() => {
+  const sortedRows = (() => {
     if (sorts.length === 0) return filteredRows;
     const decorated = filteredRows.map((row, idx) => ({ row, idx }));
     decorated.sort((a, b) => {
@@ -248,7 +247,7 @@ const BogTable: React.FC<BogTableProps> = ({
       return a.idx - b.idx;
     });
     return decorated.map((d) => d.row);
-  }, [filteredRows, sorts, columnHeaders]);
+  })();
 
   const handleSearchChange: React.FormEventHandler<HTMLDivElement> = (e) => {
     const el = e.target as HTMLInputElement;

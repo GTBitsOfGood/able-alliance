@@ -27,7 +27,6 @@ const StudentSchema: Schema<IStudentUser> = new Schema({
       type: String,
       enum: ["Wheelchair", "LowMobility"],
     },
-    GTID: { type: String, required: true },
   },
 });
 

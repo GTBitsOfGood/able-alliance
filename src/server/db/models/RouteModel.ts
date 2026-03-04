@@ -50,7 +50,6 @@ const EmbeddedStudentSchema = new Schema(
     studentInfo: {
       notes: { type: String },
       accessibilityNeeds: { type: String, enum: ["Wheelchair", "LowMobility"] },
-      GTID: { type: String, required: true },
     },
   },
   { _id: true, versionKey: false },

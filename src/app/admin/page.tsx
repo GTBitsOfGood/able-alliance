@@ -68,25 +68,16 @@ export default function Admin() {
     const phone = (
       form.elements.namedItem("phone") as HTMLInputElement
     ).value.trim();
-    const gtid = (
-      form.elements.namedItem("gtid") as HTMLInputElement
-    ).value.trim();
 
     if (!name || !email) {
       setSubmitError("Name and email are required.");
       return;
     }
-    if (!gtid || gtid.length !== 9 || !/^\d{9}$/.test(gtid)) {
-      setSubmitError("GTID must be 9 digits.");
-      return;
-    }
 
     const studentInfo: {
-      GTID: string;
       notes?: string;
       accessibilityNeeds?: "Wheelchair" | "LowMobility";
     } = {
-      GTID: gtid,
       ...(phone && { notes: `Phone: ${phone}` }),
       ...(studentAccessibilityNeeds &&
         studentAccessibilityNeeds !== "None" && {
@@ -276,12 +267,6 @@ export default function Admin() {
           type="tel"
           label="Phone"
           placeholder="Optional"
-        />
-        <BogTextInput
-          name="gtid"
-          label="GTID"
-          placeholder="9 digits"
-          required
         />
         <BogDropdown
           name="accessibilityNeeds"

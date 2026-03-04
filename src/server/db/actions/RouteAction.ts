@@ -48,26 +48,8 @@ export async function createRoute(data: CreateRouteInput) {
     email: studentObj.email,
     type: studentObj.type,
     studentInfo:
-      (
-        studentObj as {
-          studentInfo?: {
-            notes?: string;
-            accessibilityNeeds?: string;
-            GTID?: string;
-          };
-        }
-      ).studentInfo &&
-      typeof (studentObj as { studentInfo?: unknown }).studentInfo === "object"
-        ? {
-            ...(
-              studentObj as unknown as { studentInfo: Record<string, unknown> }
-            ).studentInfo,
-          }
-        : {
-            GTID:
-              (studentObj as { studentInfo?: { GTID?: string } }).studentInfo
-                ?.GTID ?? "000000000",
-          },
+      (studentObj as { studentInfo?: Record<string, unknown> }).studentInfo ??
+      {},
   };
 
   const route = await RouteModel.create({
