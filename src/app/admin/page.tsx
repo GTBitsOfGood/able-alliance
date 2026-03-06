@@ -1,12 +1,11 @@
 "use client";
 
 import BogTable from "@/components/BogTable/BogTable";
-import BogModal from "@/components/BogModal/BogModal";
 import BogForm from "@/components/BogForm/BogForm";
 import BogButton from "@/components/BogButton/BogButton";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const STUDENT_ACCESSIBILITY_OPTIONS = [
   "None",
@@ -15,12 +14,17 @@ const STUDENT_ACCESSIBILITY_OPTIONS = [
 ] as const;
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
+import BogIcon from "@/components/BogIcon/BogIcon";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 const selected_gradient = "bg-gradient-to-r from-[#EDEDED] to-[#EDEDED00]";
 
 export default function Admin() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [table, setTable] = useState<AdminTableType>("Students");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { columns, rows, rowIds, loading, error, deleteRows, refetch } =
     useAdminTableData(table);
@@ -30,6 +34,17 @@ export default function Admin() {
     useState<string>("None");
   const [vehicleAccessibility, setVehicleAccessibility] =
     useState<string>("None");
+
+  const userType = session?.user?.type;
+  useEffect(() => {
+    if (status !== "loading" && userType !== "Admin" && userType !== "SuperAdmin") {
+      router.replace("/");
+    }
+  }, [status, userType, router]);
+
+  if (status === "loading" || (userType !== "Admin" && userType !== "SuperAdmin")) {
+    return null;
+  }
 
   // Add setSelectedRows(new Set()) inside switchTable
   // after setTable(value);
@@ -53,24 +68,29 @@ export default function Admin() {
   ) => {
     setTable(value);
     setSelectedRows(new Set());
+    setShowForm(false);
+    setSubmitError(null);
   };
 
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (
-      form.elements.namedItem("name") as HTMLInputElement
+    const firstName = (
+      form.elements.namedItem("firstName") as HTMLInputElement
+    ).value.trim();
+    const lastName = (
+      form.elements.namedItem("lastName") as HTMLInputElement
     ).value.trim();
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
-    const phone = (
-      form.elements.namedItem("phone") as HTMLInputElement
+    const additionalComments = (
+      form.elements.namedItem("additionalComments") as HTMLInputElement
     ).value.trim();
 
-    if (!name || !email) {
-      setSubmitError("Name and email are required.");
+    if (!firstName || !lastName || !email) {
+      setSubmitError("First name, last name, and email are required.");
       return;
     }
 
@@ -78,7 +98,7 @@ export default function Admin() {
       notes?: string;
       accessibilityNeeds?: "Wheelchair" | "LowMobility";
     } = {
-      ...(phone && { notes: `Phone: ${phone}` }),
+      ...(additionalComments && { notes: additionalComments }),
       ...(studentAccessibilityNeeds &&
         studentAccessibilityNeeds !== "None" && {
           accessibilityNeeds: studentAccessibilityNeeds as
@@ -89,7 +109,7 @@ export default function Admin() {
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "Student", name, email, studentInfo }),
+      body: JSON.stringify({ type: "Student", firstName, lastName, email, studentInfo }),
     })
       .then((res) => {
         if (!res.ok)
@@ -101,7 +121,7 @@ export default function Admin() {
               ),
             );
         refetch();
-        setModalOpen(false);
+        setShowForm(false);
         form.reset();
       })
       .catch((err: Error) =>
@@ -113,22 +133,25 @@ export default function Admin() {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (
-      form.elements.namedItem("name") as HTMLInputElement
+    const firstName = (
+      form.elements.namedItem("firstName") as HTMLInputElement
+    ).value.trim();
+    const lastName = (
+      form.elements.namedItem("lastName") as HTMLInputElement
     ).value.trim();
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
 
-    if (!name || !email) {
-      setSubmitError("Name and email are required.");
+    if (!firstName || !lastName || !email) {
+      setSubmitError("First name, last name, and email are required.");
       return;
     }
 
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "Admin", name, email }),
+      body: JSON.stringify({ type: "Admin", firstName, lastName, email }),
     })
       .then((res) => {
         if (!res.ok)
@@ -140,7 +163,7 @@ export default function Admin() {
               ),
             );
         refetch();
-        setModalOpen(false);
+        setShowForm(false);
         form.reset();
       })
       .catch((err: Error) =>
@@ -152,22 +175,25 @@ export default function Admin() {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const name = (
-      form.elements.namedItem("name") as HTMLInputElement
+    const firstName = (
+      form.elements.namedItem("firstName") as HTMLInputElement
+    ).value.trim();
+    const lastName = (
+      form.elements.namedItem("lastName") as HTMLInputElement
     ).value.trim();
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
 
-    if (!name || !email) {
-      setSubmitError("Name and email are required.");
+    if (!firstName || !lastName || !email) {
+      setSubmitError("First name, last name, and email are required.");
       return;
     }
 
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "Driver", name, email }),
+      body: JSON.stringify({ type: "Driver", firstName, lastName, email }),
     })
       .then((res) => {
         if (!res.ok)
@@ -179,7 +205,7 @@ export default function Admin() {
               ),
             );
         refetch();
-        setModalOpen(false);
+        setShowForm(false);
         form.reset();
       })
       .catch((err: Error) =>
@@ -235,7 +261,7 @@ export default function Admin() {
               ),
             );
         refetch();
-        setModalOpen(false);
+        setShowForm(false);
         form.reset();
       })
       .catch((err: Error) =>
@@ -243,30 +269,79 @@ export default function Admin() {
       );
   };
 
-  const addTitle = `Add ${table === "Students" ? "Student" : table === "Drivers" ? "Driver" : table === "Admins" ? "Admin" : "Vehicle"}`;
-  const triggerLabel = `Add ${table === "Students" ? "Student" : table === "Drivers" ? "Driver" : table === "Admins" ? "Admin" : "Vehicle"}`;
+  const handleAddLocation = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitError(null);
+    const form = e.currentTarget;
+    const name = (
+      form.elements.namedItem("name") as HTMLInputElement
+    ).value.trim();
+    const latitude = parseFloat(
+      (form.elements.namedItem("latitude") as HTMLInputElement).value,
+    );
+    const longitude = parseFloat(
+      (form.elements.namedItem("longitude") as HTMLInputElement).value,
+    );
+
+    if (!name) {
+      setSubmitError("Location name is required.");
+      return;
+    }
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setSubmitError("Latitude and longitude must be valid numbers.");
+      return;
+    }
+
+    fetch("/api/locations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, latitude, longitude }),
+    })
+      .then((res) => {
+        if (!res.ok)
+          return res
+            .json()
+            .then((body) =>
+              Promise.reject(
+                new Error(body.error ?? body.message ?? res.statusText),
+              ),
+            );
+        refetch();
+        setShowForm(false);
+        form.reset();
+      })
+      .catch((err: Error) =>
+        setSubmitError(err.message ?? "Failed to create location."),
+      );
+  };
+
+  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : "Invite New User"}`;
 
   const formContent =
     table === "Students" ? (
       <BogForm onSubmit={handleAddStudent} submitLabel="Create student">
-        <BogTextInput
-          name="name"
-          label="Name"
-          placeholder="Full name"
-          required
-        />
+        <div className="flex gap-20">
+          <BogTextInput
+            name="firstName"
+            label="First Name"
+            placeholder="ex: George"
+            className="flex-1"
+            required
+          />
+          <BogTextInput
+            name="lastName"
+            label="Last Name"
+            placeholder="ex: Burdell"
+            className="flex-1"
+            required
+          />
+        </div>
         <BogTextInput
           name="email"
           type="email"
           label="Email"
           placeholder="email@example.com"
           required
-        />
-        <BogTextInput
-          name="phone"
-          type="tel"
-          label="Phone"
-          placeholder="Optional"
         />
         <BogDropdown
           name="accessibilityNeeds"
@@ -280,16 +355,31 @@ export default function Admin() {
             )
           }
         />
+        <BogTextInput
+          name="additionalComments"
+          label="Additional comments"
+          placeholder="Optional"
+        />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : table === "Drivers" ? (
       <BogForm onSubmit={handleAddDriver} submitLabel="Create driver">
-        <BogTextInput
-          name="name"
-          label="Name"
-          placeholder="Full name"
-          required
-        />
+        <div className="flex gap-20">
+          <BogTextInput
+            name="firstName"
+            label="First Name"
+            placeholder="ex: George"
+            className="flex-1"
+            required
+          />
+          <BogTextInput
+            name="lastName"
+            label="Last Name"
+            placeholder="ex: Burdell"
+            className="flex-1"
+            required
+          />
+        </div>
         <BogTextInput
           name="email"
           type="email"
@@ -301,17 +391,49 @@ export default function Admin() {
       </BogForm>
     ) : table === "Admins" ? (
       <BogForm onSubmit={handleAddAdmin} submitLabel="Create admin">
-        <BogTextInput
-          name="name"
-          label="Name"
-          placeholder="Full name"
-          required
-        />
+        <div className="flex gap-20">
+          <BogTextInput
+            name="firstName"
+            label="First Name"
+            placeholder="ex: George"
+            className="flex-1"
+            required
+          />
+          <BogTextInput
+            name="lastName"
+            label="Last Name"
+            placeholder="ex: Burdell"
+            className="flex-1"
+            required
+          />
+        </div>
         <BogTextInput
           name="email"
           type="email"
           label="Email"
           placeholder="email@example.com"
+          required
+        />
+        {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+      </BogForm>
+    ) : table === "Locations" ? (
+      <BogForm onSubmit={handleAddLocation} submitLabel="Create location">
+        <BogTextInput
+          name="name"
+          label="Location name"
+          placeholder="e.g. Campus Recreation Center"
+          required
+        />
+        <BogTextInput
+          name="latitude"
+          label="Latitude"
+          placeholder="e.g. 33.7756"
+          required
+        />
+        <BogTextInput
+          name="longitude"
+          label="Longitude"
+          placeholder="e.g. -84.3963"
           required
         />
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
@@ -384,66 +506,77 @@ export default function Admin() {
             Vehicles
           </h4>
           <h4
-            className={`rounded p-5 hover:cursor-pointer ${table === "Admins" ? selected_gradient : ""}`}
-            onClick={(e) => switchTable(e, "Admins")}
+            className={`rounded p-5 hover:cursor-pointer ${table === "Locations" ? selected_gradient : ""}`}
+            onClick={(e) => switchTable(e, "Locations")}
           >
-            Admins
+            Locations
           </h4>
+          { userType === "SuperAdmin" ?
+            <h4
+              className={`rounded p-5 hover:cursor-pointer ${table === "Admins" ? selected_gradient : ""}`}
+              onClick={(e) => switchTable(e, "Admins")}
+            >
+              Admins
+            </h4> : ''
+          }
         </div>
       </div>
-      // Table content here
       <div className="py-20 px-10 relative flex-1">
-        <div className="flex items-center gap-4 mb-[10vh]">
-          <h1>{table}</h1>
-          {canDelete && (
-            <BogButton
-              variant="primary"
-              size="medium"
-              onClick={handleDelete}
-              disabled={deleting}
-              style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
-            >
-              {deleting ? "Deleting…" : `Delete ${selectedRows.size} selected`}
-            </BogButton>
-          )}
-        </div>
-        {error && (
-          <p className="mb-4 text-sm text-amber-700" role="status">
-            {error}
-          </p>
-        )}
-        {loading ? (
-          <p className="text-gray-600">Loading…</p>
+        {showForm ? (
+          <>
+            <div className="flex items-center gap-4 mb-[10vh]">
+              <button
+                className="flex items-center gap-2 hover:cursor-pointer"
+                onClick={() => { setShowForm(false); setSubmitError(null); }}
+              >
+                <BogIcon name="arrow-left" size={24} />
+              </button>
+              <h1>{addLabel}</h1>
+            </div>
+            {formContent}
+          </>
         ) : (
-          <div>
-            <BogTable
-              style={
-                {
-                  marginBottom: "5vh",
-                } as React.CSSProperties
-              }
-              columnHeaders={columns}
-              rows={rows}
-              selectedRows={selectedRows}
-              onSelectedRowsChange={setSelectedRows}
-              selectable={true}
-            />
-            <BogModal
-              openState={{ open: modalOpen, setOpen: setModalOpen }}
-              trigger={<BogButton>{triggerLabel}</BogButton>}
-              title={<h3>{addTitle}</h3>}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setSubmitError(null);
-                  setStudentAccessibilityNeeds("None");
-                  setVehicleAccessibility("None");
-                }
-              }}
-            >
-              {formContent}
-            </BogModal>
-            <div className="text-gray-600">hello</div>
-          </div>
+          <>
+            <div className="flex items-center gap-4 mb-[10vh]">
+              <h1>{table}</h1>
+              {canDelete && (
+                <BogButton
+                  variant="primary"
+                  size="medium"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
+                >
+                  {deleting ? "Deleting…" : `Delete ${selectedRows.size} selected`}
+                </BogButton>
+              )}
+            </div>
+            {error && (
+              <p className="mb-4 text-sm text-amber-700" role="status">
+                {error}
+              </p>
+            )}
+            {loading ? (
+              <p className="text-gray-600">Loading…</p>
+            ) : (
+              <div>
+                <BogTable
+                  style={{ marginBottom: "5vh" } as React.CSSProperties}
+                  columnHeaders={columns}
+                  rows={rows}
+                  selectedRows={selectedRows}
+                  onSelectedRowsChange={setSelectedRows}
+                  selectable={true}
+                />
+                <button
+                  className="absolute bottom-[10%] right-[5%] rounded-full bg-[#D9D9D9] px-5 py-5 text-white hover:bg-[#a1a1a1] cursor-pointer"
+                  onClick={() => setShowForm(true)}
+                >
+                  <BogIcon name="plus" size={40} color="white" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

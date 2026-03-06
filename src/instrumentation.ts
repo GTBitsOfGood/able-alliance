@@ -4,5 +4,8 @@ export async function register() {
     const { initSuperAdmin } =
       await import("./server/db/actions/initSuperAdmin");
     await initSuperAdmin();
+    const { initTestUsers } =
+      await import("./server/db/actions/initTestUsers");
+    await initTestUsers();
   }
 }
