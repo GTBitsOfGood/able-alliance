@@ -545,6 +545,8 @@ export default function Admin() {
                 onClick={() => {
                   setShowForm(false);
                   setSubmitError(null);
+                  setStudentAccessibilityNeeds("None");
+                  setVehicleAccessibility("None");
                 }}
               >
                 <BogIcon name="arrow-left" size={24} />
