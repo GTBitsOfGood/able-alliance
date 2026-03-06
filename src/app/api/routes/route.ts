@@ -12,6 +12,7 @@ import {
   RouteReferenceNotFoundException,
 } from "@/utils/exceptions/route";
 import { internalErrorPayload } from "@/utils/apiError";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -98,8 +99,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get the authenticated user's session
+    const session = await auth();
+    if (!session?.user?.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized: No valid session" },
+        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+      );
+    }
+
     const body = await request.json();
-    const parsed = createRouteSchema.safeParse(body);
+
+    // Add the student ID from the session
+    const routeData = {
+      ...body,
+      student: session.user.userId,
+    };
+
+    const parsed = createRouteSchema.safeParse(routeData);
     if (!parsed.success) {
       return NextResponse.json(parsed.error.format(), {
         status: HTTP_STATUS_CODE.BAD_REQUEST,
