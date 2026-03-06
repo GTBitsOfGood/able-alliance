@@ -391,6 +391,7 @@ export default function Admin() {
           </h4>
         </div>
       </div>
+      // Table content here
       <div className="py-20 px-10 relative flex-1">
         <div className="flex items-center gap-4 mb-[10vh]">
           <h1>{table}</h1>
@@ -441,6 +442,7 @@ export default function Admin() {
             >
               {formContent}
             </BogModal>
+            <div className="text-gray-600">hello</div>
           </div>
         )}
       </div>

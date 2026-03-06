@@ -31,7 +31,8 @@ interface IRouteDocument {
 // but for subdocuments; unique on email only makes sense in the users collection).
 const EmbeddedBaseUserSchema = new Schema(
   {
-    name: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
     email: { type: String, required: true },
     type: {
       type: String,
@@ -44,7 +45,8 @@ const EmbeddedBaseUserSchema = new Schema(
 
 const EmbeddedStudentSchema = new Schema(
   {
-    name: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
     email: { type: String, required: true },
     type: { type: String, required: true, enum: ["Student"] },
     studentInfo: {

@@ -8,11 +8,12 @@ import UserModel from "../models/UserModel";
  */
 export async function initSuperAdmin() {
   const email = process.env.SUPERADMIN_EMAIL;
-  const name = process.env.SUPERADMIN_NAME;
+  const firstName = process.env.SUPERADMIN_FIRSTNAME;
+  const lastName = process.env.SUPERADMIN_LASTNAME;
 
-  if (!email || !name) {
+  if (!email || !firstName || !lastName) {
     console.log(
-      "[Init] SUPERADMIN_EMAIL / SUPERADMIN_NAME not set — skipping SuperAdmin seed",
+      "[Init] SUPERADMIN_EMAIL / SUPERADMIN_FIRSTNAME / SUPERADMIN_LASTNAME not set — skipping SuperAdmin seed",
     );
     return;
   }
@@ -25,6 +26,6 @@ export async function initSuperAdmin() {
     return;
   }
 
-  await UserModel.create({ name, email, type: "SuperAdmin" });
+  await UserModel.create({ firstName, lastName, email, type: "SuperAdmin" });
   console.log(`[Init] SuperAdmin created: ${email}`);
 }

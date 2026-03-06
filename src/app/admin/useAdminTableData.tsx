@@ -52,6 +52,13 @@ function vehicleRawToTableRows(rows: VehicleRowRaw[]): TableRow[] {
   }));
 }
 
+function combineFullName(firstName: unknown, lastName: unknown): String {
+  if (firstName && lastName) {
+    return lastName + ", " + firstName;
+  }
+  return "";
+}
+
 /** Adapt API user list to StudentRowRaw (students only). */
 function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
   if (!Array.isArray(data)) return [];
@@ -62,7 +69,7 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
     };
     const accessibilityNeeds = studentInfo.accessibilityNeeds;
     return {
-      name: String(u.name ?? ""),
+      name: String(combineFullName(u.firstName, u.lastName) ?? ""),
       email: String(u.email ?? ""),
       phone: String(studentInfo.notes ?? ""),
       accessibilityNeeds: accessibilityNeeds ? String(accessibilityNeeds) : "",
@@ -74,7 +81,7 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
 function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
   if (!Array.isArray(data)) return [];
   return data.map((u: Record<string, unknown>) => ({
-    name: String(u.name ?? ""),
+    name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
   }));
 }
@@ -83,7 +90,7 @@ function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
 function adaptUsersToAdminRows(data: unknown): AdminRowRaw[] {
   if (!Array.isArray(data)) return [];
   return data.map((u: Record<string, unknown>) => ({
-    name: String(u.name ?? ""),
+    name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
   }));
 }

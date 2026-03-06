@@ -47,12 +47,13 @@ function loadUsers(): MockUser[] {
 
   // Inject SuperAdmin from env vars if configured
   const superAdminEmail = process.env.SUPERADMIN_EMAIL;
-  const superAdminName = process.env.SUPERADMIN_NAME;
+  const superAdminFirstName = process.env.SUPERADMIN_FIRSTNAME;
+  const superAdminLastName = process.env.SUPERADMIN_LASTNAME;
   const superAdminUsername =
     process.env.SUPERADMIN_CAS_USERNAME ??
     (superAdminEmail ? superAdminEmail.split("@")[0] : null);
 
-  if (superAdminEmail && superAdminName && superAdminUsername) {
+  if (superAdminEmail && superAdminFirstName && superAdminLastName && superAdminUsername) {
     const alreadyPresent = base.some(
       (u) => u.attributes.email === superAdminEmail,
     );
@@ -60,7 +61,7 @@ function loadUsers(): MockUser[] {
       base.push({
         username: superAdminUsername,
         password: "password",
-        attributes: { email: superAdminEmail, displayName: superAdminName },
+        attributes: { email: superAdminEmail, displayName: superAdminFirstName + " " + superAdminLastName },
       });
     }
   }
