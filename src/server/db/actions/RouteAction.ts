@@ -44,7 +44,8 @@ export async function createRoute(data: CreateRouteInput) {
 
   const studentEmbed = {
     _id: studentObj._id,
-    name: studentObj.name,
+    firstName: studentObj.firstName,
+    lastName: studentObj.lastName,
     email: studentObj.email,
     type: studentObj.type,
     studentInfo:
@@ -151,7 +152,8 @@ export async function scheduleRoute(
   // Plain objects for embedding so Mongoose accepts them
   const driverEmbed = {
     _id: driver._id,
-    name: driver.name,
+    firstName: driver.firstName,
+    lastName: driver.lastName,
     email: driver.email,
     type: driver.type,
   };
