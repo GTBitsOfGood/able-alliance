@@ -33,7 +33,7 @@ export type LocationRowRaw = {
   name: string;
   latitude: number;
   longitude: number;
-}
+};
 
 export const STUDENT_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Name", datatype: "string" },
@@ -62,5 +62,5 @@ export const VEHICLE_COLUMNS: ColumnHeaderCellContent[] = [
 export const LOCATION_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Location", datatype: "string" },
   { content: "Latitude", datatype: "number" },
-  { content: "Longitude", datatype: "number" }
-]
+  { content: "Longitude", datatype: "number" },
+];

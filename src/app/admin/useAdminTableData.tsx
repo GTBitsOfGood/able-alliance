@@ -18,7 +18,12 @@ import {
   type LocationRowRaw,
 } from "./admin-table-data";
 
-export type AdminTableType = "Students" | "Drivers" | "Vehicles" | "Locations" | "Admins";
+export type AdminTableType =
+  | "Students"
+  | "Drivers"
+  | "Vehicles"
+  | "Locations"
+  | "Admins";
 
 function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
   return rows.map((row) => ({
@@ -64,7 +69,7 @@ function locationRawToTableRows(rows: LocationRowRaw[]): TableRow[] {
   }));
 }
 
-function combineFullName(firstName: unknown, lastName: unknown): String {
+function combineFullName(firstName: unknown, lastName: unknown): string {
   if (firstName && lastName) {
     return lastName + ", " + firstName;
   }

@@ -53,7 +53,12 @@ function loadUsers(): MockUser[] {
     process.env.SUPERADMIN_CAS_USERNAME ??
     (superAdminEmail ? superAdminEmail.split("@")[0] : null);
 
-  if (superAdminEmail && superAdminFirstName && superAdminLastName && superAdminUsername) {
+  if (
+    superAdminEmail &&
+    superAdminFirstName &&
+    superAdminLastName &&
+    superAdminUsername
+  ) {
     const alreadyPresent = base.some(
       (u) => u.attributes.email === superAdminEmail,
     );
@@ -61,7 +66,10 @@ function loadUsers(): MockUser[] {
       base.push({
         username: superAdminUsername,
         password: "password",
-        attributes: { email: superAdminEmail, displayName: superAdminFirstName + " " + superAdminLastName },
+        attributes: {
+          email: superAdminEmail,
+          displayName: superAdminFirstName + " " + superAdminLastName,
+        },
       });
     }
   }

@@ -30,7 +30,6 @@ services:
         condition: service_started
     entrypoint: ["/bin/bash", "./app-init.sh"]
 
-
   express:
     container_name: able-alliance-express
     build:

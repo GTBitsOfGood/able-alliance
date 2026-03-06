@@ -37,12 +37,19 @@ export default function Admin() {
 
   const userType = session?.user?.type;
   useEffect(() => {
-    if (status !== "loading" && userType !== "Admin" && userType !== "SuperAdmin") {
+    if (
+      status !== "loading" &&
+      userType !== "Admin" &&
+      userType !== "SuperAdmin"
+    ) {
       router.replace("/");
     }
   }, [status, userType, router]);
 
-  if (status === "loading" || (userType !== "Admin" && userType !== "SuperAdmin")) {
+  if (
+    status === "loading" ||
+    (userType !== "Admin" && userType !== "SuperAdmin")
+  ) {
     return null;
   }
 
@@ -109,7 +116,13 @@ export default function Admin() {
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "Student", firstName, lastName, email, studentInfo }),
+      body: JSON.stringify({
+        type: "Student",
+        firstName,
+        lastName,
+        email,
+        studentInfo,
+      }),
     })
       .then((res) => {
         if (!res.ok)
@@ -511,14 +524,16 @@ export default function Admin() {
           >
             Locations
           </h4>
-          { userType === "SuperAdmin" ?
+          {userType === "SuperAdmin" ? (
             <h4
               className={`rounded p-5 hover:cursor-pointer ${table === "Admins" ? selected_gradient : ""}`}
               onClick={(e) => switchTable(e, "Admins")}
             >
               Admins
-            </h4> : ''
-          }
+            </h4>
+          ) : (
+            ""
+          )}
         </div>
       </div>
       <div className="py-20 px-10 relative flex-1">
@@ -527,7 +542,10 @@ export default function Admin() {
             <div className="flex items-center gap-4 mb-[10vh]">
               <button
                 className="flex items-center gap-2 hover:cursor-pointer"
-                onClick={() => { setShowForm(false); setSubmitError(null); }}
+                onClick={() => {
+                  setShowForm(false);
+                  setSubmitError(null);
+                }}
               >
                 <BogIcon name="arrow-left" size={24} />
               </button>
@@ -547,7 +565,9 @@ export default function Admin() {
                   disabled={deleting}
                   style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
                 >
-                  {deleting ? "Deleting…" : `Delete ${selectedRows.size} selected`}
+                  {deleting
+                    ? "Deleting…"
+                    : `Delete ${selectedRows.size} selected`}
                 </BogButton>
               )}
             </div>
