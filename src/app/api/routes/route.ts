@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         { status: HTTP_STATUS_CODE.UNAUTHORIZED },
       );
     }
-    
+
     // Student check on the user
     if (session.user.type !== "Student") {
       return NextResponse.json(

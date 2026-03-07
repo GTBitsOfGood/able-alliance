@@ -54,4 +54,3 @@ export default async function ProfilePage({
 
   return <ProfileView user={user} />;
 }
-

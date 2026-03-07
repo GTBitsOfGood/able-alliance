@@ -77,8 +77,7 @@ export async function PATCH(
   const viewerId = viewer.userId as string;
 
   const isSelf = viewerId === id;
-  const isAdmin =
-    viewerType === "Admin" || viewerType === "SuperAdmin";
+  const isAdmin = viewerType === "Admin" || viewerType === "SuperAdmin";
 
   if (!isSelf && !isAdmin) {
     return NextResponse.json(
@@ -115,16 +114,22 @@ export async function PATCH(
     }
 
     const currentInfo =
-      (student as unknown as { studentInfo?: { notes?: string; accessibilityNeeds?: string } })
-        .studentInfo ?? {};
+      (
+        student as unknown as {
+          studentInfo?: { notes?: string; accessibilityNeeds?: string };
+        }
+      ).studentInfo ?? {};
     const nextInfo = {
       ...currentInfo,
-      ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes ?? "" } : {}),
+      ...(parsed.data.notes !== undefined
+        ? { notes: parsed.data.notes ?? "" }
+        : {}),
       ...(parsed.data.accessibilityNeeds !== undefined
         ? { accessibilityNeeds: parsed.data.accessibilityNeeds ?? undefined }
         : {}),
     };
-    (student as unknown as { studentInfo?: typeof nextInfo }).studentInfo = nextInfo;
+    (student as unknown as { studentInfo?: typeof nextInfo }).studentInfo =
+      nextInfo;
     const saved = await student.save();
 
     const userObj = saved.toObject() as Record<string, unknown> & {

@@ -29,7 +29,6 @@
   color: #ffffff;
 }
 
-
 /* Default colors for now based on Figma pfps*/
 .profileAvatarStudent {
   background-color: #ffcc3d;
@@ -145,4 +144,3 @@
   color: var(--color-grey-text-strong);
   font-weight: 500;
 }
-

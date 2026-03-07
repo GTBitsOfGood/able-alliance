@@ -145,4 +145,3 @@ export function ProfileView({ user }: { user: ProfileUser }) {
     </div>
   );
 }
-
