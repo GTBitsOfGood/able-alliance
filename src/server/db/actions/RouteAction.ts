@@ -116,13 +116,17 @@ export async function completeRoute(routeId: string) {
   await route.save();
   return route.toObject();
 }
-export async function cancelRoute(routeId: string) {
+export async function cancelRoute(routeId: string, status?: string) {
   await connectMongoDB();
   const route = await RouteModel.findById(routeId);
   if (!route) {
     return null;
   }
-  route.status = RouteStatus.CancelledByStudent;
+  if (status && Object.values(RouteStatus).includes(status as RouteStatus)) {
+    route.status = status as RouteStatus;
+  } else {
+    route.status = RouteStatus.CancelledByStudent;
+  }
   await route.save();
   return route.toObject();
 }

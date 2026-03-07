@@ -6,11 +6,16 @@ import {
 import { locationSchema } from "@/utils/types";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { LocationAlreadyExistsException } from "@/utils/exceptions/location";
-import { EmailTemplates } from "@/server/db/actions/EmailAction";
+import { getUserFromRequest } from "@/utils/authUser";
 
 // GET /api/locations
 // Retrieves all locations
 export async function GET() {
+  try {
+    await getUserFromRequest();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const locations = await getLocations();
 
@@ -29,6 +34,18 @@ export async function GET() {
 // POST /api/locations
 // Creates a new location
 export async function POST(request: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
+  }
   try {
     const body = await request.json();
     const parsed = locationSchema.safeParse(body);

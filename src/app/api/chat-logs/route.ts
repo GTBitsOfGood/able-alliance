@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest } from "@/utils/authUser";
 import { getChatlogs } from "@/server/db/actions/ChatlogAction";
 import { isValidObjectId } from "mongoose";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -6,6 +7,12 @@ import { HTTP_STATUS_CODE } from "@/utils/consts";
 // GET /api/chat-logs
 // Retrieves chatlogs with optional filters
 export async function GET(req: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const url = new URL(req.url);
   const filters = {
     studentId: url.searchParams.get("studentId"),
@@ -51,6 +58,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       { error: "Invalid endDate" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
+    );
+  }
+
+  // Only allow: Admin/SuperAdmin, or participant (studentId/driverId matches userId)
+  if (
+    user.type !== "Admin" &&
+    user.type !== "SuperAdmin" &&
+    !(
+      (user.type === "Student" && filters.studentId === user.userId) ||
+      (user.type === "Driver" && filters.driverId === user.userId)
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
   }
 

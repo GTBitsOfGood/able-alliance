@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest } from "@/utils/authUser";
 import { vehicleSchema } from "@/utils/types/vehicle";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { createVehicle, getVehicles } from "@/server/db/actions/VehicleAction";
 import { VehicleAlreadyExistsException } from "@/utils/exceptions/vehicle";
 
 export async function POST(req: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
+  }
   try {
     const body = await req.json();
     const parsed = vehicleSchema.safeParse(body);
@@ -35,6 +48,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  try {
+    await getUserFromRequest();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const vehicles = await getVehicles();
     return NextResponse.json(vehicles);
