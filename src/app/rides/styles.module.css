@@ -4,39 +4,6 @@
   width: 100vw;
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 12rem;
-  min-width: 12rem;
-  padding: 2rem 1.5rem;
-  background-color: var(--color-grey-fill-weak);
-  color: var(--color-grey-text-strong);
-}
-
-.sidebarLabel {
-  font-size: 2rem;
-  color: var(--color-grey-text-strong);
-}
-
-.sidebarNav {
-  margin-top: 1.5rem;
-}
-
-.sidebarLink {
-  display: block;
-  padding: 0.5rem 0;
-  font-weight: 500;
-  font-size: 1.5rem;
-  color: var(--color-grey-text-weak);
-  text-decoration: none;
-  border-radius: 0.25rem;
-}
-
-.sidebarLink:hover {
-  text-decoration: underline;
-}
-
 .main {
   display: flex;
   flex: 1;

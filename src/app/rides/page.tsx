@@ -171,14 +171,6 @@ export default function RidesPage() {
 
   return (
     <div className={styles.ridesPage}>
-      <aside className={styles.sidebar}>
-        <p className={styles.sidebarLabel}>sidebar</p>
-        <nav className={styles.sidebarNav}>
-          <a href="/rides" className={styles.sidebarLink}>
-            Your Rides
-          </a>
-        </nav>
-      </aside>
       <main className={styles.main}>
         <div className={styles.mainHeader}>
           <h1 className={styles.pageTitle}>Your Rides</h1>
