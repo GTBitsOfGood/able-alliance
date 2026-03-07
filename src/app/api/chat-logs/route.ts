@@ -11,7 +11,10 @@ export async function GET(req: NextRequest) {
   try {
     user = await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   const url = new URL(req.url);
   const filters = {

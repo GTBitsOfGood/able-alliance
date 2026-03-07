@@ -14,7 +14,10 @@ export async function GET(
   try {
     await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   const { id } = await params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -48,7 +51,10 @@ export async function DELETE(
   try {
     user = await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   if (user.type !== "Admin" && user.type !== "SuperAdmin") {
     return NextResponse.json(

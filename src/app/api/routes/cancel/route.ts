@@ -11,7 +11,10 @@ export async function POST(request: NextRequest) {
     userId = user.userId;
     type = user.type;
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   try {
     const body = await request.json();

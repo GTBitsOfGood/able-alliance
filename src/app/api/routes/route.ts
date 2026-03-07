@@ -19,7 +19,10 @@ export async function GET(req: NextRequest) {
   try {
     user = await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   try {
     const { searchParams } = new URL(req.url);
@@ -144,7 +147,10 @@ export async function POST(request: NextRequest) {
   try {
     user = await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   try {
     const body = await request.json();

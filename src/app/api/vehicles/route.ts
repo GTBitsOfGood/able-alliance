@@ -10,7 +10,10 @@ export async function POST(req: NextRequest) {
   try {
     user = await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   if (user.type !== "Admin" && user.type !== "SuperAdmin") {
     return NextResponse.json(
@@ -51,7 +54,10 @@ export async function GET() {
   try {
     await getUserFromRequest();
   } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
   }
   try {
     const vehicles = await getVehicles();
