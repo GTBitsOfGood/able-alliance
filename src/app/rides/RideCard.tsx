@@ -2,7 +2,7 @@
 
 import React from "react";
 import BogChip from "@/components/BogChip/BogChip";
-import BogIcon from "@/components/BogIcon/BogIcon";
+import BogButton from "@/components/BogButton/BogButton";
 import styles from "./styles.module.css";
 
 export type RideCardRoute = {
@@ -52,42 +52,55 @@ export function RideCard({
   route: RideCardRoute;
   locationIdToName: Record<string, string>;
 }) {
+  const pickupTime = formatTime(route.scheduledPickupTime);
+  const pickupName =
+    locationIdToName[route.pickupLocation] ?? route.pickupLocation;
+  const dropoffName =
+    locationIdToName[route.dropoffLocation] ?? route.dropoffLocation;
+  // API only has scheduledPickupTime; show estimated dropoff (+15 min) for display
+  const dropoffTimeDisplay = (() => {
+    const d = new Date(route.scheduledPickupTime);
+    d.setMinutes(d.getMinutes() + 15);
+    return formatTime(d.toISOString());
+  })();
+
   return (
     <div className={styles.rideCard}>
-      <div className={styles.rideCardHeader}>
-        <span className={styles.rideCardTimeValue}>
-          {formatTime(route.scheduledPickupTime)}
-        </span>
-      </div>
-      <div className={styles.rideCardRoute}>
-        <div className={styles.rideCardRouteIconColumn} aria-hidden>
-          <span className={styles.rideCardRouteIcon} />
-          <div className={styles.rideCardRouteLine} />
-          <BogIcon
-            name="map-pin"
-            size={14}
-            className={styles.rideCardRouteIconDropoff}
-          />
+      <div className={styles.rideCardPickupDropoff}>
+        <div className={styles.rideCardStopBlock}>
+          <span className={styles.rideCardStopLabel}>Pickup</span>
+          <span className={styles.rideCardStopTime}>{pickupTime}</span>
+          <span className={styles.rideCardStopLocation}>{pickupName}</span>
         </div>
-        <div className={styles.rideCardRouteStops}>
-          <div className={styles.rideCardStop}>
-            <span className={styles.rideCardRouteLabel}>Pickup</span>
-            <span className={styles.rideCardRouteName}>
-              {locationIdToName[route.pickupLocation] ?? route.pickupLocation}
-            </span>
-          </div>
-          <div className={styles.rideCardStop}>
-            <span className={styles.rideCardRouteLabel}>Dropoff</span>
-            <span className={styles.rideCardRouteName}>
-              {locationIdToName[route.dropoffLocation] ?? route.dropoffLocation}
-            </span>
-          </div>
+        <div className={styles.rideCardDivider} aria-hidden />
+        <div className={styles.rideCardStopBlock}>
+          <span className={styles.rideCardStopLabel}>Dropoff</span>
+          <span className={styles.rideCardStopTime}>{dropoffTimeDisplay}</span>
+          <span className={styles.rideCardStopLocation}>{dropoffName}</span>
         </div>
       </div>
-      <div className={styles.rideCardFooter}>
+      <div className={styles.rideCardFooterRow}>
         <BogChip color={getStatusChipColor(route.status)} size="2">
           {route.status}
         </BogChip>
+        <div className={styles.rideCardActions}>
+          <button
+            type="button"
+            className={styles.rideCardCancelLink}
+            onClick={() => {}} //TODO route/modals
+            aria-label="Cancel ride"
+          >
+            Cancel ride
+          </button>
+          <BogButton
+            variant="secondary"
+            size="medium"
+            onClick={() => {}} //TODO route/modals
+            className={styles.rideCardEditButton}
+          >
+            Edit ride
+          </BogButton>
+        </div>
       </div>
     </div>
   );

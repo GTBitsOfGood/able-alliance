@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import { auth } from "@/auth";
 import {
   createRoute,
   getRouteById,
@@ -36,13 +37,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
     }
 
-    // Get all routes with optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
-    const student = searchParams.get("student");
+    const session = await auth();
+    if (!session?.user?.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+      );
+    }
+    
+    // Student check on the user
+    if (session.user.type !== "Student") {
+      return NextResponse.json(
+        { error: "Forbidden: only students can list their rides here" },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      );
+    }
+    const loggedInStudentId = session.user.userId;
+
+    // optional filters: ?driver=ID | ?start_time=<time> | ?end_time=<time>
     const driver = searchParams.get("driver");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
-    if (student && !mongoose.Types.ObjectId.isValid(student)) {
+    if (!mongoose.Types.ObjectId.isValid(loggedInStudentId)) {
       return NextResponse.json(
         { error: "Invalid student ID" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -54,6 +71,7 @@ export async function GET(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
+
     let startDate: Date | undefined;
     let endDate: Date | undefined;
     if (startTime) {
@@ -76,7 +94,7 @@ export async function GET(req: NextRequest) {
     }
 
     const routes = await getRoutes({
-      student: student ?? undefined,
+      student: loggedInStudentId,
       driver: driver ?? undefined,
       start_time: startDate,
       end_time: endDate,
