@@ -23,7 +23,7 @@ export default function CreateRidePage() {
   const [pickupLocationName, setPickupLocationName] = useState("");
   const [dropoffLocationName, setDropoffLocationName] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [dropOffTime, setDropOffTime] = useState("13:00");
+  const [pickupTime, setPickupTime] = useState("13:00");
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
@@ -186,13 +186,14 @@ export default function CreateRidePage() {
       return;
     }
 
-    // Create ISO string from selected date (defaulting to 12:00 PM)
+    // Create ISO string from selected date and pickup time
+    const [hour, minute] = pickupTime.split(":").map(Number);
     const scheduledPickupTime = new Date(
       selectedDate.getFullYear(),
       selectedDate.getMonth(),
       selectedDate.getDate(),
-      12,
-      0,
+      hour,
+      minute,
       0,
     ).toISOString();
 
@@ -410,14 +411,14 @@ export default function CreateRidePage() {
 
                 {/* Right Column - Time and Locations */}
                 <div className={styles.formColumnRight}>
-                  {/* Drop Off Time */}
+                  {/* Pick Up Time */}
                   <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Drop Off Time</h3>
+                    <h3 className={styles.formGroupTitle}>Pick Up Time</h3>
                     <div className={styles.timeCell}>
                       <input
                         type="time"
-                        value={dropOffTime}
-                        onChange={(e) => setDropOffTime(e.target.value)}
+                        value={pickupTime}
+                        onChange={(e) => setPickupTime(e.target.value)}
                         className={styles.timeInput}
                       />
                     </div>
