@@ -13,6 +13,8 @@ services:
       CAS_BASE_URL_BROWSER: "http://localhost:8443/cas"
       SUPERADMIN_EMAIL: "superadmin@gatech.edu"
       SUPERADMIN_NAME: "Super Admin"
+      # Detect source changes in Docker bind mount (Windows/Mac)
+      WATCHPACK_POLLING: "true"
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
