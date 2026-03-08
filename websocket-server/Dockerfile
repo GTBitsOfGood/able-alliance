@@ -8,10 +8,6 @@ COPY websocket-server/tsconfig.json ./tsconfig.json
 RUN npm ci
 
 COPY websocket-server ./websocket-server
-# COPY ../src/server/db/models/RouteModel.ts ./src/server/db/models/
-COPY src/server/db/models/RouteModel.ts ./src/server/db/models/
-
-RUN npm run build
 
 ENV PORT=4000
 
