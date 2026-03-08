@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
+import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
-import BogModal from "@/components/BogModal/BogModal";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
-import { RequestRideForm } from "./RequestRideForm";
 import styles from "./styles.module.css";
 
 type Location = {
@@ -87,7 +86,6 @@ export default function RidesPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
 
   const fetchRides = useCallback(async () => {
     try {
@@ -208,35 +206,19 @@ export default function RidesPage() {
                 <div className={tabStyles["bog-tabs-label"]}>Next week</div>
               </Tabs.Trigger>
             </Tabs.List>
-            <BogModal
-              openState={{
-                open: requestModalOpen,
-                setOpen: setRequestModalOpen,
-              }}
-              trigger={
-                <BogButton
-                  variant="primary"
-                  size="medium"
-                  className={styles.requestRideButton}
-                  iconProps={{
-                    position: "left",
-                    iconProps: { name: "plus", size: 18 },
-                  }}
-                >
-                  Request new ride
-                </BogButton>
-              }
-              title={<h3>Request a ride</h3>}
-            >
-              <RequestRideForm
-                locations={locations}
-                onSuccess={() => {
-                  setRequestModalOpen(false);
-                  fetchRides();
+            <Link href="/rides/new">
+              <BogButton
+                variant="primary"
+                size="medium"
+                className={styles.requestRideButton}
+                iconProps={{
+                  position: "left",
+                  iconProps: { name: "plus", size: 18 },
                 }}
-                onError={setError}
-              />
-            </BogModal>
+              >
+                Request new ride
+              </BogButton>
+            </Link>
           </div>
           <Tabs.Content value="this-week" className={styles.tabContentPanel}>
             {loading ? (
