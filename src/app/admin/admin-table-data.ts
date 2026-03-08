@@ -4,8 +4,8 @@ import type { ColumnHeaderCellContent } from "@/components/BogTable/BogTable";
 export type StudentRowRaw = {
   name: string;
   email: string;
-  phone: string;
   accessibilityNeeds: string;
+  additionalComments: string;
 };
 
 /** Raw row shape for Drivers table. */
@@ -28,11 +28,18 @@ export type VehicleRowRaw = {
   seatCount: number;
 };
 
+/** Raw row shape for Locations table */
+export type LocationRowRaw = {
+  name: string;
+  latitude: number;
+  longitude: number;
+};
+
 export const STUDENT_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Name", datatype: "string" },
   { content: "Email", datatype: "string" },
-  { content: "Phone", datatype: "string" },
   { content: "Accessibility needs", datatype: "string" },
+  { content: "Additional comments", datatype: "string" },
 ];
 
 export const DRIVER_COLUMNS: ColumnHeaderCellContent[] = [
@@ -50,4 +57,10 @@ export const VEHICLE_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Make & Model", datatype: "string" },
   { content: "Accessibility Features", datatype: "string" },
   { content: "Seat Count", datatype: "number" },
+];
+
+export const LOCATION_COLUMNS: ColumnHeaderCellContent[] = [
+  { content: "Location", datatype: "string" },
+  { content: "Latitude", datatype: "number" },
+  { content: "Longitude", datatype: "number" },
 ];

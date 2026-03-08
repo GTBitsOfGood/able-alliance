@@ -1,19 +1,61 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
+import type { IBaseUser } from "./UserModel";
+import { IVehicle, VehicleSchema } from "./VehicleModel";
 
 export type IRoute = RouteInput;
 
-/** Document type for schema (refs as ObjectId); create() accepts RouteInput (string refs). */
+export enum RouteStatus {
+  Requested = "Requested",
+  Scheduled = "Scheduled",
+  EnRoute = "En-route",
+  Pickedup = "Pickedup",
+  Completed = "Completed",
+  Missing = "Missing",
+  CancelledByDriver = "Cancelled by Driver",
+  CancelledByStudent = "Cancelled by Student",
+  CancelledByAdmin = "Cancelled by Admin",
+}
+
 interface IRouteDocument {
   pickupLocation: mongoose.Types.ObjectId;
   dropoffLocation: mongoose.Types.ObjectId;
-  student: mongoose.Types.ObjectId;
-  driver?: mongoose.Types.ObjectId;
-  vehicle?: mongoose.Types.ObjectId;
+  student: IBaseUser;
+  driver?: IBaseUser;
+  vehicle?: IVehicle;
   scheduledPickupTime: Date;
-  isActive: boolean;
-  status: "Standby" | "En-route";
+  status: RouteStatus;
 }
+
+// Embedded user/student schemas WITHOUT unique indexes (same structure as UserModel
+// but for subdocuments; unique on email only makes sense in the users collection).
+const EmbeddedBaseUserSchema = new Schema(
+  {
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { type: String, required: true },
+    type: {
+      type: String,
+      required: true,
+      enum: ["Student", "Driver", "Admin", "SuperAdmin"],
+    },
+  },
+  { _id: true, versionKey: false },
+);
+
+const EmbeddedStudentSchema = new Schema(
+  {
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { type: String, required: true },
+    type: { type: String, required: true, enum: ["Student"] },
+    studentInfo: {
+      notes: { type: String },
+      accessibilityNeeds: { type: String, enum: ["Wheelchair", "LowMobility"] },
+    },
+  },
+  { _id: true, versionKey: false },
+);
 
 const RouteSchema = new Schema<IRouteDocument>(
   {
@@ -27,12 +69,16 @@ const RouteSchema = new Schema<IRouteDocument>(
       ref: "Location",
       required: true,
     },
-    student: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    driver: { type: Schema.Types.ObjectId, ref: "User", required: false },
-    vehicle: { type: Schema.Types.ObjectId, ref: "Vehicle", required: false },
+    student: { type: EmbeddedStudentSchema, required: true },
+    driver: { type: EmbeddedBaseUserSchema, required: false },
+    vehicle: { type: VehicleSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
-    isActive: { type: Boolean, default: false },
-    status: { type: String, enum: ["Standby", "En-route"] },
+    status: {
+      type: String,
+      enum: Object.values(RouteStatus),
+      default: RouteStatus.Requested,
+      required: true,
+    },
   },
   { versionKey: false },
 );

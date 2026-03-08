@@ -1,0 +1,26 @@
+[
+  {
+    "username": "gburdell3",
+    "password": "password",
+    "attributes": {
+      "email": "gburdell3@gatech.edu",
+      "displayName": "George P. Burdell"
+    }
+  },
+  {
+    "username": "adminuser",
+    "password": "password",
+    "attributes": {
+      "email": "admin@gatech.edu",
+      "displayName": "Admin User"
+    }
+  },
+  {
+    "username": "driver1",
+    "password": "password",
+    "attributes": {
+      "email": "driver1@gatech.edu",
+      "displayName": "Test Driver"
+    }
+  }
+]

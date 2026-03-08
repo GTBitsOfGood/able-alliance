@@ -1,8 +1,15 @@
 import { z } from "zod";
 
 export const baseUserSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Email is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z
+    .string()
+    .email("Email is required")
+    .regex(
+      /^[\w-.]+@gatech\.edu$/,
+      "Email must be a valid Georgia Tech email ending with @gatech.edu",
+    ),
   type: z.enum(["Student", "Driver", "Admin", "SuperAdmin"]),
 });
 
@@ -11,7 +18,6 @@ export const studentSchema = baseUserSchema.extend({
   studentInfo: z.object({
     notes: z.string().optional(),
     accessibilityNeeds: z.enum(["Wheelchair", "LowMobility"]).optional(),
-    GTID: z.string().min(9, "GTID must be 9 digits"),
   }),
 });
 

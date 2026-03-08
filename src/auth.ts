@@ -1,0 +1,50 @@
+import NextAuth from "next-auth";
+import type { NextAuthConfig } from "next-auth";
+
+// NextAuth reads NEXTAUTH_URL for redirects/URLs; use DEPLOY_PRIME_URL as single source of truth.
+if (process.env.DEPLOY_PRIME_URL) {
+  process.env.NEXTAUTH_URL = process.env.DEPLOY_PRIME_URL;
+}
+
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET environment variable is required");
+}
+
+export const authConfig: NextAuthConfig = {
+  secret: process.env.NEXTAUTH_SECRET,
+
+  // We don't use built-in providers — CAS is handled via custom route handlers
+  providers: [],
+
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
+
+  pages: {
+    signIn: "/login",
+  },
+
+  callbacks: {
+    jwt({ token, user }) {
+      // On initial sign-in, `user` is populated with data we set in the CAS callback
+      if (user) {
+        token.userId = user.userId;
+        token.type = user.type;
+        token.email = user.email;
+      }
+      return token;
+    },
+
+    session({ session, token }) {
+      if (session.user) {
+        session.user.userId = token.userId as string;
+        session.user.type = token.type as string;
+        session.user.email = token.email as string;
+      }
+      return session;
+    },
+  },
+};
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
