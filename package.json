@@ -7,6 +7,7 @@
     "dev:server": "node websocket-server/index.mjs",
     "build": "next build",
     "start": "next start",
+    "seed": "npx tsx scripts/seed.ts",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format:check": "prettier --check .",

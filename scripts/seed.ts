@@ -1,18 +1,33 @@
 /**
  * Seed script for local development.
  *
- * Run via:  npx tsx src/seed.ts
+ * Run via:  npx tsx scripts/seed.ts [mongodb-url]
+ *       or:  npm run seed [-- mongodb-url]
+ *
+ * Optional: pass MongoDB URL as first argument. For Docker Mongo from host use:
+ *   npx tsx scripts/seed.ts "mongodb://localhost:27017/able-alliance?replicaSet=rs0&directConnection=true"
+ * (directConnection=true stops the driver from following the replica set member hostname "mongo".)
+ * Otherwise uses MONGODB_URI from the environment, or a default.
  *
  * Idempotent — checks for existing data before inserting.
- * Creates: 1 student, 1 driver, 3 locations, 1 vehicle, and scheduled routes
- * across this week and next week, so the weekly driver rides tabs have data.
  */
 
 import mongoose from "mongoose";
 
-const MONGODB_URI =
+let MONGODB_URI =
+  process.argv[2] ??
   process.env.MONGODB_URI ??
-  "mongodb://localhost:27017/able-alliance?replicaSet=rs0";
+  "mongodb://localhost:27017/able-alliance";
+
+// When connecting to Docker Mongo from host, replica set advertises hostname "mongo" which doesn't resolve.
+// Force the driver to use only the URI host by adding directConnection=true.
+if (
+  MONGODB_URI.includes("localhost") &&
+  MONGODB_URI.includes("replicaSet=") &&
+  !MONGODB_URI.includes("directConnection=")
+) {
+  MONGODB_URI += (MONGODB_URI.includes("?") ? "&" : "?") + "directConnection=true";
+}
 
 async function seed() {
   console.log("Connecting to MongoDB…");

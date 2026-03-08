@@ -86,11 +86,16 @@ function groupRoutesByDate(routes: Route[]): Record<string, Route[]> {
 
 export default function RidesPage() {
   const { data: session, status: sessionStatus } = useSession();
+  const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchRides = useCallback(async () => {
     try {
@@ -124,8 +129,14 @@ export default function RidesPage() {
     {} as Record<string, string>,
   );
 
-  const thisWeekRange = React.useMemo(() => getWeekRange(0), []);
-  const nextWeekRange = React.useMemo(() => getWeekRange(1), []);
+  const thisWeekRange = React.useMemo(
+    () => (mounted ? getWeekRange(0) : [new Date(0), new Date(0)]),
+    [mounted],
+  );
+  const nextWeekRange = React.useMemo(
+    () => (mounted ? getWeekRange(1) : [new Date(0), new Date(0)]),
+    [mounted],
+  );
 
   const routesByDateThisWeek = React.useMemo(() => {
     const filtered = routes.filter((r) =>
@@ -176,7 +187,9 @@ export default function RidesPage() {
         {dateKeys.map((dateKey) => (
           <div key={dateKey} className={styles.dateGroup}>
             <h2 className={styles.dateHeader}>
-              {formatDateHeader(routesByDate[dateKey][0].scheduledPickupTime)}
+              {mounted
+                ? formatDateHeader(routesByDate[dateKey][0].scheduledPickupTime)
+                : "—"}
             </h2>
             {routesByDate[dateKey].map((route) => (
               <RideCard

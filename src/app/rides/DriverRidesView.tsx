@@ -154,6 +154,7 @@ function groupRidesByDay(rides: DriverRoute[]) {
 }
 
 export default function DriverRidesView({ userId }: { userId: string }) {
+  const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,8 +164,18 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     "this-week",
   );
 
-  const thisWeekRange = useMemo(() => getWeekRange(0), []);
-  const nextWeekRange = useMemo(() => getWeekRange(1), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const thisWeekRange = useMemo(
+    () => (mounted ? getWeekRange(0) : [new Date(0), new Date(0)]),
+    [mounted],
+  );
+  const nextWeekRange = useMemo(
+    () => (mounted ? getWeekRange(1) : [new Date(0), new Date(0)]),
+    [mounted],
+  );
 
   const fetchRoutes = useCallback(async () => {
     try {
@@ -217,10 +228,13 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     [activeTab, thisWeekRange, nextWeekRange],
   );
   const weekHeading = useMemo(
-    () => formatWeekHeading(activeWeekRange),
-    [activeWeekRange],
+    () => (mounted ? formatWeekHeading(activeWeekRange) : "—"),
+    [mounted, activeWeekRange],
   );
-  const assignedVehicleTitle = useMemo(() => formatAssignedVehicleTitle(), []);
+  const assignedVehicleTitle = useMemo(
+    () => (mounted ? formatAssignedVehicleTitle() : "Assigned Vehicle"),
+    [mounted],
+  );
 
   function renderWeekToggle() {
     return (
@@ -360,7 +374,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
             {groupRidesByDay(rides).map((dayGroup) => (
               <div key={dayGroup.key} className={styles.driverDayGroup}>
                 <h3 className={styles.driverDayHeading}>
-                  {formatDayHeading(dayGroup.date)}
+                  {mounted ? formatDayHeading(dayGroup.date) : "—"}
                 </h3>
                 <div className={styles.driverDayCards}>
                   {dayGroup.rides.map((route) => {
