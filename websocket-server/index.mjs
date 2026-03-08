@@ -4,9 +4,18 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 
-import RouteModel from "../src/server/db/models/RouteModel.ts";
-
 dotenv.config();
+
+// Minimal route shape for auth — only the fields we need.
+// Uses raw collection; no Mongoose model/schema.
+async function getRouteForAuth(routeId) {
+  const routes = mongoose.connection.db.collection("routes");
+  const route = await routes.findOne(
+    { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
+    { projection: { status: 1, driver: 1, student: 1 } },
+  );
+  return route;
+}
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -30,7 +39,7 @@ io.use(async (socket, next) => {
     if (!routeId || !userId) {
       return next(new Error("Route ID or user ID missing"));
     }
-    const route = await RouteModel.findById(routeId);
+    const route = await getRouteForAuth(routeId);
     if (!route) {
       return next(new Error("Route not found"));
     }
@@ -39,12 +48,12 @@ io.use(async (socket, next) => {
     }
     const userInRoute =
       route.driver?.toString() === userId ||
-      route.student.toString() === userId;
+      route.student?.toString() === userId;
 
     if (!userInRoute) {
       return next(new Error("User not assigned to this route"));
     }
-    socket.route = route;
+    socket.routeId = routeId;
     socket.user = userId;
     next();
   } catch (error) {
@@ -56,7 +65,7 @@ io.use(async (socket, next) => {
 io.on("connection", socket => {
   console.log("A user connected", socket.id);
 
-  const room = socket.route.id;
+  const room = socket.routeId;
   socket.join(room);
   console.log(`User ${socket.user} joined room ${room}`);
 
