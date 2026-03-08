@@ -3,6 +3,14 @@ import { auth } from "@/auth";
 import { getUserById } from "@/server/db/actions/UserAction";
 import { ProfileView, type ProfileUser } from "../ProfileView";
 
+type UserDocument = {
+  _id?: { toString(): string };
+  name?: string;
+  email?: string;
+  type?: ProfileUser["type"];
+  studentInfo?: ProfileUser["studentInfo"];
+};
+
 export default async function ProfilePage({
   params,
 }: {
@@ -48,20 +56,17 @@ export default async function ProfilePage({
     return <ProfileView user={selfFromSession} />;
   }
 
+  const doc = data as UserDocument;
   const user: ProfileUser = {
-    id: (data as any)._id?.toString?.() ?? targetId,
+    id: doc._id?.toString?.() ?? targetId,
     name:
-      ((data as any).name as string | undefined) ??
+      doc.name ??
       (session.user.name as string | undefined) ??
       (session.user.email as string | undefined) ??
       "User",
-    email:
-      ((data as any).email as string | undefined) ??
-      (session.user.email as string),
-    type:
-      ((data as any).type as ProfileUser["type"] | undefined) ??
-      (session.user.type as ProfileUser["type"]),
-    studentInfo: (data as any).studentInfo ?? null,
+    email: doc.email ?? (session.user.email as string),
+    type: doc.type ?? (session.user.type as ProfileUser["type"]),
+    studentInfo: doc.studentInfo ?? null,
   };
 
   return <ProfileView user={user} />;
