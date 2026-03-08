@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from "uuid";
 interface CASUserAttributes {
   email: string;
   displayName: string;
-  gtid: string;
 }
 
 interface MockUser {
@@ -44,7 +43,38 @@ function loadUsers(): MockUser[] {
   if (!Array.isArray(parsed)) {
     throw new Error("users.json must contain an array");
   }
-  return parsed as MockUser[];
+  const base = parsed as MockUser[];
+
+  // Inject SuperAdmin from env vars if configured
+  const superAdminEmail = process.env.SUPERADMIN_EMAIL;
+  const superAdminFirstName = process.env.SUPERADMIN_FIRSTNAME;
+  const superAdminLastName = process.env.SUPERADMIN_LASTNAME;
+  const superAdminUsername =
+    process.env.SUPERADMIN_CAS_USERNAME ??
+    (superAdminEmail ? superAdminEmail.split("@")[0] : null);
+
+  if (
+    superAdminEmail &&
+    superAdminFirstName &&
+    superAdminLastName &&
+    superAdminUsername
+  ) {
+    const alreadyPresent = base.some(
+      (u) => u.attributes.email === superAdminEmail,
+    );
+    if (!alreadyPresent) {
+      base.push({
+        username: superAdminUsername,
+        password: "password",
+        attributes: {
+          email: superAdminEmail,
+          displayName: superAdminFirstName + " " + superAdminLastName,
+        },
+      });
+    }
+  }
+
+  return base;
 }
 
 const users = loadUsers();
@@ -94,11 +124,19 @@ setInterval(() => {
   }
 }, 10_000);
 
+function buildUserHints(): string {
+  return users
+    .map(
+      (u) =>
+        `<code>${u.username}</code> / <code>${u.password}</code> — ${u.attributes.displayName} (${u.attributes.email})`,
+    )
+    .join("<br>");
+}
+
 // Displays a login form. The `service` query param is the callback URL.
 app.get("/cas/login", (req: Request, res: Response) => {
   const service = getQueryString(req.query.service);
 
-  setCorsHeaders(req, res);
   res.setHeader("Content-Type", "text/html");
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -121,7 +159,7 @@ app.get("/cas/login", (req: Request, res: Response) => {
       border-radius: 8px;
       padding: 2rem;
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
     .logo {
@@ -184,7 +222,13 @@ app.get("/cas/login", (req: Request, res: Response) => {
       padding-top: 1rem;
       border-top: 1px solid #eee;
       font-size: 0.75rem;
-      color: #666;
+      color: #555;
+      line-height: 1.8;
+    }
+    .users-hint strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #333;
     }
     .users-hint code {
       background: #f5f5f5;
@@ -209,10 +253,8 @@ app.get("/cas/login", (req: Request, res: Response) => {
       <button type="submit">LOGIN</button>
     </form>
     <div class="users-hint">
-      <strong>Test accounts:</strong><br>
-      <code>gburdell3</code> / <code>password</code> (Student)<br>
-      <code>adminuser</code> / <code>password</code> (Admin)<br>
-      <code>driver1</code> / <code>password</code> (Driver)
+      <strong>Available test accounts:</strong>
+      ${buildUserHints()}
     </div>
   </div>
 </body>
@@ -311,7 +353,6 @@ app.get("/cas/p3/serviceValidate", (req: Request, res: Response) => {
     <cas:attributes>
       <cas:email>${ticketData.attributes.email}</cas:email>
       <cas:displayName>${ticketData.attributes.displayName}</cas:displayName>
-      <cas:gtid>${ticketData.attributes.gtid}</cas:gtid>
     </cas:attributes>
   </cas:authenticationSuccess>
 </cas:serviceResponse>`);

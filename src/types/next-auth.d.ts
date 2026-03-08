@@ -7,7 +7,6 @@ declare module "next-auth" {
       userId: string;
       type: string;
       email: string;
-      gtid: string;
     } & DefaultSession["user"];
   }
 
@@ -15,7 +14,6 @@ declare module "next-auth" {
     userId: string;
     type: string;
     email: string;
-    gtid: string;
   }
 }
 
@@ -24,6 +22,5 @@ declare module "next-auth/jwt" {
     userId?: string;
     type?: string;
     email?: string;
-    gtid?: string;
   }
 }

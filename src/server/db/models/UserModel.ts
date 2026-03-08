@@ -6,7 +6,8 @@ export type IStudentUser = StudentInput;
 
 const BaseUserSchema: Schema<IBaseUser> = new Schema(
   {
-    name: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     type: {
       type: String,
@@ -27,7 +28,6 @@ const StudentSchema: Schema<IStudentUser> = new Schema({
       type: String,
       enum: ["Wheelchair", "LowMobility"],
     },
-    GTID: { type: String, required: true },
   },
 });
 

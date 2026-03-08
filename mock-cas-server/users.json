@@ -4,8 +4,7 @@
     "password": "password",
     "attributes": {
       "email": "gburdell3@gatech.edu",
-      "displayName": "George P. Burdell",
-      "gtid": "903123456"
+      "displayName": "George P. Burdell"
     }
   },
   {
@@ -13,8 +12,7 @@
     "password": "password",
     "attributes": {
       "email": "admin@gatech.edu",
-      "displayName": "Admin User",
-      "gtid": ""
+      "displayName": "Admin User"
     }
   },
   {
@@ -22,8 +20,7 @@
     "password": "password",
     "attributes": {
       "email": "driver1@gatech.edu",
-      "displayName": "Test Driver",
-      "gtid": ""
+      "displayName": "Test Driver"
     }
   }
 ]

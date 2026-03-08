@@ -9,7 +9,6 @@ import {
 interface CASUserData {
   email: string;
   name: string;
-  gtid: string;
 }
 
 export async function createUser(data: BaseUserInput | StudentInput) {
