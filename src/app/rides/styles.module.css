@@ -4,39 +4,6 @@
   width: 100vw;
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 12rem;
-  min-width: 12rem;
-  padding: 2rem 1.5rem;
-  background-color: var(--color-grey-fill-weak);
-  color: var(--color-grey-text-strong);
-}
-
-.sidebarLabel {
-  font-size: 2rem;
-  color: var(--color-grey-text-strong);
-}
-
-.sidebarNav {
-  margin-top: 1.5rem;
-}
-
-.sidebarLink {
-  display: block;
-  padding: 0.5rem 0;
-  font-weight: 500;
-  font-size: 1.5rem;
-  color: var(--color-grey-text-weak);
-  text-decoration: none;
-  border-radius: 0.25rem;
-}
-
-.sidebarLink:hover {
-  text-decoration: underline;
-}
-
 .main {
   display: flex;
   flex: 1;
@@ -48,6 +15,11 @@
 }
 
 .mainHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
@@ -73,7 +45,7 @@
   flex: 0 0 auto;
 }
 
-/* keep tab labels on one line (like "Next week") */
+/* keep tab labels on one line (e.g. Tomorrow) */
 .tabsRow [role="tablist"] [role="tab"] {
   white-space: nowrap;
 }
@@ -85,10 +57,13 @@
   box-sizing: border-box;
 }
 
-/* request button parallel to the tabs */
-.tabsRow > *:last-child {
-  flex: 0 0 auto;
-  margin-left: auto;
+.tabContentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .pageTitle {
@@ -96,17 +71,18 @@
   font-size: var(--text-desktop-heading-1);
   font-weight: 700;
   line-height: var(--text-desktop-heading-1--line-height);
+  margin: 0;
 }
 
 .requestRideButton {
-  background-color: var(--color-status-red-text);
-  border-color: var(--color-status-red-text);
   width: fit-content;
+  background-color: var(--color-status-blue-text);
+  border-color: var(--color-status-blue-text);
 }
 
 .requestRideButton:hover:not(:disabled) {
-  background-color: var(--color-status-red-stroke-strong);
-  border-color: var(--color-status-red-stroke-strong);
+  background-color: var(--color-status-blue-stroke-strong);
+  border-color: var(--color-status-blue-stroke-strong);
 }
 
 .errorMessage {
@@ -151,8 +127,8 @@
 .rideCard {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.75rem 2rem;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
   border-radius: 0.5rem;
   border: 0.1rem solid var(--color-grey-stroke-weak);
   background-color: var(--color-solid-bg-base);
@@ -165,80 +141,94 @@
   line-height: var(--text-desktop-paragraph-2--line-height);
 }
 
-.rideCardHeader {
+.rideCardPickupDropoff {
   display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  flex-wrap: wrap;
 }
 
-.rideCardTimeValue {
-  font-size: var(--text-desktop-paragraph-2);
-  font-weight: 800;
-  color: var(--color-grey-text-strong);
-}
-
-.rideCardRoute {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.rideCardRouteIconColumn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.rideCardRouteIcon {
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  border: 0.15rem solid var(--color-grey-text-strong);
-  background: transparent;
-  flex-shrink: 0;
-}
-
-.rideCardRouteLine {
-  width: 0.2rem;
-  flex: 1;
-  min-height: 0.5rem;
-  background-color: var(--color-grey-stroke-weak);
-  margin: 0.125rem 0;
-}
-
-.rideCardRouteIconDropoff {
-  width: 1.4rem;
-  height: 1.4rem;
-  flex-shrink: 0;
-  color: var(--color-grey-text-strong);
-}
-
-.rideCardRouteStops {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.rideCardStop {
+.rideCardStopBlock {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
+  flex: 0 0 11rem;
+  max-width: 11rem;
 }
 
-.rideCardRouteLabel {
-  font-size: var(--text-desktop-paragraph-2);
+.rideCardDivider {
+  height: 0.3rem;
+  min-width: 12rem;
+  flex: 1;
+  background-color: var(--color-grey-stroke-weak);
+  margin: 0 1.5rem;
+  align-self: center;
+}
+
+.rideCardPickupDropoff > .rideCardStopBlock:last-of-type .rideCardStopTime {
+  font-size: var(--text-desktop-heading-4);
+}
+
+.rideCardPickupDropoff > .rideCardStopBlock:last-of-type {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.rideCardStopLabel {
+  font-size: var(--text-desktop-paragraph-1);
   color: var(--color-grey-text-weak);
+  font-weight: 600;
 }
 
-.rideCardRouteName {
-  font-size: var(--text-desktop-paragraph-2);
-  font-weight: 600;
+.rideCardStopTime {
+  font-size: var(--text-desktop-heading-4);
+  font-weight: 700;
   color: var(--color-grey-text-strong);
 }
 
-.rideCardFooter {
-  display: flex;
-  align-items: center;
+.rideCardStopLocation {
   font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-strong);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rideCardFooterRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rideCardActions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rideCardCancelLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-status-red-text);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.rideCardCancelLink:hover {
+  text-decoration: underline;
+}
+
+.rideCardEditButton {
+  flex-shrink: 0;
 }
 
 .formField {

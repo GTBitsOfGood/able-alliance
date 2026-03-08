@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import { auth } from "@/auth";
 import {
   createRoute,
   getRouteById,
@@ -36,17 +37,46 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
     }
 
-    // Get all routes with optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
-    const student = searchParams.get("student");
+    const session = await auth();
+    if (!session?.user?.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+      );
+    }
+
+    const userType = session.user.type;
+    const loggedInUserId = session.user.userId;
+
+    // optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
+    const studentParam = searchParams.get("student");
     const driver = searchParams.get("driver");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
-    if (student && !mongoose.Types.ObjectId.isValid(student)) {
-      return NextResponse.json(
-        { error: "Invalid student ID" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
+    let studentFilter: string | undefined;
+
+    if (userType === "Student") {
+      // actual Student check that makes it so they only see THEIR rides
+      if (!mongoose.Types.ObjectId.isValid(loggedInUserId)) {
+        return NextResponse.json(
+          { error: "Invalid student ID" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+      studentFilter = loggedInUserId;
+    } else if (studentParam) {
+      // Admins / Drivers may filter by an explicit student id
+      if (!mongoose.Types.ObjectId.isValid(studentParam)) {
+        return NextResponse.json(
+          { error: "Invalid student ID" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+      studentFilter = studentParam;
+    } else {
+      // Admins / Drivers without ?student can see all matching routes
+      studentFilter = undefined;
     }
     if (driver && !mongoose.Types.ObjectId.isValid(driver)) {
       return NextResponse.json(
@@ -54,6 +84,7 @@ export async function GET(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
+
     let startDate: Date | undefined;
     let endDate: Date | undefined;
     if (startTime) {
@@ -76,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
 
     const routes = await getRoutes({
-      student: student ?? undefined,
+      student: studentFilter,
       driver: driver ?? undefined,
       start_time: startDate,
       end_time: endDate,

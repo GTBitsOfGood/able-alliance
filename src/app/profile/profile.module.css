@@ -1,0 +1,146 @@
+.profilePage {
+  min-height: 100vh;
+  padding: 2rem 2.5rem;
+  box-sizing: border-box;
+  background-color: var(--color-solid-bg-base);
+}
+
+.profileInner {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.profileAvatar {
+  width: 10rem;
+  height: 10rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-desktop-heading-2);
+  font-weight: 700;
+  color: var(--color-solid-bg-base);
+}
+
+/* Default colors for now based on Figma pfps*/
+.profileAvatarStudent {
+  background-color: var(--color-status-amber-text);
+}
+
+.profileAvatarDriver {
+  background-color: var(--color-status-green-text);
+}
+
+.profileAvatarAdmin {
+  background-color: var(--color-status-red-text);
+}
+
+.profileNameBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.profileDisplayName {
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  margin: 0;
+}
+
+.profileRole {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-weak);
+}
+
+.profileCard {
+  margin-top: 0.5rem;
+  padding: 1.75rem 2rem;
+  border-radius: 0.75rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  background-color: var(--color-solid-bg-base);
+  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.04);
+}
+
+.profileCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.sectionTitle {
+  font-size: var(--text-desktop-paragraph-1);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+}
+
+.profileFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 3rem;
+  row-gap: 1.25rem;
+  max-width: 40rem;
+}
+
+.profileField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.fieldLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-weak);
+}
+
+.fieldValue {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-strong);
+  font-weight: 500;
+}
+
+.profileSection {
+  margin-top: 2rem;
+}
+
+.sectionSubtitle {
+  font-size: var(--text-desktop-paragraph-2);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  margin-bottom: 0.75rem;
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 40rem;
+}
+
+.sectionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sectionRowLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-weak);
+}
+
+.sectionRowValue {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-strong);
+  font-weight: 500;
+}
