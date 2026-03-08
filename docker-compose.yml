@@ -12,8 +12,8 @@ services:
       CAS_BASE_URL: "http://cas:8443/cas"
       CAS_BASE_URL_BROWSER: "http://localhost:8443/cas"
       SUPERADMIN_EMAIL: "superadmin@gatech.edu"
-      SUPERADMIN_NAME: "Super Admin"
-      # Detect source changes in Docker bind mount (Windows/Mac)
+      SUPERADMIN_FIRSTNAME: "Super"
+      SUPERADMIN_LASTNAME: "Admin"
       WATCHPACK_POLLING: "true"
     volumes:
       - ./:/app
@@ -76,7 +76,8 @@ services:
     environment:
       PORT: "8443"
       SUPERADMIN_EMAIL: "superadmin@gatech.edu"
-      SUPERADMIN_NAME: "Super Admin"
+      SUPERADMIN_FIRSTNAME: "Super"
+      SUPERADMIN_LASTNAME: "Admin"
     ports:
       - "8443:8443"
     networks:
