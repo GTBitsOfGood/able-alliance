@@ -13,6 +13,6 @@
 
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["RouteModel.ts", "index.mjs"],
+  "include": ["src/server/db/models/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

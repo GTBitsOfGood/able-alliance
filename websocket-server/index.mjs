@@ -4,9 +4,7 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 
-import RouteModel from "../dist/server/db/models/RouteModel";
-
-dotenv.config();
+import RouteModel from "../server/dist/server/db/models/RouteModel.js";dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
