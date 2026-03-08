@@ -83,6 +83,19 @@ services:
     networks:
       - able-alliance-net
 
+  websocket:
+    build:
+      context: .
+      dockerfile: websocket-server/Dockerfile
+    container_name: able-alliance-websocket
+    ports:
+      - "3001:3001"
+      - "4000:4000"
+    depends_on:
+      - mongo
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/able-alliance
+
 networks:
   able-alliance-net:
     driver: bridge

@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 
 export default function SocketTest() {
   useEffect(() => {
-    const socket = io("http://localhost:3001", {
+    const socket = io("http://127.0.0.1:4000", {
       auth: {
         routeId: "YOUR_ROUTE_ID",
         userId: "YOUR_USER_ID",
@@ -23,15 +23,15 @@ export default function SocketTest() {
       });
     });
 
-    socket.on("receiveChatMessage", (msg) => {
+    socket.on("receiveChatMessage", (msg: string) => {
       console.log("Chat:", msg);
     });
 
-    socket.on("broadcastLocation", (loc) => {
+    socket.on("broadcastLocation", (loc: { latitude: number; longitude: number }) => {
       console.log("Location:", loc);
     });
 
-    socket.on("connect_error", (err) => {
+    socket.on("connect_error", (err: any) => {
       console.error("Connection error:", err.message);
     });
 

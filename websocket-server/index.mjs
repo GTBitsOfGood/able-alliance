@@ -4,12 +4,12 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 
-import RouteModel from "../src/server/db/models/RouteModel.ts";
+import RouteModel from "../src/server/db/models/RouteModel";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ?? 3001;
+const PORT = process.env.PORT ?? 4000;
 
 app.use(express.json());
 
@@ -17,12 +17,28 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
+    // origin: [
+    //   "http://localhost:3000",                   
+    //   "https://able-alliance.netlify.app",       
+    //   /^https:\/\/deploy-preview-\d+--able-alliance\.netlify\.app$/ // deploy previews
+    // ],
     origin: "*",
+    methods: ["GET", "POST"],
   },
 });
 
-await mongoose.connect(process.env.MONGODB_URI);
-console.log("Connected to MongoDB");
+(async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log("Connected to MongoDB");
+    server.listen(PORT, () => {
+      console.log(`Express server listening on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to connect to MongoDB", error.message);
+    process.exit(1);
+  }
+})();
 
 io.use(async (socket, next) => {
   try {
@@ -37,6 +53,16 @@ io.use(async (socket, next) => {
     if (route.status !== "En-route") {
       return next(new Error("Route is not en-route"));
     }
+
+    const isStudent = route.student._id?.toString() === userId;
+
+    const isDriver =
+      route.driver?._id?.toString() === userId;
+
+    if (!isStudent && !isDriver) {
+      return next(new Error("User not authorized for this route"));
+    }
+    
     const userInRoute =
       route.driver?.toString() === userId ||
       route.student.toString() === userId;
@@ -86,6 +112,10 @@ io.on("connection", socket => {
     }
   });
 
+  socket.on("disconnect", () => {
+    console.log("A user disconnected", socket.id);
+  });
+
 });
 
 
@@ -101,6 +131,6 @@ app.get("/health", (req, res) => {
 
 
 // Start server
-server.listen(PORT, () => {
-  console.log(`Express server listening on port ${PORT}`);
-});
+// server.listen(PORT, () => {
+//   console.log(`Express server listening on port ${PORT}`);
+// });
