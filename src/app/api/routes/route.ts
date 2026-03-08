@@ -45,25 +45,38 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Student check on the user
-    if (session.user.type !== "Student") {
-      return NextResponse.json(
-        { error: "Forbidden: only students can list their rides here" },
-        { status: HTTP_STATUS_CODE.FORBIDDEN },
-      );
-    }
-    const loggedInStudentId = session.user.userId;
+    const userType = session.user.type;
+    const loggedInUserId = session.user.userId;
 
-    // optional filters: ?driver=ID | ?start_time=<time> | ?end_time=<time>
+    // optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
+    const studentParam = searchParams.get("student");
     const driver = searchParams.get("driver");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
-    if (!mongoose.Types.ObjectId.isValid(loggedInStudentId)) {
-      return NextResponse.json(
-        { error: "Invalid student ID" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
+    let studentFilter: string | undefined;
+
+    if (userType === "Student") {
+      // actual Student check that makes it so they only see THEIR rides
+      if (!mongoose.Types.ObjectId.isValid(loggedInUserId)) {
+        return NextResponse.json(
+          { error: "Invalid student ID" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+      studentFilter = loggedInUserId;
+    } else if (studentParam) {
+      // Admins / Drivers may filter by an explicit student id
+      if (!mongoose.Types.ObjectId.isValid(studentParam)) {
+        return NextResponse.json(
+          { error: "Invalid student ID" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+      studentFilter = studentParam;
+    } else {
+      // Admins / Drivers without ?student can see all matching routes
+      studentFilter = undefined;
     }
     if (driver && !mongoose.Types.ObjectId.isValid(driver)) {
       return NextResponse.json(
@@ -94,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
 
     const routes = await getRoutes({
-      student: loggedInStudentId,
+      student: studentFilter,
       driver: driver ?? undefined,
       start_time: startDate,
       end_time: endDate,

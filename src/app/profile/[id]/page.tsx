@@ -6,16 +6,16 @@ import { ProfileView, type ProfileUser } from "../ProfileView";
 export default async function ProfilePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const session = await auth();
   if (!session?.user) {
     redirect("/login");
   }
 
+  const { id: targetId } = await params;
   const viewerId = session.user.userId;
   const viewerType = session.user.type;
-  const targetId = params.id;
 
   const canView =
     viewerId === targetId ||
@@ -29,28 +29,40 @@ export default async function ProfilePage({
 
   const data = await getUserById(targetId).catch(() => null);
 
-  const baseFromSession: ProfileUser = {
-    id: viewerId,
-    //default split for first and last name. TODO on split/db fields
+  if (!data) {
+    if (viewerId !== targetId) {
+      redirect("/");
+    }
+
+    const selfFromSession: ProfileUser = {
+      id: targetId,
+      name:
+        (session.user.name as string | undefined) ??
+        (session.user.email as string | undefined) ??
+        "User",
+      email: session.user.email as string,
+      type: session.user.type as ProfileUser["type"],
+      studentInfo: null,
+    };
+
+    return <ProfileView user={selfFromSession} />;
+  }
+
+  const user: ProfileUser = {
+    id: (data as any)._id?.toString?.() ?? targetId,
     name:
+      ((data as any).name as string | undefined) ??
       (session.user.name as string | undefined) ??
       (session.user.email as string | undefined) ??
       "User",
-    email: session.user.email as string,
-    type: session.user.type as ProfileUser["type"],
-    studentInfo: null,
+    email:
+      ((data as any).email as string | undefined) ??
+      (session.user.email as string),
+    type:
+      ((data as any).type as ProfileUser["type"] | undefined) ??
+      (session.user.type as ProfileUser["type"]),
+    studentInfo: (data as any).studentInfo ?? null,
   };
-
-  const user: ProfileUser = data
-    ? {
-        id: (data as any)._id?.toString?.() ?? baseFromSession.id,
-        name: ((data as any).name as string) ?? baseFromSession.name,
-        email: ((data as any).email as string) ?? baseFromSession.email,
-        type:
-          ((data as any).type as ProfileUser["type"]) ?? baseFromSession.type,
-        studentInfo: (data as any).studentInfo ?? baseFromSession.studentInfo,
-      }
-    : baseFromSession;
 
   return <ProfileView user={user} />;
 }

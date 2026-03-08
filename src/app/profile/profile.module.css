@@ -26,20 +26,20 @@
   justify-content: center;
   font-size: var(--text-desktop-heading-2);
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-solid-bg-base);
 }
 
 /* Default colors for now based on Figma pfps*/
 .profileAvatarStudent {
-  background-color: #ffcc3d;
+  background-color: var(--color-status-amber-text);
 }
 
 .profileAvatarDriver {
-  background-color: #61c989;
+  background-color: var(--color-status-green-text);
 }
 
 .profileAvatarAdmin {
-  background-color: #e277a8;
+  background-color: var(--color-status-red-text);
 }
 
 .profileNameBlock {

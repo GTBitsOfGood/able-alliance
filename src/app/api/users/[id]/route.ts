@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import connectMongoDB from "@/server/db/mongodb";
-import { StudentModel } from "@/server/db/models/UserModel";
-import { getUserById, deleteUser } from "@/server/db/actions/UserAction";
+import {
+  getUserById,
+  deleteUser,
+  updateStudentInfo,
+} from "@/server/db/actions/UserAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
 import { auth } from "@/auth";
@@ -104,35 +106,19 @@ export async function PATCH(
   }
 
   try {
-    await connectMongoDB();
-    const student = await StudentModel.findById(id);
-    if (!student) {
+    const updated = await updateStudentInfo(id, {
+      notes: parsed.data.notes ?? null,
+      accessibilityNeeds: parsed.data.accessibilityNeeds ?? null,
+    });
+
+    if (!updated) {
       return NextResponse.json(
         { error: "User not found or not a student" },
         { status: HTTP_STATUS_CODE.NOT_FOUND },
       );
     }
 
-    const currentInfo =
-      (
-        student as unknown as {
-          studentInfo?: { notes?: string; accessibilityNeeds?: string };
-        }
-      ).studentInfo ?? {};
-    const nextInfo = {
-      ...currentInfo,
-      ...(parsed.data.notes !== undefined
-        ? { notes: parsed.data.notes ?? "" }
-        : {}),
-      ...(parsed.data.accessibilityNeeds !== undefined
-        ? { accessibilityNeeds: parsed.data.accessibilityNeeds ?? undefined }
-        : {}),
-    };
-    (student as unknown as { studentInfo?: typeof nextInfo }).studentInfo =
-      nextInfo;
-    const saved = await student.save();
-
-    const userObj = saved.toObject() as Record<string, unknown> & {
+    const userObj = updated as unknown as Record<string, unknown> & {
       _id: { toString(): string };
     };
     return NextResponse.json(

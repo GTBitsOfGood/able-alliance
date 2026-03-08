@@ -217,7 +217,7 @@
   border: none;
   padding: 0;
   font-size: var(--text-desktop-paragraph-2);
-  color: var(--color-status-red-text, #c73a3a);
+  color: var(--color-status-red-text);
   cursor: pointer;
   text-decoration: none;
   font-family: inherit;
