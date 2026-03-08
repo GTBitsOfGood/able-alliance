@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import Location from "@/server/db/models/LocationModel";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { getUserFromRequest } from "@/utils/authUser";
 
 // GET /api/locations/:id
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  try {
+    await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
   const { id } = await context.params; // Await params before accessing id
   try {
     const location = await Location.findById(id);
@@ -31,6 +40,21 @@ export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
+  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
+  }
   const { id } = await context.params; // Await params before accessing id
   try {
     const location = await Location.findById(id);
