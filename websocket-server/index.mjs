@@ -1,10 +1,10 @@
 import express from "express";
-import http from "http";
+import { createServer } from "node:http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 
-import RouteModel from "../src/server/db/models/RouteModel";
+import RouteModel from "../dist/server/db/models/RouteModel";
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ const PORT = process.env.PORT ?? 4000;
 
 app.use(express.json());
 
-const server = http.createServer(app);
+const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
@@ -25,6 +25,7 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
+  'transports': ['websocket', 'polling']
 });
 
 (async () => {

@@ -10,6 +10,7 @@ export default function SocketTest() {
         routeId: "YOUR_ROUTE_ID",
         userId: "YOUR_USER_ID",
       },
+      'transports': ['websocket', 'polling']
     });
 
     socket.on("connect", () => {
@@ -33,6 +34,8 @@ export default function SocketTest() {
 
     socket.on("connect_error", (err: any) => {
       console.error("Connection error:", err.message);
+      console.error(err.description);
+      console.error(err.context);
     });
 
     return () => {
