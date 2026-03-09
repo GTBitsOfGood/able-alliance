@@ -7,8 +7,8 @@ export default function SocketTest() {
   useEffect(() => {
     const socket = io("http://127.0.0.1:4000", {
       auth: {
-        routeId: "66d3f0e4c9e8c4e8f6d8a321",
-        userId: "66d3f0e4c9e8c4e8f6d8a555",
+        routeId: "69ae2fcf4cf289f4428563b6",
+        userId: "69ae2db196e046b85e8563b1",
       },
       transports: ["websocket", "polling"],
     });

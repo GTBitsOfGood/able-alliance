@@ -1,11 +1,3 @@
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
-});
-
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception thrown:", err);
-});
-
 import express from "express";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
@@ -45,12 +37,11 @@ const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    // origin: [
-    //   "http://localhost:3000",
-    //   "https://able-alliance.netlify.app",
-    //   /^https:\/\/deploy-preview-\d+--able-alliance\.netlify\.app$/ // deploy previews
-    // ],
-    origin: "*",
+    origin: [
+      "http://localhost:3000",
+      "https://able-alliance.netlify.app",
+      /^https:\/\/deploy-preview-\d+--able-alliance\.netlify\.app$/, // deploy previews
+    ],
     methods: ["GET", "POST"],
   },
   transports: ["websocket", "polling"],
@@ -58,8 +49,6 @@ const io = new Server(server, {
 
 (async () => {
   try {
-    console.log("MONGODB_URI:", process.env.MONGODB_URI);
-    console.log("PORT:", process.env.PORT);
     await mongoose.connect(process.env.MONGODB_URI);
     console.log("Websocket server connected to MongoDB");
 
@@ -85,13 +74,6 @@ const io = new Server(server, {
           return next(new Error("User not authorized for this route"));
         }
 
-        const userInRoute =
-          route.driver?.toString() === userId ||
-          route.student?.toString() === userId;
-
-        if (!userInRoute) {
-          return next(new Error("User not assigned to this route"));
-        }
         socket.routeId = routeId;
         socket.user = userId;
         next();
