@@ -7,10 +7,10 @@ export default function SocketTest() {
   useEffect(() => {
     const socket = io("http://127.0.0.1:4000", {
       auth: {
-        routeId: "YOUR_ROUTE_ID",
-        userId: "YOUR_USER_ID",
+        routeId: "66d3f0e4c9e8c4e8f6d8a321",
+        userId: "66d3f0e4c9e8c4e8f6d8a555",
       },
-      'transports': ['websocket', 'polling']
+      transports: ["websocket", "polling"],
     });
 
     socket.on("connect", () => {
@@ -28,9 +28,12 @@ export default function SocketTest() {
       console.log("Chat:", msg);
     });
 
-    socket.on("broadcastLocation", (loc: { latitude: number; longitude: number }) => {
-      console.log("Location:", loc);
-    });
+    socket.on(
+      "broadcastLocation",
+      (loc: { latitude: number; longitude: number }) => {
+        console.log("Location:", loc);
+      },
+    );
 
     socket.on("connect_error", (err: any) => {
       console.error("Connection error:", err.message);

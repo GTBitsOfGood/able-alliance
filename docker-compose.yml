@@ -91,9 +91,12 @@ services:
     ports:
       - "4000:4000"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/able-alliance
+      - MONGODB_URI=mongodb://mongo:27017/able-alliance?replicaSet=rs0
+    networks:
+      - able-alliance-net
 
 networks:
   able-alliance-net:
