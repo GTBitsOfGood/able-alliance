@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest } from "@/utils/authUser";
 import mongoose from "mongoose";
 import {
   createRoute,
@@ -14,6 +15,15 @@ import {
 import { internalErrorPayload } from "@/utils/apiError";
 
 export async function GET(req: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -33,7 +43,22 @@ export async function GET(req: NextRequest) {
           { status: HTTP_STATUS_CODE.NOT_FOUND },
         );
       }
-      return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
+      // Only allow: Admin/SuperAdmin, or owner (student._id or driver._id matches userId)
+      if (
+        user.type === "Admin" ||
+        user.type === "SuperAdmin" ||
+        (route.student &&
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (route.student as any)._id?.toString() === user.userId) ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (route.driver && (route.driver as any)._id?.toString() === user.userId)
+      ) {
+        return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
+      }
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      );
     }
 
     // Get all routes with optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
@@ -75,13 +100,34 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const routes = await getRoutes({
-      student: student ?? undefined,
-      driver: driver ?? undefined,
-      start_time: startDate,
-      end_time: endDate,
-    });
-    return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
+    // Only allow: Admin/SuperAdmin, or filter by own userId if Student/Driver
+    if (user.type === "Admin" || user.type === "SuperAdmin") {
+      const routes = await getRoutes({
+        student: student ?? undefined,
+        driver: driver ?? undefined,
+        start_time: startDate,
+        end_time: endDate,
+      });
+      return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
+    } else if (user.type === "Student") {
+      const routes = await getRoutes({
+        student: user.userId,
+        start_time: startDate,
+        end_time: endDate,
+      });
+      return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
+    } else if (user.type === "Driver") {
+      const routes = await getRoutes({
+        driver: user.userId,
+        start_time: startDate,
+        end_time: endDate,
+      });
+      return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
+    }
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
   } catch (e) {
     if (
       e instanceof RouteAlreadyExistsException ||
@@ -97,6 +143,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
   try {
     const body = await request.json();
     const parsed = createRouteSchema.safeParse(body);
@@ -106,6 +161,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (!(user.type === "Student" && user.userId === parsed.data.student)) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      );
+    }
     // Driver and vehicle must not be set on create; use POST /api/routes/schedule instead.
     if (body.driver != null || body.vehicle != null) {
       return NextResponse.json(

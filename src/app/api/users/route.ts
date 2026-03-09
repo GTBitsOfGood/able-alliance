@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest } from "@/utils/authUser";
 import { createUser, getUsers } from "@/server/db/actions/UserAction";
 import { baseUserSchema, studentSchema } from "@/utils/types/user";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -6,6 +7,21 @@ import { UserAlreadyExistsException } from "@/utils/exceptions/user";
 import { internalErrorPayload } from "@/utils/apiError";
 
 export async function GET(request: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
+  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
+  }
   try {
     const searchParams = request.nextUrl.searchParams;
     //so you can filter by the type of user
@@ -26,6 +42,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
+  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
+  }
   try {
     const body = await request.json();
     let parsed;
@@ -40,6 +71,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(parsed.error.format(), {
         status: HTTP_STATUS_CODE.BAD_REQUEST,
       });
+    }
+
+    if (
+      user.type !== "SuperAdmin" &&
+      (parsed.data.type == "Admin" || parsed.data.type == "SuperAdmin")
+    ) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      );
     }
 
     const created = await createUser(parsed.data);
