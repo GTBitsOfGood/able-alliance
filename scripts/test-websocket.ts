@@ -199,8 +199,12 @@ async function run() {
   }
 
   const routeId = route._id.toString();
-  const driverUserId = (route.driver as { _id: unknown })._id.toString();
-  const studentUserId = (route.student as { _id: unknown })._id.toString();
+  const driverUserId = (
+    route.driver as { _id: { toString(): string } }
+  )._id.toString();
+  const studentUserId = (
+    route.student as { _id: { toString(): string } }
+  )._id.toString();
 
   console.log(`     routeId:   ${routeId}`);
   console.log(`     driver:    ${driverUserId}`);
