@@ -128,7 +128,7 @@ export default function CreateRidePage() {
     }
 
     // Create ISO string from selected date and user-selected time
-    const [hours, minutes] = dropOffTime.split(":").map(Number);
+    const [hours, minutes] = pickupTime.split(":").map(Number);
     const scheduledPickupTime = new Date(
       selectedDate.getFullYear(),
       selectedDate.getMonth(),
