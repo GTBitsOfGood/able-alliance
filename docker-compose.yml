@@ -105,3 +105,4 @@ networks:
 
 volumes:
   mongodb-data:
+  node_modules:

@@ -30,14 +30,12 @@ type DriverRoute = {
   driver?: { _id: string };
 };
 
-function getWeekRange(offset: 0 | 1): [Date, Date] {
+function getDayRange(offset: 0 | 1): [Date, Date] {
   const now = new Date();
-  const dayOfWeek = now.getDay();
   const start = new Date(now);
-  start.setDate(now.getDate() - dayOfWeek + offset * 7);
+  start.setDate(now.getDate() + offset);
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
-  end.setDate(start.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return [start, end];
 }
@@ -68,13 +66,16 @@ function groupByVehicle(
   return map;
 }
 
-function formatAssignedVehicleTitle() {
-  const todayLabel = new Date().toLocaleDateString("en-US", {
+function formatAssignedVehicleTitle(offset: 0 | 1) {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  const label = date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
-  return `Assigned Vehicle Today, ${todayLabel}`;
+  const prefix = offset === 0 ? "Today" : "Tomorrow";
+  return `Assigned Vehicle ${prefix}, ${label}`;
 }
 
 function getAccessibilityLabel(
@@ -90,16 +91,12 @@ function getLocalDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function formatWeekHeading(range: [Date, Date]) {
-  const startLabel = range[0].toLocaleDateString("en-US", {
-    month: "short",
+function formatDayRangeHeading(range: [Date, Date]) {
+  return range[0].toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
     day: "numeric",
   });
-  const endLabel = range[1].toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  return `Week of ${startLabel} - ${endLabel}`;
 }
 
 function formatDayHeading(date: Date) {
@@ -160,26 +157,26 @@ export default function DriverRidesView({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyRoutes, setBusyRoutes] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"this-week" | "next-week">(
-    "this-week",
-  );
+  const [activeTab, setActiveTab] = useState<"today" | "tomorrow">("today");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const thisWeekRange = useMemo(
-    () => (mounted ? getWeekRange(0) : [new Date(0), new Date(0)]),
+  const todayRange = useMemo(
+    () =>
+      mounted ? getDayRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
-  const nextWeekRange = useMemo(
-    () => (mounted ? getWeekRange(1) : [new Date(0), new Date(0)]),
+  const tomorrowRange = useMemo(
+    () =>
+      mounted ? getDayRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
 
   const fetchRoutes = useCallback(async () => {
     try {
-      const range = activeTab === "this-week" ? thisWeekRange : nextWeekRange;
+      const range = activeTab === "today" ? todayRange : tomorrowRange;
       const params = new URLSearchParams({
         driver: userId,
         start_time: range[0].toISOString(),
@@ -203,7 +200,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [userId, activeTab, thisWeekRange, nextWeekRange]);
+  }, [userId, activeTab, todayRange, tomorrowRange]);
 
   useEffect(() => {
     setLoading(true);
@@ -223,36 +220,40 @@ export default function DriverRidesView({ userId }: { userId: string }) {
   );
 
   const vehicleGroups = useMemo(() => groupByVehicle(routes), [routes]);
-  const activeWeekRange = useMemo(
-    () => (activeTab === "this-week" ? thisWeekRange : nextWeekRange),
-    [activeTab, thisWeekRange, nextWeekRange],
+  const activeDayRange = useMemo(
+    () => (activeTab === "today" ? todayRange : tomorrowRange),
+    [activeTab, todayRange, tomorrowRange],
   );
-  const weekHeading = useMemo(
-    () => (mounted ? formatWeekHeading(activeWeekRange) : "—"),
-    [mounted, activeWeekRange],
+  const dayHeading = useMemo(
+    () => (mounted ? formatDayRangeHeading(activeDayRange) : "—"),
+    [mounted, activeDayRange],
   );
+  const activeTabOffset = activeTab === "today" ? 0 : 1;
   const assignedVehicleTitle = useMemo(
-    () => (mounted ? formatAssignedVehicleTitle() : "Assigned Vehicle"),
-    [mounted],
+    () =>
+      mounted
+        ? formatAssignedVehicleTitle(activeTabOffset)
+        : "Assigned Vehicle",
+    [mounted, activeTabOffset],
   );
 
-  function renderWeekToggle() {
+  function renderDayToggle() {
     return (
       <div className={styles.driverWeekToggleRow}>
         <Tabs.List
           className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]}`}
         >
           <Tabs.Trigger
-            value="this-week"
+            value="today"
             className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
           >
-            <div className={tabStyles["bog-tabs-label"]}>This week</div>
+            <div className={tabStyles["bog-tabs-label"]}>Today</div>
           </Tabs.Trigger>
           <Tabs.Trigger
-            value="next-week"
+            value="tomorrow"
             className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
           >
-            <div className={tabStyles["bog-tabs-label"]}>Next week</div>
+            <div className={tabStyles["bog-tabs-label"]}>Tomorrow</div>
           </Tabs.Trigger>
         </Tabs.List>
       </div>
@@ -313,8 +314,8 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     if (vehicleGroups.size === 0 && !loading) {
       return (
         <>
-          {renderWeekToggle()}
-          <h2 className={styles.driverWeekHeading}>{weekHeading}</h2>
+          {renderDayToggle()}
+          <h2 className={styles.driverWeekHeading}>{dayHeading}</h2>
           <p className={styles.rideListEmpty}>No rides yet.</p>
         </>
       );
@@ -335,17 +336,15 @@ export default function DriverRidesView({ userId }: { userId: string }) {
                   </span>
                 </div>
                 <div className={styles.vehicleInfoItem}>
-                  <span className={styles.vehicleInfoLabel}>
-                    Make &amp; Model
-                  </span>
+                  <span className={styles.vehicleInfoLabel}>Name</span>
                   <span className={styles.vehicleInfoValue}>
                     {vehicle.name}
                   </span>
                 </div>
                 <div className={styles.vehicleInfoItem}>
-                  <span className={styles.vehicleInfoLabel}>Color</span>
+                  <span className={styles.vehicleInfoLabel}>Description</span>
                   <span className={styles.vehicleInfoValue}>
-                    {vehicle.description || "Unknown"}
+                    {vehicle.description || "—"}
                   </span>
                 </div>
               </div>
@@ -365,9 +364,9 @@ export default function DriverRidesView({ userId }: { userId: string }) {
             </div>
           </div>
 
-          {index === 0 && renderWeekToggle()}
+          {index === 0 && renderDayToggle()}
           {index === 0 && (
-            <h2 className={styles.driverWeekHeading}>{weekHeading}</h2>
+            <h2 className={styles.driverWeekHeading}>{dayHeading}</h2>
           )}
 
           <div className={styles.vehicleRides}>
@@ -439,7 +438,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
 
       <Tabs.Root
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as "this-week" | "next-week")}
+        onValueChange={(v) => setActiveTab(v as "today" | "tomorrow")}
         className={styles.tabsLayout}
       >
         {loading ? (

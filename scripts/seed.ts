@@ -26,7 +26,8 @@ if (
   MONGODB_URI.includes("replicaSet=") &&
   !MONGODB_URI.includes("directConnection=")
 ) {
-  MONGODB_URI += (MONGODB_URI.includes("?") ? "&" : "?") + "directConnection=true";
+  MONGODB_URI +=
+    (MONGODB_URI.includes("?") ? "&" : "?") + "directConnection=true";
 }
 
 async function seed() {
@@ -40,23 +41,21 @@ async function seed() {
   let student = await usersCol.findOne({ email: "gburdell3@gatech.edu" });
   if (!student) {
     const res = await usersCol.insertOne({
-      name: "George P. Burdell",
+      firstName: "George",
+      lastName: "Burdell",
       email: "gburdell3@gatech.edu",
       type: "Student",
-      studentInfo: {
-        GTID: "903123456",
-        notes: "",
-        accessibilityNeeds: undefined,
-      },
+      studentInfo: {},
     });
     student = {
       _id: res.insertedId,
-      name: "George P. Burdell",
+      firstName: "George",
+      lastName: "Burdell",
       email: "gburdell3@gatech.edu",
       type: "Student",
-      studentInfo: { GTID: "903123456" },
+      studentInfo: {},
     };
-    console.log("✓ Created student: George P. Burdell");
+    console.log("✓ Created student: George Burdell");
   } else {
     console.log("– Student already exists");
   }
@@ -64,13 +63,15 @@ async function seed() {
   let driver = await usersCol.findOne({ email: "driver1@gatech.edu" });
   if (!driver) {
     const res = await usersCol.insertOne({
-      name: "Test Driver",
+      firstName: "Test",
+      lastName: "Driver",
       email: "driver1@gatech.edu",
       type: "Driver",
     });
     driver = {
       _id: res.insertedId,
-      name: "Test Driver",
+      firstName: "Test",
+      lastName: "Driver",
       email: "driver1@gatech.edu",
       type: "Driver",
     };
@@ -82,13 +83,15 @@ async function seed() {
   let admin = await usersCol.findOne({ email: "admin@gatech.edu" });
   if (!admin) {
     const res = await usersCol.insertOne({
-      name: "Admin User",
+      firstName: "Admin",
+      lastName: "User",
       email: "admin@gatech.edu",
       type: "Admin",
     });
     admin = {
       _id: res.insertedId,
-      name: "Admin User",
+      firstName: "Admin",
+      lastName: "User",
       email: "admin@gatech.edu",
       type: "Admin",
     };
@@ -164,44 +167,52 @@ async function seed() {
     console.log("– Vehicle RVG1730 exists");
   }
 
-  // ---------- Routes (this week + next week) ----------
+  // ---------- Routes (today + tomorrow) ----------
   const routesCol = db.collection("routes");
 
   const now = new Date();
 
-  const getWeekStart = (offset: 0 | 1): Date => {
-    const dayOfWeek = now.getDay();
-    const start = new Date(now);
-    start.setDate(now.getDate() - dayOfWeek + offset * 7);
-    start.setHours(0, 0, 0, 0);
-    return start;
+  const getDayStart = (offset: 0 | 1): Date => {
+    const date = new Date(now);
+    date.setDate(now.getDate() + offset);
+    date.setHours(0, 0, 0, 0);
+    return date;
   };
 
-  const withDayAndTime = (
-    weekStart: Date,
-    dayOffset: number,
-    hour: number,
-    minute: number,
-  ): Date => {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + dayOffset);
+  const withTime = (dayStart: Date, hour: number, minute: number): Date => {
+    const date = new Date(dayStart);
     date.setHours(hour, minute, 0, 0);
     return date;
   };
 
-  const studentEmbed = {
-    _id: student._id,
-    name: student.name,
-    email: student.email,
-    type: "Student",
-    studentInfo: (student as Record<string, unknown>).studentInfo ?? {
-      GTID: "903123456",
-    },
+  const parseName = (user: Record<string, unknown>): [string, string] => {
+    const first = user.firstName as string | undefined;
+    const last = user.lastName as string | undefined;
+    if (first && last) return [first, last];
+    const name = (user.name as string) ?? "";
+    const parts = name.trim().split(/\s+/);
+    return [parts[0] || "User", parts.slice(1).join(" ") || "Unknown"];
   };
 
+  const [studentFirst, studentLast] = parseName(
+    student as Record<string, unknown>,
+  );
+  const studentEmbed = {
+    _id: student._id,
+    firstName: studentFirst,
+    lastName: studentLast,
+    email: student.email,
+    type: "Student",
+    studentInfo: (student as Record<string, unknown>).studentInfo ?? {},
+  };
+
+  const [driverFirst, driverLast] = parseName(
+    driver as Record<string, unknown>,
+  );
   const driverEmbed = {
     _id: driver._id,
-    name: driver.name,
+    firstName: driverFirst,
+    lastName: driverLast,
     email: driver.email,
     type: "Driver",
   };
@@ -219,49 +230,39 @@ async function seed() {
   const dropoffId = (dropoff as { _id: unknown })._id;
   const dropoff2Id = (dropoff2 as { _id: unknown })._id;
 
-  const thisWeekStart = getWeekStart(0);
-  const nextWeekStart = getWeekStart(1);
+  const todayStart = getDayStart(0);
+  const tomorrowStart = getDayStart(1);
 
   const routeTemplates = [
     {
-      label: "this week Sunday 10:00",
+      label: "today 10:00",
       dropoffLocation: dropoffId,
-      scheduledPickupTime: withDayAndTime(thisWeekStart, 0, 10, 0),
+      scheduledPickupTime: withTime(todayStart, 10, 0),
     },
     {
-      label: "this week Monday 14:30",
+      label: "today 14:30",
       dropoffLocation: dropoffId,
-      scheduledPickupTime: withDayAndTime(thisWeekStart, 1, 14, 30),
+      scheduledPickupTime: withTime(todayStart, 14, 30),
     },
     {
-      label: "this week Wednesday 16:00",
+      label: "today 16:00",
       dropoffLocation: dropoff2Id,
-      scheduledPickupTime: withDayAndTime(thisWeekStart, 3, 16, 0),
+      scheduledPickupTime: withTime(todayStart, 16, 0),
     },
     {
-      label: "this week Friday 11:15",
+      label: "tomorrow 09:30",
       dropoffLocation: dropoffId,
-      scheduledPickupTime: withDayAndTime(thisWeekStart, 5, 11, 15),
+      scheduledPickupTime: withTime(tomorrowStart, 9, 30),
     },
     {
-      label: "next week Monday 09:30",
-      dropoffLocation: dropoffId,
-      scheduledPickupTime: withDayAndTime(nextWeekStart, 1, 9, 30),
-    },
-    {
-      label: "next week Tuesday 14:00",
+      label: "tomorrow 14:00",
       dropoffLocation: dropoff2Id,
-      scheduledPickupTime: withDayAndTime(nextWeekStart, 2, 14, 0),
+      scheduledPickupTime: withTime(tomorrowStart, 14, 0),
     },
     {
-      label: "next week Thursday 16:30",
+      label: "tomorrow 16:30",
       dropoffLocation: dropoffId,
-      scheduledPickupTime: withDayAndTime(nextWeekStart, 4, 16, 30),
-    },
-    {
-      label: "next week Saturday 12:15",
-      dropoffLocation: dropoff2Id,
-      scheduledPickupTime: withDayAndTime(nextWeekStart, 6, 12, 15),
+      scheduledPickupTime: withTime(tomorrowStart, 16, 30),
     },
   ];
 
