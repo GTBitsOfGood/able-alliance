@@ -208,6 +208,8 @@ export async function GET(request: NextRequest) {
         type: userType,
         email: attributes.email,
         name: attributes.displayName,
+        firstName: user.firstName,
+        lastName: user.lastName,
       },
       secret,
       salt: sessionCookieName,

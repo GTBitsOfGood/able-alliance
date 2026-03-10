@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import BogButton from "@/components/BogButton/BogButton";
 import styles from "./profile.module.css";
 
@@ -60,51 +60,185 @@ function accessibilityLabel(
   }
 }
 
-export function ProfileView({ user }: { user: ProfileUser }) {
-  const first = user.firstName || "-";
-  const last = user.lastName || "-";
-  const preferredFirst = "-";
-  const avatarLetter = user.firstName.trim().charAt(0).toUpperCase() || "?";
-  const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-  const showAccommodations = user.type === "Student";
+const ACCESSIBILITY_OPTIONS: {
+  label: string;
+  value: "Wheelchair" | "LowMobility" | "";
+}[] = [
+  { label: "None", value: "" },
+  { label: "Wheelchair access needed", value: "Wheelchair" },
+  { label: "Low mobility support needed", value: "LowMobility" },
+];
+
+export function ProfileView({
+  user,
+  canEdit = false,
+}: {
+  user: ProfileUser;
+  canEdit?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [draftNotes, setDraftNotes] = useState(user.studentInfo?.notes ?? "");
+  const [draftAccessibility, setDraftAccessibility] = useState<
+    "Wheelchair" | "LowMobility" | ""
+  >(user.studentInfo?.accessibilityNeeds ?? "");
+
+  const [displayUser, setDisplayUser] = useState(user);
+
+  const avatarLetter =
+    displayUser.firstName.trim().charAt(0).toUpperCase() || "?";
+  const displayName =
+    [displayUser.firstName, displayUser.lastName].filter(Boolean).join(" ") ||
+    displayUser.email;
+  const showAccommodations = displayUser.type === "Student";
+
+  function handleEdit() {
+    setDraftNotes(displayUser.studentInfo?.notes ?? "");
+    setDraftAccessibility(displayUser.studentInfo?.accessibilityNeeds ?? "");
+    setSaveError(null);
+    setEditing(true);
+  }
+
+  function handleCancel() {
+    setEditing(false);
+    setSaveError(null);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/users/${displayUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notes: draftNotes.trim() || null,
+          accessibilityNeeds: draftAccessibility || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error ?? "Failed to save changes");
+      }
+      setDisplayUser((prev) => ({
+        ...prev,
+        studentInfo: {
+          notes: draftNotes.trim() || null,
+          accessibilityNeeds: draftAccessibility || null,
+        },
+      }));
+      setEditing(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save changes");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className={styles.profilePage}>
       <div className={styles.profileInner}>
         <header className={styles.profileHeader}>
-          <div className={`${styles.profileAvatar} ${avatarClass(user.type)}`}>
+          <div
+            className={`${styles.profileAvatar} ${avatarClass(displayUser.type)}`}
+          >
             {avatarLetter}
           </div>
           <div className={styles.profileNameBlock}>
             <h1 className={styles.profileDisplayName}>{displayName}</h1>
-            <span className={styles.profileRole}>{roleLabel(user.type)}</span>
+            <span className={styles.profileRole}>
+              {roleLabel(displayUser.type)}
+            </span>
           </div>
         </header>
 
         <section className={styles.profileCard}>
           <div className={styles.profileCardHeader}>
             <h2 className={styles.sectionTitle}>Personal Information</h2>
-            <BogButton variant="secondary" size="medium">
-              Edit information
-            </BogButton>
+            {editing ? (
+              <div className={styles.editActions}>
+                <BogButton
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
+                  Cancel
+                </BogButton>
+                <BogButton
+                  variant="primary"
+                  size="medium"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </BogButton>
+              </div>
+            ) : (
+              showAccommodations &&
+              canEdit && (
+                <BogButton
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleEdit}
+                >
+                  Edit information
+                </BogButton>
+              )
+            )}
           </div>
+
+          {saveError && (
+            <p className={styles.saveError} role="alert">
+              {saveError}
+            </p>
+          )}
 
           <div className={styles.profileFieldGrid}>
             <div className={styles.profileField}>
               <span className={styles.fieldLabel}>First name</span>
-              <span className={styles.fieldValue}>{first}</span>
+              {editing ? (
+                <input
+                  className={styles.inlineInput}
+                  value={displayUser.firstName || ""}
+                  disabled
+                  readOnly
+                />
+              ) : (
+                <span className={styles.fieldValue}>
+                  {displayUser.firstName || "-"}
+                </span>
+              )}
             </div>
             <div className={styles.profileField}>
               <span className={styles.fieldLabel}>Last name</span>
-              <span className={styles.fieldValue}>{last}</span>
-            </div>
-            <div className={styles.profileField}>
-              <span className={styles.fieldLabel}>Preferred first name</span>
-              <span className={styles.fieldValue}>{preferredFirst}</span>
+              {editing ? (
+                <input
+                  className={styles.inlineInput}
+                  value={displayUser.lastName || ""}
+                  disabled
+                  readOnly
+                />
+              ) : (
+                <span className={styles.fieldValue}>
+                  {displayUser.lastName || "-"}
+                </span>
+              )}
             </div>
             <div className={styles.profileField}>
               <span className={styles.fieldLabel}>Email</span>
-              <span className={styles.fieldValue}>{user.email}</span>
+              {editing ? (
+                <input
+                  className={styles.inlineInput}
+                  value={displayUser.email}
+                  disabled
+                  readOnly
+                />
+              ) : (
+                <span className={styles.fieldValue}>{displayUser.email}</span>
+              )}
             </div>
           </div>
 
@@ -116,19 +250,47 @@ export function ProfileView({ user }: { user: ProfileUser }) {
                   <span className={styles.sectionRowLabel}>
                     Disabilities and accommodations
                   </span>
-                  <span className={styles.sectionRowValue}>
-                    {accessibilityLabel(
-                      user.studentInfo?.accessibilityNeeds ?? null,
-                    )}
-                  </span>
+                  {editing ? (
+                    <select
+                      className={styles.inlineSelect}
+                      value={draftAccessibility}
+                      onChange={(e) =>
+                        setDraftAccessibility(
+                          e.target.value as "Wheelchair" | "LowMobility" | "",
+                        )
+                      }
+                    >
+                      {ACCESSIBILITY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className={styles.sectionRowValue}>
+                      {accessibilityLabel(
+                        displayUser.studentInfo?.accessibilityNeeds ?? null,
+                      )}
+                    </span>
+                  )}
                 </div>
                 <div className={styles.sectionRow}>
                   <span className={styles.sectionRowLabel}>
                     Additional comments
                   </span>
-                  <span className={styles.sectionRowValue}>
-                    {user.studentInfo?.notes?.trim() || "-"}
-                  </span>
+                  {editing ? (
+                    <textarea
+                      className={styles.inlineTextarea}
+                      placeholder="Enter any other comments you would like the driver to know about"
+                      value={draftNotes}
+                      onChange={(e) => setDraftNotes(e.target.value)}
+                      rows={4}
+                    />
+                  ) : (
+                    <span className={styles.sectionRowValue}>
+                      {displayUser.studentInfo?.notes?.trim() || "-"}
+                    </span>
+                  )}
                 </div>
               </div>
             </section>

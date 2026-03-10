@@ -33,6 +33,11 @@ export default async function ProfilePage({
     viewerType === "Admin" ||
     viewerType === "SuperAdmin";
 
+  const canEdit =
+    viewerId === targetId ||
+    viewerType === "Admin" ||
+    viewerType === "SuperAdmin";
+
   if (!canView) {
     redirect("/"); // default redirect to home if not allowed
   }
@@ -53,18 +58,27 @@ export default async function ProfilePage({
       studentInfo: null,
     };
 
-    return <ProfileView user={selfFromSession} />;
+    return <ProfileView user={selfFromSession} canEdit={canEdit} />;
   }
 
   const doc = data as UserDocument;
   const user: ProfileUser = {
     id: doc._id?.toString?.() ?? targetId,
-    firstName: doc.firstName ?? doc.name?.split(" ")[0] ?? session.user.firstName ?? session.user.email ?? "User",
-    lastName: doc.lastName ?? (doc.name ? doc.name.split(" ").slice(1).join(" ") : "") ?? session.user.lastName ?? "",
+    firstName:
+      doc.firstName ??
+      doc.name?.split(" ")[0] ??
+      session.user.firstName ??
+      session.user.email ??
+      "User",
+    lastName:
+      doc.lastName ??
+      (doc.name ? doc.name.split(" ").slice(1).join(" ") : "") ??
+      session.user.lastName ??
+      "",
     email: doc.email ?? (session.user.email as string),
     type: doc.type ?? (session.user.type as ProfileUser["type"]),
     studentInfo: doc.studentInfo ?? null,
   };
 
-  return <ProfileView user={user} />;
+  return <ProfileView user={user} canEdit={canEdit} />;
 }

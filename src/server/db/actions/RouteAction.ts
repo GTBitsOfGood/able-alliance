@@ -44,7 +44,8 @@ export async function createRoute(data: CreateRouteInput) {
 
   const studentEmbed = {
     _id: studentObj._id,
-    name: studentObj.name,
+    firstName: studentObj.firstName,
+    lastName: studentObj.lastName,
     email: studentObj.email,
     type: studentObj.type,
     studentInfo:
@@ -116,16 +117,43 @@ export async function completeRoute(routeId: string) {
   await route.save();
   return route.toObject();
 }
-export async function cancelRoute(routeId: string) {
+export async function cancelRoute(routeId: string, status?: string) {
   await connectMongoDB();
   const route = await RouteModel.findById(routeId);
   if (!route) {
     return null;
   }
-  route.status = RouteStatus.CancelledByStudent;
+  if (status && Object.values(RouteStatus).includes(status as RouteStatus)) {
+    route.status = status as RouteStatus;
+  } else {
+    route.status = RouteStatus.CancelledByStudent;
+  }
   await route.save();
   return route.toObject();
 }
+
+export async function cancelRouteByDriver(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) {
+    return null;
+  }
+  route.status = RouteStatus.CancelledByDriver;
+  await route.save();
+  return route.toObject();
+}
+
+export async function startRoute(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route || route.status !== RouteStatus.Scheduled) {
+    return null;
+  }
+  route.status = RouteStatus.EnRoute;
+  await route.save();
+  return route.toObject();
+}
+
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
@@ -148,10 +176,10 @@ export async function scheduleRoute(
   if (!vehicle) {
     throw new RouteReferenceNotFoundException("Vehicle not found");
   }
-  // Plain objects for embedding so Mongoose accepts them
   const driverEmbed = {
     _id: driver._id,
-    name: driver.name,
+    firstName: driver.firstName,
+    lastName: driver.lastName,
     email: driver.email,
     type: driver.type,
   };

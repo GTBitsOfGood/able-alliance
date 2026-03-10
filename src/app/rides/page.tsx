@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
+import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
+import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 
 type Location = {
@@ -15,12 +16,17 @@ type Location = {
   latitude: number;
   longitude: number;
 };
+type RouteUser = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+};
 type Route = {
   _id: string;
   pickupLocation: string;
   dropoffLocation: string;
-  student: string;
-  driver?: string;
+  student: string | RouteUser;
+  driver?: string | RouteUser;
   vehicle?: string;
   scheduledPickupTime: string;
   status: string;
@@ -78,12 +84,16 @@ function groupRoutesByDate(routes: Route[]): Record<string, Route[]> {
 }
 
 export default function RidesPage() {
-  const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchRides = useCallback(async () => {
     if (!session?.user?.userId) return;
@@ -118,8 +128,16 @@ export default function RidesPage() {
     {} as Record<string, string>,
   );
 
-  const todayRange = React.useMemo(() => getDayRange(0), []);
-  const tomorrowRange = React.useMemo(() => getDayRange(1), []);
+  const todayRange = React.useMemo(
+    () =>
+      mounted ? getDayRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
+    [mounted],
+  );
+  const tomorrowRange = React.useMemo(
+    () =>
+      mounted ? getDayRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
+    [mounted],
+  );
 
   const routesByDateToday = React.useMemo(() => {
     const filtered = routes.filter((r) =>
@@ -137,6 +155,24 @@ export default function RidesPage() {
 
   const dateKeysToday = Object.keys(routesByDateToday).sort();
   const dateKeysTomorrow = Object.keys(routesByDateTomorrow).sort();
+
+  if (sessionStatus === "loading") {
+    return (
+      <div className={styles.ridesPage}>
+        <main className={styles.main}>
+          <p className={styles.rideListLoading}>Loading…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (session?.user?.type === "Driver") {
+    return (
+      <div className={styles.ridesPage}>
+        <DriverRidesView userId={session.user.userId} />
+      </div>
+    );
+  }
 
   function renderRideList(
     routesByDate: Record<string, Route[]>,
@@ -181,25 +217,30 @@ export default function RidesPage() {
         })();
 
   const requestRideButton = (
-    <BogButton
-      variant="primary"
-      size="medium"
-      className={styles.requestRideButton}
-      iconProps={{
-        position: "left",
-        iconProps: { name: "plus", size: 18 },
-      }}
-      onClick={() => router.push("/rides/new")}
-    >
-      Request new ride
-    </BogButton>
+    <Link href="/rides/new">
+      <BogButton
+        variant="primary"
+        size="medium"
+        className={styles.requestRideButton}
+        iconProps={{
+          position: "left",
+          iconProps: { name: "plus", size: 18 },
+        }}
+      >
+        Request new ride
+      </BogButton>
+    </Link>
   );
 
   return (
     <div className={styles.ridesPage}>
       <main className={styles.main}>
         <div className={styles.mainHeader}>
-          <h1 className={styles.pageTitle}>Your Rides</h1>
+          <h1 className={styles.pageTitle}>
+            {session?.user?.firstName
+              ? `${session.user.firstName}'s Rides`
+              : "Your Rides"}
+          </h1>
         </div>
 
         {error && (

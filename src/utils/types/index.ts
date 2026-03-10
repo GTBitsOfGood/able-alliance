@@ -9,7 +9,8 @@ export const locationSchema = z.object({
 export type LocationInput = z.infer<typeof locationSchema>;
 
 export const userSchema = z.object({
-  name: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   role: z.string().min(1),
 });

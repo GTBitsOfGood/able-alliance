@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
 import type { IBaseUser } from "./UserModel";
-import { IVehicle, VehicleSchema } from "./VehicleModel";
+import type { IVehicle } from "./VehicleModel";
 
 export type IRoute = RouteInput;
 
@@ -31,7 +31,8 @@ interface IRouteDocument {
 // but for subdocuments; unique on email only makes sense in the users collection).
 const EmbeddedBaseUserSchema = new Schema(
   {
-    name: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
     email: { type: String, required: true },
     type: {
       type: String,
@@ -44,13 +45,31 @@ const EmbeddedBaseUserSchema = new Schema(
 
 const EmbeddedStudentSchema = new Schema(
   {
-    name: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
     email: { type: String, required: true },
     type: { type: String, required: true, enum: ["Student"] },
     studentInfo: {
       notes: { type: String },
       accessibilityNeeds: { type: String, enum: ["Wheelchair", "LowMobility"] },
     },
+  },
+  { _id: true, versionKey: false },
+);
+
+// Embedded vehicle schema WITHOUT unique indexes (unique on licensePlate only
+// makes sense in the vehicles collection, not as a subdocument).
+const EmbeddedVehicleSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    licensePlate: { type: String, required: true },
+    description: { type: String },
+    accessibility: {
+      type: String,
+      enum: ["None", "Wheelchair"],
+      required: true,
+    },
+    seatCount: { type: Number, required: true, min: 1 },
   },
   { _id: true, versionKey: false },
 );
@@ -69,7 +88,7 @@ const RouteSchema = new Schema<IRouteDocument>(
     },
     student: { type: EmbeddedStudentSchema, required: true },
     driver: { type: EmbeddedBaseUserSchema, required: false },
-    vehicle: { type: VehicleSchema, required: false },
+    vehicle: { type: EmbeddedVehicleSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
     status: {
       type: String,

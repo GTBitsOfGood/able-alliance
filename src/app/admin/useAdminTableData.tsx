@@ -10,21 +10,28 @@ import {
   DRIVER_COLUMNS,
   VEHICLE_COLUMNS,
   ADMIN_COLUMNS,
+  LOCATION_COLUMNS,
   type StudentRowRaw,
   type DriverRowRaw,
   type VehicleRowRaw,
   type AdminRowRaw,
+  type LocationRowRaw,
 } from "./admin-table-data";
 
-export type AdminTableType = "Students" | "Drivers" | "Vehicles" | "Admins";
+export type AdminTableType =
+  | "Students"
+  | "Drivers"
+  | "Vehicles"
+  | "Locations"
+  | "Admins";
 
 function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
   return rows.map((row) => ({
     cells: [
       { content: row.name },
       { content: row.email },
-      { content: row.phone },
       { content: row.accessibilityNeeds || "—" },
+      { content: row.additionalComments || "—" },
     ],
   }));
 }
@@ -52,6 +59,23 @@ function vehicleRawToTableRows(rows: VehicleRowRaw[]): TableRow[] {
   }));
 }
 
+function locationRawToTableRows(rows: LocationRowRaw[]): TableRow[] {
+  return rows.map((row) => ({
+    cells: [
+      { content: row.name },
+      { content: String(row.latitude) },
+      { content: String(row.longitude) },
+    ],
+  }));
+}
+
+function combineFullName(firstName: unknown, lastName: unknown): string {
+  if (firstName && lastName) {
+    return lastName + ", " + firstName;
+  }
+  return "";
+}
+
 /** Adapt API user list to StudentRowRaw (students only). */
 function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
   if (!Array.isArray(data)) return [];
@@ -62,10 +86,10 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
     };
     const accessibilityNeeds = studentInfo.accessibilityNeeds;
     return {
-      name: String(u.name ?? ""),
+      name: String(combineFullName(u.firstName, u.lastName) ?? ""),
       email: String(u.email ?? ""),
-      phone: String(studentInfo.notes ?? ""),
       accessibilityNeeds: accessibilityNeeds ? String(accessibilityNeeds) : "",
+      additionalComments: String(studentInfo.notes ?? ""),
     };
   });
 }
@@ -74,7 +98,7 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
 function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
   if (!Array.isArray(data)) return [];
   return data.map((u: Record<string, unknown>) => ({
-    name: String(u.name ?? ""),
+    name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
   }));
 }
@@ -83,8 +107,18 @@ function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
 function adaptUsersToAdminRows(data: unknown): AdminRowRaw[] {
   if (!Array.isArray(data)) return [];
   return data.map((u: Record<string, unknown>) => ({
-    name: String(u.name ?? ""),
+    name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
+  }));
+}
+
+/** Adapt API location list to LocationRowRaw. */
+function adaptLocationsToRows(data: unknown): LocationRowRaw[] {
+  if (!Array.isArray(data)) return [];
+  return data.map((l: Record<string, unknown>) => ({
+    name: String(l.name ?? ""),
+    latitude: Number(l.latitude ?? 0),
+    longitude: Number(l.longitude ?? 0),
   }));
 }
 
@@ -163,6 +197,17 @@ export function useAdminTableData(tableType: AdminTableType) {
           setRows(adminRawToTableRows(raw));
           setRowIds(extractIds(data));
           setLoading(false);
+        } else if (tableType === "Locations") {
+          const res = await fetch("/api/locations");
+          if (!res.ok) throw new Error(`API ${res.status}`);
+          const data = await res.json();
+          if (cancelled) return;
+
+          const raw = adaptLocationsToRows(data);
+          setColumns(LOCATION_COLUMNS);
+          setRows(locationRawToTableRows(raw));
+          setRowIds(extractIds(data));
+          setLoading(false);
         } else {
           // Vehicles
           const res = await fetch("/api/vehicles");
@@ -197,7 +242,12 @@ export function useAdminTableData(tableType: AdminTableType) {
   }, [tableType, refreshKey]);
 
   const deleteRows = async (indices: Set<number>): Promise<number> => {
-    const endpoint = tableType === "Vehicles" ? "/api/vehicles" : "/api/users";
+    const endpoint =
+      tableType === "Vehicles"
+        ? "/api/vehicles"
+        : tableType === "Locations"
+          ? "/api/locations"
+          : "/api/users";
     let deleted = 0;
     for (const idx of indices) {
       const id = rowIds[idx];
