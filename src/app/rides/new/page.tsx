@@ -401,7 +401,9 @@ export default function CreateRidePage() {
                   </div>
 
                   {/* Drop Off Location */}
-                  <div className={styles.formGroup}>
+                  <div
+                    className={`${styles.formGroup} ${styles.formGroupDropoff}`}
+                  >
                     <h3 className={styles.formGroupTitle}>Drop Off Location</h3>
                     <div className={styles.locationCell}>
                       <svg

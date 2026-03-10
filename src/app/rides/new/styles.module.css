@@ -222,6 +222,10 @@
   flex-grow: 0;
 }
 
+.formGroupDropoff {
+  margin-bottom: 2rem;
+}
+
 .formGroupHeader {
   display: flex;
   flex-direction: row;
