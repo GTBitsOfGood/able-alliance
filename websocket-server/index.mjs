@@ -27,14 +27,14 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     // origin: [
-    //   "http://localhost:3000",                   
-    //   "https://able-alliance.netlify.app",       
+    //   "http://localhost:3000",
+    //   "https://able-alliance.netlify.app",
     //   /^https:\/\/deploy-preview-\d+--able-alliance\.netlify\.app$/ // deploy previews
     // ],
     origin: "*",
     methods: ["GET", "POST"],
   },
-  'transports': ['websocket', 'polling']
+  transports: ["websocket", "polling"],
 });
 
 (async () => {
@@ -52,7 +52,7 @@ const io = new Server(server, {
 
 io.use(async (socket, next) => {
   try {
-    const {routeId, userId} = socket.handshake.auth;
+    const { routeId, userId } = socket.handshake.auth;
     if (!routeId || !userId) {
       return next(new Error("Route ID or user ID missing"));
     }
@@ -66,30 +66,20 @@ io.use(async (socket, next) => {
 
     const isStudent = route.student._id?.toString() === userId;
 
-    const isDriver =
-      route.driver?._id?.toString() === userId;
+    const isDriver = route.driver?._id?.toString() === userId;
 
     if (!isStudent && !isDriver) {
       return next(new Error("User not authorized for this route"));
-    }
-    
-    const userInRoute =
-      route.driver?.toString() === userId ||
-      route.student?.toString() === userId;
-
-    if (!userInRoute) {
-      return next(new Error("User not assigned to this route"));
     }
     socket.routeId = routeId;
     socket.user = userId;
     next();
   } catch (error) {
-      return next(new Error("Auth error: " + error.message));
+    return next(new Error("Auth error: " + error.message));
   }
 });
 
-
-io.on("connection", socket => {
+io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
   const room = socket.routeId;
@@ -108,11 +98,14 @@ io.on("connection", socket => {
       socket.emit("chatError", "Invalid message format");
     }
   });
-  
+
   // Location
   socket.on("updateLocation", async (location) => {
     try {
-      if (typeof location.latitude !== "number" || typeof location.longitude !== "number") {
+      if (
+        typeof location.latitude !== "number" ||
+        typeof location.longitude !== "number"
+      ) {
         throw new Error("Coordinates are invalid");
       }
       io.to(room).emit("broadcastLocation", location);
@@ -125,10 +118,7 @@ io.on("connection", socket => {
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
   });
-
 });
-
-
 
 // Routes
 app.get("/", (req, res) => {
@@ -138,7 +128,6 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
-
 
 // Start server
 // server.listen(PORT, () => {

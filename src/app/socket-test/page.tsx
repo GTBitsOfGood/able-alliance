@@ -10,7 +10,7 @@ export default function SocketTest() {
         routeId: "YOUR_ROUTE_ID",
         userId: "YOUR_USER_ID",
       },
-      'transports': ['websocket', 'polling']
+      transports: ["websocket", "polling"],
     });
 
     socket.on("connect", () => {
@@ -28,9 +28,12 @@ export default function SocketTest() {
       console.log("Chat:", msg);
     });
 
-    socket.on("broadcastLocation", (loc: { latitude: number; longitude: number }) => {
-      console.log("Location:", loc);
-    });
+    socket.on(
+      "broadcastLocation",
+      (loc: { latitude: number; longitude: number }) => {
+        console.log("Location:", loc);
+      },
+    );
 
     socket.on("connect_error", (err: any) => {
       console.error("Connection error:", err.message);
