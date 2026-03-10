@@ -5,11 +5,17 @@ import BogChip from "@/components/BogChip/BogChip";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
+type RouteUser = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+};
+
 export type RideCardRoute = {
   _id: string;
   pickupLocation: string;
   dropoffLocation: string;
-  driver?: string;
+  driver?: string | RouteUser;
   scheduledPickupTime: string;
   status: string;
 };
@@ -19,6 +25,14 @@ type RideCardProps = {
   locationIdToName: Record<string, string>;
   actions?: React.ReactNode;
 };
+
+function formatDriverName(
+  driver: string | RouteUser | undefined,
+): string | null {
+  if (!driver) return null;
+  if (typeof driver === "string") return null;
+  return `${driver.firstName} ${driver.lastName}`.trim() || null;
+}
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -120,9 +134,13 @@ export function RideCard({ route, locationIdToName, actions }: RideCardProps) {
           <div className={styles.rideCardActionsDock}>{actions}</div>
         )}
       </div>
-
       {!isDriverCard && (
         <div className={styles.rideCardFooter}>
+          {formatDriverName(route.driver) && (
+            <span className={styles.rideCardDriverName}>
+              Driver: {formatDriverName(route.driver)}
+            </span>
+          )}
           <BogChip color={getStatusChipColor(route.status)} size="2">
             {route.status}
           </BogChip>

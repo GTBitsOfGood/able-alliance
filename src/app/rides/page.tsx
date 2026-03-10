@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
+import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
-import BogModal from "@/components/BogModal/BogModal";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
-import { RequestRideForm } from "./RequestRideForm";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 
@@ -17,12 +16,17 @@ type Location = {
   latitude: number;
   longitude: number;
 };
+type RouteUser = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+};
 type Route = {
   _id: string;
   pickupLocation: string;
   dropoffLocation: string;
-  student: string;
-  driver?: string;
+  student: string | RouteUser;
+  driver?: string | RouteUser;
   vehicle?: string;
   scheduledPickupTime: string;
   status: string;
@@ -91,16 +95,16 @@ export default function RidesPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const fetchRides = useCallback(async () => {
+    if (!session?.user?.userId) return;
     try {
       const [routesRes, locationsRes] = await Promise.all([
-        fetch("/api/routes"),
+        fetch(`/api/routes?student=${session.user.userId}`),
         fetch("/api/locations"),
       ]);
       if (!routesRes.ok) throw new Error("Failed to fetch routes");
@@ -115,7 +119,7 @@ export default function RidesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     fetchRides();
@@ -206,17 +210,13 @@ export default function RidesPage() {
 
   return (
     <div className={styles.ridesPage}>
-      <aside className={styles.sidebar}>
-        <p className={styles.sidebarLabel}>sidebar</p>
-        <nav className={styles.sidebarNav}>
-          <a href="/rides" className={styles.sidebarLink}>
-            Your Rides
-          </a>
-        </nav>
-      </aside>
       <main className={styles.main}>
         <div className={styles.mainHeader}>
-          <h1 className={styles.pageTitle}>Your Rides</h1>
+          <h1 className={styles.pageTitle}>
+            {session?.user?.firstName
+              ? `${session.user.firstName}'s Rides`
+              : "Your Rides"}
+          </h1>
         </div>
 
         {error && (
@@ -243,35 +243,19 @@ export default function RidesPage() {
                 <div className={tabStyles["bog-tabs-label"]}>Next week</div>
               </Tabs.Trigger>
             </Tabs.List>
-            <BogModal
-              openState={{
-                open: requestModalOpen,
-                setOpen: setRequestModalOpen,
-              }}
-              trigger={
-                <BogButton
-                  variant="primary"
-                  size="medium"
-                  className={styles.requestRideButton}
-                  iconProps={{
-                    position: "left",
-                    iconProps: { name: "plus", size: 18 },
-                  }}
-                >
-                  Request new ride
-                </BogButton>
-              }
-              title={<h3>Request a ride</h3>}
-            >
-              <RequestRideForm
-                locations={locations}
-                onSuccess={() => {
-                  setRequestModalOpen(false);
-                  fetchRides();
+            <Link href="/rides/new">
+              <BogButton
+                variant="primary"
+                size="medium"
+                className={styles.requestRideButton}
+                iconProps={{
+                  position: "left",
+                  iconProps: { name: "plus", size: 18 },
                 }}
-                onError={setError}
-              />
-            </BogModal>
+              >
+                Request new ride
+              </BogButton>
+            </Link>
           </div>
           <Tabs.Content value="this-week" className={styles.tabContentPanel}>
             {loading ? (

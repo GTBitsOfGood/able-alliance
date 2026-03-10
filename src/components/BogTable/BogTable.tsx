@@ -6,27 +6,27 @@ import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
 import { getNumericalSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
 import BogTextInput from "../BogTextInput/BogTextInput";
 import BogIcon from "../BogIcon/BogIcon";
-import BogButton from "../BogButton/BogButton";
-import BogPopover from "../BogPopover/BogPopover";
-import { Popover } from "radix-ui";
+// import BogButton from "../BogButton/BogButton";
+// import BogPopover from "../BogPopover/BogPopover";
+// import { Popover } from "radix-ui";
 import BogCheckbox from "../BogCheckbox/BogCheckbox";
-import BogDropdown from "../BogDropdown/BogDropdown";
-import BogChip from "../BogChip/BogChip";
+// import BogDropdown from "../BogDropdown/BogDropdown";
+// import BogChip from "../BogChip/BogChip";
 
 type ColumnDatatype = "string" | "string[]" | "number" | "number[]" | "other";
 
-type FilterCondition =
-  | "Value is"
-  | "Value is not"
-  | "Value contains"
-  | "Value does not contain"
-  | "Value is blank"
-  | "Value is not blank";
+// type FilterCondition =
+//   | "Value is"
+//   | "Value is not"
+//   | "Value contains"
+//   | "Value does not contain"
+//   | "Value is blank"
+//   | "Value is not blank";
 
-type ColumnFilter = {
-  condition: FilterCondition;
-  value?: string;
-};
+// type ColumnFilter = {
+//   condition: FilterCondition;
+//   value?: string;
+// };
 
 export type ColumnHeaderCellContent = {
   /** Props forwarded to Radix Table.Cell / Table.ColumnHeaderCell */
@@ -85,26 +85,26 @@ const extractText = (node: ReactNode): string => {
   return "";
 };
 
-const matchesFilter = (text: string, f: ColumnFilter): boolean => {
-  const v = text.trim();
-  const lc = v.toLowerCase();
-  switch (f.condition) {
-    case "Value is":
-      return f.value != null && lc === String(f.value).toLowerCase().trim();
-    case "Value is not":
-      return f.value != null && lc !== String(f.value).toLowerCase().trim();
-    case "Value contains":
-      return f.value != null && lc.includes(String(f.value).toLowerCase());
-    case "Value does not contain":
-      return f.value != null && !lc.includes(String(f.value).toLowerCase());
-    case "Value is blank":
-      return v.length === 0;
-    case "Value is not blank":
-      return v.length > 0;
-    default:
-      return true;
-  }
-};
+// const matchesFilter = (text: string, f: ColumnFilter): boolean => {
+//   const v = text.trim();
+//   const lc = v.toLowerCase();
+//   switch (f.condition) {
+//     case "Value is":
+//       return f.value != null && lc === String(f.value).toLowerCase().trim();
+//     case "Value is not":
+//       return f.value != null && lc !== String(f.value).toLowerCase().trim();
+//     case "Value contains":
+//       return f.value != null && lc.includes(String(f.value).toLowerCase());
+//     case "Value does not contain":
+//       return f.value != null && !lc.includes(String(f.value).toLowerCase());
+//     case "Value is blank":
+//       return v.length === 0;
+//     case "Value is not blank":
+//       return v.length > 0;
+//     default:
+//       return true;
+//   }
+// };
 
 const getSortValue = (
   node: ReactNode,
@@ -142,14 +142,14 @@ const BogTable: React.FC<BogTableProps> = ({
   const [sorts, setSorts] = React.useState<SortEntry[]>([]);
   const [query, setQuery] = React.useState("");
 
-  const [selectedColumns, setSelectedColumns] = React.useState<number[]>([]);
-  const [draftFilterCols, setDraftFilterCols] = React.useState<number[]>([]);
-  const [columnFilters, setColumnFilters] = React.useState<
-    Record<number, ColumnFilter>
-  >({});
-  const [draftColumnFilters, setDraftColumnFilters] = React.useState<
-    Record<number, ColumnFilter>
-  >({});
+  // const [selectedColumns, setSelectedColumns] = React.useState<number[]>([]);
+  // const [draftFilterCols, setDraftFilterCols] = React.useState<number[]>([]);
+  // const [columnFilters, setColumnFilters] = React.useState<
+  //   Record<number, ColumnFilter>
+  // >({});
+  // const [draftColumnFilters, setDraftColumnFilters] = React.useState<
+  //   Record<number, ColumnFilter>
+  // >({});
   // --- Row selection ---
   const [internalSelected, setInternalSelected] = React.useState<Set<number>>(
     new Set(),
@@ -185,21 +185,23 @@ const BogTable: React.FC<BogTableProps> = ({
           ),
         );
 
-    const active = Object.entries(columnFilters)
-      .map(([k, v]) => [Number(k), v] as const)
-      .filter(([idx]) => selectedColumns.includes(idx));
+    // const active = Object.entries(columnFilters)
+    //   .map(([k, v]) => [Number(k), v] as const)
+    //   .filter(([idx]) => selectedColumns.includes(idx));
 
-    if (active.length === 0) return afterSearch;
+    // if (active.length === 0) return afterSearch;
 
-    return afterSearch.filter((row) =>
-      active.every(([colIdx, f]) => {
-        const cell = row.cells[colIdx];
-        if (!cell) return false;
-        const txt = extractText(cell.content);
-        return matchesFilter(txt, f);
-      }),
-    );
-  }, [rows, query, selectedColumns, columnFilters]);
+    // return afterSearch.filter((row) =>
+    //   active.every(([colIdx, f]) => {
+    //     const cell = row.cells[colIdx];
+    //     if (!cell) return false;
+    //     const txt = extractText(cell.content);
+    //     return matchesFilter(txt, f);
+    //   }),
+    // );
+
+    return afterSearch;
+  }, [rows, query]);
 
   const getSortForColumn = (colIndex: number): SortDirection | undefined =>
     sorts.find((s) => s.index === colIndex)?.direction;
@@ -220,8 +222,7 @@ const BogTable: React.FC<BogTableProps> = ({
     });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const sortedRows = React.useMemo(() => {
+  const sortedRows = (() => {
     if (sorts.length === 0) return filteredRows;
     const decorated = filteredRows.map((row, idx) => ({ row, idx }));
     decorated.sort((a, b) => {
@@ -248,7 +249,7 @@ const BogTable: React.FC<BogTableProps> = ({
       return a.idx - b.idx;
     });
     return decorated.map((d) => d.row);
-  }, [filteredRows, sorts, columnHeaders]);
+  })();
 
   const handleSearchChange: React.FormEventHandler<HTMLDivElement> = (e) => {
     const el = e.target as HTMLInputElement;
@@ -262,21 +263,21 @@ const BogTable: React.FC<BogTableProps> = ({
 
   const sizeClass = `size${radixSize}`;
 
-  const removeColumnFilter = (colIdx: number) => {
-    setSelectedColumns((prev) => prev.filter((i) => i !== colIdx));
-    setColumnFilters((prev) => {
-      const next = { ...prev };
-      delete next[colIdx];
-      return next;
-    });
-  };
+  // const removeColumnFilter = (colIdx: number) => {
+  //   setSelectedColumns((prev) => prev.filter((i) => i !== colIdx));
+  //   setColumnFilters((prev) => {
+  //     const next = { ...prev };
+  //     delete next[colIdx];
+  //     return next;
+  //   });
+  // };
 
-  const hasChips = selectedColumns.length > 0;
+  // const hasChips = selectedColumns.length > 0;
 
   return (
     <Theme>
       <div className={styles.bogTable}>
-        <div className={styles.topBar}>
+        <div className={styles.topBar} style={{ marginBottom: "1rem" }}>
           <div className={styles.searchWrapper} onChange={handleSearchChange}>
             <BogTextInput
               name="search"
@@ -285,6 +286,7 @@ const BogTable: React.FC<BogTableProps> = ({
             />
             <BogIcon name="search" size={16} className={styles.searchIcon} />
           </div>
+          {/* Filter button — hidden per design request
           <BogPopover
             title=""
             onOpenChange={(open) => {
@@ -378,8 +380,10 @@ const BogTable: React.FC<BogTableProps> = ({
               </div>
             }
           />
+          */}
         </div>
 
+        {/* Filter chips — hidden per design request
         <div className={styles.tableDivider}>
           {selectedColumns.map((colIdx) => {
             const header =
@@ -583,6 +587,7 @@ const BogTable: React.FC<BogTableProps> = ({
             );
           })}
         </div>
+        */}
 
         <div className={styles.container}>
           <Table.Root

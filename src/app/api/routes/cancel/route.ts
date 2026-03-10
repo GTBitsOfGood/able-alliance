@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest } from "@/utils/authUser";
 import mongoose from "mongoose";
-import { auth } from "@/auth";
-import {
-  cancelRoute,
-  cancelRouteByDriver,
-  getRouteById,
-} from "@/server/db/actions/RouteAction";
+import { cancelRoute, getRouteById } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 export async function POST(request: NextRequest) {
+  let userId, type;
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
-      );
-    }
-
+    const user = await getUserFromRequest();
+    userId = user.userId;
+    type = user.type;
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
+  try {
     const body = await request.json();
     const { routeId } = body;
 
@@ -42,55 +41,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userType = session.user.type;
-    const userId = session.user.userId;
-    let updated = null;
-
-    if (userType === "Driver") {
-      const driverId = (
-        route as unknown as {
-          driver?: { _id?: { toString(): string } };
-        }
-      ).driver?._id?.toString();
-
-      if (!driverId || driverId !== userId) {
+    // Ownership/role check
+    if (type === "Student") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((route.student as any)?._id?.toString() !== userId) {
         return NextResponse.json(
-          {
-            error: "Forbidden: you are not the assigned driver for this route",
-          },
+          { error: "Forbidden" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-
-      updated = await cancelRouteByDriver(routeId);
-    } else if (userType === "Student") {
-      const studentId = (
-        route as unknown as {
-          student?: { _id?: { toString(): string } };
-        }
-      ).student?._id?.toString();
-
-      if (!studentId || studentId !== userId) {
+    } else if (type === "Driver") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((route.driver as any)?._id?.toString() !== userId) {
         return NextResponse.json(
-          {
-            error:
-              "Forbidden: you are not the student who requested this route",
-          },
+          { error: "Forbidden" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-
-      updated = await cancelRoute(routeId);
-    } else {
+    } else if (type !== "Admin" && type !== "SuperAdmin") {
       return NextResponse.json(
-        {
-          error:
-            "Forbidden: only the assigned driver or requesting student can cancel this route",
-        },
+        { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-
+    // Set cancellation status based on caller type
+    let cancelStatus;
+    if (type === "Student") {
+      cancelStatus = "Cancelled by Student";
+    } else if (type === "Driver") {
+      cancelStatus = "Cancelled by Driver";
+    } else {
+      cancelStatus = "Cancelled by Admin";
+    }
+    const updated = await cancelRoute(routeId, cancelStatus);
     if (!updated) {
       return NextResponse.json(
         { error: "Route not found" },

@@ -32,7 +32,8 @@ export const authConfig: NextAuthConfig = {
         token.userId = user.userId;
         token.type = user.type;
         token.email = user.email;
-        token.gtid = user.gtid;
+        token.firstName = user.firstName;
+        token.lastName = user.lastName;
       }
       return token;
     },
@@ -42,7 +43,8 @@ export const authConfig: NextAuthConfig = {
         session.user.userId = token.userId as string;
         session.user.type = token.type as string;
         session.user.email = token.email as string;
-        session.user.gtid = token.gtid as string;
+        session.user.firstName = token.firstName as string;
+        session.user.lastName = token.lastName as string;
       }
       return session;
     },

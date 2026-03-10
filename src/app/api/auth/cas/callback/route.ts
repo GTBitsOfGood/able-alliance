@@ -8,7 +8,6 @@ import { UserNotFoundException } from "@/utils/exceptions/user";
 interface CASAttributes {
   email: string;
   displayName: string;
-  gtid: string;
 }
 
 interface CASValidationResult {
@@ -50,7 +49,6 @@ function parseCASResponse(xml: string): CASValidationResult {
         attributes?: {
           email?: unknown;
           displayName?: unknown;
-          gtid?: unknown;
         };
       };
     };
@@ -78,7 +76,6 @@ function parseCASResponse(xml: string): CASValidationResult {
   const username = extractText(authSuccess.user);
   const email = extractText(authSuccess.attributes?.email);
   const displayName = extractText(authSuccess.attributes?.displayName);
-  const gtid = extractText(authSuccess.attributes?.gtid);
 
   if (!username) {
     return { success: false, error: "No user found in CAS response" };
@@ -90,7 +87,6 @@ function parseCASResponse(xml: string): CASValidationResult {
     attributes: {
       email,
       displayName,
-      gtid,
     },
   };
 }
@@ -173,7 +169,6 @@ export async function GET(request: NextRequest) {
         return await getProvisionedUserFromCAS({
           email: attributes.email,
           name: attributes.displayName,
-          gtid: attributes.gtid,
         });
       } catch (error) {
         if (error instanceof UserNotFoundException) {
@@ -212,8 +207,9 @@ export async function GET(request: NextRequest) {
         userId,
         type: userType,
         email: attributes.email,
-        gtid: attributes.gtid || "",
         name: attributes.displayName,
+        firstName: user.firstName,
+        lastName: user.lastName,
       },
       secret,
       salt: sessionCookieName,

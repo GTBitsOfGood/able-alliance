@@ -1,0 +1,274 @@
+/* Container - 1440x1024 viewport */
+.container {
+  position: relative;
+  width: 144rem;
+  height: 102.4rem;
+  margin: 0 auto;
+  background: var(--color-solid-bg-sunken);
+  overflow: hidden;
+}
+
+/* Background image */
+.container::before {
+  content: "";
+  position: absolute;
+  width: 171.1rem;
+  height: 114rem;
+  left: -13.6rem;
+  top: -6.9rem;
+  background-image: url("/gt-campus-street.jpeg");
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+/* Card - Rectangle 4 */
+.card {
+  position: absolute;
+  width: 80.4rem;
+  height: 44.2rem;
+  left: calc(50% - 80.4rem / 2);
+  top: calc(50% - 44.2rem / 2);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0.4rem 0.4rem 5rem rgba(0, 0, 0, 0.25);
+  border-radius: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* Frame 127 */
+.content {
+  /* Auto layout */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  gap: 4.2rem;
+  position: absolute;
+  width: 51.5rem;
+  height: 26.2rem;
+  left: calc(50% - 51.5rem / 2);
+  top: calc(50% - 26.2rem / 2);
+}
+
+/* Frame 126 */
+.headerRow {
+  /* Auto layout */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0;
+  gap: 2.8rem;
+  width: 48.9rem;
+  height: 7.8rem;
+  /* Inside auto layout */
+  flex: none;
+  order: 0;
+  flex-grow: 0;
+}
+
+/* image 5 */
+.logoImage {
+  width: 20.4rem;
+  height: 7.8rem;
+  background: url(/logo.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Inside auto layout */
+  flex: none;
+  order: 0;
+  flex-grow: 0;
+}
+
+/* Line 1 */
+.divider {
+  width: 4.7rem;
+  height: 0;
+  border: 0.15rem solid var(--color-grey-stroke-strong);
+  transform: rotate(90deg);
+  /* Inside auto layout */
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+}
+
+/* Parking and Transportation Services */
+.serviceText {
+  width: 22.9rem;
+  height: 5.6rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-style: normal;
+  font-weight: 300;
+  font-size: 2rem;
+  line-height: 2.8rem;
+  /* or 140% */
+  color: var(--color-grey-text-strong);
+  /* Inside auto layout */
+  flex: none;
+  order: 2;
+  flex-grow: 0;
+}
+
+/* Student Paratransit Service */
+.appTitle {
+  width: 51.5rem;
+  height: 4.8rem;
+
+  /* Heading 1/Regular */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-style: normal;
+  font-weight: 300;
+  font-size: 4rem;
+  line-height: 4.8rem;
+  /* identical to box height, or 120% */
+  text-align: center;
+
+  color: var(--color-grey-text-strong);
+
+  margin: 0;
+
+  /* Inside auto layout */
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+}
+
+/* Frame 125 */
+.loginButton {
+  /* Auto layout */
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 1.4rem 2.4rem;
+  gap: 1rem;
+
+  width: 21.4rem;
+  height: 5.2rem;
+
+  background: var(--color-status-blue-text);
+  border-radius: 0.8rem;
+
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-decoration: none;
+
+  /* Inside auto layout */
+  flex: none;
+  order: 2;
+  flex-grow: 0;
+}
+
+.loginButton:hover {
+  background: color-mix(in srgb, var(--color-status-blue-text) 80%, white);
+}
+
+.loginButton:active {
+  background: color-mix(in srgb, var(--color-status-blue-text) 80%, black);
+}
+
+/* Log in with GT SSO */
+.loginButtonText {
+  width: 16.6rem;
+  height: 2.4rem;
+
+  /* Paragraph 1/Bold */
+  font-family: "Open Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 1.8rem;
+  line-height: 2.4rem;
+  /* identical to box height, or 133% */
+  display: flex;
+  align-items: center;
+  text-align: center;
+
+  color: var(--color-solid-bg-base);
+
+  /* Inside auto layout */
+  flex: none;
+  order: 0;
+  flex-grow: 0;
+}
+
+/* Error message */
+.errorMessage {
+  background-color: transparent;
+  color: var(--color-status-red-text);
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: center;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .container {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .card {
+    width: min(80.4rem, 90vw);
+    height: auto;
+    min-height: 44.2rem;
+    position: static;
+    margin: auto;
+  }
+
+  .content {
+    width: min(51.5rem, 100%);
+    height: auto;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: 1rem;
+  }
+
+  .divider {
+    transform: rotate(0deg);
+    width: 10rem;
+    height: 0;
+    border: 0.15rem solid var(--color-grey-stroke-strong);
+  }
+
+  .serviceLabel {
+    text-align: center;
+    width: 100%;
+    height: auto;
+  }
+
+  .heading {
+    font-size: 3.2rem;
+    line-height: 4rem;
+    width: 100%;
+    height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .logo {
+    width: auto;
+    max-width: 18rem;
+    height: auto;
+  }
+
+  .heading {
+    font-size: 2.8rem;
+    line-height: 3.6rem;
+  }
+
+  .loginButton {
+    width: 100%;
+    max-width: 21.4rem;
+  }
+}
