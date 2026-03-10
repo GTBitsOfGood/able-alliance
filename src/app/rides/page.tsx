@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
 import BogButton from "@/components/BogButton/BogButton";
 import tabStyles from "@/components/BogTabs/styles.module.css";
@@ -78,15 +79,17 @@ function groupRoutesByDate(routes: Route[]): Record<string, Route[]> {
 
 export default function RidesPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRides = useCallback(async () => {
+    if (!session?.user?.userId) return;
     try {
       const [routesRes, locationsRes] = await Promise.all([
-        fetch("/api/routes"),
+        fetch(`/api/routes?student=${session.user.userId}`),
         fetch("/api/locations"),
       ]);
       if (!routesRes.ok) throw new Error("Failed to fetch routes");
@@ -101,7 +104,7 @@ export default function RidesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     fetchRides();

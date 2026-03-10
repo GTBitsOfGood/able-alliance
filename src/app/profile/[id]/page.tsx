@@ -5,6 +5,8 @@ import { ProfileView, type ProfileUser } from "../ProfileView";
 
 type UserDocument = {
   _id?: { toString(): string };
+  firstName?: string;
+  lastName?: string;
   name?: string;
   email?: string;
   type?: ProfileUser["type"];
@@ -44,10 +46,8 @@ export default async function ProfilePage({
 
     const selfFromSession: ProfileUser = {
       id: targetId,
-      name:
-        (session.user.name as string | undefined) ??
-        (session.user.email as string | undefined) ??
-        "User",
+      firstName: session.user.firstName ?? session.user.email ?? "User",
+      lastName: session.user.lastName ?? "",
       email: session.user.email as string,
       type: session.user.type as ProfileUser["type"],
       studentInfo: null,
@@ -59,11 +59,8 @@ export default async function ProfilePage({
   const doc = data as UserDocument;
   const user: ProfileUser = {
     id: doc._id?.toString?.() ?? targetId,
-    name:
-      doc.name ??
-      (session.user.name as string | undefined) ??
-      (session.user.email as string | undefined) ??
-      "User",
+    firstName: doc.firstName ?? doc.name?.split(" ")[0] ?? session.user.firstName ?? session.user.email ?? "User",
+    lastName: doc.lastName ?? (doc.name ? doc.name.split(" ").slice(1).join(" ") : "") ?? session.user.lastName ?? "",
     email: doc.email ?? (session.user.email as string),
     type: doc.type ?? (session.user.type as ProfileUser["type"]),
     studentInfo: doc.studentInfo ?? null,

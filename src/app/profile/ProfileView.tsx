@@ -8,7 +8,8 @@ type UserType = "Student" | "Driver" | "Admin" | "SuperAdmin";
 
 export type ProfileUser = {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   type: UserType;
   studentInfo?: {
@@ -16,16 +17,6 @@ export type ProfileUser = {
     accessibilityNeeds?: "Wheelchair" | "LowMobility" | null;
   } | null;
 };
-
-function splitName(name: string): { first: string; last: string } {
-  const trimmed = name.trim();
-  if (!trimmed) return { first: "-", last: "-" };
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) {
-    return { first: parts[0], last: "-" };
-  }
-  return { first: parts[0], last: parts.slice(1).join(" ") };
-}
 
 function roleLabel(type: UserType): string {
   switch (type) {
@@ -70,9 +61,11 @@ function accessibilityLabel(
 }
 
 export function ProfileView({ user }: { user: ProfileUser }) {
-  const { first, last } = splitName(user.name);
+  const first = user.firstName || "-";
+  const last = user.lastName || "-";
   const preferredFirst = "-";
-  const avatarLetter = user.name.trim().charAt(0).toUpperCase() || "?";
+  const avatarLetter = user.firstName.trim().charAt(0).toUpperCase() || "?";
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
   const showAccommodations = user.type === "Student";
 
   return (
@@ -83,7 +76,7 @@ export function ProfileView({ user }: { user: ProfileUser }) {
             {avatarLetter}
           </div>
           <div className={styles.profileNameBlock}>
-            <h1 className={styles.profileDisplayName}>{user.name}</h1>
+            <h1 className={styles.profileDisplayName}>{displayName}</h1>
             <span className={styles.profileRole}>{roleLabel(user.type)}</span>
           </div>
         </header>
