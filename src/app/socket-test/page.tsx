@@ -35,6 +35,7 @@ export default function SocketTest() {
       },
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io connect_error shape varies at runtime
     socket.on("connect_error", (err: any) => {
       console.error("Connection error:", err.message);
       console.error(err.description);
