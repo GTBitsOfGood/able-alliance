@@ -66,9 +66,9 @@ const io = new Server(server, {
           return next(new Error("Route is not en-route"));
         }
 
-        const isStudent = route.student?.toString() === userId;
+        const isStudent = route.student?._id?.toString() === userId;
 
-        const isDriver = route.driver?.toString() === userId;
+        const isDriver = route.driver?._id?.toString() === userId;
 
         if (!isStudent && !isDriver) {
           return next(new Error("User not authorized for this route"));
@@ -114,7 +114,7 @@ const io = new Server(server, {
           ) {
             throw new Error("Coordinates are invalid");
           }
-          io.to(room).emit("broadcastLocation", location);
+          socket.to(room).emit("broadcastLocation", location);
           console.log(
             `User ${socket.user} updated location in room ${room}: ${JSON.stringify(location)}!`,
           );
