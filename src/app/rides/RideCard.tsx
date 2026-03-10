@@ -20,6 +20,12 @@ export type RideCardRoute = {
   status: string;
 };
 
+type RideCardProps = {
+  route: RideCardRoute;
+  locationIdToName: Record<string, string>;
+  actions?: React.ReactNode;
+};
+
 function formatDriverName(
   driver: string | RouteUser | undefined,
 ): string | null {
@@ -59,55 +65,88 @@ function getStatusChipColor(
   }
 }
 
-export function RideCard({
-  route,
-  locationIdToName,
-}: {
-  route: RideCardRoute;
-  locationIdToName: Record<string, string>;
-}) {
+function getDriverStatusPillClass(status: string): string {
+  switch (status) {
+    case "Completed":
+      return `${styles.driverStatusPill} ${styles.driverStatusPillComplete}`;
+    case "Cancelled by Driver":
+    case "Cancelled by Student":
+    case "Cancelled by Admin":
+    case "Missing":
+      return `${styles.driverStatusPill} ${styles.driverStatusPillFailure}`;
+    case "En-route":
+    case "Pickedup":
+      return `${styles.driverStatusPill} ${styles.driverStatusPillProgress}`;
+    default:
+      return `${styles.driverStatusPill} ${styles.driverStatusPillNeutral}`;
+  }
+}
+
+export function RideCard({ route, locationIdToName, actions }: RideCardProps) {
+  const isDriverCard = Boolean(actions);
+
   return (
-    <div className={styles.rideCard}>
+    <div
+      className={`${styles.rideCard} ${isDriverCard ? styles.rideCardDriver : ""}`}
+    >
       <div className={styles.rideCardHeader}>
         <span className={styles.rideCardTimeValue}>
           {formatTime(route.scheduledPickupTime)}
         </span>
-      </div>
-      <div className={styles.rideCardRoute}>
-        <div className={styles.rideCardRouteIconColumn} aria-hidden>
-          <span className={styles.rideCardRouteIcon} />
-          <div className={styles.rideCardRouteLine} />
-          <BogIcon
-            name="map-pin"
-            size={14}
-            className={styles.rideCardRouteIconDropoff}
-          />
-        </div>
-        <div className={styles.rideCardRouteStops}>
-          <div className={styles.rideCardStop}>
-            <span className={styles.rideCardRouteLabel}>Pickup</span>
-            <span className={styles.rideCardRouteName}>
-              {locationIdToName[route.pickupLocation] ?? route.pickupLocation}
-            </span>
-          </div>
-          <div className={styles.rideCardStop}>
-            <span className={styles.rideCardRouteLabel}>Dropoff</span>
-            <span className={styles.rideCardRouteName}>
-              {locationIdToName[route.dropoffLocation] ?? route.dropoffLocation}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className={styles.rideCardFooter}>
-        {formatDriverName(route.driver) && (
-          <span className={styles.rideCardDriver}>
-            Driver: {formatDriverName(route.driver)}
+        {isDriverCard && (
+          <span className={getDriverStatusPillClass(route.status)}>
+            {route.status}
           </span>
         )}
-        <BogChip color={getStatusChipColor(route.status)} size="2">
-          {route.status}
-        </BogChip>
       </div>
+
+      <div
+        className={isDriverCard ? styles.rideCardBodyWithActions : undefined}
+      >
+        <div className={styles.rideCardRoute}>
+          <div className={styles.rideCardRouteIconColumn} aria-hidden>
+            <span className={styles.rideCardRouteIcon} />
+            <div className={styles.rideCardRouteLine} />
+            <BogIcon
+              name="map-pin"
+              size={14}
+              className={styles.rideCardRouteIconDropoff}
+            />
+          </div>
+          <div className={styles.rideCardRouteStops}>
+            <div className={styles.rideCardStop}>
+              <span className={styles.rideCardRouteLabel}>Pickup</span>
+              <span className={styles.rideCardRouteName}>
+                {locationIdToName[route.pickupLocation] ?? route.pickupLocation}
+              </span>
+            </div>
+            <div className={styles.rideCardStop}>
+              <span className={styles.rideCardRouteLabel}>Dropoff</span>
+              <span className={styles.rideCardRouteName}>
+                {locationIdToName[route.dropoffLocation] ??
+                  route.dropoffLocation}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {isDriverCard && actions && (
+          <div className={styles.rideCardActionsDock}>{actions}</div>
+        )}
+      </div>
+      {!isDriverCard && (
+        <div className={styles.rideCardFooter}>
+          {formatDriverName(route.driver) && (
+            <span className={styles.rideCardDriverName}>
+              Driver: {formatDriverName(route.driver)}
+            </span>
+          )}
+          <BogChip color={getStatusChipColor(route.status)} size="2">
+            {route.status}
+          </BogChip>
+          {actions && <div className={styles.rideCardActions}>{actions}</div>}
+        </div>
+      )}
     </div>
   );
 }

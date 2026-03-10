@@ -5,6 +5,9 @@ echo   Testing CAS SSO Authentication Flow
 echo ============================================
 echo.
 
+REM Run from project root so docker/curl context is correct
+cd /d "%~dp0\.."
+
 REM Check CAS server health
 echo [1/5] Checking CAS server...
 curl -s http://localhost:8443/health | findstr "ok" >nul 2>&1

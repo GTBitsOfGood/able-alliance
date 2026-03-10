@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { routeId } = body;
+
     if (!routeId) {
       return NextResponse.json(
         { error: "routeId is required" },
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
+
     const route = await getRouteById(routeId);
     if (!route) {
       return NextResponse.json(
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.NOT_FOUND },
       );
     }
+
     // Ownership/role check
     if (type === "Student") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },

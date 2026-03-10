@@ -7,6 +7,7 @@ import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
+import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 
 type Location = {
@@ -88,11 +89,16 @@ function groupRoutesByDate(routes: Route[]): Record<string, Route[]> {
 }
 
 export default function RidesPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchRides = useCallback(async () => {
     if (!session?.user?.userId) return;
@@ -127,8 +133,14 @@ export default function RidesPage() {
     {} as Record<string, string>,
   );
 
-  const thisWeekRange = React.useMemo(() => getWeekRange(0), []);
-  const nextWeekRange = React.useMemo(() => getWeekRange(1), []);
+  const thisWeekRange = React.useMemo(
+    () => (mounted ? getWeekRange(0) : ([new Date(0), new Date(0)] as [Date, Date])),
+    [mounted],
+  );
+  const nextWeekRange = React.useMemo(
+    () => (mounted ? getWeekRange(1) : ([new Date(0), new Date(0)] as [Date, Date])),
+    [mounted],
+  );
 
   const routesByDateThisWeek = React.useMemo(() => {
     const filtered = routes.filter((r) =>
@@ -147,6 +159,25 @@ export default function RidesPage() {
   const dateKeysThisWeek = Object.keys(routesByDateThisWeek).sort();
   const dateKeysNextWeek = Object.keys(routesByDateNextWeek).sort();
 
+  // Driver users see the driver-specific view
+  if (sessionStatus === "loading") {
+    return (
+      <div className={styles.ridesPage}>
+        <main className={styles.main}>
+          <p className={styles.rideListLoading}>Loading…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (session?.user?.type === "Driver") {
+    return (
+      <div className={styles.ridesPage}>
+        <DriverRidesView userId={session.user.userId} />
+      </div>
+    );
+  }
+
   function renderRideList(
     routesByDate: Record<string, Route[]>,
     dateKeys: string[],
@@ -160,7 +191,9 @@ export default function RidesPage() {
         {dateKeys.map((dateKey) => (
           <div key={dateKey} className={styles.dateGroup}>
             <h2 className={styles.dateHeader}>
-              {formatDateHeader(routesByDate[dateKey][0].scheduledPickupTime)}
+              {mounted
+                ? formatDateHeader(routesByDate[dateKey][0].scheduledPickupTime)
+                : "—"}
             </h2>
             {routesByDate[dateKey].map((route) => (
               <RideCard

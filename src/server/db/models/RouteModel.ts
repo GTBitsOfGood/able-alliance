@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
 import type { IBaseUser } from "./UserModel";
-import { IVehicle, VehicleSchema } from "./VehicleModel";
+import type { IVehicle } from "./VehicleModel";
 
 export type IRoute = RouteInput;
 
@@ -57,6 +57,23 @@ const EmbeddedStudentSchema = new Schema(
   { _id: true, versionKey: false },
 );
 
+// Embedded vehicle schema WITHOUT unique indexes (unique on licensePlate only
+// makes sense in the vehicles collection, not as a subdocument).
+const EmbeddedVehicleSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    licensePlate: { type: String, required: true },
+    description: { type: String },
+    accessibility: {
+      type: String,
+      enum: ["None", "Wheelchair"],
+      required: true,
+    },
+    seatCount: { type: Number, required: true, min: 1 },
+  },
+  { _id: true, versionKey: false },
+);
+
 const RouteSchema = new Schema<IRouteDocument>(
   {
     pickupLocation: {
@@ -71,7 +88,7 @@ const RouteSchema = new Schema<IRouteDocument>(
     },
     student: { type: EmbeddedStudentSchema, required: true },
     driver: { type: EmbeddedBaseUserSchema, required: false },
-    vehicle: { type: VehicleSchema, required: false },
+    vehicle: { type: EmbeddedVehicleSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
     status: {
       type: String,

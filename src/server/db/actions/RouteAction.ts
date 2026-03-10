@@ -131,6 +131,29 @@ export async function cancelRoute(routeId: string, status?: string) {
   await route.save();
   return route.toObject();
 }
+
+export async function cancelRouteByDriver(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) {
+    return null;
+  }
+  route.status = RouteStatus.CancelledByDriver;
+  await route.save();
+  return route.toObject();
+}
+
+export async function startRoute(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route || route.status !== RouteStatus.Scheduled) {
+    return null;
+  }
+  route.status = RouteStatus.EnRoute;
+  await route.save();
+  return route.toObject();
+}
+
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
