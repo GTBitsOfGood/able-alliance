@@ -75,3 +75,39 @@ export async function deleteUser(id: string) {
   const deleted = await UserModel.findByIdAndDelete(id).lean();
   return deleted;
 }
+
+export async function updateStudentInfo(
+  id: string,
+  update: {
+    notes?: string | null;
+    accessibilityNeeds?: "Wheelchair" | "LowMobility" | null;
+  },
+) {
+  await connectMongoDB();
+
+  const student = await StudentModel.findById(id);
+  if (!student) {
+    return null;
+  }
+
+  const currentInfo =
+    (
+      student as unknown as {
+        studentInfo?: { notes?: string; accessibilityNeeds?: string };
+      }
+    ).studentInfo ?? {};
+
+  const nextInfo = {
+    ...currentInfo,
+    ...(update.notes !== undefined ? { notes: update.notes ?? "" } : {}),
+    ...(update.accessibilityNeeds !== undefined
+      ? { accessibilityNeeds: update.accessibilityNeeds ?? undefined }
+      : {}),
+  };
+
+  (student as unknown as { studentInfo?: typeof nextInfo }).studentInfo =
+    nextInfo;
+
+  const saved = await student.save();
+  return saved.toObject();
+}

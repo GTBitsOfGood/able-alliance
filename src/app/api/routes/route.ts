@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
 import mongoose from "mongoose";
+import { auth } from "@/auth";
 import {
   createRoute,
   getRouteById,
@@ -13,7 +14,6 @@ import {
   RouteReferenceNotFoundException,
 } from "@/utils/exceptions/route";
 import { internalErrorPayload } from "@/utils/apiError";
-import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   let user;
@@ -62,17 +62,46 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get all routes with optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
-    const student = searchParams.get("student");
+    const session = await auth();
+    if (!session?.user?.userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+      );
+    }
+
+    const userType = session.user.type;
+    const loggedInUserId = session.user.userId;
+
+    // optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
+    const studentParam = searchParams.get("student");
     const driver = searchParams.get("driver");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
-    if (student && !mongoose.Types.ObjectId.isValid(student)) {
-      return NextResponse.json(
-        { error: "Invalid student ID" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
+    let studentFilter: string | undefined;
+
+    if (userType === "Student") {
+      // actual Student check that makes it so they only see THEIR rides
+      if (!mongoose.Types.ObjectId.isValid(loggedInUserId)) {
+        return NextResponse.json(
+          { error: "Invalid student ID" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+      studentFilter = loggedInUserId;
+    } else if (studentParam) {
+      // Admins / Drivers may filter by an explicit student id
+      if (!mongoose.Types.ObjectId.isValid(studentParam)) {
+        return NextResponse.json(
+          { error: "Invalid student ID" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+      studentFilter = studentParam;
+    } else {
+      // Admins / Drivers without ?student can see all matching routes
+      studentFilter = undefined;
     }
     if (driver && !mongoose.Types.ObjectId.isValid(driver)) {
       return NextResponse.json(
@@ -80,6 +109,7 @@ export async function GET(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
+
     let startDate: Date | undefined;
     let endDate: Date | undefined;
     if (startTime) {
@@ -101,34 +131,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Only allow: Admin/SuperAdmin, or filter by own userId if Student/Driver
-    if (user.type === "Admin" || user.type === "SuperAdmin") {
-      const routes = await getRoutes({
-        student: student ?? undefined,
-        driver: driver ?? undefined,
-        start_time: startDate,
-        end_time: endDate,
-      });
-      return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
-    } else if (user.type === "Student") {
-      const routes = await getRoutes({
-        student: user.userId,
-        start_time: startDate,
-        end_time: endDate,
-      });
-      return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
-    } else if (user.type === "Driver") {
-      const routes = await getRoutes({
-        driver: user.userId,
-        start_time: startDate,
-        end_time: endDate,
-      });
-      return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
-    }
-    return NextResponse.json(
-      { error: "Forbidden" },
-      { status: HTTP_STATUS_CODE.FORBIDDEN },
-    );
+    const routes = await getRoutes({
+      student: studentFilter,
+      driver: driver ?? undefined,
+      start_time: startDate,
+      end_time: endDate,
+    });
+    return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
     if (
       e instanceof RouteAlreadyExistsException ||

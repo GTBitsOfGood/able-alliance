@@ -15,6 +15,11 @@
 }
 
 .mainHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
@@ -40,7 +45,7 @@
   flex: 0 0 auto;
 }
 
-/* keep tab labels on one line (like "Next week") */
+/* keep tab labels on one line (e.g. Tomorrow) */
 .tabsRow [role="tablist"] [role="tab"] {
   white-space: nowrap;
 }
@@ -52,10 +57,13 @@
   box-sizing: border-box;
 }
 
-/* request button parallel to the tabs */
-.tabsRow > *:last-child {
-  flex: 0 0 auto;
-  margin-left: auto;
+.tabContentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .pageTitle {
@@ -63,17 +71,18 @@
   font-size: var(--text-desktop-heading-1);
   font-weight: 700;
   line-height: var(--text-desktop-heading-1--line-height);
+  margin: 0;
 }
 
 .requestRideButton {
-  background-color: var(--color-status-red-text);
-  border-color: var(--color-status-red-text);
   width: fit-content;
+  background-color: var(--color-status-blue-text);
+  border-color: var(--color-status-blue-text);
 }
 
 .requestRideButton:hover:not(:disabled) {
-  background-color: var(--color-status-red-stroke-strong);
-  border-color: var(--color-status-red-stroke-strong);
+  background-color: var(--color-status-blue-stroke-strong);
+  border-color: var(--color-status-blue-stroke-strong);
 }
 
 .errorMessage {
@@ -118,8 +127,8 @@
 .rideCard {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.75rem 2rem;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
   border-radius: 0.5rem;
   border: 0.1rem solid var(--color-grey-stroke-weak);
   background-color: var(--color-solid-bg-base);
@@ -132,6 +141,63 @@
   line-height: var(--text-desktop-paragraph-2--line-height);
 }
 
+/* Student card layout */
+.rideCardPickupDropoff {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.rideCardStopBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 0 0 11rem;
+  max-width: 11rem;
+}
+
+.rideCardDivider {
+  height: 0.3rem;
+  min-width: 12rem;
+  flex: 1;
+  background-color: var(--color-grey-stroke-weak);
+  margin: 0 1.5rem;
+  align-self: center;
+}
+
+.rideCardPickupDropoff > .rideCardStopBlock:last-of-type .rideCardStopTime {
+  font-size: var(--text-desktop-heading-4);
+}
+
+.rideCardPickupDropoff > .rideCardStopBlock:last-of-type {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.rideCardStopLabel {
+  font-size: var(--text-desktop-paragraph-1);
+  color: var(--color-grey-text-weak);
+  font-weight: 600;
+}
+
+.rideCardStopTime {
+  font-size: var(--text-desktop-heading-4);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+}
+
+.rideCardStopLocation {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-strong);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Driver card layout */
 .rideCardDriver {
   gap: 1.25rem;
   padding: 2.2rem 2.4rem;
@@ -248,26 +314,23 @@
   gap: 1.2rem;
 }
 
-.rideCardDriver .rideCardRouteLabel {
-  font-size: var(--text-desktop-paragraph-2);
-  line-height: var(--text-desktop-paragraph-2--line-height);
-}
-
-.rideCardDriver .rideCardRouteName {
-  font-size: var(--text-desktop-paragraph-1);
-  line-height: var(--text-desktop-paragraph-1--line-height);
-}
-
 .rideCardStop {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .rideCardRouteLabel {
   font-size: var(--text-desktop-paragraph-1);
   line-height: var(--text-desktop-paragraph-1--line-height);
   color: var(--color-grey-text-weak);
+  font-weight: 600;
+}
+
+.rideCardDriver .rideCardRouteLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
 }
 
 .rideCardRouteName {
@@ -277,6 +340,11 @@
   color: var(--color-grey-text-strong);
 }
 
+.rideCardDriver .rideCardRouteName {
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+}
+
 .rideCardFooter {
   display: flex;
   align-items: center;
@@ -284,6 +352,44 @@
   flex-wrap: wrap;
   gap: 1rem;
   font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-strong);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rideCardFooterRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rideCardActions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rideCardCancelLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-status-red-text);
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.rideCardCancelLink:hover {
+  text-decoration: underline;
+}
+
+.rideCardEditButton {
+  flex-shrink: 0;
 }
 
 .rideCardDriverName {
