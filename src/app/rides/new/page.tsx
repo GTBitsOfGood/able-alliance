@@ -45,75 +45,16 @@ export default function CreateRidePage() {
           setDropoffLocationName(data[0].name);
         }
 
-        // If no locations exist, try to create some
         if (data.length === 0) {
-          await createInitialLocations();
+          setError("No locations available. Please contact an administrator.");
         }
       } catch (e) {
         setError(
           "Unable to load locations. " +
             (e instanceof Error ? e.message : "Unknown error"),
         );
-        console.error("Error fetching locations:", e);
       } finally {
         setLoading(false);
-      }
-    }
-
-    async function createInitialLocations() {
-      try {
-        console.log("No locations found, creating initial locations...");
-
-        const locationsToCreate = [
-          { name: "West Village", latitude: 33.776, longitude: -84.398 },
-          { name: "North Avenue", latitude: 33.771, longitude: -84.392 },
-        ];
-
-        const createdLocations = [];
-
-        for (const locationData of locationsToCreate) {
-          try {
-            const res = await fetch("/api/locations", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(locationData),
-            });
-
-            if (res.ok) {
-              const created = await res.json();
-              createdLocations.push(created);
-              console.log(`Created location: ${created.name}`);
-            } else {
-              console.log(
-                `Failed to create location ${locationData.name}: ${res.status}`,
-              );
-            }
-          } catch (e) {
-            console.log(`Error creating location ${locationData.name}:`, e);
-          }
-        }
-
-        if (createdLocations.length > 0) {
-          setLocations(createdLocations);
-          setPickupLocationName(createdLocations[0].name);
-          if (createdLocations.length > 1) {
-            setDropoffLocationName(createdLocations[1].name);
-          } else {
-            setDropoffLocationName(createdLocations[0].name);
-          }
-          console.log(
-            `Successfully created ${createdLocations.length} locations`,
-          );
-        } else {
-          setError(
-            "No locations available and unable to create default locations. Please contact an administrator.",
-          );
-        }
-      } catch (e) {
-        console.error("Error creating initial locations:", e);
-        setError(
-          "No locations available and unable to create default locations. Please contact an administrator.",
-        );
       }
     }
 
@@ -186,13 +127,14 @@ export default function CreateRidePage() {
       return;
     }
 
-    // Create ISO string from selected date (defaulting to 12:00 PM)
+    // Create ISO string from selected date and user-selected time
+    const [hours, minutes] = dropOffTime.split(":").map(Number);
     const scheduledPickupTime = new Date(
       selectedDate.getFullYear(),
       selectedDate.getMonth(),
       selectedDate.getDate(),
-      12,
-      0,
+      hours,
+      minutes,
       0,
     ).toISOString();
 
@@ -210,7 +152,6 @@ export default function CreateRidePage() {
       });
       if (!res.ok) {
         const errData = await res.json();
-        console.error("API Error:", errData);
         throw new Error(
           errData.error || `Failed to create ride (${res.status})`,
         );
@@ -412,7 +353,7 @@ export default function CreateRidePage() {
                 <div className={styles.formColumnRight}>
                   {/* Drop Off Time */}
                   <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Drop Off Time</h3>
+                    <h3 className={styles.formGroupTitle}>Pick up Time</h3>
                     <div className={styles.timeCell}>
                       <input
                         type="time"
@@ -515,7 +456,6 @@ export default function CreateRidePage() {
             {/* Submit Button */}
             <button
               type="submit"
-              onClick={handleSubmit}
               disabled={submitting}
               className={styles.submitButton}
             >
