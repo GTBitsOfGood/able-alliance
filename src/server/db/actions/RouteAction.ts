@@ -153,7 +153,6 @@ export async function scheduleRoute(
   if (!vehicle) {
     throw new RouteReferenceNotFoundException("Vehicle not found");
   }
-  // Plain objects for embedding so Mongoose accepts them
   const driverEmbed = {
     _id: driver._id,
     firstName: driver.firstName,
