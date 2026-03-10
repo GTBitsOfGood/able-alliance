@@ -112,10 +112,10 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/able-alliance?replicaSet=rs0
     networks:
       - able-alliance-net
-    environment:
-      - MONGODB_URI=mongodb://mongo:27017/able-alliance
 
 networks:
   able-alliance-net:
