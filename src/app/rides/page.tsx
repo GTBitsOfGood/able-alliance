@@ -134,11 +134,11 @@ export default function RidesPage() {
   );
 
   const thisWeekRange = React.useMemo(
-    () => (mounted ? getWeekRange(0) : [new Date(0), new Date(0)]),
+    () => (mounted ? getWeekRange(0) : ([new Date(0), new Date(0)] as [Date, Date])),
     [mounted],
   );
   const nextWeekRange = React.useMemo(
-    () => (mounted ? getWeekRange(1) : [new Date(0), new Date(0)]),
+    () => (mounted ? getWeekRange(1) : ([new Date(0), new Date(0)] as [Date, Date])),
     [mounted],
   );
 
