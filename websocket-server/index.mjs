@@ -3,21 +3,32 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
 // Minimal route shape for auth — only the fields we need.
 // Uses raw collection; no Mongoose model/schema.
-async function getRouteForAuth(routeId) {
-  if (!mongoose.Types.ObjectId.isValid(routeId)) {
-    throw new Error("Invalid route ID");
+async function getRouteForAuth(routeId, token) {
+  const res = await fetch(`http://app:3000/api/routes?id=${routeId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch route: ${res.status} ${res.statusText}`);
   }
-  const routes = mongoose.connection.db.collection("routes");
-  const route = await routes.findOne(
-    { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
-    { projection: { status: 1, driver: 1, student: 1 } },
-  );
-  return route;
+  return res.json();
+
+  // if (!mongoose.Types.ObjectId.isValid(routeId)) {
+  //   throw new Error("Invalid route ID");
+  // }
+  // const routes = mongoose.connection.db.collection("routes");
+  // const route = await routes.findOne(
+  //   { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
+  //   { projection: { status: 1, driver: 1, student: 1 } },
+  // );
+  // return route;
 }
 
 const app = express();
@@ -54,11 +65,20 @@ const io = new Server(server, {
 
     io.use(async (socket, next) => {
       try {
-        const { routeId, userId } = socket.handshake.auth;
-        if (!routeId || !userId) {
-          return next(new Error("Route ID or user ID missing"));
+        const { routeId, token } = socket.handshake.auth;
+        if (!routeId || !token) {
+          return next(new Error("Route ID or token missing"));
         }
-        const route = await getRouteForAuth(routeId);
+        let decoded;
+        try {
+          decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET);
+        } catch (error) {
+          return next(new Error("Invalid JWT token"));
+        }
+
+        const userId = decoded.sub;
+
+        const route = await getRouteForAuth(routeId, token);
         if (!route) {
           return next(new Error("Route not found"));
         }

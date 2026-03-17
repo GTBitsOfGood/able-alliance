@@ -3,12 +3,26 @@
 import { useEffect } from "react";
 import { io } from "socket.io-client";
 
+function getAuthToken() {
+  const cookies = document.cookie.split("; ");
+  const prod = cookies.find((cookie) =>
+    cookie.startsWith("__Secure-authjs.session-token="),
+  );
+  const dev = cookies.find((cookie) =>
+    cookie.startsWith("authjs.session-token="),
+  );
+  const cookie = prod ?? dev;
+  return cookie?.split("=")[1];
+}
+
 export default function SocketTest() {
   useEffect(() => {
+    const token = getAuthToken();
+
     const socket = io("http://127.0.0.1:4000", {
       auth: {
         routeId: "YOUR_ROUTE_ID",
-        userId: "YOUR_USER_ID",
+        token,
       },
       transports: ["websocket", "polling"],
     });
