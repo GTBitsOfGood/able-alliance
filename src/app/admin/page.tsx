@@ -14,6 +14,7 @@ const STUDENT_ACCESSIBILITY_OPTIONS = [
 ] as const;
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
+import RidesTable from "./RidesTable";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -524,6 +525,12 @@ export default function Admin() {
           >
             Locations
           </h4>
+          <h4
+            className={`rounded p-5 hover:cursor-pointer ${table === "Rides" ? selected_gradient : ""}`}
+            onClick={(e) => switchTable(e, "Rides")}
+          >
+            Rides
+          </h4>
           {userType === "SuperAdmin" ? (
             <h4
               className={`rounded p-5 hover:cursor-pointer ${table === "Admins" ? selected_gradient : ""}`}
@@ -573,30 +580,36 @@ export default function Admin() {
                 </BogButton>
               )}
             </div>
-            {error && (
-              <p className="mb-4 text-sm text-amber-700" role="status">
-                {error}
-              </p>
-            )}
-            {loading ? (
-              <p className="text-gray-600">Loading…</p>
+            {table === "Rides" ? (
+              <RidesTable />
             ) : (
-              <div>
-                <BogTable
-                  style={{ marginBottom: "5vh" } as React.CSSProperties}
-                  columnHeaders={columns}
-                  rows={rows}
-                  selectedRows={selectedRows}
-                  onSelectedRowsChange={setSelectedRows}
-                  selectable={true}
-                />
-                <button
-                  className="absolute bottom-[10%] right-[5%] rounded-full bg-[#D9D9D9] px-5 py-5 text-white hover:bg-[#a1a1a1] cursor-pointer"
-                  onClick={() => setShowForm(true)}
-                >
-                  <BogIcon name="plus" size={40} color="white" />
-                </button>
-              </div>
+              <>
+                {error && (
+                  <p className="mb-4 text-sm text-amber-700" role="status">
+                    {error}
+                  </p>
+                )}
+                {loading ? (
+                  <p className="text-gray-600">Loading…</p>
+                ) : (
+                  <div>
+                    <BogTable
+                      style={{ marginBottom: "5vh" } as React.CSSProperties}
+                      columnHeaders={columns}
+                      rows={rows}
+                      selectedRows={selectedRows}
+                      onSelectedRowsChange={setSelectedRows}
+                      selectable={true}
+                    />
+                    <button
+                      className="absolute bottom-[10%] right-[5%] rounded-full bg-[#D9D9D9] px-5 py-5 text-white hover:bg-[#a1a1a1] cursor-pointer"
+                      onClick={() => setShowForm(true)}
+                    >
+                      <BogIcon name="plus" size={40} color="white" />
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

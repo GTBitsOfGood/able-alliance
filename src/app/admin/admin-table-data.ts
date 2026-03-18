@@ -35,6 +35,18 @@ export type LocationRowRaw = {
   longitude: number;
 };
 
+/** Raw row shape for Rides table (data only; dropdowns are rendered in RidesTable). */
+export type RouteRowRaw = {
+  routeId: string;
+  student: string;
+  driverId: string | null;
+  vehicleId: string | null;
+  pickup_loc: string;
+  pickup_time: string;
+  dropoff_loc: string;
+  dropoff_time: string;
+};
+
 export const STUDENT_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Name", datatype: "string" },
   { content: "Email", datatype: "string" },
@@ -64,3 +76,14 @@ export const LOCATION_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Latitude", datatype: "number" },
   { content: "Longitude", datatype: "number" },
 ];
+
+export const RIDE_COLUMNS: ColumnHeaderCellContent[] = [
+  { content: "Student", datatype: "string" },
+  { content: "Driver", datatype: "other" },
+  { content: "Vehicle", datatype: "other" },
+  { content: "Pickup Location", datatype: "string" },
+  { content: "Pickup Time", datatype: "string" },
+  { content: "Dropoff Location", datatype: "string" },
+  { content: "Dropoff Time", datatype: "string" },
+  { content: "Actions", datatype: "other" },
+]
