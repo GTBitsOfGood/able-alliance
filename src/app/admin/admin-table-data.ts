@@ -81,9 +81,9 @@ export const RIDE_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Student", datatype: "string" },
   { content: "Driver", datatype: "other" },
   { content: "Vehicle", datatype: "other" },
-  { content: "Pickup Location", datatype: "string" },
-  { content: "Pickup Time", datatype: "string" },
-  { content: "Dropoff Location", datatype: "string" },
-  { content: "Dropoff Time", datatype: "string" },
+  { content: "Date", datatype: "string" },
+  { content: "Time", datatype: "string" },
+  { content: "Pick up @", datatype: "string" },
+  { content: "Drop off @", datatype: "string" },
   { content: "Actions", datatype: "other" },
 ]

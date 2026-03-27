@@ -41,6 +41,8 @@ export default function RidesTable() {
   const [vehicleLabels, setVehicleLabels] = useState<Record<string, string>>({});
   const [assigning, setAssigning] = useState<Set<string>>(new Set());
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({});
+  const [canceling, setCanceling] = useState<Set<string>>(new Set());
+  const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -141,26 +143,66 @@ export default function RidesTable() {
     }
   };
 
+  const handleCancel = async (routeId: string) => {
+    setCanceling((prev) => new Set(prev).add(routeId));
+    setCancelErrors((prev) => {
+      const next = { ...prev };
+      delete next[routeId];
+      return next;
+    });
+
+    try {
+      const res = await fetch("/api/routes/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? res.statusText);
+      }
+      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+    } catch (e) {
+      setCancelErrors((prev) => ({
+        ...prev,
+        [routeId]: e instanceof Error ? e.message : "Cancellation failed.",
+      }));
+    } finally {
+      setCanceling((prev) => {
+        const next = new Set(prev);
+        next.delete(routeId);
+        return next;
+      });
+    }
+  };
+
   const driverOptions = drivers.map(makeDriverLabel);
   const vehicleOptions = vehicles.map(makeVehicleLabel);
 
   const rows: TableRow[] = routes.map((route) => {
-    const studentName = `${route.student.lastName}, ${route.student.firstName}`;
+    const studentName = `${route.student.firstName} ${route.student.lastName}`;
     const pickupName =
       locationMap[route.pickupLocation] ?? route.pickupLocation;
     const dropoffName =
       locationMap[route.dropoffLocation] ?? route.dropoffLocation;
+    const pickupDate = route.scheduledPickupTime
+      ? new Date(route.scheduledPickupTime).toLocaleDateString()
+      : "—";
     const pickupTime = route.scheduledPickupTime
-      ? new Date(route.scheduledPickupTime).toLocaleString()
+      ? new Date(route.scheduledPickupTime).toLocaleTimeString()
       : "—";
 
     const selectedDriver = driverLabels[route._id] ?? "";
     const selectedVehicle = vehicleLabels[route._id] ?? "";
     const bothSelected = !!selectedDriver && !!selectedVehicle;
     const isAssigning = assigning.has(route._id);
+    const isCanceling = canceling.has(route._id);
     const assignError = assignErrors[route._id];
+    const cancelError = cancelErrors[route._id];
+    const activeError = assignError ?? cancelError;
 
     return {
+      styleProps: { style: { verticalAlign: "middle" } },
       cells: [
         { content: studentName },
         {
@@ -174,6 +216,7 @@ export default function RidesTable() {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
                 setDriverLabels((prev) => ({ ...prev, [route._id]: label }));
               }}
+              style={{fontSize: "1em"}}
             />
           ),
         },
@@ -188,28 +231,40 @@ export default function RidesTable() {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
                 setVehicleLabels((prev) => ({ ...prev, [route._id]: label }));
               }}
+              style={{fontSize: "1em"}}
             />
           ),
         },
-        { content: pickupName },
+        { content: pickupDate },
         { content: pickupTime },
+        { content: pickupName },
         { content: dropoffName },
-        { content: "—" },
         {
           content: (
             <div className="flex flex-col gap-1">
-              {bothSelected && (
-                <BogButton
-                  variant="primary"
-                  size="small"
-                  disabled={isAssigning}
-                  onClick={() => handleAssign(route._id)}
-                >
-                  {isAssigning ? "Assigning…" : "Assign"}
-                </BogButton>
+              {!activeError && (
+                <div className="flex gap-2">
+                  <BogButton
+                    variant="primary"
+                    size="small"
+                    disabled={isAssigning || isCanceling}
+                    onClick={() => handleAssign(route._id)}
+                    style={!bothSelected ? { pointerEvents: "none", backgroundColor: "var(--color-grey-off-state)"} : {}}
+                  >
+                    {isAssigning ? "Assigning…" : "Assign"}
+                  </BogButton>
+                  <BogButton
+                    variant="secondary"
+                    size="small"
+                    disabled={isCanceling || isAssigning}
+                    onClick={() => handleCancel(route._id)}
+                  >
+                    {isCanceling ? "Canceling…" : "Cancel"}
+                  </BogButton>
+                </div>
               )}
-              {assignError && (
-                <p className="text-xs text-red-600">{assignError}</p>
+              {activeError && (
+                <p className="text-xs text-red-600">{activeError}</p>
               )}
             </div>
           ),
