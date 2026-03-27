@@ -27,6 +27,8 @@ export default function CreateRidePage() {
   const [dropoffLocationName, setDropoffLocationName] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [pickupTime, setPickupTime] = useState("13:00");
+  const [pickupWindowFromTime, setPickupWindowFromTime] = useState("12:10");
+  const [pickupWindowToTime, setPickupWindowToTime] = useState("12:45");
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -236,6 +238,11 @@ export default function CreateRidePage() {
       return;
     }
 
+    if (!pickupWindowFromTime || !pickupWindowToTime) {
+      setError("Please provide both pickup window start and end times.");
+      return;
+    }
+
     // Create ISO string from selected date and user-selected time
     const [hours, minutes] = pickupTime.split(":").map(Number);
     const scheduledPickupTime = new Date(
@@ -247,6 +254,32 @@ export default function CreateRidePage() {
       0,
     ).toISOString();
 
+    const [windowStartHours, windowStartMinutes] =
+      pickupWindowFromTime.split(":").map(Number);
+    const [windowEndHours, windowEndMinutes] =
+      pickupWindowToTime.split(":").map(Number);
+    const pickupWindowStart = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      windowStartHours,
+      windowStartMinutes,
+      0,
+    );
+    const pickupWindowEnd = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      windowEndHours,
+      windowEndMinutes,
+      0,
+    );
+
+    if (pickupWindowEnd <= pickupWindowStart) {
+      setError("Pickup window end time must be after start time.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -257,6 +290,8 @@ export default function CreateRidePage() {
           pickupLocation: pickupId,
           dropoffLocation: dropoffId,
           scheduledPickupTime,
+          pickupWindowStart: pickupWindowStart.toISOString(),
+          pickupWindowEnd: pickupWindowEnd.toISOString(),
         }),
       });
       if (!res.ok) {
@@ -462,7 +497,7 @@ export default function CreateRidePage() {
                 <div className={styles.formColumnRight}>
                   {/* Pick Up Time */}
                   <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Pick up Time</h3>
+                    <h3 className={styles.formGroupTitle}>Pick Up Time</h3>
                     <div className={styles.timeCell}>
                       <input
                         type="time"
@@ -470,6 +505,50 @@ export default function CreateRidePage() {
                         onChange={(e) => setPickupTime(e.target.value)}
                         className={styles.timeInput}
                       />
+                    </div>
+                  </div>
+
+                  {/* Pick Up Time Window */}
+                  <div className={styles.formGroup}>
+                    <h3 className={styles.formGroupTitle}>Pick Up Time Window</h3>
+                    <div className={styles.pickupWindowRow}>
+                      <div className={styles.pickupWindowField}>
+                        <label
+                          className={styles.pickupWindowLabel}
+                          htmlFor="pickup-window-from"
+                        >
+                          From
+                        </label>
+                        <div className={styles.pickupWindowCell}>
+                          <input
+                            id="pickup-window-from"
+                            type="time"
+                            value={pickupWindowFromTime}
+                            onChange={(e) => setPickupWindowFromTime(e.target.value)}
+                            className={styles.pickupWindowInput}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <span className={styles.pickupWindowArrow}>→</span>
+                      <div className={styles.pickupWindowField}>
+                        <label
+                          className={styles.pickupWindowLabel}
+                          htmlFor="pickup-window-to"
+                        >
+                          To
+                        </label>
+                        <div className={styles.pickupWindowCell}>
+                          <input
+                            id="pickup-window-to"
+                            type="time"
+                            value={pickupWindowToTime}
+                            onChange={(e) => setPickupWindowToTime(e.target.value)}
+                            className={styles.pickupWindowInput}
+                            required
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
