@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styles from "./styles.module.css";
+
+import mapboxgl from "mapbox-gl";
+import 'mapbox-gl/dist/mapbox-gl.css'; 
 
 type Location = {
   _id: string;
@@ -25,6 +28,10 @@ export default function CreateRidePage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [pickupTime, setPickupTime] = useState("13:00");
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRefs = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     async function fetchLocations() {
@@ -59,6 +66,108 @@ export default function CreateRidePage() {
     }
 
     fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (loading) return;
+
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      const container = mapContainerRef.current;
+      if (!container || !token) return;
+
+      const defaultCenter: [number, number] = [-84.3988077, 33.7760948]; //middle of campus
+      const defaultZoom = 15;
+
+      const pickup = locations.find((l) => l.name === pickupLocationName);
+      const dropoff = locations.find((l) => l.name === dropoffLocationName);
+
+      const center = (): [number, number] => {
+        if (pickup && dropoff) {
+          return [
+            (pickup.longitude + dropoff.longitude) / 2,
+            (pickup.latitude + dropoff.latitude) / 2,
+          ];
+        }
+        if (pickup) return [pickup.longitude, pickup.latitude];
+        if (dropoff) return [dropoff.longitude, dropoff.latitude];
+        return defaultCenter;
+      };
+
+      mapboxgl.accessToken = token;
+      if (!mapRef.current) {
+        mapRef.current = new mapboxgl.Map({
+          container,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: center(),
+          zoom: defaultZoom,
+        });
+        mapRef.current.on("load", () => mapRef.current?.resize());
+      } else {
+        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
+      }
+
+      markerRefs.current.forEach((marker) => marker.remove());
+      markerRefs.current = [];
+
+      const createCustomPin = (
+        labelText: string,
+        color: string,
+      ): HTMLDivElement => {
+        const root = document.createElement("div");
+        root.className = styles.mapPinRoot;
+        root.style.setProperty("--pin-color", color);
+
+        const label = document.createElement("div");
+        label.textContent = labelText;
+        label.className = styles.mapPinLabel;
+
+        const stem = document.createElement("div");
+        stem.className = styles.mapPinStem;
+
+        const dot = document.createElement("div");
+        dot.className = styles.mapPinDot;
+
+        root.appendChild(label);
+        root.appendChild(stem);
+        root.appendChild(dot);
+        return root;
+      };
+
+      if (pickup) {
+        const pickupMarker = new mapboxgl.Marker({
+          element: createCustomPin(`Pick Up: ${pickup.name}`, "#325CE8"),
+          anchor: "bottom",
+        })
+          .setLngLat([pickup.longitude, pickup.latitude])
+          .addTo(mapRef.current);
+        markerRefs.current.push(pickupMarker);
+      }
+
+      if (dropoff) {
+        const dropoffMarker = new mapboxgl.Marker({
+          element: createCustomPin(`Drop Off: ${dropoff.name}`, "#C73A3A"),
+          anchor: "bottom",
+        })
+          .setLngLat([dropoff.longitude, dropoff.latitude])
+          .addTo(mapRef.current);
+        markerRefs.current.push(dropoffMarker);
+      }
+
+    } catch (e) {
+      setError(
+        "Unable to load map. " + (e instanceof Error ? e.message : "Unknown error"),
+      );
+    }
+  }, [loading, locations, pickupLocationName, dropoffLocationName]);
+
+  useEffect(() => {
+    return () => {
+      markerRefs.current.forEach((marker) => marker.remove());
+      markerRefs.current = [];
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   const locationNames = locations.map((l) => l.name);
@@ -442,10 +551,7 @@ export default function CreateRidePage() {
 
               {/* Right: Map Image */}
               <div className={styles.mapSection}>
-                <div
-                  className={styles.mapImage}
-                  style={{ backgroundImage: "url(/gt-campus-street.jpeg)" }}
-                />
+                <div ref={mapContainerRef} className={styles.mapImage} />
               </div>
             </div>
 
