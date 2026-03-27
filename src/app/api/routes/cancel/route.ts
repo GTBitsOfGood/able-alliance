@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-    } else if (type !== "Admin" && type !== "SuperAdmin" && type !== "Driver") {
+    } else if (type !== "Admin" && type !== "SuperAdmin") {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },

@@ -68,8 +68,8 @@
   height: 4.4rem;
   border-radius: 999px;
   border: none;
-  background: #66c987;
-  color: #fff;
+  background: var(--color-status-green-text);
+  color: var(--color-solid-bg-base);
   font-family: "Open Sans", sans-serif;
   font-weight: 700;
   font-size: 2.4rem;

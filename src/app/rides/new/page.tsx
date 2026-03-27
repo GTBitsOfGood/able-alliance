@@ -138,7 +138,10 @@ export default function CreateRidePage() {
 
       if (pickup) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pick Up: ${pickup.name}`, "#325CE8"),
+          element: createCustomPin(
+            `Pick Up: ${pickup.name}`,
+            "var(--color-status-blue-text)",
+          ),
           anchor: "bottom",
         })
           .setLngLat([pickup.longitude, pickup.latitude])
@@ -148,7 +151,10 @@ export default function CreateRidePage() {
 
       if (dropoff) {
         const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Drop Off: ${dropoff.name}`, "#C73A3A"),
+          element: createCustomPin(
+            `Drop Off: ${dropoff.name}`,
+            "var(--color-status-red-text)",
+          ),
           anchor: "bottom",
         })
           .setLngLat([dropoff.longitude, dropoff.latitude])
