@@ -31,13 +31,13 @@
 
   /* hover state for checkboxes that are not disabled */
   .checkbox:not(.disabled):not([data-state="indeterminate"]):hover {
-    border-color: #416ebc;
+    border-color: var(--color-checkbox-border);
   }
 
   /* this is when the checkbox is clicked */
   .checkbox[data-state="checked"] {
-    background-color: #183777;
-    border-color: #416ebc;
+    background-color: var(--color-checkbox-checked);
+    border-color: var(--color-checkbox-border);
   }
 
   /* checkbox is indeterminate and disabled hover, changed cursor*/

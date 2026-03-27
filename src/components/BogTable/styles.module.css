@@ -16,7 +16,7 @@
   }
 
   .columnHeaderCell {
-    background-color: #a7d0ed66 !important;
+    background-color: var(--color-admin-bg) !important;
     position: relative;
     padding: 0 1.2rem;
     padding-right: 4rem;

@@ -47,6 +47,7 @@ export default function RidesTable() {
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -84,7 +85,7 @@ export default function RidesTable() {
             locMap[String(loc._id)] = String(loc.name);
           }
         }
-
+        if (cancelled) return;
         setRoutes(requested);
         setLocationMap(locMap);
         setDrivers(Array.isArray(driversData) ? driversData : []);
@@ -96,6 +97,9 @@ export default function RidesTable() {
       }
     };
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleAssign = async (routeId: string) => {
@@ -242,34 +246,31 @@ export default function RidesTable() {
         {
           content: (
             <div className="flex flex-col gap-1">
-              {!activeError && (
-                <div className="flex gap-2">
-                  <BogButton
-                    variant="primary"
-                    size="small"
-                    disabled={isAssigning || isCanceling}
-                    onClick={() => handleAssign(route._id)}
-                    style={
-                      !bothSelected
-                        ? {
-                            pointerEvents: "none",
-                            backgroundColor: "var(--color-grey-off-state)",
-                          }
-                        : {}
-                    }
-                  >
-                    {isAssigning ? "Assigning…" : "Assign"}
-                  </BogButton>
-                  <BogButton
-                    variant="secondary"
-                    size="small"
-                    disabled={isCanceling || isAssigning}
-                    onClick={() => handleCancel(route._id)}
-                  >
-                    {isCanceling ? "Canceling…" : "Cancel"}
-                  </BogButton>
-                </div>
-              )}
+              <div className="flex gap-2">
+                <BogButton
+                  variant="primary"
+                  size="small"
+                  disabled={isAssigning || isCanceling || !bothSelected}
+                  onClick={() => handleAssign(route._id)}
+                  style={
+                    !bothSelected
+                      ? {
+                          backgroundColor: "var(--color-grey-off-state)",
+                        }
+                      : {}
+                  }
+                >
+                  {isAssigning ? "Assigning…" : "Assign"}
+                </BogButton>
+                <BogButton
+                  variant="secondary"
+                  size="small"
+                  disabled={isCanceling || isAssigning}
+                  onClick={() => handleCancel(route._id)}
+                >
+                  {isCanceling ? "Canceling…" : "Cancel"}
+                </BogButton>
+              </div>
               {activeError && (
                 <p className="text-xs text-red-600">{activeError}</p>
               )}

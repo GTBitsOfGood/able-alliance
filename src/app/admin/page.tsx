@@ -19,7 +19,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-const selected_color = "bg-[#A7D0ED66]";
+const selected_color = "bg-[var(--color-admin-bg)]";
 
 export default function Admin() {
   const { data: session, status } = useSession();
@@ -541,11 +541,8 @@ export default function Admin() {
             ""
           )}
         </div>
-        <div
-          className="mt-auto pt-10 flex items-center gap-8"
-          style={{ borderTop: "1px solid #22070B26" }}
-        >
-          <div className="flex items-center justify-center rounded-full bg-[#A7D0ED] text-[#1a3a4a] font-semibold shrink-0 w-[3.2rem] h-[3.2rem] text-[1.4rem]">
+        <div className="mt-auto pt-10 flex items-center gap-8 border-t-1 border-t-[var(--color-grey-stroke-weak)]">
+          <div className="flex items-center justify-center rounded-full bg-[var(--color-admin-bg)] font-semibold shrink-0 w-[3.2rem] h-[3.2rem] text-[1.4rem]">
             {session?.user?.firstName?.[0]?.toUpperCase() ?? "?"}
           </div>
           <div className="flex flex-col min-w-0">
