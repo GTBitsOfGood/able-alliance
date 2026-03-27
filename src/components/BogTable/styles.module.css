@@ -16,7 +16,7 @@
   }
 
   .columnHeaderCell {
-    background-color: var(--color-grey-fill-weaker) !important;
+    background-color: #a7d0ed66 !important;
     position: relative;
     padding: 0 1.2rem;
     padding-right: 4rem;
@@ -314,11 +314,13 @@
     max-width: 3.5rem !important;
     width: 3.5rem !important;
     padding: 0 0.8rem;
-    text-align: center;
     vertical-align: middle;
   }
 
-  .selectCell.selectCell::after {
-    display: none;
+  .selectCellInner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
   }
 }

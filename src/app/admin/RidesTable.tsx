@@ -38,7 +38,9 @@ export default function RidesTable() {
 
   // Per-row selections keyed by routeId — store display labels for BogDropdown
   const [driverLabels, setDriverLabels] = useState<Record<string, string>>({});
-  const [vehicleLabels, setVehicleLabels] = useState<Record<string, string>>({});
+  const [vehicleLabels, setVehicleLabels] = useState<Record<string, string>>(
+    {},
+  );
   const [assigning, setAssigning] = useState<Set<string>>(new Set());
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({});
   const [canceling, setCanceling] = useState<Set<string>>(new Set());
@@ -73,9 +75,7 @@ export default function RidesTable() {
           ]);
 
         const requested = Array.isArray(routesData)
-          ? routesData.filter(
-              (r: RouteEntry) => r.status === "Requested",
-            )
+          ? routesData.filter((r: RouteEntry) => r.status === "Requested")
           : [];
 
         const locMap: Record<string, string> = {};
@@ -216,7 +216,7 @@ export default function RidesTable() {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
                 setDriverLabels((prev) => ({ ...prev, [route._id]: label }));
               }}
-              style={{fontSize: "1em"}}
+              style={{ fontSize: "1em" }}
             />
           ),
         },
@@ -231,7 +231,7 @@ export default function RidesTable() {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
                 setVehicleLabels((prev) => ({ ...prev, [route._id]: label }));
               }}
-              style={{fontSize: "1em"}}
+              style={{ fontSize: "1em" }}
             />
           ),
         },
@@ -249,7 +249,14 @@ export default function RidesTable() {
                     size="small"
                     disabled={isAssigning || isCanceling}
                     onClick={() => handleAssign(route._id)}
-                    style={!bothSelected ? { pointerEvents: "none", backgroundColor: "var(--color-grey-off-state)"} : {}}
+                    style={
+                      !bothSelected
+                        ? {
+                            pointerEvents: "none",
+                            backgroundColor: "var(--color-grey-off-state)",
+                          }
+                        : {}
+                    }
                   >
                     {isAssigning ? "Assigning…" : "Assign"}
                   </BogButton>
@@ -283,5 +290,7 @@ export default function RidesTable() {
   if (routes.length === 0)
     return <p className="text-gray-600">No requested rides.</p>;
 
-  return <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />;
+  return (
+    <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
+  );
 }

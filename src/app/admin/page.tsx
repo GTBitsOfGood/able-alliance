@@ -19,7 +19,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-const selected_gradient = "bg-gradient-to-r from-[#EDEDED] to-[#EDEDED00]";
+const selected_color = "bg-[#A7D0ED66]";
 
 export default function Admin() {
   const { data: session, status } = useSession();
@@ -495,45 +495,44 @@ export default function Admin() {
 
   return (
     <div className="flex h-screen w-screen">
-      <div className="py-20 px-10 bg-gradient-to-b from-[#D9D9D9] to-[#B2B2B2] w-[12%] min-w-fit">
+      <div className="relative py-20 px-10 w-[12%] min-w-fit shadow-sm flex flex-col">
         <div className="mb-[10vh]">
-          <p>GT Paratransit</p>
-          <h3>Dashboard</h3>
+          <h3>GT Paratransit</h3>
         </div>
         <div>
           <h4
-            className={`rounded p-5 hover:cursor-pointer ${table === "Students" ? selected_gradient : ""}`}
+            className={`rounded-md p-5 hover:cursor-pointer ${table === "Students" ? selected_color : ""}`}
             onClick={(e) => switchTable(e, "Students")}
           >
             Students
           </h4>
           <h4
-            className={`rounded p-5 hover:cursor-pointer ${table === "Drivers" ? selected_gradient : ""}`}
+            className={`rounded-md p-5 hover:cursor-pointer ${table === "Drivers" ? selected_color : ""}`}
             onClick={(e) => switchTable(e, "Drivers")}
           >
             Drivers
           </h4>
           <h4
-            className={`rounded p-5 hover:cursor-pointer ${table === "Vehicles" ? selected_gradient : ""}`}
+            className={`rounded-md p-5 hover:cursor-pointer ${table === "Vehicles" ? selected_color : ""}`}
             onClick={(e) => switchTable(e, "Vehicles")}
           >
             Vehicles
           </h4>
           <h4
-            className={`rounded p-5 hover:cursor-pointer ${table === "Locations" ? selected_gradient : ""}`}
+            className={`rounded-md p-5 hover:cursor-pointer ${table === "Locations" ? selected_color : ""}`}
             onClick={(e) => switchTable(e, "Locations")}
           >
             Locations
           </h4>
           <h4
-            className={`rounded p-5 hover:cursor-pointer ${table === "Rides" ? selected_gradient : ""}`}
+            className={`rounded-md p-5 hover:cursor-pointer ${table === "Rides" ? selected_color : ""}`}
             onClick={(e) => switchTable(e, "Rides")}
           >
-            Rides
+            Ride List
           </h4>
           {userType === "SuperAdmin" ? (
             <h4
-              className={`rounded p-5 hover:cursor-pointer ${table === "Admins" ? selected_gradient : ""}`}
+              className={`rounded-md p-5 hover:cursor-pointer ${table === "Admins" ? selected_color : ""}`}
               onClick={(e) => switchTable(e, "Admins")}
             >
               Admins
@@ -541,6 +540,22 @@ export default function Admin() {
           ) : (
             ""
           )}
+        </div>
+        <div
+          className="mt-auto pt-10 flex items-center gap-8"
+          style={{ borderTop: "1px solid #22070B26" }}
+        >
+          <div className="flex items-center justify-center rounded-full bg-[#A7D0ED] text-[#1a3a4a] font-semibold shrink-0 w-[3.2rem] h-[3.2rem] text-[1.4rem]">
+            {session?.user?.firstName?.[0]?.toUpperCase() ?? "?"}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-[1.3rem] leading-tight truncate">
+              {session?.user?.firstName} {session?.user?.lastName}
+            </span>
+            <span className="text-[1.1rem] text-gray-500 leading-tight">
+              {userType}
+            </span>
+          </div>
         </div>
       </div>
       <div className="py-20 px-10 relative flex-1">
