@@ -16,7 +16,9 @@ export default function AppNavbar() {
   const showRides = userType === "Student" || userType === "Driver";
   const showAdmin = userType === "Admin" || userType === "SuperAdmin";
   const fullName =
-    [session.user?.firstName, session.user?.lastName].filter(Boolean).join(" ") ||
+    [session.user?.firstName, session.user?.lastName]
+      .filter(Boolean)
+      .join(" ") ||
     session.user?.name ||
     "User";
   const avatarLetter = fullName.charAt(0).toUpperCase();

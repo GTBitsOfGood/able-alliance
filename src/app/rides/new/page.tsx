@@ -6,7 +6,7 @@ import Link from "next/link";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
-import 'mapbox-gl/dist/mapbox-gl.css'; 
+import "mapbox-gl/dist/mapbox-gl.css";
 
 type Location = {
   _id: string;
@@ -155,10 +155,10 @@ export default function CreateRidePage() {
           .addTo(mapRef.current);
         markerRefs.current.push(dropoffMarker);
       }
-
     } catch (e) {
       setError(
-        "Unable to load map. " + (e instanceof Error ? e.message : "Unknown error"),
+        "Unable to load map. " +
+          (e instanceof Error ? e.message : "Unknown error"),
       );
     }
   }, [loading, locations, pickupLocationName, dropoffLocationName]);
@@ -254,10 +254,12 @@ export default function CreateRidePage() {
       0,
     ).toISOString();
 
-    const [windowStartHours, windowStartMinutes] =
-      pickupWindowFromTime.split(":").map(Number);
-    const [windowEndHours, windowEndMinutes] =
-      pickupWindowToTime.split(":").map(Number);
+    const [windowStartHours, windowStartMinutes] = pickupWindowFromTime
+      .split(":")
+      .map(Number);
+    const [windowEndHours, windowEndMinutes] = pickupWindowToTime
+      .split(":")
+      .map(Number);
     const pickupWindowStart = new Date(
       selectedDate.getFullYear(),
       selectedDate.getMonth(),
@@ -510,7 +512,9 @@ export default function CreateRidePage() {
 
                   {/* Pick Up Time Window */}
                   <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Pick Up Time Window</h3>
+                    <h3 className={styles.formGroupTitle}>
+                      Pick Up Time Window
+                    </h3>
                     <div className={styles.pickupWindowRow}>
                       <div className={styles.pickupWindowField}>
                         <label
@@ -524,7 +528,9 @@ export default function CreateRidePage() {
                             id="pickup-window-from"
                             type="time"
                             value={pickupWindowFromTime}
-                            onChange={(e) => setPickupWindowFromTime(e.target.value)}
+                            onChange={(e) =>
+                              setPickupWindowFromTime(e.target.value)
+                            }
                             className={styles.pickupWindowInput}
                             required
                           />
@@ -543,7 +549,9 @@ export default function CreateRidePage() {
                             id="pickup-window-to"
                             type="time"
                             value={pickupWindowToTime}
-                            onChange={(e) => setPickupWindowToTime(e.target.value)}
+                            onChange={(e) =>
+                              setPickupWindowToTime(e.target.value)
+                            }
                             className={styles.pickupWindowInput}
                             required
                           />
