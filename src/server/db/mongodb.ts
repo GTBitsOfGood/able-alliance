@@ -1,14 +1,5 @@
 import mongoose, { Connection } from "mongoose";
 
-export const uri = process.env.MONGODB_URI;
-
-if (!uri) {
-  console.error("Error: MONGODB_URI environment variable is not defined");
-  throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env",
-  );
-}
-
 declare global {
   var mongoose: {
     conn: Connection | null;
@@ -23,6 +14,14 @@ if (!cached) {
 }
 
 const connectMongoDB = async () => {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.error("Error: MONGODB_URI environment variable is not defined");
+    throw new Error(
+      "Please define the MONGODB_URI environment variable inside .env",
+    );
+  }
+
   if (cached.conn) {
     return cached.conn as Connection;
   }

@@ -217,8 +217,10 @@ export async function POST(request: NextRequest) {
       e instanceof RouteAlreadyExistsException ||
       e instanceof RouteReferenceNotFoundException
     ) {
+      console.error("[POST /api/routes]", e.message);
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
+    console.error("[POST /api/routes] Unexpected error:", e);
     const payload = internalErrorPayload(e);
     return NextResponse.json(payload, {
       status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
