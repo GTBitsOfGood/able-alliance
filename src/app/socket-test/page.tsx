@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { io } from "socket.io-client";
 
 function getAuthToken() {
+  console.log("COOKIES: " + document.cookie);
   const cookies = document.cookie.split("; ");
   const prod = cookies.find((cookie) =>
     cookie.startsWith("__Secure-authjs.session-token="),
@@ -13,7 +14,8 @@ function getAuthToken() {
     cookie.startsWith("authjs.session-token="),
   );
   const cookie = prod ?? dev;
-  return cookie?.split("=")[1];
+  return cookie;
+  // return cookie?.split("=")[1];
 }
 
 export default function SocketTest() {
@@ -23,6 +25,7 @@ export default function SocketTest() {
     async function initSocket() {
       const session = await getSession();
       const token = session?.user.accessToken;
+      console.log("Session:", session);
       // const token = "TEST_TOKEN";
 
       if (!token) {

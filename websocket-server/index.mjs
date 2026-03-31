@@ -10,25 +10,25 @@ dotenv.config();
 // Minimal route shape for auth — only the fields we need.
 // Uses raw collection; no Mongoose model/schema.
 async function getRouteForAuth(routeId, token) {
-  const res = await fetch(`http://app:3000/api/routes?id=${routeId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch route: ${res.status} ${res.statusText}`);
-  }
-  return res.json();
-
-  // if (!mongoose.Types.ObjectId.isValid(routeId)) {
-  //   throw new Error("Invalid route ID");
+  // const res = await fetch(`http://app:3000/api/routes?id=${routeId}`, {
+  //   headers: {
+  //     Authorization: `Bearer ${token}`,
+  //   },
+  // });
+  // if (!res.ok) {
+  //   throw new Error(`Failed to fetch route: ${res.status} ${res.statusText}`);
   // }
-  // const routes = mongoose.connection.db.collection("routes");
-  // const route = await routes.findOne(
-  //   { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
-  //   { projection: { status: 1, driver: 1, student: 1 } },
-  // );
-  // return route;
+  // return res.json();
+
+  if (!mongoose.Types.ObjectId.isValid(routeId)) {
+    throw new Error("Invalid route ID");
+  }
+  const routes = mongoose.connection.db.collection("routes");
+  const route = await routes.findOne(
+    { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
+    { projection: { status: 1, driver: 1, student: 1 } },
+  );
+  return route;
 }
 
 const app = express();
@@ -66,6 +66,7 @@ const io = new Server(server, {
     io.use(async (socket, next) => {
       // console.log("Socket.IO middleware triggered", socket.handshake.auth);
       try {
+        console.log("Socket.IO auth data", socket.handshake.auth);
         const { routeId, token } = socket.handshake.auth;
         console.log(
           `Auth attempt for routeId: ${routeId} and token is ${token ? "present" : "missing"} `,
@@ -80,7 +81,7 @@ const io = new Server(server, {
           return next(new Error("Invalid JWT token"));
         }
 
-        const userId = decoded.sub;
+        const userId = decoded.userId;
 
         const route = await getRouteForAuth(routeId, token);
         if (!route) {
