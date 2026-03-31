@@ -67,7 +67,12 @@ const io = new Server(server, {
         let decoded;
         try {
           const secret = process.env.NEXTAUTH_SECRET;
-          console.log("NEXTAUTH_SECRET present:", !!secret, "length:", secret?.length);
+          console.log(
+            "NEXTAUTH_SECRET present:",
+            !!secret,
+            "length:",
+            secret?.length,
+          );
           decoded = jwt.verify(token, secret);
         } catch (error) {
           console.error("JWT verify failed:", error.message);
@@ -75,6 +80,9 @@ const io = new Server(server, {
         }
 
         const userId = decoded.userId;
+
+        console.log("Decoded JWT:", decoded);
+        console.log("User ID from token:", userId);
 
         const route = await getRouteForAuth(routeId);
         if (!route) {

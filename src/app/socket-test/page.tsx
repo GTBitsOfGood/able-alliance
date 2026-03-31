@@ -13,20 +13,26 @@ export default function SocketTest() {
       console.log("Session:", session);
       console.log("Session user:", session?.user);
       const token = session?.user.accessToken;
-      console.log("Access token:", token ? `${token.slice(0, 20)}...` : "undefined");
+      console.log(
+        "Access token:",
+        token ? `${token.slice(0, 20)}...` : "undefined",
+      );
 
       if (!token) {
         console.error("No auth token found");
         return;
       }
 
-      const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "http://127.0.0.1:4000", {
-        auth: {
-          routeId: "69cb54c16def2af738a763c2",
-          token,
+      const socket = io(
+        process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "http://127.0.0.1:4000",
+        {
+          auth: {
+            routeId: "69cc4f9aa34509334ad805db",
+            token,
+          },
+          transports: ["websocket", "polling"],
         },
-        transports: ["websocket", "polling"],
-      });
+      );
 
       socketRef.current = socket;
 
