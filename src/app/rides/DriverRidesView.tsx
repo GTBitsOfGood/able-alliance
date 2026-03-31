@@ -260,31 +260,6 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     );
   }
 
-  async function handleCancel(routeId: string) {
-    setBusyRoutes((prev) => new Set(prev).add(routeId));
-    try {
-      const res = await fetch("/api/routes/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to cancel ride");
-        return;
-      }
-      await fetchRoutes();
-    } catch {
-      setError("Failed to cancel ride");
-    } finally {
-      setBusyRoutes((prev) => {
-        const next = new Set(prev);
-        next.delete(routeId);
-        return next;
-      });
-    }
-  }
-
   async function handleStart(routeId: string) {
     setBusyRoutes((prev) => new Set(prev).add(routeId));
     try {
@@ -389,29 +364,6 @@ export default function DriverRidesView({ userId }: { userId: string }) {
                           driver: route.driver?._id,
                         }}
                         locationIdToName={locationIdToName}
-                        actions={
-                          canAct ? (
-                            <>
-                              <button
-                                className={styles.cancelRideButton}
-                                disabled={isBusy}
-                                onClick={() => handleCancel(route._id)}
-                              >
-                                Cancel ride
-                              </button>
-                              {route.status === "Scheduled" && (
-                                <button
-                                  type="button"
-                                  className={styles.startRideButton}
-                                  disabled={isBusy}
-                                  onClick={() => handleStart(route._id)}
-                                >
-                                  Start ride
-                                </button>
-                              )}
-                            </>
-                          ) : undefined
-                        }
                       />
                     );
                   })}

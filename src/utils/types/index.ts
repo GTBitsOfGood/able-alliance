@@ -45,6 +45,8 @@ export const routeStatusEnum = z.enum([
 
 export const routeSchema = z.object({
   pickupLocation: objectIdString,
+  pickupWindowStart: z.coerce.date(),
+  pickupWindowEnd: z.coerce.date(),
   dropoffLocation: objectIdString,
   student: objectIdString,
   driver: objectIdString.optional(),
@@ -60,6 +62,8 @@ export const createRouteSchema = z
     dropoffLocation: objectIdString,
     student: objectIdString,
     scheduledPickupTime: z.coerce.date(),
+    pickupWindowStart: z.coerce.date(),
+    pickupWindowEnd: z.coerce.date(),
   })
   .strict();
 

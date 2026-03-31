@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styles from "./styles.module.css";
+
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 type Location = {
   _id: string;
@@ -24,7 +27,13 @@ export default function CreateRidePage() {
   const [dropoffLocationName, setDropoffLocationName] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [pickupTime, setPickupTime] = useState("13:00");
+  const [pickupWindowFromTime, setPickupWindowFromTime] = useState("12:10");
+  const [pickupWindowToTime, setPickupWindowToTime] = useState("12:45");
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRefs = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     async function fetchLocations() {
@@ -59,6 +68,114 @@ export default function CreateRidePage() {
     }
 
     fetchLocations();
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (loading) return;
+
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      const container = mapContainerRef.current;
+      if (!container || !token) return;
+
+      const defaultCenter: [number, number] = [-84.3988077, 33.7760948]; //middle of campus
+      const defaultZoom = 15;
+
+      const pickup = locations.find((l) => l.name === pickupLocationName);
+      const dropoff = locations.find((l) => l.name === dropoffLocationName);
+
+      const center = (): [number, number] => {
+        if (pickup && dropoff) {
+          return [
+            (pickup.longitude + dropoff.longitude) / 2,
+            (pickup.latitude + dropoff.latitude) / 2,
+          ];
+        }
+        if (pickup) return [pickup.longitude, pickup.latitude];
+        if (dropoff) return [dropoff.longitude, dropoff.latitude];
+        return defaultCenter;
+      };
+
+      mapboxgl.accessToken = token;
+      if (!mapRef.current) {
+        mapRef.current = new mapboxgl.Map({
+          container,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: center(),
+          zoom: defaultZoom,
+        });
+        mapRef.current.on("load", () => mapRef.current?.resize());
+      } else {
+        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
+      }
+
+      markerRefs.current.forEach((marker) => marker.remove());
+      markerRefs.current = [];
+
+      const createCustomPin = (
+        labelText: string,
+        color: string,
+      ): HTMLDivElement => {
+        const root = document.createElement("div");
+        root.className = styles.mapPinRoot;
+        root.style.setProperty("--pin-color", color);
+
+        const label = document.createElement("div");
+        label.textContent = labelText;
+        label.className = styles.mapPinLabel;
+
+        const stem = document.createElement("div");
+        stem.className = styles.mapPinStem;
+
+        const dot = document.createElement("div");
+        dot.className = styles.mapPinDot;
+
+        root.appendChild(label);
+        root.appendChild(stem);
+        root.appendChild(dot);
+        return root;
+      };
+
+      if (pickup) {
+        const pickupMarker = new mapboxgl.Marker({
+          element: createCustomPin(
+            `Pick Up: ${pickup.name}`,
+            "var(--color-status-blue-text)",
+          ),
+          anchor: "bottom",
+        })
+          .setLngLat([pickup.longitude, pickup.latitude])
+          .addTo(mapRef.current);
+        markerRefs.current.push(pickupMarker);
+      }
+
+      if (dropoff) {
+        const dropoffMarker = new mapboxgl.Marker({
+          element: createCustomPin(
+            `Drop Off: ${dropoff.name}`,
+            "var(--color-status-red-text)",
+          ),
+          anchor: "bottom",
+        })
+          .setLngLat([dropoff.longitude, dropoff.latitude])
+          .addTo(mapRef.current);
+        markerRefs.current.push(dropoffMarker);
+      }
+    } catch (e) {
+      setError(
+        "Unable to load map. " +
+          (e instanceof Error ? e.message : "Unknown error"),
+      );
+    }
+  }, [loading, locations, pickupLocationName, dropoffLocationName]);
+
+  useEffect(() => {
+    return () => {
+      markerRefs.current.forEach((marker) => marker.remove());
+      markerRefs.current = [];
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
   }, []);
 
   const locationNames = locations.map((l) => l.name);
@@ -127,6 +244,11 @@ export default function CreateRidePage() {
       return;
     }
 
+    if (!pickupWindowFromTime || !pickupWindowToTime) {
+      setError("Please provide both pickup window start and end times.");
+      return;
+    }
+
     // Create ISO string from selected date and user-selected time
     const [hours, minutes] = pickupTime.split(":").map(Number);
     const scheduledPickupTime = new Date(
@@ -138,6 +260,34 @@ export default function CreateRidePage() {
       0,
     ).toISOString();
 
+    const [windowStartHours, windowStartMinutes] = pickupWindowFromTime
+      .split(":")
+      .map(Number);
+    const [windowEndHours, windowEndMinutes] = pickupWindowToTime
+      .split(":")
+      .map(Number);
+    const pickupWindowStart = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      windowStartHours,
+      windowStartMinutes,
+      0,
+    );
+    const pickupWindowEnd = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      windowEndHours,
+      windowEndMinutes,
+      0,
+    );
+
+    if (pickupWindowEnd <= pickupWindowStart) {
+      setError("Pickup window end time must be after start time.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -148,6 +298,8 @@ export default function CreateRidePage() {
           pickupLocation: pickupId,
           dropoffLocation: dropoffId,
           scheduledPickupTime,
+          pickupWindowStart: pickupWindowStart.toISOString(),
+          pickupWindowEnd: pickupWindowEnd.toISOString(),
         }),
       });
       if (!res.ok) {
@@ -353,7 +505,7 @@ export default function CreateRidePage() {
                 <div className={styles.formColumnRight}>
                   {/* Pick Up Time */}
                   <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Pick up Time</h3>
+                    <h3 className={styles.formGroupTitle}>Pick Up Time</h3>
                     <div className={styles.timeCell}>
                       <input
                         type="time"
@@ -361,6 +513,56 @@ export default function CreateRidePage() {
                         onChange={(e) => setPickupTime(e.target.value)}
                         className={styles.timeInput}
                       />
+                    </div>
+                  </div>
+
+                  {/* Pick Up Time Window */}
+                  <div className={styles.formGroup}>
+                    <h3 className={styles.formGroupTitle}>
+                      Pick Up Time Window
+                    </h3>
+                    <div className={styles.pickupWindowRow}>
+                      <div className={styles.pickupWindowField}>
+                        <label
+                          className={styles.pickupWindowLabel}
+                          htmlFor="pickup-window-from"
+                        >
+                          From
+                        </label>
+                        <div className={styles.pickupWindowCell}>
+                          <input
+                            id="pickup-window-from"
+                            type="time"
+                            value={pickupWindowFromTime}
+                            onChange={(e) =>
+                              setPickupWindowFromTime(e.target.value)
+                            }
+                            className={styles.pickupWindowInput}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <span className={styles.pickupWindowArrow}>→</span>
+                      <div className={styles.pickupWindowField}>
+                        <label
+                          className={styles.pickupWindowLabel}
+                          htmlFor="pickup-window-to"
+                        >
+                          To
+                        </label>
+                        <div className={styles.pickupWindowCell}>
+                          <input
+                            id="pickup-window-to"
+                            type="time"
+                            value={pickupWindowToTime}
+                            onChange={(e) =>
+                              setPickupWindowToTime(e.target.value)
+                            }
+                            className={styles.pickupWindowInput}
+                            required
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -442,10 +644,7 @@ export default function CreateRidePage() {
 
               {/* Right: Map Image */}
               <div className={styles.mapSection}>
-                <div
-                  className={styles.mapImage}
-                  style={{ backgroundImage: "url(/gt-campus-street.jpeg)" }}
-                />
+                <div ref={mapContainerRef} className={styles.mapImage} />
               </div>
             </div>
 
