@@ -11,6 +11,7 @@ import {
   VEHICLE_COLUMNS,
   ADMIN_COLUMNS,
   LOCATION_COLUMNS,
+  RIDE_COLUMNS,
   type StudentRowRaw,
   type DriverRowRaw,
   type VehicleRowRaw,
@@ -23,7 +24,8 @@ export type AdminTableType =
   | "Drivers"
   | "Vehicles"
   | "Locations"
-  | "Admins";
+  | "Admins"
+  | "Rides";
 
 function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
   return rows.map((row) => ({
@@ -207,6 +209,12 @@ export function useAdminTableData(tableType: AdminTableType) {
           setColumns(LOCATION_COLUMNS);
           setRows(locationRawToTableRows(raw));
           setRowIds(extractIds(data));
+          setLoading(false);
+        } else if (tableType === "Rides") {
+          if (cancelled) return;
+          setColumns(RIDE_COLUMNS);
+          setRows([]);
+          setRowIds([]);
           setLoading(false);
         } else {
           // Vehicles

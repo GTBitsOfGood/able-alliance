@@ -32,5 +32,5 @@ export default auth((request) => {
 
 export const config = {
   // Match all routes except static files, Next.js internals, and CAS logout (so Auth.js doesn't add a session cookie to the response)
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth/cas).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth).*)"],
 };

@@ -27,7 +27,7 @@ export const authConfig: NextAuthConfig = {
   },
 
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       // On initial sign-in, `user` is populated with data we set in the CAS callback
       if (user) {
         token.userId = user.userId;
@@ -47,6 +47,19 @@ export const authConfig: NextAuthConfig = {
           process.env.NEXTAUTH_SECRET!,
         );
       }
+      // Generate accessToken for websocket auth if not already set
+      if (!token.accessToken && token.userId) {
+        token.accessToken = jwt.sign(
+          {
+            userId: token.userId,
+            type: token.type,
+            email: token.email,
+            firstName: token.firstName,
+            lastName: token.lastName,
+          },
+          process.env.NEXTAUTH_SECRET!,
+        );
+      }
       return token;
     },
 
@@ -57,7 +70,6 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
         session.user.lastName = token.lastName as string;
-
         session.user.accessToken = token.accessToken as string;
       }
       return session;

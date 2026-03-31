@@ -58,6 +58,8 @@ export async function createRoute(data: CreateRouteInput) {
     dropoffLocation: validatedData.dropoffLocation,
     student: studentEmbed,
     scheduledPickupTime: validatedData.scheduledPickupTime,
+    pickupWindowStart: validatedData.pickupWindowStart,
+    pickupWindowEnd: validatedData.pickupWindowEnd,
     status: "Requested",
   });
   return route.toObject();
