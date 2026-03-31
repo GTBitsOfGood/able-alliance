@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
+import * as jwt from "jsonwebtoken";
 
 // NextAuth reads NEXTAUTH_URL for redirects/URLs; use DEPLOY_PRIME_URL as single source of truth.
 if (process.env.DEPLOY_PRIME_URL) {
@@ -34,6 +35,17 @@ export const authConfig: NextAuthConfig = {
         token.email = user.email;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
+
+        token.accessToken = jwt.sign(
+          {
+            userId: user.userId,
+            type: user.type,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          },
+          process.env.NEXTAUTH_SECRET!,
+        );
       }
       return token;
     },
@@ -45,6 +57,8 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
         session.user.lastName = token.lastName as string;
+
+        session.user.accessToken = token.accessToken as string;
       }
       return session;
     },

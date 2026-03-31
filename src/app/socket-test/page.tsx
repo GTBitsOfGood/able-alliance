@@ -1,5 +1,6 @@
 "use client";
 
+import { getSession } from "next-auth/react";
 import { useEffect } from "react";
 import { io } from "socket.io-client";
 
@@ -17,48 +18,59 @@ function getAuthToken() {
 
 export default function SocketTest() {
   useEffect(() => {
-    const token = getAuthToken();
+    // const token = getAuthToken();
 
-    const socket = io("http://127.0.0.1:4000", {
-      auth: {
-        routeId: "YOUR_ROUTE_ID",
-        token,
-      },
-      transports: ["websocket", "polling"],
-    });
+    async function initSocket() {
+      const session = await getSession();
+      const token = session?.user.accessToken;
+      // const token = "TEST_TOKEN";
 
-    socket.on("connect", () => {
-      console.log("Connected:", socket.id);
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
 
-      socket.emit("sendChatMessage", "Hello from Next.js");
-
-      socket.emit("updateLocation", {
-        latitude: 12.34,
-        longitude: 56.78,
+      const socket = io("http://127.0.0.1:4000", {
+        auth: {
+          routeId: "69cb14b4e612672be5d805dd",
+          token,
+        },
+        transports: ["websocket", "polling"],
       });
-    });
 
-    socket.on("receiveChatMessage", (msg: string) => {
-      console.log("Chat:", msg);
-    });
+      socket.on("connect", () => {
+        console.log("Connected:", socket.id);
 
-    socket.on(
-      "broadcastLocation",
-      (loc: { latitude: number; longitude: number }) => {
-        console.log("Location:", loc);
-      },
-    );
+        socket.emit("sendChatMessage", "Hello from Next.js");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io connect_error shape varies at runtime
-    socket.on("connect_error", (err: any) => {
-      console.error("Connection error:", err.message);
-      console.error(err.description);
-      console.error(err.context);
-    });
+        socket.emit("updateLocation", {
+          latitude: 12.34,
+          longitude: 56.78,
+        });
+      });
 
-    return () => {
-      socket.disconnect();
-    };
+      socket.on("receiveChatMessage", (msg: string) => {
+        console.log("Chat:", msg);
+      });
+
+      socket.on(
+        "broadcastLocation",
+        (loc: { latitude: number; longitude: number }) => {
+          console.log("Location:", loc);
+        },
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io connect_error shape varies at runtime
+      socket.on("connect_error", (err: any) => {
+        console.error("Connection error:", err.message);
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+
+    initSocket();
   }, []);
 
   return <div>Socket Test Page (check console)</div>;
