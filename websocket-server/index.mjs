@@ -56,6 +56,7 @@ const io = new Server(server, {
     io.use(async (socket, next) => {
       // console.log("Socket.IO middleware triggered", socket.handshake.auth);
       try {
+        console.log("Socket.IO auth data", socket.handshake.auth);
         const { routeId, token } = socket.handshake.auth;
         console.log(
           `Auth attempt for routeId: ${routeId} and token is ${token ? "present" : "missing"} `,
