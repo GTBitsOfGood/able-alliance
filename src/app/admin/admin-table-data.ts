@@ -64,3 +64,14 @@ export const LOCATION_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Latitude", datatype: "number" },
   { content: "Longitude", datatype: "number" },
 ];
+
+export const RIDE_COLUMNS: ColumnHeaderCellContent[] = [
+  { content: "Student", datatype: "string" },
+  { content: "Driver", datatype: "other" },
+  { content: "Vehicle", datatype: "other" },
+  { content: "Date", datatype: "string" },
+  { content: "Time", datatype: "string" },
+  { content: "Pick up @", datatype: "string" },
+  { content: "Drop off @", datatype: "string" },
+  { content: "Actions", datatype: "other" },
+];
