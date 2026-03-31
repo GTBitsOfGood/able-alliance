@@ -9,26 +9,16 @@ dotenv.config();
 
 // Minimal route shape for auth — only the fields we need.
 // Uses raw collection; no Mongoose model/schema.
-async function getRouteForAuth(routeId, token) {
-  const res = await fetch(`http://app:3000/api/routes?id=${routeId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch route: ${res.status} ${res.statusText}`);
+async function getRouteForAuth(routeId) {
+  if (!mongoose.Types.ObjectId.isValid(routeId)) {
+    throw new Error("Invalid route ID");
   }
-  return res.json();
-
-  // if (!mongoose.Types.ObjectId.isValid(routeId)) {
-  //   throw new Error("Invalid route ID");
-  // }
-  // const routes = mongoose.connection.db.collection("routes");
-  // const route = await routes.findOne(
-  //   { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
-  //   { projection: { status: 1, driver: 1, student: 1 } },
-  // );
-  // return route;
+  const routes = mongoose.connection.db.collection("routes");
+  const route = await routes.findOne(
+    { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
+    { projection: { status: 1, driver: 1, student: 1 } },
+  );
+  return route;
 }
 
 const app = express();
@@ -75,14 +65,17 @@ const io = new Server(server, {
         }
         let decoded;
         try {
-          decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET);
+          const secret = process.env.NEXTAUTH_SECRET;
+          console.log("NEXTAUTH_SECRET present:", !!secret, "length:", secret?.length);
+          decoded = jwt.verify(token, secret);
         } catch (error) {
+          console.error("JWT verify failed:", error.message);
           return next(new Error("Invalid JWT token"));
         }
 
-        const userId = decoded.sub;
+        const userId = decoded.userId;
 
-        const route = await getRouteForAuth(routeId, token);
+        const route = await getRouteForAuth(routeId);
         if (!route) {
           return next(new Error("Route not found"));
         }

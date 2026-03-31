@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
-import * as jwt from "jsonwebtoken";
+import { SignJWT } from "jose";
 
 // NextAuth reads NEXTAUTH_URL for redirects/URLs; use DEPLOY_PRIME_URL as single source of truth.
 if (process.env.DEPLOY_PRIME_URL) {
@@ -36,29 +36,29 @@ export const authConfig: NextAuthConfig = {
         token.firstName = user.firstName;
         token.lastName = user.lastName;
 
-        token.accessToken = jwt.sign(
-          {
-            userId: user.userId,
-            type: user.type,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-          },
-          process.env.NEXTAUTH_SECRET!,
-        );
+        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+        token.accessToken = await new SignJWT({
+          userId: user.userId,
+          type: user.type,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .sign(secret);
       }
       // Generate accessToken for websocket auth if not already set
       if (!token.accessToken && token.userId) {
-        token.accessToken = jwt.sign(
-          {
-            userId: token.userId,
-            type: token.type,
-            email: token.email,
-            firstName: token.firstName,
-            lastName: token.lastName,
-          },
-          process.env.NEXTAUTH_SECRET!,
-        );
+        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+        token.accessToken = await new SignJWT({
+          userId: token.userId,
+          type: token.type,
+          email: token.email,
+          firstName: token.firstName,
+          lastName: token.lastName,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .sign(secret);
       }
       return token;
     },

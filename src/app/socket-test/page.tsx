@@ -1,42 +1,34 @@
 "use client";
 
 import { getSession } from "next-auth/react";
-import { useEffect } from "react";
-import { io } from "socket.io-client";
-
-function getAuthToken() {
-  const cookies = document.cookie.split("; ");
-  const prod = cookies.find((cookie) =>
-    cookie.startsWith("__Secure-authjs.session-token="),
-  );
-  const dev = cookies.find((cookie) =>
-    cookie.startsWith("authjs.session-token="),
-  );
-  const cookie = prod ?? dev;
-  return cookie?.split("=")[1];
-}
+import { useEffect, useRef } from "react";
+import { io, Socket } from "socket.io-client";
 
 export default function SocketTest() {
-  useEffect(() => {
-    // const token = getAuthToken();
+  const socketRef = useRef<Socket | null>(null);
 
+  useEffect(() => {
     async function initSocket() {
       const session = await getSession();
+      console.log("Session:", session);
+      console.log("Session user:", session?.user);
       const token = session?.user.accessToken;
-      // const token = "TEST_TOKEN";
+      console.log("Access token:", token ? `${token.slice(0, 20)}...` : "undefined");
 
       if (!token) {
         console.error("No auth token found");
         return;
       }
 
-      const socket = io("http://127.0.0.1:4000", {
+      const socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "http://127.0.0.1:4000", {
         auth: {
-          routeId: "69cb14b4e612672be5d805dd",
+          routeId: "69cb54c16def2af738a763c2",
           token,
         },
         transports: ["websocket", "polling"],
       });
+
+      socketRef.current = socket;
 
       socket.on("connect", () => {
         console.log("Connected:", socket.id);
@@ -60,17 +52,16 @@ export default function SocketTest() {
         },
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io connect_error shape varies at runtime
-      socket.on("connect_error", (err: any) => {
+      socket.on("connect_error", (err: Error) => {
         console.error("Connection error:", err.message);
       });
-
-      return () => {
-        socket.disconnect();
-      };
     }
 
     initSocket();
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
   }, []);
 
   return <div>Socket Test Page (check console)</div>;
