@@ -14,6 +14,7 @@ services:
       SUPERADMIN_FIRSTNAME: "Super"
       SUPERADMIN_LASTNAME: "Admin"
       WATCHPACK_POLLING: "true"
+      NEXT_PUBLIC_WS_URL: "http://localhost:4000"
     develop:
       watch:
         - action: rebuild
