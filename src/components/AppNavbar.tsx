@@ -48,6 +48,7 @@ export default function AppNavbar() {
             {avatarLetter}
           </span>
           <span className={styles.userName}>{fullName}</span>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/api/auth/cas/logout" className={styles.logout}>
             Logout
           </a>

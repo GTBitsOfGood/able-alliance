@@ -100,6 +100,9 @@ function parseCASResponse(xml: string): CASValidationResult {
 export async function GET(request: NextRequest) {
   const ticket = request.nextUrl.searchParams.get("ticket");
   const appUrl = process.env.DEPLOY_PRIME_URL;
+  if (!appUrl) {
+    throw new Error("DEPLOY_PRIME_URL environment variable is required");
+  }
   const loginUrl = `${appUrl}/login`;
 
   if (!ticket) {
