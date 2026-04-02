@@ -44,10 +44,15 @@ export default function AppNavbar() {
         </div>
 
         <div className={styles.right}>
-          <span className={styles.avatar} aria-hidden="true">
-            {avatarLetter}
-          </span>
-          <span className={styles.userName}>{fullName}</span>
+          <Link
+            href={`/profile/${session.user.userId}`}
+            className={styles.profileLink}
+          >
+            <span className={styles.avatar} aria-hidden="true">
+              {avatarLetter}
+            </span>
+            <span className={styles.userName}>{fullName}</span>
+          </Link>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/api/auth/cas/logout" className={styles.logout}>
             Logout

@@ -107,7 +107,9 @@ export default function RidesPage() {
       if (!locationsRes.ok) throw new Error("Failed to fetch locations");
       const routesData = await routesRes.json();
       const locationsData = await locationsRes.json();
-      setRoutes(routesData);
+      setRoutes(
+        routesData.filter((r: Route) => r.status !== "Cancelled by Student"),
+      );
       setLocations(locationsData);
       setError(null);
     } catch (e) {
