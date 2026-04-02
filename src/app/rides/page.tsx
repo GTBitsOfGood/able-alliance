@@ -90,6 +90,7 @@ export default function RidesPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -119,6 +120,26 @@ export default function RidesPage() {
   useEffect(() => {
     fetchRides();
   }, [fetchRides]);
+
+  const handleCancel = useCallback(async (routeId: string) => {
+    setCancellingId(routeId);
+    try {
+      const res = await fetch("/api/routes/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? res.statusText);
+      }
+      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Cancellation failed.");
+    } finally {
+      setCancellingId(null);
+    }
+  }, []);
 
   const locationIdToName: Record<string, string> = locations.reduce(
     (acc, loc) => {
@@ -191,6 +212,8 @@ export default function RidesPage() {
                 key={route._id}
                 route={route}
                 locationIdToName={locationIdToName}
+                onCancel={handleCancel}
+                cancelling={cancellingId === route._id}
               />
             ))}
           </div>
