@@ -99,7 +99,7 @@ function parseCASResponse(xml: string): CASValidationResult {
  */
 export async function GET(request: NextRequest) {
   const ticket = request.nextUrl.searchParams.get("ticket");
-  const appUrl = process.env.DEPLOY_PRIME_URL ?? request.nextUrl.origin;
+  const appUrl = process.env.DEPLOY_PRIME_URL;
   const loginUrl = `${appUrl}/login`;
 
   if (!ticket) {
@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect to same origin so cookie domain matches; set cookie via next/headers for better compatibility with Netlify
-    const redirectTo = request.nextUrl.origin;
+    const redirectTo = process.env.DEPLOY_PRIME_URL;
     const cookieStore = await cookies();
     cookieStore.set(sessionCookieName, token, {
       httpOnly: true,

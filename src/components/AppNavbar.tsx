@@ -48,9 +48,9 @@ export default function AppNavbar() {
             {avatarLetter}
           </span>
           <span className={styles.userName}>{fullName}</span>
-          <Link href="/api/auth/cas/logout" className={styles.logout}>
+          <a href="/api/auth/cas/logout" className={styles.logout}>
             Logout
-          </Link>
+          </a>
         </div>
       </div>
     </header>

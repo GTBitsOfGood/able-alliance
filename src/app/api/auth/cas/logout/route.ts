@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   if (!casBaseUrl) {
     throw new Error("CAS_BASE_URL_BROWSER environment variable is required");
   }
-  const appUrl = process.env.DEPLOY_PRIME_URL ?? request.nextUrl.origin;
+  const appUrl = process.env.DEPLOY_PRIME_URL;
 
   const casLogoutUrl = `${casBaseUrl}/logout?service=${encodeURIComponent(`${appUrl}/login`)}`;
 

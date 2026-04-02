@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     throw new Error("CAS_BASE_URL_BROWSER environment variable is required");
   }
   // Use DEPLOY_PRIME_URL when set (e.g. Docker); otherwise derive from request (Netlify doesn't inject it at runtime).
-  const appUrl = process.env.DEPLOY_PRIME_URL ?? request.nextUrl.origin;
+  const appUrl = process.env.DEPLOY_PRIME_URL;
   const serviceUrl = `${appUrl}/api/auth/cas/callback`;
 
   const casLoginUrl = `${casBaseUrl}/login?service=${encodeURIComponent(serviceUrl)}`;
