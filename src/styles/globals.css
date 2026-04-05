@@ -118,7 +118,6 @@
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
-    @apply transition duration-250 ease-in-out;
   }
 }
 
@@ -184,6 +183,15 @@
     src:
       url("/fonts/visbyextrabold-webfont.woff2") format("woff2"),
       url("/fonts/visbyextrabold-webfont.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: "Visby Light";
+    src:
+      url("/fonts/VisbyCF-Medium.woff2") format("woff2"),
+      url("/fonts/VisbyCF-Medium.woff") format("woff");
     font-weight: normal;
     font-style: normal;
   }
