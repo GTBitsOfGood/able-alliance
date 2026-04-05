@@ -45,6 +45,7 @@ export const authConfig: NextAuthConfig = {
           lastName: user.lastName,
         })
           .setProtectedHeader({ alg: "HS256" })
+          .setExpirationTime("24h")
           .sign(secret);
       }
       // Generate accessToken for websocket auth if not already set
