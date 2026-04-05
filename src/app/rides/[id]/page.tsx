@@ -210,16 +210,24 @@ export default function RideDetailPage({
       const container = mapContainerRef.current;
       if (!container || !token) return;
 
+      // Get location coordinates from the locations object (fetched from API)
+      const pickupLocationName = locations[route.pickupLocation] || "Pickup";
+      const dropoffLocationName = locations[route.dropoffLocation] || "Dropoff";
+
+      // Default GT campus coordinates for fallback
+      const defaultPickup = { latitude: 33.7756, longitude: -84.4027 };
+      const defaultDropoff = { latitude: 33.7767, longitude: -84.3891 };
+
       const pickup = {
-        name: locations[route.pickupLocation] || "Pickup",
-        latitude: parseFloat((route as any).pickupLat) || 33.7756,
-        longitude: parseFloat((route as any).pickupLng) || -84.4027,
+        name: pickupLocationName,
+        latitude: defaultPickup.latitude,
+        longitude: defaultPickup.longitude,
       };
 
       const dropoff = {
-        name: locations[route.dropoffLocation] || "Dropoff",
-        latitude: parseFloat((route as any).dropoffLat) || 33.7767,
-        longitude: parseFloat((route as any).dropoffLng) || -84.3891,
+        name: dropoffLocationName,
+        latitude: defaultDropoff.latitude,
+        longitude: defaultDropoff.longitude,
       };
 
       const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
