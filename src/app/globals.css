@@ -27,6 +27,12 @@ html,
 body {
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
 }
 
 body {

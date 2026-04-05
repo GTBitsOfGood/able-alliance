@@ -80,6 +80,19 @@ export default function Admin() {
     setSubmitError(null);
   };
 
+  const handleRowClick = (rowIndex: number) => {
+    // Only navigate for user tables (Students, Drivers, Admins)
+    if (!["Students", "Drivers", "Admins"].includes(table)) {
+      return;
+    }
+    console.log(rowIds[rowIndex]);
+    // Get the user ID from the data attribute
+    const userId = rowIds[rowIndex];
+    if (userId) {
+      router.push(`/profile/${userId}`);
+    }
+  };
+
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
@@ -611,6 +624,7 @@ export default function Admin() {
                       rows={rows}
                       selectedRows={selectedRows}
                       onSelectedRowsChange={setSelectedRows}
+                      onRowClick={handleRowClick}
                       selectable={true}
                     />
                     <button
