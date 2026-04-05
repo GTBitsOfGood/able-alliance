@@ -80,14 +80,12 @@ export default function Admin() {
     setSubmitError(null);
   };
 
-  const handleRowClick = (
-    rowIndex: number,
-  ) => {
+  const handleRowClick = (rowIndex: number) => {
     // Only navigate for user tables (Students, Drivers, Admins)
     if (!["Students", "Drivers", "Admins"].includes(table)) {
       return;
     }
-    console.log(rowIds[rowIndex])
+    console.log(rowIds[rowIndex]);
     // Get the user ID from the data attribute
     const userId = rowIds[rowIndex];
     if (userId) {
