@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
+import { SignJWT } from "jose";
 
 // NextAuth reads NEXTAUTH_URL for redirects/URLs; use DEPLOY_PRIME_URL as single source of truth.
 if (process.env.DEPLOY_PRIME_URL) {
@@ -26,7 +27,7 @@ export const authConfig: NextAuthConfig = {
   },
 
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       // On initial sign-in, `user` is populated with data we set in the CAS callback
       if (user) {
         token.userId = user.userId;
@@ -34,6 +35,31 @@ export const authConfig: NextAuthConfig = {
         token.email = user.email;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
+
+        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+        token.accessToken = await new SignJWT({
+          userId: user.userId,
+          type: user.type,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .setExpirationTime("24h")
+          .sign(secret);
+      }
+      // Generate accessToken for websocket auth if not already set
+      if (!token.accessToken && token.userId) {
+        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+        token.accessToken = await new SignJWT({
+          userId: token.userId,
+          type: token.type,
+          email: token.email,
+          firstName: token.firstName,
+          lastName: token.lastName,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .sign(secret);
       }
       return token;
     },
@@ -45,6 +71,7 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
         session.user.lastName = token.lastName as string;
+        session.user.accessToken = token.accessToken as string;
       }
       return session;
     },

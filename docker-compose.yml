@@ -13,6 +13,7 @@ services:
       SUPERADMIN_EMAIL: "superadmin@gatech.edu"
       SUPERADMIN_FIRSTNAME: "Super"
       SUPERADMIN_LASTNAME: "Admin"
+      NEXT_PUBLIC_WEBSOCKET_URL: "http://localhost:4000"
       WATCHPACK_POLLING: "true"
       NEXT_PUBLIC_WS_URL: "http://localhost:4000"
     develop:
@@ -115,6 +116,7 @@ services:
         condition: service_healthy
     environment:
       - MONGODB_URI=mongodb://mongo:27017/able-alliance?replicaSet=rs0
+      - NEXTAUTH_SECRET=dev-secret-change-in-production
     networks:
       - able-alliance-net
 

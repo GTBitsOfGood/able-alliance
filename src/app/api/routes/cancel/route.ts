@@ -50,14 +50,6 @@ export async function POST(request: NextRequest) {
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-    } else if (type === "Driver") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((route.driver as any)?._id?.toString() !== userId) {
-        return NextResponse.json(
-          { error: "Forbidden" },
-          { status: HTTP_STATUS_CODE.FORBIDDEN },
-        );
-      }
     } else if (type !== "Admin" && type !== "SuperAdmin") {
       return NextResponse.json(
         { error: "Forbidden" },
@@ -68,8 +60,6 @@ export async function POST(request: NextRequest) {
     let cancelStatus;
     if (type === "Student") {
       cancelStatus = "Cancelled by Student";
-    } else if (type === "Driver") {
-      cancelStatus = "Cancelled by Driver";
     } else {
       cancelStatus = "Cancelled by Admin";
     }

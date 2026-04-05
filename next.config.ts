@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  env: {
+    DEPLOY_PRIME_URL: process.env.DEPLOY_PRIME_URL,
+  },
 };
 
 export default nextConfig;

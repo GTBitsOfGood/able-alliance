@@ -24,6 +24,8 @@ interface IRouteDocument {
   driver?: IBaseUser;
   vehicle?: IVehicle;
   scheduledPickupTime: Date;
+  pickupWindowStart: Date;
+  pickupWindowEnd: Date;
   status: RouteStatus;
 }
 
@@ -90,6 +92,8 @@ const RouteSchema = new Schema<IRouteDocument>(
     driver: { type: EmbeddedBaseUserSchema, required: false },
     vehicle: { type: EmbeddedVehicleSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
+    pickupWindowStart: { type: Date, required: true },
+    pickupWindowEnd: { type: Date, required: true },
     status: {
       type: String,
       enum: Object.values(RouteStatus),

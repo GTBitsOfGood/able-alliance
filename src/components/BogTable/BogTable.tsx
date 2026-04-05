@@ -602,18 +602,20 @@ const BogTable: React.FC<BogTableProps> = ({
                   <Table.ColumnHeaderCell
                     className={`${styles.columnHeaderCell} ${styles.cellBase} ${styles[sizeClass]} ${styles.selectCell}`}
                   >
-                    <BogCheckbox
-                      name="select-all"
-                      checked={
-                        sortedRows.length > 0 &&
-                        selectedSet.size === sortedRows.length
-                          ? true
-                          : selectedSet.size > 0
-                            ? "indeterminate"
-                            : false
-                      }
-                      onCheckedChange={() => toggleAll()}
-                    />
+                    <div className={styles.selectCellInner}>
+                      <BogCheckbox
+                        name="select-all"
+                        checked={
+                          sortedRows.length > 0 &&
+                          selectedSet.size === sortedRows.length
+                            ? true
+                            : selectedSet.size > 0
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={() => toggleAll()}
+                      />
+                    </div>
                   </Table.ColumnHeaderCell>
                 )}
                 {columnHeaders.map((header, i) => {
@@ -675,11 +677,13 @@ const BogTable: React.FC<BogTableProps> = ({
                     <Table.Cell
                       className={`${styles.cell} ${styles.cellBase} ${styles[sizeClass]} ${styles.selectCell}`}
                     >
-                      <BogCheckbox
-                        name={`select-row-${rIdx}`}
-                        checked={selectedSet.has(rIdx)}
-                        onCheckedChange={() => toggleRow(rIdx)}
-                      />
+                      <div className={styles.selectCellInner}>
+                        <BogCheckbox
+                          name={`select-row-${rIdx}`}
+                          checked={selectedSet.has(rIdx)}
+                          onCheckedChange={() => toggleRow(rIdx)}
+                        />
+                      </div>
                     </Table.Cell>
                   )}
                   {row.cells.map((cell, cIdx) =>

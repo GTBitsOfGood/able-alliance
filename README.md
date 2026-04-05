@@ -52,6 +52,14 @@ The mock cas express js server is hosted seperately [here](https://able-alliance
 
 Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `localhost:27017`; Compose will start Mongo inside the stack and expose it.
 
+### Seeding the Database
+
+To seed the database with sample users, locations, vehicles, and routes, run:
+
+```sh
+npm run seed -- "mongodb://localhost:27017/able-alliance?replicaSet=rs0&directConnection=true"
+```
+
 ## Major Technologies
 
 - [MongoDB](https://www.mongodb.com/)
