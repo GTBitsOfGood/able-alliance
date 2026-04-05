@@ -1,2 +1,14 @@
 .next
 node_modules
+.git
+.vscode
+.idea
+.cursor
+.DS_Store
+coverage
+dist
+build
+*.log
+.env.local
+.env.*.local
+.turbo

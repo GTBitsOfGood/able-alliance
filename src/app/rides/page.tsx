@@ -214,6 +214,7 @@ export default function RidesPage() {
                 key={route._id}
                 route={route}
                 locationIdToName={locationIdToName}
+                href={`/rides/${route._id}`}
                 onCancel={handleCancel}
                 cancelling={cancellingId === route._id}
               />
