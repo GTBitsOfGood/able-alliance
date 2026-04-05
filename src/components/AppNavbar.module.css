@@ -8,7 +8,7 @@
   max-width: 128rem;
   margin: 0 auto;
   height: 100%;
-  padding: 0 2.4rem;
+  padding: 0 2.4rem 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -77,6 +77,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.profileLink {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  text-decoration: none;
+}
+
+.profileLink:hover .userName {
+  text-decoration: underline;
+  text-underline-offset: 0.4rem;
 }
 
 .logout {

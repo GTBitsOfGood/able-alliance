@@ -185,6 +185,10 @@ async function seed() {
     return date;
   };
 
+  const addMinutes = (date: Date, minutes: number): Date => {
+    return new Date(date.getTime() + minutes * 60 * 1000);
+  };
+
   const parseName = (user: Record<string, unknown>): [string, string] => {
     const first = user.firstName as string | undefined;
     const last = user.lastName as string | undefined;
@@ -233,37 +237,25 @@ async function seed() {
   const todayStart = getDayStart(0);
   const tomorrowStart = getDayStart(1);
 
+  const makeRoute = (
+    label: string,
+    dropoffLocation: unknown,
+    scheduledPickupTime: Date,
+  ) => ({
+    label,
+    dropoffLocation,
+    scheduledPickupTime,
+    pickupWindowStart: addMinutes(scheduledPickupTime, -30),
+    pickupWindowEnd: addMinutes(scheduledPickupTime, 30),
+  });
+
   const routeTemplates = [
-    {
-      label: "today 10:00",
-      dropoffLocation: dropoffId,
-      scheduledPickupTime: withTime(todayStart, 10, 0),
-    },
-    {
-      label: "today 14:30",
-      dropoffLocation: dropoffId,
-      scheduledPickupTime: withTime(todayStart, 14, 30),
-    },
-    {
-      label: "today 16:00",
-      dropoffLocation: dropoff2Id,
-      scheduledPickupTime: withTime(todayStart, 16, 0),
-    },
-    {
-      label: "tomorrow 09:30",
-      dropoffLocation: dropoffId,
-      scheduledPickupTime: withTime(tomorrowStart, 9, 30),
-    },
-    {
-      label: "tomorrow 14:00",
-      dropoffLocation: dropoff2Id,
-      scheduledPickupTime: withTime(tomorrowStart, 14, 0),
-    },
-    {
-      label: "tomorrow 16:30",
-      dropoffLocation: dropoffId,
-      scheduledPickupTime: withTime(tomorrowStart, 16, 30),
-    },
+    makeRoute("today 10:00", dropoffId, withTime(todayStart, 10, 0)),
+    makeRoute("today 14:30", dropoffId, withTime(todayStart, 14, 30)),
+    makeRoute("today 16:00", dropoff2Id, withTime(todayStart, 16, 0)),
+    makeRoute("tomorrow 09:30", dropoffId, withTime(tomorrowStart, 9, 30)),
+    makeRoute("tomorrow 14:00", dropoff2Id, withTime(tomorrowStart, 14, 0)),
+    makeRoute("tomorrow 16:30", dropoffId, withTime(tomorrowStart, 16, 30)),
   ];
 
   let createdRoutes = 0;
@@ -289,6 +281,8 @@ async function seed() {
       driver: driverEmbed,
       vehicle: vehicleEmbed,
       scheduledPickupTime: template.scheduledPickupTime,
+      pickupWindowStart: template.pickupWindowStart,
+      pickupWindowEnd: template.pickupWindowEnd,
       status: "Scheduled",
     });
 

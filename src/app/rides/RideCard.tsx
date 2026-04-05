@@ -21,11 +21,15 @@ export type RideCardRoute = {
   status: string;
 };
 
+const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
+
 type RideCardProps = {
   route: RideCardRoute;
   locationIdToName: Record<string, string>;
   actions?: React.ReactNode;
   isDriverCard?: boolean;
+  onCancel?: (routeId: string) => void;
+  cancelling?: boolean;
 };
 
 function formatDriverName(
@@ -89,6 +93,8 @@ export function RideCard({
   locationIdToName,
   actions,
   isDriverCard = false,
+  onCancel,
+  cancelling = false,
 }: RideCardProps) {
   const pickupName =
     locationIdToName[route.pickupLocation] ?? route.pickupLocation;
@@ -173,14 +179,17 @@ export function RideCard({
           {route.status}
         </BogChip>
         <div className={styles.rideCardActions}>
-          <button
-            type="button"
-            className={styles.rideCardCancelLink}
-            onClick={() => {}} //TODO route/modals
-            aria-label="Cancel ride"
-          >
-            Cancel ride
-          </button>
+          {CANCELLABLE_STATUSES.has(route.status) && onCancel && (
+            <button
+              type="button"
+              className={styles.rideCardCancelLink}
+              onClick={() => onCancel(route._id)}
+              disabled={cancelling}
+              aria-label="Cancel ride"
+            >
+              {cancelling ? "Cancelling…" : "Cancel ride"}
+            </button>
+          )}
           <BogButton
             variant="secondary"
             size="medium"
