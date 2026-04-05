@@ -54,12 +54,7 @@ const io = new Server(server, {
     console.log("Websocket server connected to MongoDB");
 
     io.use(async (socket, next) => {
-    io.use(async (socket, next) => {
       try {
-        const { routeId, token } = socket.handshake.auth;
-        if (!routeId || !token) {
-          return next(new Error("Route ID or token missing"));
-        }
         const { routeId, token } = socket.handshake.auth;
         console.log(
           `Auth attempt for routeId: ${routeId} and token is ${token ? "present" : "missing"} `,
@@ -84,7 +79,6 @@ const io = new Server(server, {
 
         const userId = decoded.userId;
 
-        console.log("Decoded JWT:", decoded);
         console.log("User ID from token:", userId);
 
         const route = await getRouteForAuth(routeId);
@@ -124,7 +118,7 @@ const io = new Server(server, {
           if (typeof message !== "string") {
             throw new Error("Message text is required");
           }
-          io.to(room).emit("receiveChatMessage", message);
+          socket.to(room).emit("receiveChatMessage", message);
           console.log(
             `User ${socket.user} sent message to room ${room}: ${message}!`,
           );
