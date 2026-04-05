@@ -17,3 +17,12 @@ export class RouteReferenceNotFoundException extends Error {
     this.name = "RouteReferenceNotFoundException";
   }
 }
+
+export class DriverNotAvailableException extends Error {
+  code: HTTP_STATUS_CODE = HTTP_STATUS_CODE.BAD_REQUEST;
+
+  constructor(message = "Driver is not available during the scheduled time") {
+    super(message);
+    this.name = "DriverNotAvailableException";
+  }
+}

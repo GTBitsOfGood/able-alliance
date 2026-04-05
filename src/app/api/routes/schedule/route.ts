@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
 import mongoose from "mongoose";
 import { scheduleRoute } from "@/server/db/actions/RouteAction";
-import { RouteReferenceNotFoundException } from "@/utils/exceptions/route";
+import {
+  RouteReferenceNotFoundException,
+  DriverNotAvailableException,
+} from "@/utils/exceptions/route";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 export async function POST(request: NextRequest) {
@@ -51,6 +54,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
     if (e instanceof RouteReferenceNotFoundException) {
+      return NextResponse.json({ error: e.message }, { status: e.code });
+    }
+    if (e instanceof DriverNotAvailableException) {
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
     return NextResponse.json(

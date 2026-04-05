@@ -1,6 +1,6 @@
 import connectMongoDB from "../mongodb";
-import UserModel, { StudentModel } from "../models/UserModel";
-import type { BaseUserInput, StudentInput } from "@/utils/types/user";
+import UserModel, { StudentModel, DriverModel } from "../models/UserModel";
+import type { BaseUserInput, StudentInput, Shift } from "@/utils/types/user";
 import {
   UserAlreadyExistsException,
   UserNotFoundException,
@@ -109,5 +109,19 @@ export async function updateStudentInfo(
     nextInfo;
 
   const saved = await student.save();
+  return saved.toObject();
+}
+
+export async function updateDriverShifts(id: string, shifts: Shift[]) {
+  await connectMongoDB();
+
+  const driver = await DriverModel.findById(id);
+  if (!driver) {
+    return null;
+  }
+
+  (driver as unknown as { shifts: Shift[] }).shifts = shifts;
+
+  const saved = await driver.save();
   return saved.toObject();
 }

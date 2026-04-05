@@ -5,6 +5,7 @@ import {
   getUserById,
   deleteUser,
   updateStudentInfo,
+  updateDriverShifts,
 } from "@/server/db/actions/UserAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
@@ -74,6 +75,25 @@ const studentInfoPatchSchema = z
   })
   .strict();
 
+const driverShiftsPatchSchema = z
+  .object({
+    shifts: z
+      .array(
+        z
+          .object({
+            dayOfWeek: z.number().int().min(0).max(6),
+            startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+            endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+          })
+          .refine((shift) => shift.startTime < shift.endTime, {
+            message: "Start time must be before end time",
+            path: ["startTime"],
+          }),
+      )
+      .optional(),
+  })
+  .strict();
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -119,22 +139,53 @@ export async function PATCH(
     );
   }
 
-  const parsed = studentInfoPatchSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(parsed.error.format(), {
-      status: HTTP_STATUS_CODE.BAD_REQUEST,
-    });
+  // Get the user to determine type
+  const user = await getUserById(id);
+  if (!user) {
+    return NextResponse.json(
+      { error: "User not found" },
+      { status: HTTP_STATUS_CODE.NOT_FOUND },
+    );
   }
 
   try {
-    const updated = await updateStudentInfo(id, {
-      notes: parsed.data.notes ?? null,
-      accessibilityNeeds: parsed.data.accessibilityNeeds ?? null,
-    });
+    let updated;
+    if (user.type === "Student") {
+      const parsed = studentInfoPatchSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(parsed.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      updated = await updateStudentInfo(id, {
+        notes: parsed.data.notes ?? null,
+        accessibilityNeeds: parsed.data.accessibilityNeeds ?? null,
+      });
+    } else if (user.type === "Driver") {
+      // For drivers, only admins can update shifts
+      if (!isAdmin) {
+        return NextResponse.json(
+          { error: "Only admins can update driver shifts" },
+          { status: HTTP_STATUS_CODE.FORBIDDEN },
+        );
+      }
+      const parsed = driverShiftsPatchSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(parsed.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      updated = await updateDriverShifts(id, parsed.data.shifts ?? []);
+    } else {
+      return NextResponse.json(
+        { error: "Cannot update this user type" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
 
     if (!updated) {
       return NextResponse.json(
-        { error: "User not found or not a student" },
+        { error: "User not found or update failed" },
         { status: HTTP_STATUS_CODE.NOT_FOUND },
       );
     }
