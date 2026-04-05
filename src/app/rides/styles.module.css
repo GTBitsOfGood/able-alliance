@@ -58,12 +58,7 @@
 }
 
 .tabContentHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 2.5rem;
 }
 
 .pageTitle {
@@ -91,10 +86,42 @@
   color: var(--color-status-red-text, #c73a3a);
 }
 
+.cancelRideOverlay {
+  background-color: rgba(15, 23, 42, 0.48);
+}
+
+.cancelRideContent {
+  gap: 2rem;
+  padding: 2.8rem 2.4rem 2.4rem;
+}
+
+.cancelRideTitle {
+  margin: 0;
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+}
+
+.cancelRideDescription {
+  margin: 0;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  color: var(--color-grey-text-weak);
+}
+
+.cancelRideActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1.2rem;
+  margin-top: 0.25rem;
+}
+
 .rideList {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -116,9 +143,33 @@
   min-width: 0;
 }
 
-.dateHeader {
+.dayHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.dayHeaderRowEnd {
+  justify-content: flex-end;
+}
+
+.dayGroupHeading {
+  margin: 0;
   font-size: var(--text-desktop-heading-4);
-  font-weight: 700;
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  flex: 1;
+  min-width: 0;
+}
+
+.dateHeader {
+  font-size: var(--text-desktop-heading-3);
+  font-weight: 600;
   line-height: var(--text-desktop-heading-3--line-height);
   color: var(--color-grey-text-strong);
   margin: 0;
