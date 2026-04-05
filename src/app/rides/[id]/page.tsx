@@ -4,13 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import type { Socket } from "socket.io-client";
 import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogChip from "@/components/BogChip/BogChip";
 import { RideCard } from "../RideCard";
 import styles from "./styles.module.css";
-
-type Socket = any;
 
 type RouteUser = {
   _id: string;
@@ -227,16 +226,9 @@ export default function RideDetailPage({
 
     (async () => {
       try {
-        // Dynamic import of socket.io-client using require pattern
-        let io: any;
-        try {
-          io =
-            require("socket.io-client").default || require("socket.io-client");
-        } catch {
-          // Fallback if require fails - use dynamic import
-          const socketIO = await import("socket.io-client");
-          io = socketIO.default;
-        }
+        // Dynamic import of socket.io-client
+        const socketIO = await import("socket.io-client");
+        const io = socketIO.default || socketIO;
 
         if (!isMounted) return;
 
