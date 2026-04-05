@@ -16,7 +16,9 @@ async function getRouteForAuth(routeId) {
   const routes = mongoose.connection.db.collection("routes");
   const route = await routes.findOne(
     { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
-    { projection: { status: 1, driver: 1, student: 1, scheduledPickupTime: 1 } },
+    {
+      projection: { status: 1, driver: 1, student: 1, scheduledPickupTime: 1 },
+    },
   );
   return route;
 }
