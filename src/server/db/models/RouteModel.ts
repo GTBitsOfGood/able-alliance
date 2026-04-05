@@ -104,12 +104,4 @@ const RouteModel =
   (mongoose.models.Route as mongoose.Model<IRouteDocument>) ??
   mongoose.model<IRouteDocument>("Route", RouteSchema);
 
-// Remove erroneous unique index on vehicle.licensePlate if it exists
-// (vehicle can be shared across multiple routes)
-if (!mongoose.models.Route) {
-  RouteModel.collection.dropIndex("vehicle.licensePlate_1").catch(() => {
-    // Index doesn't exist, which is fine
-  });
-}
-
 export default RouteModel;

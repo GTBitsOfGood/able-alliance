@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Socket } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
-import BogChip from "@/components/BogChip/BogChip";
 import { RideCard } from "../RideCard";
 import styles from "./styles.module.css";
 
@@ -23,7 +21,14 @@ type RouteData = {
   dropoffLocation: string;
   student: string | RouteUser;
   driver?: string | RouteUser;
-  vehicle?: string;
+  vehicle?: {
+    _id: string;
+    name: string;
+    licensePlate: string;
+    description?: string;
+    accessibility: string;
+    seatCount: number;
+  };
   scheduledPickupTime: string;
   status: string;
 };
@@ -49,24 +54,6 @@ function isToday(iso: string): boolean {
     date.getMonth() === today.getMonth() &&
     date.getFullYear() === today.getFullYear()
   );
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 }
 
 function getStatusChipColor(
@@ -96,11 +83,6 @@ function getStudentId(student: string | RouteUser): string {
   return student._id;
 }
 
-function getStudentName(student: string | RouteUser): string | null {
-  if (typeof student === "string") return null;
-  return `${student.firstName} ${student.lastName}`.trim() || null;
-}
-
 function getDriverName(driver: string | RouteUser | undefined): string | null {
   if (!driver) return null;
   if (typeof driver === "string") return null;
@@ -118,7 +100,6 @@ export default function RideDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
@@ -128,6 +109,7 @@ export default function RideDetailPage({
 
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
@@ -226,10 +208,6 @@ export default function RideDetailPage({
 
     (async () => {
       try {
-        // Dynamic import of socket.io-client
-        const socketIO = await import("socket.io-client");
-        const io = socketIO.default || socketIO;
-
         if (!isMounted) return;
 
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
@@ -256,7 +234,6 @@ export default function RideDetailPage({
         }
 
         newSocket.on("connect", () => {
-          console.log("Connected to WebSocket server");
           if (isMounted) {
             setChatError(null);
           }
@@ -276,22 +253,21 @@ export default function RideDetailPage({
         newSocket.on("chatError", (errorMessage: string) => {
           if (isMounted) {
             setChatError(errorMessage);
-            console.error("Chat error:", errorMessage);
           }
         });
 
         newSocket.on("connect_error", (err: Error) => {
           if (isMounted) {
             setChatError(`Connection error: ${err.message}`);
-            console.error("Connection error:", err);
           }
         });
 
         newSocket.on("disconnect", () => {
-          console.log("Disconnected from WebSocket server");
+          // Socket disconnected
         });
 
         if (isMounted) {
+          socketRef.current = newSocket;
           setSocket(newSocket);
         }
       } catch (e) {
@@ -299,19 +275,19 @@ export default function RideDetailPage({
           const errorMsg =
             e instanceof Error ? e.message : "Failed to connect to chat";
           setChatError(errorMsg);
-          console.error("Socket connection error:", e);
         }
       }
     })();
 
     return () => {
       isMounted = false;
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
+      setSocket(null);
     };
-  }, [showChatModal, route, routeId, session, socket]);
+  }, [showChatModal, route, routeId, session]);
 
   const handleSendMessage = useCallback(async () => {
     if (!chatInput.trim() || !socket || sendingMessage) return;
@@ -377,8 +353,6 @@ export default function RideDetailPage({
 
   const pickupLocationName =
     locations[route.pickupLocation] ?? route.pickupLocation;
-  const dropoffLocationName =
-    locations[route.dropoffLocation] ?? route.dropoffLocation;
   const driverName = getDriverName(route.driver);
 
   return (
@@ -405,15 +379,21 @@ export default function RideDetailPage({
               <div className={styles.driverInfoGrid}>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Vehicle ID</span>
-                  <span className={styles.infoValue}>1234</span>
+                  <span className={styles.infoValue}>
+                    {route.vehicle?._id || "N/A"}
+                  </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>License Plate</span>
-                  <span className={styles.infoValue}>RVG1730</span>
+                  <span className={styles.infoValue}>
+                    {route.vehicle?.licensePlate || "N/A"}
+                  </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Description</span>
-                  <span className={styles.infoValue}>Dodge</span>
+                  <span className={styles.infoValue}>
+                    {route.vehicle?.description || "N/A"}
+                  </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Driver</span>
@@ -514,12 +494,7 @@ export default function RideDetailPage({
                 placeholder="Type a message…"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
+                onKeyDown={handleKeyDown}
                 disabled={!socket || sendingMessage}
               />
               <button
