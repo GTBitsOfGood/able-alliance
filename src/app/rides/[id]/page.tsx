@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { RideCard } from "../RideCard";
@@ -110,6 +112,9 @@ export default function RideDetailPage({
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRefs = useRef<mapboxgl.Marker[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
@@ -173,6 +178,159 @@ export default function RideDetailPage({
   }, [routeId, session, sessionStatus]);
 
   // Fetch locations
+  useEffect(() => {
+    if (!route) return;
+
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch("/api/locations");
+        if (!res.ok) throw new Error("Failed to fetch locations");
+        const locationsData: Location[] = await res.json();
+        const locationMap: Record<string, string> = {};
+        for (const loc of locationsData) {
+          locationMap[loc._id] = loc.name;
+        }
+        setLocations(locationMap);
+      } catch (e) {
+        console.error("Failed to fetch locations:", e);
+      }
+    };
+
+    fetchLocations();
+  }, [route]);
+
+  // Initialize and update Mapbox map
+  useEffect(() => {
+    if (!route || !locations[route.pickupLocation]) {
+      return;
+    }
+
+    const initializeMap = async () => {
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      const container = mapContainerRef.current;
+      if (!container || !token) return;
+
+      const pickup = {
+        name: locations[route.pickupLocation] || "Pickup",
+        latitude: parseFloat((route as any).pickupLat) || 33.7756,
+        longitude: parseFloat((route as any).pickupLng) || -84.4027,
+      };
+
+      const dropoff = {
+        name: locations[route.dropoffLocation] || "Dropoff",
+        latitude: parseFloat((route as any).dropoffLat) || 33.7767,
+        longitude: parseFloat((route as any).dropoffLng) || -84.3891,
+      };
+
+      const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
+      const defaultZoom = 15;
+
+      const center = (): [number, number] => {
+        if (pickup && dropoff) {
+          return [
+            (pickup.longitude + dropoff.longitude) / 2,
+            (pickup.latitude + dropoff.latitude) / 2,
+          ];
+        }
+        if (pickup) return [pickup.longitude, pickup.latitude];
+        if (dropoff) return [dropoff.longitude, dropoff.latitude];
+        return defaultCenter;
+      };
+
+      mapboxgl.accessToken = token;
+      if (!mapRef.current) {
+        mapRef.current = new mapboxgl.Map({
+          container,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: center(),
+          zoom: defaultZoom,
+        });
+        mapRef.current.on("load", () => mapRef.current?.resize());
+      } else {
+        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
+      }
+
+      markerRefs.current.forEach((marker) => marker.remove());
+      markerRefs.current = [];
+
+      const createCustomPin = (
+        labelText: string,
+        color: string,
+      ): HTMLDivElement => {
+        const root = document.createElement("div");
+        root.style.display = "flex";
+        root.style.flexDirection = "column";
+        root.style.alignItems = "center";
+        root.style.gap = "0";
+
+        const label = document.createElement("div");
+        label.textContent = labelText;
+        label.style.backgroundColor = color;
+        label.style.color = "white";
+        label.style.padding = "0.25rem 0.5rem";
+        label.style.borderRadius = "0.25rem";
+        label.style.fontSize = "0.75rem";
+        label.style.fontWeight = "bold";
+        label.style.whiteSpace = "nowrap";
+
+        const stem = document.createElement("div");
+        stem.style.width = "2px";
+        stem.style.height = "0.5rem";
+        stem.style.backgroundColor = color;
+
+        const dot = document.createElement("div");
+        dot.style.width = "0.75rem";
+        dot.style.height = "0.75rem";
+        dot.style.borderRadius = "50%";
+        dot.style.backgroundColor = color;
+        dot.style.border = "2px solid white";
+
+        root.appendChild(label);
+        root.appendChild(stem);
+        root.appendChild(dot);
+        return root;
+      };
+
+      if (pickup && mapRef.current) {
+        const pickupMarker = new mapboxgl.Marker({
+          element: createCustomPin(
+            `Pick Up: ${pickup.name}`,
+            "var(--color-status-blue-text)",
+          ),
+          anchor: "bottom",
+        })
+          .setLngLat([pickup.longitude, pickup.latitude])
+          .addTo(mapRef.current);
+        markerRefs.current.push(pickupMarker);
+      }
+
+      if (dropoff && mapRef.current) {
+        const dropoffMarker = new mapboxgl.Marker({
+          element: createCustomPin(
+            `Drop Off: ${dropoff.name}`,
+            "var(--color-status-red-text)",
+          ),
+          anchor: "bottom",
+        })
+          .setLngLat([dropoff.longitude, dropoff.latitude])
+          .addTo(mapRef.current);
+        markerRefs.current.push(dropoffMarker);
+      }
+    };
+
+    initializeMap();
+  }, [route, locations]);
+
+  useEffect(() => {
+    return () => {
+      markerRefs.current.forEach((marker) => marker.remove());
+      markerRefs.current = [];
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Fetch locations (original - keep for backward compatibility)
   useEffect(() => {
     if (!route) return;
 
@@ -420,10 +578,14 @@ export default function RideDetailPage({
           {/* Right Column - Map */}
           <div className={styles.rightColumn}>
             <div className={styles.mapContainer}>
-              <img
-                src="/gt-campus-street.jpeg"
-                alt="Route map"
+              <div
+                ref={mapContainerRef}
                 className={styles.mapImage}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "0.5rem",
+                }}
               />
             </div>
           </div>
