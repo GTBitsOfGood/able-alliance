@@ -54,9 +54,12 @@ const io = new Server(server, {
     console.log("Websocket server connected to MongoDB");
 
     io.use(async (socket, next) => {
-      // console.log("Socket.IO middleware triggered", socket.handshake.auth);
+    io.use(async (socket, next) => {
       try {
-        console.log("Socket.IO auth data", socket.handshake.auth);
+        const { routeId, token } = socket.handshake.auth;
+        if (!routeId || !token) {
+          return next(new Error("Route ID or token missing"));
+        }
         const { routeId, token } = socket.handshake.auth;
         console.log(
           `Auth attempt for routeId: ${routeId} and token is ${token ? "present" : "missing"} `,
