@@ -35,6 +35,18 @@ export const authConfig: NextAuthConfig = {
         token.email = user.email;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
+
+        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+        token.accessToken = await new SignJWT({
+          userId: user.userId,
+          type: user.type,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .setExpirationTime("24h")
+          .sign(secret);
       }
       // Generate accessToken for websocket auth if not already set
       if (!token.accessToken && token.userId) {
