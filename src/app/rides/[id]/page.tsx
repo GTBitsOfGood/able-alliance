@@ -399,56 +399,63 @@ export default function RideDetailPage({
           </Link>
         </header>
 
-        {/* Ride Card */}
-        <div className={styles.rideCardWrapper}>
-          <RideCard route={route} locationIdToName={locations} />
-        </div>
+        <div className={styles.contentContainer}>
+          {/* Left Column */}
+          <div className={styles.leftColumn}>
+            {/* Ride Card */}
+            <div className={styles.rideCardWrapper}>
+              <RideCard route={route} locationIdToName={locations} />
+            </div>
 
-        {/* Map */}
-        <div className={styles.mapContainer}>
-          <img
-            src="/gt-campus-street.jpeg"
-            alt="Route map"
-            className={styles.mapImage}
-          />
-        </div>
+            {/* Driver Information */}
+            <div className={styles.driverSection}>
+              <h2 className={styles.sectionTitle}>Driver Information</h2>
+              <div className={styles.driverInfoGrid}>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Vehicle ID</span>
+                  <span className={styles.infoValue}>1234</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>License Plate</span>
+                  <span className={styles.infoValue}>RVG1730</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Description</span>
+                  <span className={styles.infoValue}>Dodge</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Driver</span>
+                  <span className={styles.infoValue}>
+                    {driverName || "Unassigned"}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-        {/* Driver Information */}
-        <div className={styles.driverSection}>
-          <h2 className={styles.sectionTitle}>Driver Information</h2>
-          <div className={styles.driverInfoGrid}>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Vehicle ID</span>
-              <span className={styles.infoValue}>1234</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>License Plate</span>
-              <span className={styles.infoValue}>RVG1730</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Description</span>
-              <span className={styles.infoValue}>Dodge</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Driver</span>
-              <span className={styles.infoValue}>
-                {driverName || "Unassigned"}
-              </span>
+            {/* Chat Button */}
+            {isChatEligible && (
+              <button
+                type="button"
+                className={styles.chatButton}
+                onClick={() => setShowChatModal(true)}
+              >
+                <BogIcon name="chats" size={18} />
+                <span>Chat with driver</span>
+              </button>
+            )}
+          </div>
+
+          {/* Right Column - Map */}
+          <div className={styles.rightColumn}>
+            <div className={styles.mapContainer}>
+              <img
+                src="/gt-campus-street.jpeg"
+                alt="Route map"
+                className={styles.mapImage}
+              />
             </div>
           </div>
         </div>
-
-        {/* Chat Button */}
-        {isChatEligible && (
-          <button
-            type="button"
-            className={styles.chatButton}
-            onClick={() => setShowChatModal(true)}
-          >
-            <BogIcon name="chats" size={18} />
-            <span>Chat with driver</span>
-          </button>
-        )}
       </main>
 
       {/* Chat Modal */}
