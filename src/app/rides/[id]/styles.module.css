@@ -167,22 +167,33 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.3);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   z-index: 1000;
 }
 
 .chatModal {
   display: flex;
   flex-direction: column;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
+  width: 380px;
+  height: 100%;
   background-color: var(--color-solid-bg-base);
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .chatModalHeader {
