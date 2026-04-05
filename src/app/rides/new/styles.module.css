@@ -618,7 +618,7 @@
   border: 0.2rem solid var(--color-grey-text-strong);
   border-radius: 10px;
   background-color: var(--pin-color);
-  color: var(--color-grey-text-strong);
+  color: white;
   font-weight: 700;
   font-size: 1.2rem;
   line-height: 1.1;
@@ -629,7 +629,7 @@
 .mapPinStem {
   width: 0.25rem;
   height: 2.2rem;
-  background-color: var(--color-grey-text-strong);
+  background-color: var(--pin-color);
 }
 
 .mapPinDot {
@@ -637,7 +637,7 @@
   height: 1.05rem;
   border-radius: 50%;
   background-color: var(--pin-color);
-  border: 0.25rem solid var(--color-grey-text-strong);
+  border: 0.25rem solid white;
   box-shadow: 0 2px 4px var(--color-grey-stroke-strong);
 }
 

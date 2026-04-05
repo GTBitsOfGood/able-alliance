@@ -302,7 +302,7 @@ export default function RideDetailPage({
       if (pickup && mapRef.current) {
         const pickupMarker = new mapboxgl.Marker({
           element: createCustomPin(
-            `Pick Up: ${pickup.name}`,
+            "Pickup",
             "var(--color-status-blue-text)",
           ),
           anchor: "bottom",
@@ -315,8 +315,8 @@ export default function RideDetailPage({
       if (dropoff && mapRef.current) {
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
-            `Drop Off: ${dropoff.name}`,
-            "var(--color-status-red-text)",
+            "Dropoff",
+            "var(--color-status-blue-text)",
           ),
           anchor: "bottom",
         })
