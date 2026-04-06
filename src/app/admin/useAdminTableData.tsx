@@ -118,13 +118,15 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
   return data.map((u: Record<string, unknown>) => {
     const studentInfo = (u.studentInfo ?? {}) as {
       notes?: string;
-      accessibilityNeeds?: string;
+      accessibilityNeeds?: string | string[];
     };
     const accessibilityNeeds = studentInfo.accessibilityNeeds;
     return {
       name: String(combineFullName(u.firstName, u.lastName) ?? ""),
       email: String(u.email ?? ""),
-      accessibilityNeeds: accessibilityNeeds ? String(accessibilityNeeds) : "",
+      accessibilityNeeds: Array.isArray(accessibilityNeeds)
+        ? accessibilityNeeds.join(", ")
+        : (accessibilityNeeds ?? ""),
       additionalComments: String(studentInfo.notes ?? ""),
     };
   });

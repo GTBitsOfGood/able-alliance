@@ -38,33 +38,61 @@ async function seed() {
   // ---------- Users ----------
   const usersCol = db.collection("users");
 
+  // Student with preferred name
   let student = await usersCol.findOne({ email: "gburdell3@gatech.edu" });
   if (!student) {
     const res = await usersCol.insertOne({
       firstName: "George",
       lastName: "Burdell",
+      preferredName: "G",
       email: "gburdell3@gatech.edu",
       type: "Student",
-      studentInfo: {},
+      studentInfo: { accessibilityNeeds: ["Wheelchair", "ExtraTime"] },
     });
     student = {
       _id: res.insertedId,
       firstName: "George",
       lastName: "Burdell",
+      preferredName: "G",
       email: "gburdell3@gatech.edu",
       type: "Student",
-      studentInfo: {},
+      studentInfo: { accessibilityNeeds: ["Wheelchair", "ExtraTime"] },
     };
-    console.log("✓ Created student: George Burdell");
+    console.log("✓ Created student: George Burdell (preferred: G)");
   } else {
     console.log("– Student already exists");
   }
 
+  // Student without preferred name
+  let student2 = await usersCol.findOne({ email: "jdoe3@gatech.edu" });
+  if (!student2) {
+    const res = await usersCol.insertOne({
+      firstName: "Jane",
+      lastName: "Doe",
+      email: "jdoe3@gatech.edu",
+      type: "Student",
+      studentInfo: { notes: "Please call ahead of arrival." },
+    });
+    student2 = {
+      _id: res.insertedId,
+      firstName: "Jane",
+      lastName: "Doe",
+      email: "jdoe3@gatech.edu",
+      type: "Student",
+      studentInfo: { notes: "Please call ahead of arrival." },
+    };
+    console.log("✓ Created student: Jane Doe (no preferred name)");
+  } else {
+    console.log("– Student Jane Doe already exists");
+  }
+
+  // Driver with preferred name
   let driver = await usersCol.findOne({ email: "driver1@gatech.edu" });
   if (!driver) {
     const res = await usersCol.insertOne({
       firstName: "Test",
       lastName: "Driver",
+      preferredName: "TD",
       email: "driver1@gatech.edu",
       type: "Driver",
     });
@@ -72,14 +100,16 @@ async function seed() {
       _id: res.insertedId,
       firstName: "Test",
       lastName: "Driver",
+      preferredName: "TD",
       email: "driver1@gatech.edu",
       type: "Driver",
     };
-    console.log("✓ Created driver: Test Driver");
+    console.log("✓ Created driver: Test Driver (preferred: TD)");
   } else {
     console.log("– Driver already exists");
   }
 
+  // Admin without preferred name
   let admin = await usersCol.findOne({ email: "admin@gatech.edu" });
   if (!admin) {
     const res = await usersCol.insertOne({
@@ -95,7 +125,7 @@ async function seed() {
       email: "admin@gatech.edu",
       type: "Admin",
     };
-    console.log("✓ Created admin: Admin User");
+    console.log("✓ Created admin: Admin User (no preferred name)");
   } else {
     console.log("– Admin already exists");
   }

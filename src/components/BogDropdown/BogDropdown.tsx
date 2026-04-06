@@ -169,7 +169,8 @@ export default function BogDropdown({
             const isChecked = Array.isArray(selected)
               ? !selected.includes(option)
               : true;
-            handleSelect(isChecked, option);
+            // Defer out of Radix UI's internal flushSync (React 19 compat)
+            Promise.resolve().then(() => handleSelect(isChecked, option));
           }}
           className={styles.dropdownItem}
           key={option}
