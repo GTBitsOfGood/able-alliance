@@ -97,16 +97,12 @@
 
 .cancelRideTitle {
   margin: 0;
-  font-size: var(--text-desktop-heading-3);
-  line-height: var(--text-desktop-heading-3--line-height);
   font-weight: 700;
   color: var(--color-grey-text-strong);
 }
 
 .cancelRideDescription {
   margin: 0;
-  font-size: var(--text-desktop-paragraph-1);
-  line-height: var(--text-desktop-paragraph-1--line-height);
   color: var(--color-grey-text-weak);
 }
 
