@@ -70,7 +70,8 @@
     pointer-events: none;
   }
   .rowHeaderCell {
-    font-weight: 600;
+    font-weight: inherit !important;
+    font-size: var(--text-desktop-small) !important;
   }
 
   .size1 {
@@ -90,9 +91,16 @@
 
   .topBar {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .tableActions {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-shrink: 0;
   }
 
   .filterButton.filterButton {
@@ -128,6 +136,18 @@
     padding-right: 2.6rem !important;
     font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif !important;
     font-size: var(--text-mobile-paragraph-2) !important;
+    background-color: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 0.4rem !important;
+  }
+
+  .searchWithIcon input:hover:not(:disabled) {
+    border-color: #9ca3af !important;
+  }
+
+  .searchWithIcon input:focus {
+    border-color: #6b7280 !important;
+    outline: none !important;
   }
 
   .searchWrapper::after {

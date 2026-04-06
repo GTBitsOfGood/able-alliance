@@ -80,19 +80,6 @@ export default function Admin() {
     setSubmitError(null);
   };
 
-  const handleRowClick = (rowIndex: number) => {
-    // Only navigate for user tables (Students, Drivers, Admins)
-    if (!["Students", "Drivers", "Admins"].includes(table)) {
-      return;
-    }
-    console.log(rowIds[rowIndex]);
-    // Get the user ID from the data attribute
-    const userId = rowIds[rowIndex];
-    if (userId) {
-      router.push(`/profile/${userId}`);
-    }
-  };
-
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError(null);
@@ -342,7 +329,19 @@ export default function Admin() {
       );
   };
 
-  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : "Invite New User"}`;
+  const addLabel =
+    table === "Locations"
+      ? "Add location"
+      : table === "Vehicles"
+        ? "Add vehicle"
+        : "Invite user";
+
+  const deleteLabel =
+    table === "Locations"
+      ? "Delete location"
+      : table === "Vehicles"
+        ? "Delete vehicle"
+        : "Delete user";
 
   const formContent =
     table === "Students" ? (
@@ -589,21 +588,8 @@ export default function Admin() {
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4 mb-[10vh]">
+            <div className="mb-[10vh]">
               <h1>{table}</h1>
-              {canDelete && (
-                <BogButton
-                  variant="primary"
-                  size="medium"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
-                >
-                  {deleting
-                    ? "Deleting…"
-                    : `Delete ${selectedRows.size} selected`}
-                </BogButton>
-              )}
             </div>
             {table === "Rides" ? (
               <RidesTable />
@@ -617,23 +603,54 @@ export default function Admin() {
                 {loading ? (
                   <p className="text-gray-600">Loading…</p>
                 ) : (
-                  <div>
-                    <BogTable
-                      style={{ marginBottom: "5vh" } as React.CSSProperties}
-                      columnHeaders={columns}
-                      rows={rows}
-                      selectedRows={selectedRows}
-                      onSelectedRowsChange={setSelectedRows}
-                      onRowClick={handleRowClick}
-                      selectable={true}
-                    />
-                    <button
-                      className="absolute bottom-[10%] right-[5%] rounded-full bg-[#D9D9D9] px-5 py-5 text-white hover:bg-[#a1a1a1] cursor-pointer"
-                      onClick={() => setShowForm(true)}
-                    >
-                      <BogIcon name="plus" size={40} color="white" />
-                    </button>
-                  </div>
+                  <BogTable
+                    style={{ marginBottom: "5vh" } as React.CSSProperties}
+                    columnHeaders={columns}
+                    rows={rows}
+                    selectedRows={selectedRows}
+                    onSelectedRowsChange={setSelectedRows}
+                    selectable={true}
+                    actions={
+                      <>
+                        {canDelete && (
+                          <BogButton
+                            variant="secondary"
+                            size="medium"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                            style={
+                              {
+                                "--color-brand-stroke-strong": "#C73A3A",
+                                "--color-brand-text": "#C73A3A",
+                                "--color-brand-hover": "#a02a2a",
+                                borderRadius: "0.5rem",
+                              } as React.CSSProperties
+                            }
+                          >
+                            {deleting ? "Deleting…" : deleteLabel}
+                          </BogButton>
+                        )}
+                        <BogButton
+                          variant="primary"
+                          size="medium"
+                          onClick={() => setShowForm(true)}
+                          iconProps={{
+                            position: "left",
+                            iconProps: { name: "plus", size: 16 },
+                          }}
+                          style={
+                            {
+                              "--color-brand-text": "#183777",
+                              "--color-brand-hover": "#2a52a0",
+                              borderRadius: "0.5rem",
+                            } as React.CSSProperties
+                          }
+                        >
+                          {addLabel}
+                        </BogButton>
+                      </>
+                    }
+                  />
                 )}
               </>
             )}
