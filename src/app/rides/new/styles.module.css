@@ -1,233 +1,151 @@
+/* Error Banner */
+.errorBanner {
+  width: 100%;
+  padding: 1.2rem 2rem;
+  background: #fde8e8;
+  border-bottom: 1px solid #f4a0a0;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: "Open Sans", sans-serif;
+  font-size: 1.6rem;
+  color: #c73a3a;
+  box-sizing: border-box;
+}
+
+.errorBannerIcon {
+  flex-shrink: 0;
+}
+
 /* Container */
 .container {
-  position: relative;
   width: 100%;
-  min-height: 102.4rem;
   background: var(--color-solid-bg-base);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  min-height: calc(100vh - 8rem);
 }
 
 .main {
-  padding: 0;
-  width: 144rem;
+  max-width: 130rem;
   margin: 0 auto;
-  min-height: 102.4rem;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 2.4rem 5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
 }
 
-/* Header */
-.header {
-  position: absolute;
-  left: 31.8rem;
-  top: 2rem;
-}
-
+/* Back Button */
 .backButton {
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 400;
   font-size: 1.6rem;
   line-height: 2rem;
   color: var(--color-grey-text-strong);
   text-decoration: none;
-  display: inline-block;
-  padding: 0.8rem 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0;
 }
 
 .backButton:hover {
   color: var(--color-brand-text);
 }
 
-/* Create Ride */
+/* Page Title */
 .pageTitle {
-  position: absolute;
-  width: 26.8rem;
-  height: 5.6rem;
-  left: 31.8rem;
-  top: 6.1rem;
-
-  /* Display/Regular */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-style: normal;
-  font-weight: 500;
+  font-family:
+    var(--font-heading),
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-weight: 700;
   font-size: 4.8rem;
   line-height: 5.6rem;
-
   color: var(--color-grey-text-strong);
   margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 /* Ride Details Section */
 .rideDetailsSection {
-  position: absolute;
-  left: 31.8rem;
-  top: 18.7rem;
-  width: 111rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
 }
 
 .sectionHeader {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 2.4rem;
-  width: 100%;
-}
-
-.sectionHeaderLeft {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
 }
 
-.sectionTitleRow {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 1.2rem;
-}
-
 .sectionTitle {
-  height: 4.8rem;
-
-  /* Heading 1/Bold */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-style: normal;
-  font-weight: 500;
+  font-family:
+    var(--font-heading),
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  font-weight: 700;
   font-size: 4rem;
   line-height: 4.8rem;
-
   color: var(--color-grey-text-strong);
   margin: 0;
-  display: flex;
-  align-items: center;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-.helpIcon {
-  width: 3.2rem;
-  height: 3.2rem;
-  background: none;
-  border: none;
-  cursor: help;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .sectionDescription {
-  max-width: 46.1rem;
-  height: 2.4rem;
-
-  /* Paragraph 1/Regular */
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 400;
   font-size: 1.8rem;
   line-height: 2.4rem;
-
   color: var(--color-grey-text-weak);
   margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Ride Details Outline */
 .rideDetailsOutline {
-  box-sizing: border-box;
   display: flex;
   flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 3.2rem;
-  gap: 4rem;
-
-  width: 110.95rem;
-  min-height: 48rem;
-  height: auto;
-
+  align-items: stretch;
+  padding: 3.2rem 0;
   border: 1px solid var(--color-grey-stroke-weak);
   border-radius: 2rem;
-  margin-bottom: 3.2rem;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 96rem;
 }
 
-/* Ride Details Content */
-.rideDetailsContent {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  padding: 0;
-  gap: 6.5rem;
-
-  width: 59.35rem;
-  min-height: 38.8rem;
-  height: auto;
-
-  flex: none;
-  order: 0;
-  flex-grow: 0;
-}
-
-/* Form Columns */
-.formColumn {
+/* Left Column */
+.leftColumn {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 0;
-  gap: 2.4rem;
-
-  width: 32.7rem;
-  min-height: 38.8rem;
-  height: auto;
-
-  flex: none;
-  order: 0;
-  flex-grow: 0;
-}
-
-.formColumnRight {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 0;
   gap: 3.2rem;
+  padding: 0 3.2rem;
+}
 
-  width: 20.15rem;
-  min-height: 38.8rem;
-  height: auto;
-
-  flex: none;
-  order: 1;
+/* Column Divider */
+.columnDivider {
+  width: 1px;
+  background: var(--color-grey-stroke-weak);
+  flex-shrink: 0;
   align-self: stretch;
-  flex-grow: 0;
+}
+
+/* Right Column */
+.rightColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+  padding: 0 3.2rem;
 }
 
 /* Form Groups */
 .formGroup {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: 0;
-  gap: 1.2rem;
-
-  flex: none;
-  align-self: stretch;
-  flex-grow: 0;
-}
-
-.formGroupDropoff {
-  margin-bottom: 2rem;
+  gap: 1rem;
 }
 
 .formGroupHeader {
@@ -235,75 +153,55 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 0;
-  gap: 2.4rem;
-
-  width: 32.7rem;
-  height: 3.2rem;
-
-  flex: none;
-  order: 0;
-  align-self: stretch;
-  flex-grow: 0;
 }
 
 .formGroupTitle {
-  height: 3.2rem;
-
-  /* Heading 3/Regular */
-  font-family: "Visby", sans-serif;
-  font-style: normal;
-  font-weight: 500;
+  font-family: var(--font-heading), "Visby", sans-serif;
+  font-weight: 700;
   font-size: 2.4rem;
   line-height: 3.2rem;
-
   color: var(--color-grey-text-strong);
   margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-
-  flex: none;
-  order: 0;
-  flex-grow: 0;
 }
 
-.calendarIcon,
-.timeIcon {
+.required {
+  color: #c73a3a;
+  margin-left: 0.1rem;
+}
+
+.fieldDescription {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 400;
+  font-size: 1.4rem;
+  line-height: 2rem;
+  color: var(--color-grey-text-weak);
+  margin: 0;
+}
+
+.calendarIcon {
   width: 3.2rem;
   height: 3.2rem;
-}
-
-.locationIcon,
-.locationIconRed {
-  width: 1.6rem;
-  height: 2rem;
   flex-shrink: 0;
 }
 
 /* Date Picker */
 .datePicker {
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding: 3.2rem 1.2rem;
+  padding: 2.4rem 1.2rem;
   gap: 0.8rem;
-
-  width: 32.7rem;
-
   background: var(--color-solid-bg-base);
   border: 1px solid var(--color-grey-stroke-weak);
   box-shadow:
     0 0.8rem 0.8rem -0.4rem rgba(0, 0, 0, 0.04),
     0 2rem 2.4rem -0.4rem rgba(0, 0, 0, 0.08);
   border-radius: 1.6rem;
-
-  flex: none;
-  order: 1;
-  flex-grow: 0;
+  width: 100%;
+  max-width: 38rem;
+  aspect-ratio: 1 / 1;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .calendarHeader {
@@ -311,10 +209,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 0;
-  gap: 0.8rem;
-  width: 30.3rem;
-  height: 2.4rem;
+  width: 100%;
 }
 
 .calendarNav {
@@ -333,22 +228,15 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 0;
   gap: 0.4rem;
-  height: 2.4rem;
 }
 
 .monthName,
 .yearName {
-  height: 2.4rem;
-
-  /* Paragraph 1/Bold */
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 700;
   font-size: 1.8rem;
   line-height: 2.4rem;
-
   color: var(--color-grey-text-strong);
 }
 
@@ -356,7 +244,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  width: 30.3rem;
+  width: 100%;
 }
 
 .weekDays {
@@ -364,27 +252,20 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 0;
   width: 100%;
 }
 
 .weekDay {
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0.8rem;
   width: 3.2rem;
   height: 3.2rem;
-
-  /* Small/Semibold */
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 600;
   font-size: 1.2rem;
   line-height: 1.6rem;
   text-align: center;
-
   color: var(--color-grey-text-weak);
 }
 
@@ -402,27 +283,21 @@
 
 .dateCell {
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 0.8rem;
-  gap: 0.8rem;
   width: 3.2rem;
   height: 3.2rem;
   background: none;
   border: none;
   cursor: pointer;
-
-  /* Small/Semibold */
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 600;
   font-size: 1.2rem;
   line-height: 1.6rem;
   text-align: center;
-
   color: var(--color-grey-text-strong);
-  border-radius: 0.4rem;
+  border-radius: 50%;
+  justify-self: center;
 }
 
 .dateCell:hover {
@@ -430,9 +305,9 @@
 }
 
 .dateSelected {
-  background: var(--color-brand-stroke-weak);
+  background: var(--color-brand-text) !important;
+  color: white !important;
   font-weight: 700;
-  color: var(--color-brand-text);
 }
 
 .dateToday {
@@ -441,69 +316,42 @@
 }
 
 .calendarHint {
-  width: auto;
-  height: 1.6rem;
-
-  /* Small/Regular */
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 400;
   font-size: 1.2rem;
   line-height: 1.6rem;
   text-align: center;
-
   color: var(--color-grey-text-weak);
   margin: 0;
 }
 
-/* Time Cell / Location Cell */
+/* Time / Location Cells */
 .timeCell,
 .locationCell {
-  box-sizing: border-box;
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 1.6rem;
-  gap: 0.2rem;
-  isolation: isolate;
-
-  width: 20.15rem;
-  height: 5.6rem;
-
+  padding: 1.4rem 1.6rem;
+  gap: 0.8rem;
   background: var(--color-grey-fill-weaker);
   border-bottom: 1px solid var(--color-grey-fill-weak);
-
-  flex: none;
-  order: 1;
-  align-self: stretch;
-  flex-grow: 0;
-}
-
-.checkIcon {
-  width: 1.6rem;
-  height: 1.6rem;
-  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 5.6rem;
 }
 
 .timeInput,
 .locationSelect {
   flex: 1;
   min-width: 0;
-  height: 2rem;
   border: none;
   background: transparent;
-
-  /* Paragraph 2/Bold */
   font-family: "Open Sans", sans-serif;
-  font-style: normal;
   font-weight: 400;
   font-size: 1.6rem;
   line-height: 2rem;
-
   color: var(--color-grey-text-strong);
   outline: none;
-
-  flex-grow: 1;
   cursor: pointer;
 }
 
@@ -511,16 +359,37 @@
   cursor: text;
 }
 
-.timeInput:disabled {
-  color: rgba(34, 7, 11, 0.5);
+/* Hide browser-native clock icon on time inputs */
+.timeInput::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
 }
 
+/* Hide native select dropdown arrow */
+.locationSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.locationIcon,
+.locationIconGreen {
+  width: 1.6rem;
+  height: 2rem;
+  flex-shrink: 0;
+}
+
+.locationSelect option {
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+}
+
+/* Pickup Time Window */
 .pickupWindowRow {
-  margin-top: 0.8rem;
   width: 100%;
   display: flex;
-  align-items: flex-end;
-  gap: 0.6rem;
+  align-items: flex-start;
+  gap: 0.8rem;
 }
 
 .pickupWindowField {
@@ -531,14 +400,13 @@
 }
 
 .pickupWindowCell {
-  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
   height: 5.6rem;
-  padding: 1.6rem;
+  padding: 1.4rem 1.6rem;
   background: var(--color-grey-fill-weaker);
   border-bottom: 1px solid var(--color-grey-fill-weak);
+  box-sizing: border-box;
 }
 
 .pickupWindowLabel {
@@ -562,50 +430,37 @@
   outline: none;
 }
 
+.pickupWindowInput::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+
 .pickupWindowArrow {
-  color: var(--color-grey-text-strong);
+  color: var(--color-grey-text-weak);
   font-size: 1.6rem;
   line-height: 1;
-  font-weight: 700;
-}
-
-.locationSelect {
-  cursor: pointer;
-}
-
-.locationSelect option {
-  background: var(--color-solid-bg-base);
-  color: var(--color-grey-text-strong);
-}
-
-/* Map Section */
-.mapSection {
+  font-weight: 400;
+  /* align with the input cell, which is below the label */
+  margin-top: calc(1.6rem + 0.4rem); /* label height + gap */
+  height: 5.6rem;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  padding: 0;
-  gap: 2.4rem;
-
-  width: 41.2rem;
-  height: 34rem;
-
-  flex: none;
-  order: 1;
-  flex-grow: 0;
+  align-items: center;
+  flex-shrink: 0;
 }
 
+/* Map — square, matches calendar widget */
 .mapImage {
-  box-sizing: border-box;
-  width: 41.2rem;
-  height: 34rem;
-
+  width: 100%;
+  aspect-ratio: 1 / 1;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   border: 1px solid var(--color-grey-stroke-weak);
-  border-radius: 2rem;
+  border-radius: 1.6rem;
+  overflow: hidden;
 }
 
+/* Map Pin */
 .mapPinRoot {
   display: flex;
   flex-direction: column;
@@ -643,20 +498,22 @@
 
 /* Submit Button */
 .submitButton {
-  /* Auto layout */
   display: flex;
-  flex-direction: row;
   align-items: center;
-  padding: 0.8rem 1.2rem;
-
-  width: 19.7rem;
-  height: 4rem;
-
+  justify-content: center;
+  width: 100%;
+  height: 5rem;
   background: var(--color-brand-text);
   border-radius: 0.4rem;
   border: none;
   cursor: pointer;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 600;
+  font-size: 1.8rem;
+  line-height: 2.4rem;
+  color: white;
   transition: background-color 0.2s;
+  margin-top: auto;
 }
 
 .submitButton:hover:not(:disabled) {
@@ -668,116 +525,42 @@
   cursor: not-allowed;
 }
 
-.submitButtonText {
-  width: 100%;
-  height: 2.4rem;
-
-  /* Paragraph 1/Semi-Bold */
-  font-family: "Open Sans", sans-serif;
-  font-style: normal;
-  font-weight: 600;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-
-  color: var(--color-solid-bg-base);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Error Message */
-.errorMessage {
-  padding: 1.2rem 1.6rem;
-  border-radius: 0.8rem;
-  background-color: var(--color-status-red-fill);
-  border: 1px solid var(--color-status-red-text);
-  color: var(--color-status-red-text);
-  font-family: "Open Sans", sans-serif;
-  font-size: 1.6rem;
-  line-height: 2rem;
-  width: 100%;
-  max-width: 110.95rem;
-  margin-top: -2rem;
-}
-
 /* Responsive */
-@media (max-width: 1640px) {
-  .main {
-    width: 100%;
-    padding: 0 2rem;
-  }
-
-  .header,
-  .pageTitle,
-  .rideDetailsSection {
-    left: 2rem;
-  }
-
-  .rideDetailsSection {
-    width: calc(100% - 4rem);
-  }
-
+@media (max-width: 900px) {
   .rideDetailsOutline {
-    width: 100%;
-    height: auto;
+    flex-direction: column;
+    padding: 3.2rem;
   }
 
-  .rideDetailsContent {
+  .leftColumn,
+  .rightColumn {
+    flex: none;
     width: 100%;
-    flex: 1;
+    padding: 0;
   }
 
-  .formColumn,
-  .formColumnRight {
-    width: auto;
-    flex: 1;
-  }
-
-  .mapSection {
+  .columnDivider {
     width: 100%;
-    max-width: 41.2rem;
+    height: 1px;
+    align-self: unset;
   }
 
   .mapImage {
-    width: 100%;
+    height: 24rem;
   }
 }
 
 @media (max-width: 768px) {
+  .main {
+    padding: 2rem 2rem 4rem;
+  }
+
   .pageTitle {
     font-size: 3.2rem;
     line-height: 4rem;
   }
 
   .rideDetailsOutline {
-    padding: 1.6rem;
-    flex-direction: column;
-  }
-
-  .rideDetailsContent {
-    flex-direction: column;
-    width: 100%;
-    height: auto;
-  }
-
-  .formColumn,
-  .formColumnRight {
-    width: 100%;
-    height: auto;
-  }
-
-  .formGroup {
-    width: 100%;
-  }
-
-  .datePicker,
-  .timeCell,
-  .locationCell {
-    width: 100%;
+    padding: 2rem;
   }
 }

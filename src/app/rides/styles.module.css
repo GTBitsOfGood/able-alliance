@@ -9,9 +9,14 @@
   flex: 1;
   flex-direction: column;
   overflow: auto;
-  padding: 2rem 2.5rem;
+  padding: 2rem 5rem;
   background-color: var(--color-solid-bg-base);
   min-width: 0;
+  scrollbar-width: none;
+}
+
+.main::-webkit-scrollbar {
+  display: none;
 }
 
 .mainHeader {
@@ -63,21 +68,22 @@
 
 .pageTitle {
   color: var(--color-grey-text-strong);
-  font-size: var(--text-desktop-heading-1);
+  font-size: 4rem;
   font-weight: 700;
-  line-height: var(--text-desktop-heading-1--line-height);
+  line-height: 4.8rem;
+  font-family: var(--font-heading);
   margin: 0;
 }
 
 .requestRideButton {
   width: fit-content;
-  background-color: var(--color-status-blue-text);
-  border-color: var(--color-status-blue-text);
+  background-color: #183777;
+  border-color: #183777;
 }
 
 .requestRideButton:hover:not(:disabled) {
-  background-color: var(--color-status-blue-stroke-strong);
-  border-color: var(--color-status-blue-stroke-strong);
+  background-color: #0f2452;
+  border-color: #0f2452;
 }
 
 .errorMessage {
@@ -170,7 +176,7 @@
 .rideList {
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: 3.2rem;
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -187,7 +193,7 @@
 .dateGroup {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.2rem;
   width: 100%;
   min-width: 0;
 }
@@ -208,18 +214,20 @@
 
 .dayGroupHeading {
   margin: 0;
-  font-size: var(--text-desktop-heading-4);
-  line-height: var(--text-desktop-heading-3--line-height);
-  font-weight: 600;
+  font-size: 2.4rem;
+  line-height: 3.2rem;
+  font-weight: 700;
+  font-family: var(--font-heading);
   color: var(--color-grey-text-strong);
   flex: 1;
   min-width: 0;
 }
 
 .dateHeader {
-  font-size: var(--text-desktop-heading-3);
-  font-weight: 600;
-  line-height: var(--text-desktop-heading-3--line-height);
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 4rem;
+  font-family: var(--font-heading);
   color: var(--color-grey-text-strong);
   margin: 0;
 }
@@ -256,8 +264,7 @@
   flex-direction: column;
   gap: 0.25rem;
   min-width: 0;
-  flex: 0 0 11rem;
-  max-width: 11rem;
+  flex: 0 0 14rem;
 }
 
 .rideCardDivider {
@@ -267,10 +274,6 @@
   background-color: var(--color-grey-stroke-weak);
   margin: 0 1.5rem;
   align-self: center;
-}
-
-.rideCardPickupDropoff > .rideCardStopBlock:last-of-type .rideCardStopTime {
-  font-size: var(--text-desktop-heading-4);
 }
 
 .rideCardPickupDropoff > .rideCardStopBlock:last-of-type {
@@ -284,22 +287,193 @@
 }
 
 .rideCardStopLabel {
-  font-size: var(--text-desktop-paragraph-1);
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-weak);
-  font-weight: 600;
+  font-weight: 400;
+  font-family: var(--font-paragraph), "Open Sans", sans-serif;
 }
 
 .rideCardStopTime {
-  font-size: var(--text-desktop-heading-4);
+  font-size: 3.2rem;
+  line-height: 4rem;
   font-weight: 700;
   color: var(--color-grey-text-strong);
+  font-family: var(--font-heading), "Visby CF", sans-serif;
 }
 
 .rideCardStopLocation {
   font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph), "Open Sans", sans-serif;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Student card — new Figma design */
+.rideCardStudent {
+  flex-direction: row;
+  padding: 0;
+  gap: 0;
+  min-height: 24.8rem;
+  align-items: stretch;
+}
+
+.rideCardStudentBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3.2rem;
+  min-width: 0;
+  gap: 3.2rem;
+}
+
+.rideCardPickupDropoffNew {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+  gap: 0;
+}
+
+.rideCardStopBlockNew {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.rideCardStopLabelNew {
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  color: rgba(34, 7, 11, 0.5);
+  white-space: nowrap;
+}
+
+.rideCardStopTimeNew {
+  font-size: 3.2rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  line-height: 4rem;
+}
+
+.rideCardStopLocationNew {
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  color: var(--color-grey-text-strong);
+}
+
+.rideCardHorizontalDivider {
+  flex: 1;
+  height: 1px;
+  background: var(--color-grey-stroke-weak);
+  align-self: center;
+  margin: 0 1.6rem;
+  margin-top: 5.4rem; /* align with midpoint of time text */
+}
+
+.rideCardStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.rideCardStatusChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 2.4rem;
+  border-radius: 9999px;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.rideDetailsLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.6rem;
+  border: 1px solid var(--color-checkbox-checked);
+  border-radius: 0.4rem;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 600;
+  color: var(--color-checkbox-checked);
+  text-decoration: none;
+  white-space: nowrap;
+  min-width: 17.2rem;
+  text-align: center;
+
+  &:hover {
+    background: var(--color-brand-fill);
+  }
+}
+
+.rideCardVerticalDivider {
+  width: 1px;
+  background: var(--color-grey-stroke-weak);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.rideCardStudentActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.2rem;
+  padding: 2.4rem 3.2rem;
+  flex-shrink: 0;
+}
+
+.rideCardActionBtn {
+  width: 17.2rem;
+  padding: 1.2rem 1.6rem;
+  border-radius: 0.4rem;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  background: none;
+  text-align: center;
+}
+
+.rideCardActionBtnBrand {
+  border: 1px solid var(--color-checkbox-checked);
+  color: var(--color-checkbox-checked);
+
+  &:hover:not(:disabled) {
+    background: var(--color-brand-fill);
+  }
+}
+
+.rideCardActionBtnDisabled {
+  border: 1px solid rgba(34, 7, 11, 0.1);
+  color: rgba(34, 7, 11, 0.15);
+  cursor: not-allowed;
+}
+
+.rideCardActionBtnCancel {
+  border: 1px solid rgba(199, 58, 58, 0.8);
+  color: rgba(199, 58, 58, 0.8);
+
+  &:hover:not(:disabled) {
+    background: var(--color-status-red-fill);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 /* Driver card layout — new Figma-matched design */
@@ -326,6 +500,7 @@
   line-height: var(--text-desktop-heading-3--line-height);
   font-weight: 700;
   color: var(--color-grey-text-strong);
+  font-family: var(--font-heading), "Visby CF", sans-serif;
   margin: 0;
 }
 
@@ -344,35 +519,40 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1.5rem;
+  padding: 0.5rem 1.6rem;
   border-radius: 9999px;
-  font-size: var(--text-desktop-paragraph-1);
-  line-height: var(--text-desktop-paragraph-1--line-height);
-  font-weight: 600;
-  color: var(--color-grey-text-strong);
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  font-weight: 500;
+  font-family: var(--font-paragraph), "Open Sans", sans-serif;
   white-space: nowrap;
 }
 
-/* Status chip colors — solid fills matching Figma brand tokens */
+/* Status chip colors — matching Figma exactly */
 .rideCardDriverChip--amber {
-  background-color: #ffd17f;
+  background-color: #f6c75a;
+  color: #22070b;
 }
 
 .rideCardDriverChip--green {
   background-color: #70cd87;
+  color: #22070b;
 }
 
 .rideCardDriverChip--red {
   background-color: #f4a0a0;
+  color: #22070b;
 }
 
 .rideCardDriverChip--gray {
   background-color: #e0e0e0;
+  color: #22070b;
 }
 
 /* Vehicle ID chip */
 .rideCardDriverChip--vehicle {
-  background-color: #a7d0ed;
+  background-color: #a8cce4;
+  color: #183777;
 }
 
 .rideCardDriverDivider {

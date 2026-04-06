@@ -30,6 +30,7 @@ export type Route = {
   driver?: string | RouteUser;
   vehicle?: string;
   scheduledPickupTime: string;
+  pickupWindowEnd?: string;
   status: string;
 };
 
@@ -240,6 +241,7 @@ export default function RidesPage() {
                 key={route._id}
                 route={route}
                 locationIdToName={locationIdToName}
+                href={`/rides/${route._id}`}
                 onCancel={(id) => setCancelTargetId(id)}
                 cancelling={cancellingId === route._id}
               />

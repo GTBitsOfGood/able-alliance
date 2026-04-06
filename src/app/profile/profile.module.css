@@ -1,25 +1,25 @@
 .profilePage {
   min-height: 100vh;
-  padding: 2rem 2.5rem;
+  padding: 5rem 2rem;
   box-sizing: border-box;
   background-color: var(--color-solid-bg-base);
 }
 
 .profileInner {
-  max-width: 56rem;
+  max-width: 72rem;
   margin: 0 auto;
 }
 
 .profileHeader {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
   margin-bottom: 2rem;
 }
 
 .profileAvatar {
-  width: 10rem;
-  height: 10rem;
+  width: 8rem;
+  height: 8rem;
   border-radius: 9999px;
   display: flex;
   align-items: center;
@@ -27,11 +27,11 @@
   font-size: var(--text-desktop-heading-2);
   font-weight: 700;
   color: var(--color-solid-bg-base);
+  flex-shrink: 0;
 }
 
-/* Default colors for now based on Figma pfps*/
 .profileAvatarStudent {
-  background-color: var(--color-status-amber-text);
+  background-color: #d4a017;
 }
 
 .profileAvatarDriver {
@@ -45,7 +45,7 @@
 .profileNameBlock {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.3rem;
 }
 
 .profileDisplayName {
@@ -61,165 +61,233 @@
   color: var(--color-grey-text-weak);
 }
 
+/* Tab bar */
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  margin-bottom: 2.4rem;
+}
+
+.tab {
+  padding: 1rem 2rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--color-grey-text-weak);
+  position: relative;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s;
+}
+
+.tab:hover {
+  color: var(--color-grey-text-strong);
+}
+
+.tabActive {
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  border-bottom: 2px solid var(--color-checkbox-checked);
+}
+
+.ridesPlaceholder {
+  min-height: 20rem;
+}
+
 .profileCard {
-  margin-top: 0.5rem;
-  padding: 1.75rem 2rem;
-  border-radius: 0.75rem;
+  padding: 3.2rem;
+  border-radius: 1rem;
   border: 0.1rem solid var(--color-grey-stroke-weak);
   background-color: var(--color-solid-bg-base);
-  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.04);
+  box-shadow: 0 0.1rem 0.6rem rgba(0, 0, 0, 0.05);
 }
 
 .profileCardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 1rem;
-  margin-bottom: 1.75rem;
+  margin-bottom: 2.8rem;
 }
 
 .sectionTitle {
-  font-size: var(--text-desktop-paragraph-1);
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--color-grey-text-strong);
-}
-
-.profileFieldGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 3rem;
-  row-gap: 1.25rem;
-  max-width: 40rem;
-}
-
-.profileField {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.fieldLabel {
-  font-size: var(--text-desktop-paragraph-2);
-  color: var(--color-grey-text-weak);
-}
-
-.fieldValue {
-  font-size: var(--text-desktop-paragraph-2);
-  color: var(--color-grey-text-strong);
-  font-weight: 500;
-}
-
-.profileSection {
-  margin-top: 2rem;
-}
-
-.sectionSubtitle {
-  font-size: var(--text-desktop-paragraph-2);
-  font-weight: 700;
-  color: var(--color-grey-text-strong);
-  margin-bottom: 0.75rem;
-}
-
-.sectionBody {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-width: 40rem;
-}
-
-.sectionRow {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.sectionRowLabel {
-  font-size: var(--text-desktop-paragraph-2);
-  color: var(--color-grey-text-weak);
-}
-
-.sectionRowValue {
-  font-size: var(--text-desktop-paragraph-2);
-  color: var(--color-grey-text-strong);
-  font-weight: 500;
+  margin: 0;
 }
 
 .editActions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .saveError {
-  font-size: 0.875rem;
-  color: var(--color-status-red-text, #c73a3a);
-  margin-bottom: 1rem;
+  font-size: 1.3rem;
+  color: var(--color-status-red-text);
+  margin-bottom: 1.6rem;
 }
 
-.inlineInput {
+/* Field rows layout */
+.profileFieldRows {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+}
+
+.profileFieldRow {
+  display: flex;
+  gap: 3rem;
+}
+
+.profileField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.profileFieldHalf {
+  flex: 0 0 calc(50% - 1.5rem);
+  max-width: calc(50% - 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fieldLabel {
   font-size: var(--text-desktop-paragraph-2);
-  font-family: inherit;
   color: var(--color-grey-text-weak);
-  background-color: var(--color-grey-fill-weaker, #f5f5f5);
+  font-family: var(--font-paragraph);
+}
+
+.fieldValue {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+}
+
+/* Inputs */
+.inlineInputDisabled {
+  font-size: var(--text-desktop-paragraph-2);
+  font-family: var(--font-paragraph);
+  color: var(--color-grey-text-weak);
+  background-color: var(--color-solid-bg-sunken);
   border: 0.1rem solid var(--color-grey-stroke-weak);
-  border-radius: 0.25rem;
-  padding: 0.5rem 0.625rem;
+  border-radius: 0.4rem;
+  padding: 0.75rem 1rem;
   width: 100%;
   box-sizing: border-box;
   cursor: not-allowed;
+  outline: none;
 }
 
-.inlineSelect {
+.inlineInputEditable {
   font-size: var(--text-desktop-paragraph-2);
-  font-family: inherit;
+  font-family: var(--font-paragraph);
   color: var(--color-grey-text-strong);
   background-color: var(--color-solid-bg-base);
   border: 0.1rem solid var(--color-grey-stroke-weak);
-  border-radius: 0.25rem;
-  padding: 0.5rem 0.625rem;
+  border-radius: 0.4rem;
+  padding: 0.75rem 1rem;
   width: 100%;
-  max-width: 24rem;
   box-sizing: border-box;
-  cursor: pointer;
+  outline: none;
 }
 
-.checkboxGroup {
+.inlineInputEditable:focus {
+  border-color: var(--color-checkbox-border);
+}
+
+/* Accommodations section */
+.profileSection {
+  margin-top: 3.2rem;
+  padding-top: 3.2rem;
+  border-top: 0.1rem solid var(--color-grey-stroke-weak);
+}
+
+.sectionSubtitle {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  margin: 0 0 2rem 0;
+  font-family: var(--font-paragraph);
+}
+
+.sectionBody {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
+  gap: 2rem;
 }
 
-.checkboxLabel {
+.sectionRow {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.sectionRowLabel {
+  font-size: var(--text-desktop-paragraph-2);
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+}
+
+.sectionRowValue {
   font-size: var(--text-desktop-paragraph-2);
   color: var(--color-grey-text-strong);
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkboxInput {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: var(--color-brand-stroke-strong, #183777);
-  flex-shrink: 0;
+  font-family: var(--font-paragraph);
 }
 
 .inlineTextarea {
   font-size: var(--text-desktop-paragraph-2);
-  font-family: inherit;
+  font-family: var(--font-paragraph);
   color: var(--color-grey-text-strong);
   background-color: var(--color-solid-bg-base);
   border: 0.1rem solid var(--color-grey-stroke-weak);
-  border-radius: 0.25rem;
-  padding: 0.5rem 0.625rem;
+  border-radius: 0.4rem;
+  padding: 0.75rem 1rem;
   width: 100%;
-  max-width: 40rem;
   box-sizing: border-box;
   resize: vertical;
-  line-height: 1.5;
+  line-height: 1.6;
+  outline: none;
+}
+
+.inlineTextarea:focus {
+  border-color: var(--color-checkbox-border);
+}
+
+/* Unused but kept for safety */
+.inlineInput {
+  font-size: var(--text-desktop-paragraph-2);
+  font-family: inherit;
+  color: var(--color-grey-text-weak);
+  background-color: var(--color-solid-bg-sunken);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.checkboxGroup {
+  display: none;
+}
+.checkboxLabel {
+  display: none;
+}
+.checkboxInput {
+  display: none;
+}
+.inlineSelect {
+  display: none;
+}
+.profileFieldGrid {
+  display: none;
 }
