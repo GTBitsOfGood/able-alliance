@@ -25,6 +25,7 @@ export type AdminTableType =
   | "Drivers"
   | "Vehicles"
   | "Locations"
+  | "Accommodations"
   | "Admins"
   | "Rides";
 

@@ -7,6 +7,7 @@ import {
   updateStudentInfo,
   updatePreferredName,
 } from "@/server/db/actions/UserAction";
+import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
 import { auth } from "@/auth";
@@ -69,12 +70,7 @@ const studentInfoPatchSchema = z
   .object({
     preferredName: z.string().max(100).nullable().optional(),
     notes: z.string().max(2000).nullable().optional(),
-    accessibilityNeeds: z
-      .array(
-        z.enum(["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"]),
-      )
-      .nullable()
-      .optional(),
+    accessibilityNeeds: z.array(z.string().min(1)).nullable().optional(),
   })
   .strict();
 
@@ -132,6 +128,17 @@ export async function PATCH(
 
   try {
     const { preferredName, notes, accessibilityNeeds } = parsed.data;
+
+    if (accessibilityNeeds && accessibilityNeeds.length > 0) {
+      const invalid = await findInvalidAccommodations(accessibilityNeeds);
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid accommodations: ${invalid.join(", ")}` },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
+    }
+
     let updated: unknown = null;
 
     if (preferredName !== undefined) {
