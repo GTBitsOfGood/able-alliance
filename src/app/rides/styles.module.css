@@ -178,6 +178,11 @@
   text-align: right;
 }
 
+.rideCardStopBlockRight {
+  align-items: flex-end;
+  text-align: right;
+}
+
 .rideCardStopLabel {
   font-size: var(--text-desktop-paragraph-1);
   color: var(--color-grey-text-weak);
@@ -197,7 +202,107 @@
   text-overflow: ellipsis;
 }
 
-/* Driver card layout */
+/* Driver card layout — new Figma-matched design */
+.rideCardDriverNew {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  min-height: 17.5rem;
+}
+
+.rideCardDriverBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 2rem;
+  min-width: 0;
+  justify-content: center;
+}
+
+.rideCardStudentName {
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  margin: 0;
+}
+
+.rideCardDriverChipsRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Base chip style for driver card — solid background, pill shape */
+.rideCardDriverChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.5rem;
+  border-radius: 9999px;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  white-space: nowrap;
+}
+
+/* Status chip colors — solid fills matching Figma brand tokens */
+.rideCardDriverChip--amber {
+  background-color: #ffd17f;
+}
+
+.rideCardDriverChip--green {
+  background-color: #70cd87;
+}
+
+.rideCardDriverChip--red {
+  background-color: #f4a0a0;
+}
+
+.rideCardDriverChip--gray {
+  background-color: #e0e0e0;
+}
+
+/* Vehicle ID chip */
+.rideCardDriverChip--vehicle {
+  background-color: #a7d0ed;
+}
+
+.rideCardDriverDivider {
+  width: 0.1rem;
+  align-self: stretch;
+  background-color: var(--color-grey-stroke-weak);
+  flex-shrink: 0;
+  margin: 1rem 0;
+}
+
+.rideCardDriverButtons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.375rem;
+  padding: 1.5rem 2rem;
+  flex-shrink: 0;
+  /* Override brand color tokens to match Figma navy/blue palette */
+  --color-brand-text: #183777;
+  --color-brand-stroke-strong: #416ebc;
+  --color-brand-hover: #0f2452;
+}
+
+.rideCardDriverButton {
+  width: 15rem;
+  white-space: nowrap;
+}
+
+/* Legacy driver card layout (kept for reference) */
 .rideCardDriver {
   gap: 1.25rem;
   padding: 2.2rem 2.4rem;
@@ -459,6 +564,11 @@
   padding: 2rem 2.5rem;
   background-color: var(--color-solid-bg-base);
   min-width: 0;
+  scrollbar-width: none; /* Firefox */
+}
+
+.driverMain::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
 }
 
 .vehicleSection {
