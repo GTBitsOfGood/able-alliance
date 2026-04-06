@@ -89,6 +89,7 @@
       border: solid 1px var(--color-grey-stroke-weak);
       padding: 0.25rem;
       z-index: 1;
+      transition: none;
 
       .dropdownItem {
         display: flex;
