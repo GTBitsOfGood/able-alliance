@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import type {
   ColumnHeaderCellContent,
   TableRow,
@@ -27,10 +28,37 @@ export type AdminTableType =
   | "Admins"
   | "Rides";
 
-function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
-  return rows.map((row) => ({
+function nameLink(name: string, id: string) {
+  return (
+    <Link
+      href={`/profile/${id}`}
+      style={{
+        textDecoration: "none",
+        color: "inherit",
+        fontSize: "inherit",
+        lineHeight: "inherit",
+      }}
+      onMouseEnter={(e) =>
+        ((e.currentTarget as HTMLAnchorElement).style.textDecoration =
+          "underline")
+      }
+      onMouseLeave={(e) =>
+        ((e.currentTarget as HTMLAnchorElement).style.textDecoration = "none")
+      }
+      onClick={(e) => e.stopPropagation()}
+    >
+      {name}
+    </Link>
+  );
+}
+
+function studentRawToTableRows(
+  rows: StudentRowRaw[],
+  ids: string[],
+): TableRow[] {
+  return rows.map((row, i) => ({
     cells: [
-      { content: row.name },
+      { content: nameLink(row.name, ids[i] ?? "") },
       { content: row.email },
       { content: row.accessibilityNeeds || "—" },
       { content: row.additionalComments || "—" },
@@ -38,15 +66,21 @@ function studentRawToTableRows(rows: StudentRowRaw[]): TableRow[] {
   }));
 }
 
-function driverRawToTableRows(rows: DriverRowRaw[]): TableRow[] {
-  return rows.map((row) => ({
-    cells: [{ content: row.name }, { content: row.email }],
+function driverRawToTableRows(rows: DriverRowRaw[], ids: string[]): TableRow[] {
+  return rows.map((row, i) => ({
+    cells: [
+      { content: nameLink(row.name, ids[i] ?? "") },
+      { content: row.email },
+    ],
   }));
 }
 
-function adminRawToTableRows(rows: AdminRowRaw[]): TableRow[] {
-  return rows.map((row) => ({
-    cells: [{ content: row.name }, { content: row.email }],
+function adminRawToTableRows(rows: AdminRowRaw[], ids: string[]): TableRow[] {
+  return rows.map((row, i) => ({
+    cells: [
+      { content: nameLink(row.name, ids[i] ?? "") },
+      { content: row.email },
+    ],
   }));
 }
 
@@ -172,10 +206,11 @@ export function useAdminTableData(tableType: AdminTableType) {
           const data = await res.json();
           if (cancelled) return;
 
+          const ids = extractIds(data);
           const raw = adaptUsersToStudentRows(data);
           setColumns(STUDENT_COLUMNS);
-          setRows(studentRawToTableRows(raw));
-          setRowIds(extractIds(data));
+          setRows(studentRawToTableRows(raw, ids));
+          setRowIds(ids);
           setLoading(false);
         } else if (tableType === "Drivers") {
           const res = await fetch("/api/users?type=Driver");
@@ -183,10 +218,11 @@ export function useAdminTableData(tableType: AdminTableType) {
           const data = await res.json();
           if (cancelled) return;
 
+          const ids = extractIds(data);
           const raw = adaptUsersToDriverRows(data);
           setColumns(DRIVER_COLUMNS);
-          setRows(driverRawToTableRows(raw));
-          setRowIds(extractIds(data));
+          setRows(driverRawToTableRows(raw, ids));
+          setRowIds(ids);
           setLoading(false);
         } else if (tableType === "Admins") {
           const res = await fetch("/api/users?type=Admin");
@@ -194,10 +230,11 @@ export function useAdminTableData(tableType: AdminTableType) {
           const data = await res.json();
           if (cancelled) return;
 
+          const ids = extractIds(data);
           const raw = adaptUsersToAdminRows(data);
           setColumns(ADMIN_COLUMNS);
-          setRows(adminRawToTableRows(raw));
-          setRowIds(extractIds(data));
+          setRows(adminRawToTableRows(raw, ids));
+          setRowIds(ids);
           setLoading(false);
         } else if (tableType === "Locations") {
           const res = await fetch("/api/locations");
