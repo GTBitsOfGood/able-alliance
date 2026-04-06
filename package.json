@@ -10,6 +10,7 @@
     "start": "next start",
     "seed": "npx tsx scripts/seed.ts",
     "test:ws": "npx tsx scripts/test-websocket.ts",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format:check": "prettier --check .",
