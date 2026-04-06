@@ -20,7 +20,7 @@ export type RideCardRoute = {
   scheduledPickupTime: string;
   status: string;
   student?: string | { firstName: string; lastName: string };
-  vehicle?: { licensePlate: string };
+  vehicle?: string | { licensePlate: string };
 };
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
@@ -161,7 +161,7 @@ export function RideCard({
             >
               {route.status}
             </span>
-            {route.vehicle?.licensePlate && (
+            {route.vehicle && typeof route.vehicle === "object" && route.vehicle.licensePlate && (
               <span
                 className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
               >

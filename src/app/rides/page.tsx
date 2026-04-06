@@ -48,21 +48,7 @@ function formatWeekRangeHeader(start: Date, end: Date): string {
 }
 
 function formatDayGroupHeader(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const day = new Date(d);
-  day.setHours(0, 0, 0, 0);
-  const diffDays = Math.round(
-    (day.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  const monthDay = d.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-  });
-  if (diffDays === 0) return `Today, ${monthDay}`;
-  if (diffDays === 1) return `Tomorrow, ${monthDay}`;
-  return d.toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",

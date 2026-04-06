@@ -2,10 +2,7 @@
 
 import React from "react";
 import { Dialog } from "radix-ui";
-import BogButton from "@/components/BogButton/BogButton";
 import bogModalStyles from "@/components/BogModal/styles.module.css";
-import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
-import { getSizeFromBreakpoint } from "@/utils/design-system/breakpoints/breakpoints";
 import styles from "./styles.module.css";
 
 type CancelRideModalProps = {
@@ -21,18 +18,6 @@ export function CancelRideModal({
   onConfirmCancel,
   confirming = false,
 }: CancelRideModalProps) {
-  const breakpoint = useResponsive();
-  const responsiveSize = getSizeFromBreakpoint(breakpoint);
-  /* to match BogModal */
-  const titleTypographyClass =
-    responsiveSize === "small"
-      ? "text-heading-4"
-      : responsiveSize === "medium"
-        ? "text-heading-3"
-        : "text-heading-2";
-  const descriptionTypographyClass =
-    responsiveSize === "small" ? "text-paragraph-2" : "text-paragraph-1";
-
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange} modal>
       <Dialog.Portal>
@@ -40,7 +25,7 @@ export function CancelRideModal({
           className={`${bogModalStyles.overlay} ${styles.cancelRideOverlay}`}
         />
         <Dialog.Content
-          className={`${bogModalStyles.content} ${bogModalStyles.medium} ${styles.cancelRideContent}`}
+          className={`${bogModalStyles.content} ${styles.cancelRideContent}`}
           onPointerDownOutside={(e) => {
             if (confirming) e.preventDefault();
           }}
@@ -49,37 +34,32 @@ export function CancelRideModal({
           }}
           aria-busy={confirming}
         >
-          <Dialog.Title
-            className={`${styles.cancelRideTitle} ${titleTypographyClass}`}
-          >
-            Cancel this ride?
+          {/* Visually hidden title for accessibility */}
+          <Dialog.Title className={styles.srOnly}>
+            Cancel ride confirmation
           </Dialog.Title>
-          <Dialog.Description
-            className={`${styles.cancelRideDescription} ${descriptionTypographyClass}`}
-          >
+
+          <Dialog.Description className={styles.cancelRideDescription}>
             Are you sure you want to cancel this ride?
           </Dialog.Description>
+
           <div className={styles.cancelRideActions}>
-            <BogButton
+            <button
               type="button"
-              variant="secondary"
-              size="medium"
+              className={styles.cancelModalNevermind}
               disabled={confirming}
               onClick={() => onOpenChange(false)}
             >
               Nevermind
-            </BogButton>
-            <BogButton
+            </button>
+            <button
               type="button"
-              variant="primary"
-              size="medium"
+              className={styles.cancelModalConfirm}
               disabled={confirming}
-              onClick={() => {
-                void onConfirmCancel();
-              }}
+              onClick={() => void onConfirmCancel()}
             >
               {confirming ? "Cancelling…" : "Cancel ride"}
-            </BogButton>
+            </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
