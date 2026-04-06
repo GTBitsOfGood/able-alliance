@@ -18,6 +18,7 @@ import RidesTable from "./RidesTable";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Form } from "radix-ui";
 
 const selected_color = "bg-[var(--color-admin-bg)]";
 
@@ -329,67 +330,186 @@ export default function Admin() {
       );
   };
 
-  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : "Invite New User"}`;
+  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : "Invite New Student"}`;
 
   const formContent =
     table === "Students" ? (
-      <BogForm onSubmit={handleAddStudent} submitLabel="Create student">
-        <div className="flex gap-20">
-          <BogTextInput
-            name="firstName"
-            label="First Name"
-            placeholder="ex: George"
-            className="flex-1"
-            required
-          />
-          <BogTextInput
-            name="lastName"
-            label="Last Name"
-            placeholder="ex: Burdell"
-            className="flex-1"
-            required
-          />
-        </div>
-        <BogTextInput
-          name="email"
-          type="email"
-          label="Email"
-          placeholder="email@example.com"
-          required
-        />
-        <BogDropdown
-          name="accessibilityNeeds"
-          label="Accessibility needs"
-          options={[...STUDENT_ACCESSIBILITY_OPTIONS]}
-          placeholder="Select accessibility needs"
-          value={studentAccessibilityNeeds}
-          onSelectionChange={(v) =>
-            setStudentAccessibilityNeeds(
-              typeof v === "string" ? v : (v[0] ?? "None"),
-            )
-          }
-        />
-        <BogTextInput
-          name="additionalComments"
-          label="Additional comments"
-          placeholder="Optional"
-        />
-        {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-      </BogForm>
+      // <BogForm
+      //   onSubmit={handleAddStudent}
+      //   submitLabel="Invite"
+      //   className="flex flex-col flex-shrink gap-[4.3rem] border rounded-[0.8rem] text-[1.6rem] p-10 border-[var(--color-grey-off-state)]"
+      // >
+      //   <div className="flex flex-row gap-[5.8rem]  ">
+      //     <BogTextInput
+      //       name="firstName"
+      //       label="First Name"
+      //       placeholder="ex: George"
+      //       className="flex flex-1 max-w-xl w-full"
+      //       required
+      //     />
+      //     <BogTextInput
+      //       name="lastName"
+      //       label="Last Name"
+      //       placeholder="ex: Burdell"
+      //       className="flex flex-1 max-w-xl"
+      //       required
+      //     />
+      //   </div>
+      //   <div className="flex flex-row gap-[5.8rem]">
+      //     <BogTextInput
+      //       name="preferredName"
+      //       label="Preferred Name"
+      //       placeholder="Buzz"
+      //       className="flex flex-1 max-w-xl"
+      //     />
+      //     <BogTextInput
+      //       name="email"
+      //       type="email"
+      //       label="GT Email"
+      //       placeholder="gburdell01@gatech.edu"
+      //       className="flex flex-1 max-w-xl"
+      //       required
+      //     />
+      //   </div>
+      //   <div className="flex flex-row gap-[5.8rem]">
+      //     <BogDropdown
+      //       name="accessibilityNeeds"
+      //       label="Accessibility needs"
+      //       options={[...STUDENT_ACCESSIBILITY_OPTIONS]}
+      //       placeholder="Select accessibility needs"
+      //       className="flex flex-1 max-w-xl"
+      //       value={studentAccessibilityNeeds}
+      //       onSelectionChange={(v) =>
+      //         setStudentAccessibilityNeeds(
+      //           typeof v === "string" ? v : (v[0] ?? "None"),
+      //         )
+      //       }
+      //     />
+      //     <BogTextInput
+      //       name="additionalComments"
+      //       label="Additional Notes"
+      //       placeholder="Add any additional information here."
+      //       className="flex flex-1 max-w-xl"
+      //     />
+      //   </div>
+      //   <div className="flex flex-row gap-[5.8rem]">
+      //     <BogTextInput
+      //       name="inviteMessage"
+      //       label="Invite message"
+      //       placeholder="Add custom invite message here."
+      //       className="flex w-full"
+      //     />
+      //   </div>
+      //   {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+      // </BogForm>
+      <div className="flex flex-row">
+        <Form.Root
+          onSubmit={handleAddStudent}
+          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
+          // style={style}
+        >
+          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="firstName"
+              label="First Name"
+              placeholder="George"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+            <BogTextInput
+              name="lastName"
+              label="Last Name"
+              placeholder="Burdell"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="preferredName"
+              label="Preferred Name"
+              placeholder="Buzz"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+            <BogTextInput
+              name="email"
+              type="email"
+              label="GT Email"
+              placeholder="gburdell01@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+            <div className="flex flex-col flex-1 basis-[20rem] max-w-[35rem] gap-3">
+              <BogDropdown
+                name="accessibilityNeeds"
+                label="Accommodations"
+                options={[...STUDENT_ACCESSIBILITY_OPTIONS]}
+                placeholder="Select from list"
+                className=""
+                value={studentAccessibilityNeeds}
+                onSelectionChange={(v) =>
+                  setStudentAccessibilityNeeds(
+                    typeof v === "string" ? v : (v[0] ?? "None"),
+                  )
+                }
+                required
+              />
+              {STUDENT_ACCESSIBILITY_OPTIONS.includes(
+                studentAccessibilityNeeds as any,
+              ) &&
+                studentAccessibilityNeeds !== "None" && (
+                  <span
+                    className="bg-[#EFEDED] p-1"
+                    onClick={() => setStudentAccessibilityNeeds("None")}
+                  >
+                    x&nbsp;&nbsp;{studentAccessibilityNeeds}
+                  </span>
+                )}
+            </div>
+            <BogTextInput
+              name="additionalComments"
+              label="Additional Notes"
+              placeholder="Add any additional information here."
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+          </div>
+          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="inviteMessage"
+              label="Invite message"
+              placeholder="Add custom invite message here."
+              className="flex w-full"
+              multiline={true}
+            />
+          </div>
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+
+          <Form.Submit asChild>
+            <BogButton
+              type="submit"
+              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max"
+            >
+              {"Invite"}
+            </BogButton>
+          </Form.Submit>
+        </Form.Root>
+      </div>
     ) : table === "Drivers" ? (
       <BogForm onSubmit={handleAddDriver} submitLabel="Create driver">
         <div className="flex gap-20">
           <BogTextInput
             name="firstName"
             label="First Name"
-            placeholder="ex: George"
+            placeholder="George"
             className="flex-1"
             required
           />
           <BogTextInput
             name="lastName"
             label="Last Name"
-            placeholder="ex: Burdell"
+            placeholder="Burdell"
             className="flex-1"
             required
           />
@@ -555,21 +675,24 @@ export default function Admin() {
           </div>
         </div>
       </div>
-      <div className="py-20 px-10 relative flex-1">
+      <div className="py-20 px-20 relative flex flex-col flex-1 w-full">
         {showForm ? (
           <>
-            <div className="flex items-center gap-4 mb-[10vh]">
-              <button
-                className="flex items-center gap-2 hover:cursor-pointer"
-                onClick={() => {
-                  setShowForm(false);
-                  setSubmitError(null);
-                  setStudentAccessibilityNeeds("None");
-                  setVehicleAccessibility("None");
-                }}
-              >
-                <BogIcon name="arrow-left" size={24} />
-              </button>
+            <div className="flex flex-col gap-4 mb-[2.4rem]">
+              <div className="flex text-paragraph-1 gap-2">
+                <button
+                  className="flex items-center gap-2 hover:cursor-pointer"
+                  onClick={() => {
+                    setShowForm(false);
+                    setSubmitError(null);
+                    setStudentAccessibilityNeeds("None");
+                    setVehicleAccessibility("None");
+                  }}
+                >
+                  <BogIcon name="arrow-left" size={20} />
+                </button>
+                Back to rides
+              </div>
               <h1>{addLabel}</h1>
             </div>
             {formContent}

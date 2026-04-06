@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --webpack",
     "dev:server": "node websocket-server/index.mjs",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "seed": "npx tsx scripts/seed.ts",
     "test:ws": "npx tsx scripts/test-websocket.ts",
