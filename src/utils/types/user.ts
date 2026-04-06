@@ -3,6 +3,7 @@ import { z } from "zod";
 export const baseUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  preferredName: z.string().optional(),
   email: z
     .string()
     .email("Email is required")
@@ -17,7 +18,11 @@ export const studentSchema = baseUserSchema.extend({
   type: z.literal("Student"),
   studentInfo: z.object({
     notes: z.string().optional(),
-    accessibilityNeeds: z.enum(["Wheelchair", "LowMobility"]).optional(),
+    accessibilityNeeds: z
+      .array(
+        z.enum(["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"]),
+      )
+      .optional(),
   }),
 });
 

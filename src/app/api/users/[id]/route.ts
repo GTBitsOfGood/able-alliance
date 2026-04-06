@@ -5,6 +5,7 @@ import {
   getUserById,
   deleteUser,
   updateStudentInfo,
+  updatePreferredName,
 } from "@/server/db/actions/UserAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
@@ -66,9 +67,12 @@ export async function GET(
 
 const studentInfoPatchSchema = z
   .object({
+    preferredName: z.string().max(100).nullable().optional(),
     notes: z.string().max(2000).nullable().optional(),
     accessibilityNeeds: z
-      .enum(["Wheelchair", "LowMobility"])
+      .array(
+        z.enum(["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"]),
+      )
       .nullable()
       .optional(),
   })
@@ -127,19 +131,44 @@ export async function PATCH(
   }
 
   try {
-    const updated = await updateStudentInfo(id, {
-      notes: parsed.data.notes ?? null,
-      accessibilityNeeds: parsed.data.accessibilityNeeds ?? null,
-    });
+    const { preferredName, notes, accessibilityNeeds } = parsed.data;
+    let updated: unknown = null;
 
-    if (!updated) {
-      return NextResponse.json(
-        { error: "User not found or not a student" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
+    if (preferredName !== undefined) {
+      updated = await updatePreferredName(id, preferredName ?? null);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: HTTP_STATUS_CODE.NOT_FOUND },
+        );
+      }
     }
 
-    const userObj = updated as unknown as Record<string, unknown> & {
+    if (notes !== undefined || accessibilityNeeds !== undefined) {
+      updated = await updateStudentInfo(id, {
+        notes: notes ?? null,
+        accessibilityNeeds: accessibilityNeeds ?? null,
+      });
+      if (!updated) {
+        return NextResponse.json(
+          { error: "User not found or not a student" },
+          { status: HTTP_STATUS_CODE.NOT_FOUND },
+        );
+      }
+    }
+
+    if (!updated) {
+      const user = await getUserById(id);
+      if (!user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: HTTP_STATUS_CODE.NOT_FOUND },
+        );
+      }
+      updated = user;
+    }
+
+    const userObj = updated as Record<string, unknown> & {
       _id: { toString(): string };
     };
     return NextResponse.json(
