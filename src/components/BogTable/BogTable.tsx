@@ -71,6 +71,8 @@ interface BogTableProps extends Omit<
   selectedRows?: Set<number>;
   /** Called when selection changes */
   onSelectedRowsChange?: (selected: Set<number>) => void;
+  /** Called when a row is clicked with the row index */
+  onRowClick?: (rowIndex: number, rowElement: HTMLTableRowElement) => void;
 }
 
 // Helper functions moved outside component to be stable
@@ -133,6 +135,7 @@ const BogTable: React.FC<BogTableProps> = ({
   selectable = false,
   selectedRows: controlledSelected,
   onSelectedRowsChange,
+  onRowClick,
   ...rootProps
 }) => {
   const breakpoint = useResponsive();
@@ -672,7 +675,24 @@ const BogTable: React.FC<BogTableProps> = ({
             </Table.Header>
             <Table.Body>
               {sortedRows.map((row, rIdx) => (
-                <Table.Row key={`row-${rIdx}`} {...row.styleProps}>
+                <Table.Row
+                  key={`row-${rIdx}`}
+                  {...row.styleProps}
+                  onClick={(e) => {
+                    if (
+                      onRowClick &&
+                      e.currentTarget instanceof HTMLTableRowElement
+                    ) {
+                      onRowClick(rIdx, e.currentTarget);
+                    }
+                  }}
+                  style={
+                    {
+                      cursor: onRowClick ? "pointer" : "default",
+                      ...((row.styleProps as React.CSSProperties) || {}),
+                    } as React.CSSProperties
+                  }
+                >
                   {selectable && (
                     <Table.Cell
                       className={`${styles.cell} ${styles.cellBase} ${styles[sizeClass]} ${styles.selectCell}`}
