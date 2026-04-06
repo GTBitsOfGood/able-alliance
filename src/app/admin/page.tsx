@@ -334,79 +334,10 @@ export default function Admin() {
 
   const formContent =
     table === "Students" ? (
-      // <BogForm
-      //   onSubmit={handleAddStudent}
-      //   submitLabel="Invite"
-      //   className="flex flex-col flex-shrink gap-[4.3rem] border rounded-[0.8rem] text-[1.6rem] p-10 border-[var(--color-grey-off-state)]"
-      // >
-      //   <div className="flex flex-row gap-[5.8rem]  ">
-      //     <BogTextInput
-      //       name="firstName"
-      //       label="First Name"
-      //       placeholder="ex: George"
-      //       className="flex flex-1 max-w-xl w-full"
-      //       required
-      //     />
-      //     <BogTextInput
-      //       name="lastName"
-      //       label="Last Name"
-      //       placeholder="ex: Burdell"
-      //       className="flex flex-1 max-w-xl"
-      //       required
-      //     />
-      //   </div>
-      //   <div className="flex flex-row gap-[5.8rem]">
-      //     <BogTextInput
-      //       name="preferredName"
-      //       label="Preferred Name"
-      //       placeholder="Buzz"
-      //       className="flex flex-1 max-w-xl"
-      //     />
-      //     <BogTextInput
-      //       name="email"
-      //       type="email"
-      //       label="GT Email"
-      //       placeholder="gburdell01@gatech.edu"
-      //       className="flex flex-1 max-w-xl"
-      //       required
-      //     />
-      //   </div>
-      //   <div className="flex flex-row gap-[5.8rem]">
-      //     <BogDropdown
-      //       name="accessibilityNeeds"
-      //       label="Accessibility needs"
-      //       options={[...STUDENT_ACCESSIBILITY_OPTIONS]}
-      //       placeholder="Select accessibility needs"
-      //       className="flex flex-1 max-w-xl"
-      //       value={studentAccessibilityNeeds}
-      //       onSelectionChange={(v) =>
-      //         setStudentAccessibilityNeeds(
-      //           typeof v === "string" ? v : (v[0] ?? "None"),
-      //         )
-      //       }
-      //     />
-      //     <BogTextInput
-      //       name="additionalComments"
-      //       label="Additional Notes"
-      //       placeholder="Add any additional information here."
-      //       className="flex flex-1 max-w-xl"
-      //     />
-      //   </div>
-      //   <div className="flex flex-row gap-[5.8rem]">
-      //     <BogTextInput
-      //       name="inviteMessage"
-      //       label="Invite message"
-      //       placeholder="Add custom invite message here."
-      //       className="flex w-full"
-      //     />
-      //   </div>
-      //   {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-      // </BogForm>
       <div className="flex flex-row">
         <Form.Root
           onSubmit={handleAddStudent}
           className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
-          // style={style}
         >
           <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
             <BogTextInput
