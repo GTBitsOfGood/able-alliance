@@ -330,7 +330,7 @@ export default function Admin() {
       );
   };
 
-  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : "Invite New Student"}`;
+  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : table === "Drivers" ? "Invite New Driver" : "Invite New Student"}`;
 
   const formContent =
     table === "Students" ? (
@@ -339,7 +339,7 @@ export default function Admin() {
           onSubmit={handleAddStudent}
           className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
         >
-          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <BogTextInput
               name="firstName"
               label="First Name"
@@ -355,7 +355,7 @@ export default function Admin() {
               required
             />
           </div>
-          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <BogTextInput
               name="preferredName"
               label="Preferred Name"
@@ -371,7 +371,7 @@ export default function Admin() {
               required
             />
           </div>
-          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <div className="flex flex-col flex-1 basis-[20rem] max-w-[35rem] gap-3">
               <BogDropdown
                 name="accessibilityNeeds"
@@ -392,7 +392,7 @@ export default function Admin() {
               ) &&
                 studentAccessibilityNeeds !== "None" && (
                   <span
-                    className="bg-[#EFEDED] p-1"
+                    className="bg-[#EFEDED] p-2 w-max rounded-lg"
                     onClick={() => setStudentAccessibilityNeeds("None")}
                   >
                     x&nbsp;&nbsp;{studentAccessibilityNeeds}
@@ -406,7 +406,7 @@ export default function Admin() {
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
             />
           </div>
-          <div className="flex flex-row flex-1 flex-wrap gap-[5.8rem]">
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <BogTextInput
               name="inviteMessage"
               label="Invite message"
@@ -420,7 +420,7 @@ export default function Admin() {
           <Form.Submit asChild>
             <BogButton
               type="submit"
-              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max"
+              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
             >
               {"Invite"}
             </BogButton>
@@ -428,32 +428,64 @@ export default function Admin() {
         </Form.Root>
       </div>
     ) : table === "Drivers" ? (
-      <BogForm onSubmit={handleAddDriver} submitLabel="Create driver">
-        <div className="flex gap-20">
-          <BogTextInput
-            name="firstName"
-            label="First Name"
-            placeholder="George"
-            className="flex-1"
-            required
-          />
-          <BogTextInput
-            name="lastName"
-            label="Last Name"
-            placeholder="Burdell"
-            className="flex-1"
-            required
-          />
-        </div>
-        <BogTextInput
-          name="email"
-          type="email"
-          label="Email"
-          placeholder="email@example.com"
-          required
-        />
-        {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-      </BogForm>
+      <div className="flex flex-row">
+        <Form.Root
+          onSubmit={handleAddDriver}
+          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
+        >
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="firstName"
+              label="First Name"
+              placeholder="George"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+            <BogTextInput
+              name="lastName"
+              label="Last Name"
+              placeholder="Burdell"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="preferredName"
+              label="Preferred Name"
+              placeholder="Buzz"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+            <BogTextInput
+              name="email"
+              type="email"
+              label="GT Email"
+              placeholder="gburdell01@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="inviteMessage"
+              label="Invite message"
+              placeholder="Add custom invite message here."
+              className="flex w-full"
+              multiline={true}
+            />
+          </div>
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+
+          <Form.Submit asChild>
+            <BogButton
+              type="submit"
+              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
+            >
+              {"Invite"}
+            </BogButton>
+          </Form.Submit>
+        </Form.Root>
+      </div>
     ) : table === "Admins" ? (
       <BogForm onSubmit={handleAddAdmin} submitLabel="Create admin">
         <div className="flex gap-20">
@@ -545,7 +577,7 @@ export default function Admin() {
     );
 
   return (
-    <div className="flex h-screen w-screen">
+    <div className="flex h-min w-screen">
       <div className="relative py-20 px-10 w-[12%] min-w-fit shadow-sm flex flex-col">
         <div className="mb-[10vh]">
           <h3>GT Paratransit</h3>
