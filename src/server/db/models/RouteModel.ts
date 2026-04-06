@@ -53,7 +53,12 @@ const EmbeddedStudentSchema = new Schema(
     type: { type: String, required: true, enum: ["Student"] },
     studentInfo: {
       notes: { type: String },
-      accessibilityNeeds: { type: String, enum: ["Wheelchair", "LowMobility"] },
+      accessibilityNeeds: [
+        {
+          type: String,
+          enum: ["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"],
+        },
+      ],
     },
   },
   { _id: true, versionKey: false },

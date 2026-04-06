@@ -6,15 +6,22 @@ import styles from "./profile.module.css";
 
 type UserType = "Student" | "Driver" | "Admin" | "SuperAdmin";
 
+export type AccessibilityNeed =
+  | "Wheelchair"
+  | "LowMobility"
+  | "VisualImpairment"
+  | "ExtraTime";
+
 export type ProfileUser = {
   id: string;
   firstName: string;
   lastName: string;
+  preferredName?: string | null;
   email: string;
   type: UserType;
   studentInfo?: {
     notes?: string | null;
-    accessibilityNeeds?: "Wheelchair" | "LowMobility" | null;
+    accessibilityNeeds?: AccessibilityNeed[] | null;
   } | null;
 };
 
@@ -46,27 +53,18 @@ function avatarClass(type: UserType): string {
   }
 }
 
-function accessibilityLabel(
-  value: "Wheelchair" | "LowMobility" | null | undefined,
-): string {
-  if (!value) return "-";
-  switch (value) {
-    case "Wheelchair":
-      return "Wheelchair access needed";
-    case "LowMobility":
-      return "Low mobility support needed";
-    default:
-      return "-";
-  }
-}
+const ACCESSIBILITY_LABELS: Record<AccessibilityNeed, string> = {
+  Wheelchair: "Wheelchair access needed",
+  LowMobility: "Low mobility support needed",
+  VisualImpairment: "Visual impairment",
+  ExtraTime: "Extra time needed",
+};
 
-const ACCESSIBILITY_OPTIONS: {
-  label: string;
-  value: "Wheelchair" | "LowMobility" | "";
-}[] = [
-  { label: "None", value: "" },
-  { label: "Wheelchair access needed", value: "Wheelchair" },
-  { label: "Low mobility support needed", value: "LowMobility" },
+const ACCESSIBILITY_OPTIONS: AccessibilityNeed[] = [
+  "Wheelchair",
+  "LowMobility",
+  "VisualImpairment",
+  "ExtraTime",
 ];
 
 export function ProfileView({
@@ -80,10 +78,13 @@ export function ProfileView({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const [draftPreferredName, setDraftPreferredName] = useState(
+    user.preferredName ?? "",
+  );
   const [draftNotes, setDraftNotes] = useState(user.studentInfo?.notes ?? "");
   const [draftAccessibility, setDraftAccessibility] = useState<
-    "Wheelchair" | "LowMobility" | ""
-  >(user.studentInfo?.accessibilityNeeds ?? "");
+    AccessibilityNeed[]
+  >(user.studentInfo?.accessibilityNeeds ?? []);
 
   const [displayUser, setDisplayUser] = useState(user);
 
@@ -95,8 +96,9 @@ export function ProfileView({
   const showAccommodations = displayUser.type === "Student";
 
   function handleEdit() {
+    setDraftPreferredName(displayUser.preferredName ?? "");
     setDraftNotes(displayUser.studentInfo?.notes ?? "");
-    setDraftAccessibility(displayUser.studentInfo?.accessibilityNeeds ?? "");
+    setDraftAccessibility(displayUser.studentInfo?.accessibilityNeeds ?? []);
     setSaveError(null);
     setEditing(true);
   }
@@ -110,13 +112,18 @@ export function ProfileView({
     setSaving(true);
     setSaveError(null);
     try {
+      const patchBody: Record<string, unknown> = {
+        preferredName: draftPreferredName.trim() || null,
+      };
+      if (showAccommodations) {
+        patchBody.notes = draftNotes.trim() || null;
+        patchBody.accessibilityNeeds =
+          draftAccessibility.length > 0 ? draftAccessibility : null;
+      }
       const res = await fetch(`/api/users/${displayUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          notes: draftNotes.trim() || null,
-          accessibilityNeeds: draftAccessibility || null,
-        }),
+        body: JSON.stringify(patchBody),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -124,10 +131,14 @@ export function ProfileView({
       }
       setDisplayUser((prev) => ({
         ...prev,
-        studentInfo: {
-          notes: draftNotes.trim() || null,
-          accessibilityNeeds: draftAccessibility || null,
-        },
+        preferredName: draftPreferredName.trim() || null,
+        studentInfo: showAccommodations
+          ? {
+              notes: draftNotes.trim() || null,
+              accessibilityNeeds:
+                draftAccessibility.length > 0 ? draftAccessibility : null,
+            }
+          : prev.studentInfo,
       }));
       setEditing(false);
     } catch (e) {
@@ -177,7 +188,6 @@ export function ProfileView({
                 </BogButton>
               </div>
             ) : (
-              showAccommodations &&
               canEdit && (
                 <BogButton
                   variant="secondary"
@@ -228,6 +238,21 @@ export function ProfileView({
               )}
             </div>
             <div className={styles.profileField}>
+              <span className={styles.fieldLabel}>Preferred name</span>
+              {editing ? (
+                <input
+                  className={styles.inlineInput}
+                  value={draftPreferredName}
+                  onChange={(e) => setDraftPreferredName(e.target.value)}
+                  placeholder="Optional"
+                />
+              ) : (
+                <span className={styles.fieldValue}>
+                  {displayUser.preferredName?.trim() || "-"}
+                </span>
+              )}
+            </div>
+            <div className={styles.profileField}>
               <span className={styles.fieldLabel}>Email</span>
               {editing ? (
                 <input
@@ -251,26 +276,33 @@ export function ProfileView({
                     Disabilities and accommodations
                   </span>
                   {editing ? (
-                    <select
-                      className={styles.inlineSelect}
-                      value={draftAccessibility}
-                      onChange={(e) =>
-                        setDraftAccessibility(
-                          e.target.value as "Wheelchair" | "LowMobility" | "",
-                        )
-                      }
-                    >
+                    <div className={styles.checkboxGroup}>
                       {ACCESSIBILITY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
+                        <label key={opt} className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            className={styles.checkboxInput}
+                            checked={draftAccessibility.includes(opt)}
+                            onChange={(e) => {
+                              setDraftAccessibility(
+                                e.target.checked
+                                  ? [...draftAccessibility, opt]
+                                  : draftAccessibility.filter((v) => v !== opt),
+                              );
+                            }}
+                          />
+                          {ACCESSIBILITY_LABELS[opt]}
+                        </label>
                       ))}
-                    </select>
+                    </div>
                   ) : (
                     <span className={styles.sectionRowValue}>
-                      {accessibilityLabel(
-                        displayUser.studentInfo?.accessibilityNeeds ?? null,
-                      )}
+                      {(displayUser.studentInfo?.accessibilityNeeds ?? [])
+                        .length > 0
+                        ? (displayUser.studentInfo?.accessibilityNeeds ?? [])
+                            .map((v) => ACCESSIBILITY_LABELS[v])
+                            .join(", ")
+                        : "-"}
                     </span>
                   )}
                 </div>

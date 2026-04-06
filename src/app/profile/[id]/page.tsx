@@ -1,16 +1,24 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserById } from "@/server/db/actions/UserAction";
-import { ProfileView, type ProfileUser } from "../ProfileView";
+import {
+  ProfileView,
+  type ProfileUser,
+  type AccessibilityNeed,
+} from "../ProfileView";
 
 type UserDocument = {
   _id?: { toString(): string };
   firstName?: string;
   lastName?: string;
+  preferredName?: string;
   name?: string;
   email?: string;
   type?: ProfileUser["type"];
-  studentInfo?: ProfileUser["studentInfo"];
+  studentInfo?: {
+    notes?: string | null;
+    accessibilityNeeds?: AccessibilityNeed[] | null;
+  } | null;
 };
 
 export default async function ProfilePage({
@@ -53,6 +61,7 @@ export default async function ProfilePage({
       id: targetId,
       firstName: session.user.firstName ?? session.user.email ?? "User",
       lastName: session.user.lastName ?? "",
+      preferredName: undefined,
       email: session.user.email as string,
       type: session.user.type as ProfileUser["type"],
       studentInfo: null,
@@ -75,6 +84,7 @@ export default async function ProfilePage({
       (doc.name ? doc.name.split(" ").slice(1).join(" ") : "") ??
       session.user.lastName ??
       "",
+    preferredName: doc.preferredName,
     email: doc.email ?? (session.user.email as string),
     type: doc.type ?? (session.user.type as ProfileUser["type"]),
     studentInfo: doc.studentInfo ?? null,

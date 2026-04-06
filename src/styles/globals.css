@@ -118,7 +118,6 @@
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
-    @apply transition duration-250 ease-in-out;
   }
 }
 
@@ -189,6 +188,15 @@
   }
 
   @font-face {
+    font-family: "Visby Light";
+    src:
+      url("/fonts/VisbyCF-Medium.woff2") format("woff2"),
+      url("/fonts/VisbyCF-Medium.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
     font-family: "Open Sans Regular";
     src:
       url("/fonts/opensans-regular-webfont.woff2") format("woff2"),
@@ -203,7 +211,7 @@
     font-weight: 300 800;
     font-stretch: 100%;
     font-display: swap;
-    src: url("/fonts/opensans-webfont.woff2") format("woff2");
+    src: url("/fonts/opensans-regular-webfont.woff2") format("woff2");
   }
 
   html {
