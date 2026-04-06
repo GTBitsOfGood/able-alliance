@@ -19,8 +19,8 @@ export type RideCardRoute = {
   driver?: string | RouteUser;
   scheduledPickupTime: string;
   status: string;
-  student?: { firstName: string; lastName: string };
-  vehicle?: { licensePlate: string };
+  student?: string | { firstName: string; lastName: string };
+  vehicle?: string | { licensePlate: string };
 };
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
@@ -117,9 +117,10 @@ export function RideCard({
   let cardContent: React.ReactNode;
 
   if (isDriverCard) {
-    const studentName = route.student
-      ? `${route.student.firstName} ${route.student.lastName}`.trim()
-      : null;
+    const studentName =
+      route.student && typeof route.student === "object"
+        ? `${route.student.firstName} ${route.student.lastName}`.trim()
+        : null;
 
     const dropoffTimeDisplay = (() => {
       const d = new Date(route.scheduledPickupTime);
@@ -160,13 +161,15 @@ export function RideCard({
             >
               {route.status}
             </span>
-            {route.vehicle?.licensePlate && (
-              <span
-                className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
-              >
-                Assigned vehicle ID {route.vehicle.licensePlate}
-              </span>
-            )}
+            {route.vehicle &&
+              typeof route.vehicle === "object" &&
+              route.vehicle.licensePlate && (
+                <span
+                  className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
+                >
+                  Assigned vehicle ID {route.vehicle.licensePlate}
+                </span>
+              )}
           </div>
         </div>
 

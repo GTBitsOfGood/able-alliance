@@ -58,12 +58,7 @@
 }
 
 .tabContentHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 2.5rem;
 }
 
 .pageTitle {
@@ -91,10 +86,91 @@
   color: var(--color-status-red-text, #c73a3a);
 }
 
+.cancelRideOverlay {
+  background-color: rgba(15, 23, 42, 0.48);
+}
+
+.cancelRideContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding: 2.5rem 2rem;
+  border-radius: 0.5rem;
+  max-width: 44rem;
+  width: 100%;
+}
+
+.cancelRideDescription {
+  margin: 0;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  color: var(--color-grey-text-strong);
+}
+
+.cancelRideActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+}
+
+.cancelModalNevermind {
+  padding: 0.75rem 2rem;
+  border: 2px solid #183777;
+  border-radius: 0.5rem;
+  background: white;
+  color: #183777;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.cancelModalNevermind:hover:not(:disabled) {
+  background: #f0f4fc;
+}
+
+.cancelModalNevermind:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelModalConfirm {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #183777;
+  color: white;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.cancelModalConfirm:hover:not(:disabled) {
+  background: #0f2452;
+}
+
+.cancelModalConfirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .rideList {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3rem;
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -116,9 +192,33 @@
   min-width: 0;
 }
 
-.dateHeader {
+.dayHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.dayHeaderRowEnd {
+  justify-content: flex-end;
+}
+
+.dayGroupHeading {
+  margin: 0;
   font-size: var(--text-desktop-heading-4);
-  font-weight: 700;
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  flex: 1;
+  min-width: 0;
+}
+
+.dateHeader {
+  font-size: var(--text-desktop-heading-3);
+  font-weight: 600;
   line-height: var(--text-desktop-heading-3--line-height);
   color: var(--color-grey-text-strong);
   margin: 0;
