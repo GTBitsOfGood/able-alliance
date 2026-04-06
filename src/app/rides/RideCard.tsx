@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import BogChip from "@/components/BogChip/BogChip";
 import BogButton from "@/components/BogButton/BogButton";
 import styles from "./styles.module.css";
 
@@ -18,6 +17,7 @@ export type RideCardRoute = {
   dropoffLocation: string;
   driver?: string | RouteUser;
   scheduledPickupTime: string;
+  pickupWindowEnd?: string;
   status: string;
   student?: string | { firstName: string; lastName: string };
   vehicle?: string | { licensePlate: string };
@@ -37,14 +37,6 @@ type RideCardProps = {
   startBusy?: boolean;
 };
 
-function formatDriverName(
-  driver: string | RouteUser | undefined,
-): string | null {
-  if (!driver) return null;
-  if (typeof driver === "string") return null;
-  return `${driver.firstName} ${driver.lastName}`.trim() || null;
-}
-
 function formatTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleTimeString("en-US", {
@@ -54,25 +46,34 @@ function formatTime(iso: string): string {
   });
 }
 
-function getStatusChipColor(
-  status: string,
-): "green" | "red" | "amber" | "blue" | "gray" {
+function isToday(iso: string): boolean {
+  const date = new Date(iso);
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+}
+
+function getStudentStatusChipStyle(status: string): React.CSSProperties {
   switch (status) {
+    case "Scheduled":
+      return { background: "#ffd17f", color: "#22070b" };
+    case "Requested":
+      return { background: "#432c30", color: "#ffffff" };
+    case "En-route":
+    case "Pickedup":
+      return { background: "#ffd17f", color: "#22070b" };
     case "Completed":
-      return "green";
+      return { background: "#70cd87", color: "#22070b" };
     case "Cancelled by Driver":
     case "Cancelled by Student":
     case "Cancelled by Admin":
     case "Missing":
-      return "red";
-    case "Requested":
-    case "Scheduled":
-      return "blue";
-    case "En-route":
-    case "Pickedup":
-      return "amber";
+      return { background: "#f4a0a0", color: "#22070b" };
     default:
-      return "gray";
+      return { background: "#e0e0e0", color: "#22070b" };
   }
 }
 
@@ -114,23 +115,19 @@ export function RideCard({
   const dropoffName =
     locationIdToName[route.dropoffLocation] ?? route.dropoffLocation;
 
-  let cardContent: React.ReactNode;
-
   if (isDriverCard) {
     const studentName =
       route.student && typeof route.student === "object"
         ? `${route.student.firstName} ${route.student.lastName}`.trim()
         : null;
 
-    const dropoffTimeDisplay = (() => {
-      const d = new Date(route.scheduledPickupTime);
-      d.setMinutes(d.getMinutes() + 15);
-      return formatTime(d.toISOString());
-    })();
+    const dropoffTimeDisplay = route.pickupWindowEnd
+      ? formatTime(route.pickupWindowEnd)
+      : null;
 
     const canStart = route.status === "Scheduled";
 
-    cardContent = (
+    return (
       <div className={`${styles.rideCard} ${styles.rideCardDriverNew}`}>
         <div className={styles.rideCardDriverBody}>
           {studentName && (
@@ -149,9 +146,11 @@ export function RideCard({
               className={`${styles.rideCardStopBlock} ${styles.rideCardStopBlockRight}`}
             >
               <span className={styles.rideCardStopLabel}>Dropoff</span>
-              <span className={styles.rideCardStopTime}>
-                {dropoffTimeDisplay}
-              </span>
+              {dropoffTimeDisplay && (
+                <span className={styles.rideCardStopTime}>
+                  {dropoffTimeDisplay}
+                </span>
+              )}
               <span className={styles.rideCardStopLocation}>{dropoffName}</span>
             </div>
           </div>
@@ -202,79 +201,99 @@ export function RideCard({
         </div>
       </div>
     );
-  } else {
-    // Student card layout
-    const dropoffTimeDisplay = (() => {
-      const d = new Date(route.scheduledPickupTime);
-      d.setMinutes(d.getMinutes() + 15);
-      return formatTime(d.toISOString());
-    })();
+  }
 
-    cardContent = (
-      <div className={styles.rideCard}>
-        <div className={styles.rideCardPickupDropoff}>
-          <div className={styles.rideCardStopBlock}>
-            <span className={styles.rideCardStopLabel}>Pickup</span>
-            <span className={styles.rideCardStopTime}>
+  // Student card — Figma design
+  const dropoffTimeDisplay = route.pickupWindowEnd
+    ? formatTime(route.pickupWindowEnd)
+    : null;
+
+  const chatEligible =
+    isToday(route.scheduledPickupTime) &&
+    (route.status === "Scheduled" ||
+      route.status === "En-route" ||
+      route.status === "Pickedup");
+
+  const chipStyle = getStudentStatusChipStyle(route.status);
+  const canCancel = CANCELLABLE_STATUSES.has(route.status);
+
+  return (
+    <div className={`${styles.rideCard} ${styles.rideCardStudent}`}>
+      {/* Left section */}
+      <div className={styles.rideCardStudentBody}>
+        <div className={styles.rideCardPickupDropoffNew}>
+          <div className={styles.rideCardStopBlockNew}>
+            <span className={styles.rideCardStopLabelNew}>Pickup</span>
+            <span className={styles.rideCardStopTimeNew}>
               {formatTime(route.scheduledPickupTime)}
             </span>
-            <span className={styles.rideCardStopLocation}>{pickupName}</span>
+            <span className={styles.rideCardStopLocationNew}>{pickupName}</span>
           </div>
-          <div className={styles.rideCardDivider} aria-hidden />
-          <div className={styles.rideCardStopBlock}>
-            <span className={styles.rideCardStopLabel}>Dropoff</span>
-            <span className={styles.rideCardStopTime}>
-              {dropoffTimeDisplay}
+          <div className={styles.rideCardHorizontalDivider} aria-hidden />
+          <div
+            className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
+          >
+            <span className={styles.rideCardStopLabelNew}>Dropoff</span>
+            {dropoffTimeDisplay && (
+              <span className={styles.rideCardStopTimeNew}>
+                {dropoffTimeDisplay}
+              </span>
+            )}
+            <span className={styles.rideCardStopLocationNew}>
+              {dropoffName}
             </span>
-            <span className={styles.rideCardStopLocation}>{dropoffName}</span>
           </div>
         </div>
 
-        <div className={styles.rideCardFooterRow}>
-          {formatDriverName(route.driver) && (
-            <span className={styles.rideCardDriverName}>
-              Driver: {formatDriverName(route.driver)}
-            </span>
-          )}
-          <BogChip color={getStatusChipColor(route.status)} size="2">
+        <div className={styles.rideCardStatusRow}>
+          <span className={styles.rideCardStatusChip} style={chipStyle}>
             {route.status}
-          </BogChip>
-          <div className={styles.rideCardActions}>
-            {CANCELLABLE_STATUSES.has(route.status) && onCancel && (
-              <button
-                type="button"
-                className={styles.rideCardCancelLink}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onCancel(route._id);
-                }}
-                disabled={cancelling}
-                aria-label="Cancel ride"
-              >
-                {cancelling ? "Cancelling…" : "Cancel ride"}
-              </button>
-            )}
-            <BogButton
-              variant="secondary"
-              size="medium"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }} //TODO route/modals
-              className={styles.rideCardEditButton}
-            >
-              Edit ride
-            </BogButton>
-          </div>
+          </span>
+          {href ? (
+            <Link href={href} className={styles.rideDetailsLink}>
+              Ride details
+            </Link>
+          ) : null}
         </div>
       </div>
-    );
-  }
 
-  if (href) {
-    return <Link href={href}>{cardContent}</Link>;
-  }
+      {/* Vertical divider */}
+      <div className={styles.rideCardVerticalDivider} aria-hidden />
 
-  return cardContent;
+      {/* Right section — action buttons */}
+      <div className={styles.rideCardStudentActions}>
+        <button
+          type="button"
+          className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${!chatEligible ? styles.rideCardActionBtnDisabled : ""}`}
+          disabled={!chatEligible}
+        >
+          Chat with driver
+        </button>
+        <button
+          type="button"
+          className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          Edit ride
+        </button>
+        {canCancel && onCancel && (
+          <button
+            type="button"
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnCancel}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCancel(route._id);
+            }}
+            disabled={cancelling}
+          >
+            {cancelling ? "Cancelling…" : "Cancel ride"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }

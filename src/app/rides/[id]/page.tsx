@@ -6,9 +6,8 @@ import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
-import { RideCard } from "../RideCard";
+import BogButton from "@/components/BogButton/BogButton";
 import styles from "./styles.module.css";
 
 type RouteUser = {
@@ -231,18 +230,13 @@ export default function RideDetailPage({
       };
 
       const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
-      const defaultZoom = 15;
 
-      const center = (): [number, number] => {
-        if (pickup && dropoff) {
-          return [
-            (pickup.longitude + dropoff.longitude) / 2,
-            (pickup.latitude + dropoff.latitude) / 2,
-          ];
-        }
-        if (pickup) return [pickup.longitude, pickup.latitude];
-        if (dropoff) return [dropoff.longitude, dropoff.latitude];
-        return defaultCenter;
+      const fitToBounds = (map: mapboxgl.Map) => {
+        const bounds = new mapboxgl.LngLatBounds(
+          [pickup.longitude, pickup.latitude],
+          [dropoff.longitude, dropoff.latitude],
+        );
+        map.fitBounds(bounds, { padding: 80, maxZoom: 16, duration: 0 });
       };
 
       mapboxgl.accessToken = token;
@@ -250,12 +244,15 @@ export default function RideDetailPage({
         mapRef.current = new mapboxgl.Map({
           container,
           style: "mapbox://styles/mapbox/streets-v12",
-          center: center(),
-          zoom: defaultZoom,
+          center: defaultCenter,
+          zoom: 13,
         });
-        mapRef.current.on("load", () => mapRef.current?.resize());
+        mapRef.current.on("load", () => {
+          mapRef.current?.resize();
+          fitToBounds(mapRef.current!);
+        });
       } else {
-        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
+        fitToBounds(mapRef.current);
       }
 
       markerRefs.current.forEach((marker) => marker.remove());
@@ -379,7 +376,7 @@ export default function RideDetailPage({
         const newSocket = io(wsUrl, {
           auth: {
             routeId,
-            userId: session.user.userId,
+            token: session.user.accessToken,
           },
           transports: ["websocket", "polling"],
           reconnection: true,
@@ -513,7 +510,55 @@ export default function RideDetailPage({
 
   const pickupLocationName =
     locations[route.pickupLocation] ?? route.pickupLocation;
+  const dropoffLocationName =
+    locations[route.dropoffLocation] ?? route.dropoffLocation;
   const driverName = getDriverName(route.driver);
+  const hasDriver = !!driverName;
+
+  const scheduledDate = new Date(route.scheduledPickupTime);
+  const dropoffDate = new Date(scheduledDate.getTime() + 15 * 60 * 1000);
+
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+  const formatDateLabel = (d: Date) => {
+    const today = new Date();
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+    if (isToday) {
+      return `Today, ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+    }
+    return d.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const statusChipStyle: React.CSSProperties = (() => {
+    switch (route.status) {
+      case "Scheduled":
+        return { background: "#dbeafe", color: "#1e40af" };
+      case "En-route":
+      case "Pickedup":
+        return { background: "#fef3c7", color: "#92400e" };
+      case "Completed":
+        return { background: "#d1fae5", color: "#065f46" };
+      case "Cancelled by Driver":
+      case "Cancelled by Student":
+      case "Cancelled by Admin":
+      case "Missing":
+        return { background: "#fee2e2", color: "#991b1b" };
+      default:
+        return { background: "#1e293b", color: "#fff" };
+    }
+  })();
 
   return (
     <div className={styles.rideDetailPage}>
@@ -525,56 +570,82 @@ export default function RideDetailPage({
           </Link>
         </header>
 
-        <div className={styles.contentContainer}>
-          {/* Left Column */}
-          <div className={styles.leftColumn}>
-            {/* Ride Card */}
-            <div className={styles.rideCardWrapper}>
-              <RideCard route={route} locationIdToName={locations} />
-            </div>
+        {/* Title row */}
+        <div className={styles.titleRow}>
+          <h1 className={styles.pageTitle}>Ride Details</h1>
+          <span className={styles.statusChip} style={statusChipStyle}>
+            {route.status}
+          </span>
+        </div>
 
-            {/* Driver Information */}
+        {/* Ride summary card — full width */}
+        <div className={styles.rideSummaryCard}>
+          <p className={styles.rideDateLabel}>
+            {formatDateLabel(scheduledDate)}
+          </p>
+          <div className={styles.pickupDropoffRow}>
+            <div className={styles.stopBlock}>
+              <span className={styles.stopLabel}>Pickup</span>
+              <span className={styles.stopTime}>
+                {formatTime(scheduledDate)}
+              </span>
+              <span className={styles.stopLocation}>{pickupLocationName}</span>
+            </div>
+            <div className={styles.stopDivider} />
+            <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
+              <span className={styles.stopLabel}>Dropoff</span>
+              <span className={styles.stopTime}>{formatTime(dropoffDate)}</span>
+              <span className={styles.stopLocation}>{dropoffLocationName}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Two-column: driver info + map */}
+        <div className={styles.contentContainer}>
+          {/* Left Column — Driver info */}
+          <div className={styles.leftColumn}>
             <div className={styles.driverSection}>
-              <h2 className={styles.sectionTitle}>Driver Information</h2>
+              <div className={styles.driverSectionHeader}>
+                <h2 className={styles.sectionTitle}>Driver Information</h2>
+                {!hasDriver && (
+                  <span className={styles.pendingChip}>Pending</span>
+                )}
+              </div>
               <div className={styles.driverInfoGrid}>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Vehicle ID</span>
                   <span className={styles.infoValue}>
-                    {route.vehicle?._id || "N/A"}
+                    {hasDriver ? route.vehicle?.name || "--" : "--"}
                   </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>License Plate</span>
                   <span className={styles.infoValue}>
-                    {route.vehicle?.licensePlate || "N/A"}
+                    {hasDriver ? route.vehicle?.licensePlate || "--" : "--"}
                   </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Description</span>
                   <span className={styles.infoValue}>
-                    {route.vehicle?.description || "N/A"}
+                    {hasDriver ? route.vehicle?.description || "--" : "--"}
                   </span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Driver</span>
-                  <span className={styles.infoValue}>
-                    {driverName || "Unassigned"}
-                  </span>
+                  <span className={styles.infoValue}>{driverName || "--"}</span>
                 </div>
               </div>
             </div>
 
-            {/* Chat Button */}
-            {isChatEligible && (
-              <button
-                type="button"
-                className={styles.chatButton}
-                onClick={() => setShowChatModal(true)}
-              >
-                <BogIcon name="chats" size={18} />
-                <span>Chat with driver</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className={styles.chatButton}
+              onClick={() => isChatEligible && setShowChatModal(true)}
+              disabled={!isChatEligible}
+            >
+              <BogIcon name="chats" size={18} />
+              <span>Chat with driver</span>
+            </button>
           </div>
 
           {/* Right Column - Map */}

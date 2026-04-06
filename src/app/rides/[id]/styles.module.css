@@ -1,24 +1,136 @@
 .rideDetailPage {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: calc(100vh - 8rem);
+  overflow: hidden;
   background-color: var(--color-solid-bg-base);
 }
 
 .main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 2rem;
+  padding: 1.2rem 2rem 2.5rem;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-  gap: 1.5rem;
+  gap: 1rem;
+  overflow: hidden;
 }
 
 .header {
   display: flex;
   align-items: center;
+}
+
+/* Title row */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pageTitle {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #000;
+  margin: 0;
+  font-family: var(--font-heading);
+  line-height: 4.8rem;
+}
+
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.8rem 2.4rem;
+  border-radius: 2.4rem;
+  font-size: 1.8rem;
+  font-weight: 400;
+  font-family: var(--font-paragraph);
+  color: var(--color-grey-text-strong);
+}
+
+/* Ride summary card */
+.rideSummaryCard {
+  width: 100%;
+  padding: 1.2rem 2rem;
+  box-sizing: border-box;
+  background: var(--color-solid-bg-base);
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+}
+
+.rideDateLabel {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  margin: 0 0 0.8rem 0;
+  font-family: var(--font-heading);
+  line-height: 2.8rem;
+}
+
+.pickupDropoffRow {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+.stopBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stopBlockRight {
+  text-align: right;
+}
+
+.stopLabel {
+  font-size: 1.8rem;
+  color: rgba(34, 7, 11, 0.5);
+  font-family: var(--font-paragraph);
+}
+
+.stopTime {
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+  line-height: 4rem;
+}
+
+.stopLocation {
+  font-size: 1.8rem;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+}
+
+.stopDivider {
+  flex: 1;
+  height: 1px;
+  background: var(--color-grey-stroke-weak);
+  align-self: center;
+}
+
+/* Driver section header */
+.driverSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.pendingChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 1rem;
+  border-radius: 9999px;
+  font-size: 1.3rem;
+  font-weight: 500;
+  font-family: var(--font-paragraph);
+  background: var(--color-grey-fill-weak);
+  color: var(--color-grey-text-weak);
+  border: 1px solid var(--color-grey-stroke-weak);
 }
 
 .backLink {
@@ -41,6 +153,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Left Column */
@@ -48,13 +162,15 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Right Column */
 .rightColumn {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  min-height: 0;
 }
 
 /* Ride Card Wrapper */
@@ -73,9 +189,9 @@
   border-radius: 0.5rem;
   overflow: hidden;
   background-color: var(--color-grey-fill-weaker);
-  aspect-ratio: auto;
-  height: 100%;
-  min-height: 25rem;
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: unset;
 }
 
 .mapImage {
@@ -88,48 +204,49 @@
 .driverSection {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.2rem;
   width: 100%;
-  padding: 1.5rem;
+  padding: 1.4rem 2rem;
   box-sizing: border-box;
-  background-color: var(--color-solid-bg-sunken);
-  border-radius: 0.5rem;
+  background-color: var(--color-solid-bg-base);
+  border-radius: 0.8rem;
   border: 1px solid var(--color-grey-stroke-weak);
 }
 
 .sectionTitle {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 700;
   margin: 0;
   color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
 }
 
 .driverInfoGrid {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.4rem;
 }
 
 .infoRow {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
   gap: 1rem;
 }
 
 .infoLabel {
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 1.8rem;
+  font-weight: 400;
   color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
 }
 
 .infoValue {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.8rem;
+  font-weight: 500;
   color: var(--color-grey-text-strong);
   text-align: right;
+  font-family: var(--font-paragraph);
 }
 
 /* Chat Button */
@@ -137,26 +254,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 0.8rem;
   width: 100%;
-  padding: 1rem;
+  height: 5rem;
+  padding: 1.2rem;
   box-sizing: border-box;
-  background-color: var(--color-brand-text);
+  background-color: var(--color-checkbox-checked);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 1rem;
+  border-radius: 0.4rem;
+  font-size: 1.8rem;
   font-weight: 600;
+  font-family: var(--font-paragraph);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s;
 
-  &:hover {
-    background-color: var(--color-brand-hover);
+  &:hover:not(:disabled) {
+    background-color: var(--color-checkbox-border);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 0.1875rem var(--color-brand-stroke-weak);
   }
 }
 
@@ -425,10 +548,7 @@
 @media (max-width: 1024px) {
   .contentContainer {
     grid-template-columns: 1fr;
-  }
-
-  .mapContainer {
-    min-height: 300px;
+    overflow-y: auto;
   }
 }
 
