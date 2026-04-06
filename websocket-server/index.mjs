@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -15,7 +16,9 @@ async function getRouteForAuth(routeId) {
   const routes = mongoose.connection.db.collection("routes");
   const route = await routes.findOne(
     { _id: mongoose.Types.ObjectId.createFromHexString(routeId) },
-    { projection: { status: 1, driver: 1, student: 1 } },
+    {
+      projection: { status: 1, driver: 1, student: 1, scheduledPickupTime: 1 },
+    },
   );
   return route;
 }
@@ -54,16 +57,49 @@ const io = new Server(server, {
 
     io.use(async (socket, next) => {
       try {
-        const { routeId, userId } = socket.handshake.auth;
-        if (!routeId || !userId) {
-          return next(new Error("Route ID or user ID missing"));
+        const { routeId, token } = socket.handshake.auth;
+        console.log(
+          `Auth attempt for routeId: ${routeId} and token is ${token ? "present" : "missing"} `,
+        );
+        if (!routeId || !token) {
+          return next(new Error("Route ID or token missing"));
         }
+        let decoded;
+        try {
+          const secret = process.env.NEXTAUTH_SECRET;
+          console.log(
+            "NEXTAUTH_SECRET present:",
+            !!secret,
+            "length:",
+            secret?.length,
+          );
+          decoded = jwt.verify(token, secret);
+        } catch (error) {
+          console.error("JWT verify failed:", error.message);
+          return next(new Error("Invalid JWT token"));
+        }
+
+        const userId = decoded.userId;
+
+        console.log("User ID from token:", userId);
+
         const route = await getRouteForAuth(routeId);
         if (!route) {
           return next(new Error("Route not found"));
         }
-        if (route.status !== "En-route") {
-          return next(new Error("Route is not en-route"));
+        const allowedStatuses = ["Scheduled", "En-route"];
+        if (!allowedStatuses.includes(route.status)) {
+          return next(new Error("Route is not available for communication"));
+        }
+
+        const routeDate = new Date(route.scheduledPickupTime);
+        const today = new Date();
+        const isSameDay =
+          routeDate.getFullYear() === today.getFullYear() &&
+          routeDate.getMonth() === today.getMonth() &&
+          routeDate.getDate() === today.getDate();
+        if (!isSameDay) {
+          return next(new Error("Route is not scheduled for today"));
         }
 
         const isStudent = route.student?._id?.toString() === userId;
@@ -95,7 +131,7 @@ const io = new Server(server, {
           if (typeof message !== "string") {
             throw new Error("Message text is required");
           }
-          io.to(room).emit("receiveChatMessage", message);
+          socket.to(room).emit("receiveChatMessage", message);
           console.log(
             `User ${socket.user} sent message to room ${room}: ${message}!`,
           );

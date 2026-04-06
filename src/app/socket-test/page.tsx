@@ -1,49 +1,72 @@
 "use client";
 
-import { useEffect } from "react";
-import { io } from "socket.io-client";
+import { getSession } from "next-auth/react";
+import { useEffect, useRef } from "react";
+import { io, Socket } from "socket.io-client";
 
 export default function SocketTest() {
+  const socketRef = useRef<Socket | null>(null);
+
   useEffect(() => {
-    const socket = io("http://127.0.0.1:4000", {
-      auth: {
-        routeId: "YOUR_ROUTE_ID",
-        userId: "YOUR_USER_ID",
-      },
-      transports: ["websocket", "polling"],
-    });
+    async function initSocket() {
+      const session = await getSession();
+      console.log("Session:", session);
+      console.log("Session user:", session?.user);
+      const token = session?.user.accessToken;
+      console.log(
+        "Access token:",
+        token ? `${token.slice(0, 20)}...` : "undefined",
+      );
 
-    socket.on("connect", () => {
-      console.log("Connected:", socket.id);
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
 
-      socket.emit("sendChatMessage", "Hello from Next.js");
+      const socket = io(
+        process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "http://127.0.0.1:4000",
+        {
+          auth: {
+            routeId: "69cc4f9aa34509334ad805db",
+            token,
+          },
+          transports: ["websocket", "polling"],
+        },
+      );
 
-      socket.emit("updateLocation", {
-        latitude: 12.34,
-        longitude: 56.78,
+      socketRef.current = socket;
+
+      socket.on("connect", () => {
+        console.log("Connected:", socket.id);
+
+        socket.emit("sendChatMessage", "Hello from Next.js");
+
+        socket.emit("updateLocation", {
+          latitude: 12.34,
+          longitude: 56.78,
+        });
       });
-    });
 
-    socket.on("receiveChatMessage", (msg: string) => {
-      console.log("Chat:", msg);
-    });
+      socket.on("receiveChatMessage", (msg: string) => {
+        console.log("Chat:", msg);
+      });
 
-    socket.on(
-      "broadcastLocation",
-      (loc: { latitude: number; longitude: number }) => {
-        console.log("Location:", loc);
-      },
-    );
+      socket.on(
+        "broadcastLocation",
+        (loc: { latitude: number; longitude: number }) => {
+          console.log("Location:", loc);
+        },
+      );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket.io connect_error shape varies at runtime
-    socket.on("connect_error", (err: any) => {
-      console.error("Connection error:", err.message);
-      console.error(err.description);
-      console.error(err.context);
-    });
+      socket.on("connect_error", (err: Error) => {
+        console.error("Connection error:", err.message);
+      });
+    }
+
+    initSocket();
 
     return () => {
-      socket.disconnect();
+      socketRef.current?.disconnect();
     };
   }, []);
 

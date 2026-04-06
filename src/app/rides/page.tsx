@@ -9,19 +9,20 @@ import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
+import { CancelRideModal } from "./CancelRideModal";
 
-type Location = {
+export type Location = {
   _id: string;
   name: string;
   latitude: number;
   longitude: number;
 };
-type RouteUser = {
+export type RouteUser = {
   _id: string;
   firstName: string;
   lastName: string;
 };
-type Route = {
+export type Route = {
   _id: string;
   pickupLocation: string;
   dropoffLocation: string;
@@ -32,18 +33,26 @@ type Route = {
   status: string;
 };
 
-function formatDateHeader(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const isToday =
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear();
-  if (isToday) {
-    return `Today, ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
-  } else {
-    return `Tomorrow, ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
-  }
+function startOfWeekSunday(d: Date): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() - x.getDay());
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function formatWeekRangeHeader(start: Date, end: Date): string {
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const a = start.toLocaleDateString("en-US", opts);
+  const b = end.toLocaleDateString("en-US", opts);
+  return `Week of ${a} - ${b}`;
+}
+
+function formatDayGroupHeader(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function getDateKey(iso: string): string {
@@ -51,12 +60,12 @@ function getDateKey(iso: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-function getDayRange(offset: 0 | 1): [Date, Date] {
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() + offset);
-  start.setHours(0, 0, 0, 0);
+function getWeekRange(offset: 0 | 1): [Date, Date] {
+  const weekStart = startOfWeekSunday(new Date());
+  const start = new Date(weekStart);
+  start.setDate(weekStart.getDate() + offset * 7);
   const end = new Date(start);
+  end.setDate(start.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return [start, end];
 }
@@ -91,6 +100,7 @@ export default function RidesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -120,8 +130,9 @@ export default function RidesPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!mounted) return;
     fetchRides();
-  }, [fetchRides]);
+  }, [mounted, fetchRides]);
 
   const handleCancel = useCallback(async (routeId: string) => {
     setCancellingId(routeId);
@@ -136,6 +147,7 @@ export default function RidesPage() {
         throw new Error(body.error ?? res.statusText);
       }
       setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      setCancelTargetId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cancellation failed.");
     } finally {
@@ -151,33 +163,33 @@ export default function RidesPage() {
     {} as Record<string, string>,
   );
 
-  const todayRange = React.useMemo(
+  const thisWeekRange = React.useMemo(
     () =>
-      mounted ? getDayRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
+      mounted ? getWeekRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
-  const tomorrowRange = React.useMemo(
+  const nextWeekRange = React.useMemo(
     () =>
-      mounted ? getDayRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
+      mounted ? getWeekRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
 
-  const routesByDateToday = React.useMemo(() => {
+  const routesByDateThisWeek = React.useMemo(() => {
     const filtered = routes.filter((r) =>
-      isInRange(r.scheduledPickupTime, todayRange),
+      isInRange(r.scheduledPickupTime, thisWeekRange),
     );
     return groupRoutesByDate(filtered);
-  }, [routes, todayRange]);
+  }, [routes, thisWeekRange]);
 
-  const routesByDateTomorrow = React.useMemo(() => {
+  const routesByDateNextWeek = React.useMemo(() => {
     const filtered = routes.filter((r) =>
-      isInRange(r.scheduledPickupTime, tomorrowRange),
+      isInRange(r.scheduledPickupTime, nextWeekRange),
     );
     return groupRoutesByDate(filtered);
-  }, [routes, tomorrowRange]);
+  }, [routes, nextWeekRange]);
 
-  const dateKeysToday = Object.keys(routesByDateToday).sort();
-  const dateKeysTomorrow = Object.keys(routesByDateTomorrow).sort();
+  const dateKeysThisWeek = Object.keys(routesByDateThisWeek).sort();
+  const dateKeysNextWeek = Object.keys(routesByDateNextWeek).sort();
 
   if (sessionStatus === "loading") {
     return (
@@ -200,21 +212,35 @@ export default function RidesPage() {
   function renderRideList(
     routesByDate: Record<string, Route[]>,
     dateKeys: string[],
+    requestButton: React.ReactNode,
   ) {
     const isEmpty = dateKeys.length === 0;
     return (
       <div className={styles.rideList}>
         {isEmpty && !loading && (
-          <p className={styles.rideListEmpty}>No rides yet.</p>
+          <>
+            <div className={`${styles.dayHeaderRow} ${styles.dayHeaderRowEnd}`}>
+              {requestButton}
+            </div>
+            <p className={styles.rideListEmpty}>No rides yet.</p>
+          </>
         )}
-        {dateKeys.map((dateKey) => (
+        {dateKeys.map((dateKey, index) => (
           <div key={dateKey} className={styles.dateGroup}>
+            <div className={styles.dayHeaderRow}>
+              <h4 className={styles.dayGroupHeading}>
+                {formatDayGroupHeader(
+                  routesByDate[dateKey][0].scheduledPickupTime,
+                )}
+              </h4>
+              {index === 0 ? requestButton : null}
+            </div>
             {routesByDate[dateKey].map((route) => (
               <RideCard
                 key={route._id}
                 route={route}
                 locationIdToName={locationIdToName}
-                onCancel={handleCancel}
+                onCancel={(id) => setCancelTargetId(id)}
                 cancelling={cancellingId === route._id}
               />
             ))}
@@ -224,22 +250,14 @@ export default function RidesPage() {
     );
   }
 
-  const todayDateHeader =
-    dateKeysToday.length > 0
-      ? formatDateHeader(
-          routesByDateToday[dateKeysToday[0]][0].scheduledPickupTime,
-        )
-      : formatDateHeader(new Date().toISOString());
-  const tomorrowDateHeader =
-    dateKeysTomorrow.length > 0
-      ? formatDateHeader(
-          routesByDateTomorrow[dateKeysTomorrow[0]][0].scheduledPickupTime,
-        )
-      : (() => {
-          const d = new Date();
-          d.setDate(d.getDate() + 1);
-          return formatDateHeader(d.toISOString());
-        })();
+  const thisWeekHeader = formatWeekRangeHeader(
+    thisWeekRange[0],
+    thisWeekRange[1],
+  );
+  const nextWeekHeader = formatWeekRangeHeader(
+    nextWeekRange[0],
+    nextWeekRange[1],
+  );
 
   const requestRideButton = (
     <Link href="/rides/new">
@@ -259,6 +277,16 @@ export default function RidesPage() {
 
   return (
     <div className={styles.ridesPage}>
+      <CancelRideModal
+        open={cancelTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTargetId(null);
+        }}
+        onConfirmCancel={() => {
+          if (cancelTargetId) void handleCancel(cancelTargetId);
+        }}
+        confirming={cancelTargetId !== null && cancellingId === cancelTargetId}
+      />
       <main className={styles.main}>
         <div className={styles.mainHeader}>
           <h1 className={styles.pageTitle}>
@@ -274,45 +302,51 @@ export default function RidesPage() {
           </p>
         )}
 
-        <Tabs.Root defaultValue="today" className={styles.tabsLayout}>
+        <Tabs.Root defaultValue="this-week" className={styles.tabsLayout}>
           <div className={styles.tabsRow}>
             <Tabs.List
               className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]}`}
             >
               <Tabs.Trigger
-                value="today"
+                value="this-week"
                 className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
               >
-                <div className={tabStyles["bog-tabs-label"]}>Today</div>
+                <div className={tabStyles["bog-tabs-label"]}>This Week</div>
               </Tabs.Trigger>
               <Tabs.Trigger
-                value="tomorrow"
+                value="next-week"
                 className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
               >
-                <div className={tabStyles["bog-tabs-label"]}>Tomorrow</div>
+                <div className={tabStyles["bog-tabs-label"]}>Next Week</div>
               </Tabs.Trigger>
             </Tabs.List>
           </div>
-          <Tabs.Content value="today" className={styles.tabContentPanel}>
+          <Tabs.Content value="this-week" className={styles.tabContentPanel}>
             <div className={styles.tabContentHeader}>
-              <h2 className={styles.dateHeader}>{todayDateHeader}</h2>
-              {requestRideButton}
+              <h2 className={styles.dateHeader}>{thisWeekHeader}</h2>
             </div>
             {loading ? (
               <p className={styles.rideListLoading}>Loading…</p>
             ) : (
-              renderRideList(routesByDateToday, dateKeysToday)
+              renderRideList(
+                routesByDateThisWeek,
+                dateKeysThisWeek,
+                requestRideButton,
+              )
             )}
           </Tabs.Content>
-          <Tabs.Content value="tomorrow" className={styles.tabContentPanel}>
+          <Tabs.Content value="next-week" className={styles.tabContentPanel}>
             <div className={styles.tabContentHeader}>
-              <h2 className={styles.dateHeader}>{tomorrowDateHeader}</h2>
-              {requestRideButton}
+              <h2 className={styles.dateHeader}>{nextWeekHeader}</h2>
             </div>
             {loading ? (
               <p className={styles.rideListLoading}>Loading…</p>
             ) : (
-              renderRideList(routesByDateTomorrow, dateKeysTomorrow)
+              renderRideList(
+                routesByDateNextWeek,
+                dateKeysNextWeek,
+                requestRideButton,
+              )
             )}
           </Tabs.Content>
         </Tabs.Root>

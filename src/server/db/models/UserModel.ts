@@ -8,6 +8,7 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
+    preferredName: { type: String },
     email: { type: String, required: true, unique: true },
     type: {
       type: String,
@@ -24,10 +25,12 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
 const StudentSchema: Schema<IStudentUser> = new Schema({
   studentInfo: {
     notes: { type: String },
-    accessibilityNeeds: {
-      type: String,
-      enum: ["Wheelchair", "LowMobility"],
-    },
+    accessibilityNeeds: [
+      {
+        type: String,
+        enum: ["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"],
+      },
+    ],
   },
 });
 

@@ -22,5 +22,13 @@
       "email": "driver1@gatech.edu",
       "displayName": "Test Driver"
     }
+  },
+  {
+    "username": "nodbuser",
+    "password": "password",
+    "attributes": {
+      "email": "nodbuser@gatech.edu",
+      "displayName": "No DB User"
+    }
   }
 ]

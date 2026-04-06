@@ -8,9 +8,10 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect } from "react";
 
 const STUDENT_ACCESSIBILITY_OPTIONS = [
-  "None",
   "Wheelchair",
   "LowMobility",
+  "VisualImpairment",
+  "ExtraTime",
 ] as const;
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
@@ -31,8 +32,9 @@ export default function Admin() {
     useAdminTableData(table);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
-  const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] =
-    useState<string>("None");
+  const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] = useState<
+    string[]
+  >([]);
   const [vehicleAccessibility, setVehicleAccessibility] =
     useState<string>("None");
 
@@ -90,6 +92,9 @@ export default function Admin() {
     const lastName = (
       form.elements.namedItem("lastName") as HTMLInputElement
     ).value.trim();
+    const preferredName = (
+      form.elements.namedItem("preferredName") as HTMLInputElement
+    ).value.trim();
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
@@ -104,15 +109,22 @@ export default function Admin() {
 
     const studentInfo: {
       notes?: string;
-      accessibilityNeeds?: "Wheelchair" | "LowMobility";
+      accessibilityNeeds?: (
+        | "Wheelchair"
+        | "LowMobility"
+        | "VisualImpairment"
+        | "ExtraTime"
+      )[];
     } = {
       ...(additionalComments && { notes: additionalComments }),
-      ...(studentAccessibilityNeeds &&
-        studentAccessibilityNeeds !== "None" && {
-          accessibilityNeeds: studentAccessibilityNeeds as
-            | "Wheelchair"
-            | "LowMobility",
-        }),
+      ...(studentAccessibilityNeeds.length > 0 && {
+        accessibilityNeeds: studentAccessibilityNeeds as (
+          | "Wheelchair"
+          | "LowMobility"
+          | "VisualImpairment"
+          | "ExtraTime"
+        )[],
+      }),
     };
     fetch("/api/users", {
       method: "POST",
@@ -121,6 +133,7 @@ export default function Admin() {
         type: "Student",
         firstName,
         lastName,
+        ...(preferredName && { preferredName }),
         email,
         studentInfo,
       }),
@@ -153,6 +166,9 @@ export default function Admin() {
     const lastName = (
       form.elements.namedItem("lastName") as HTMLInputElement
     ).value.trim();
+    const preferredName = (
+      form.elements.namedItem("preferredName") as HTMLInputElement
+    ).value.trim();
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
@@ -165,7 +181,13 @@ export default function Admin() {
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "Admin", firstName, lastName, email }),
+      body: JSON.stringify({
+        type: "Admin",
+        firstName,
+        lastName,
+        ...(preferredName && { preferredName }),
+        email,
+      }),
     })
       .then((res) => {
         if (!res.ok)
@@ -195,6 +217,9 @@ export default function Admin() {
     const lastName = (
       form.elements.namedItem("lastName") as HTMLInputElement
     ).value.trim();
+    const preferredName = (
+      form.elements.namedItem("preferredName") as HTMLInputElement
+    ).value.trim();
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
@@ -207,7 +232,13 @@ export default function Admin() {
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "Driver", firstName, lastName, email }),
+      body: JSON.stringify({
+        type: "Driver",
+        firstName,
+        lastName,
+        ...(preferredName && { preferredName }),
+        email,
+      }),
     })
       .then((res) => {
         if (!res.ok)
@@ -329,7 +360,19 @@ export default function Admin() {
       );
   };
 
-  const addLabel = `${table === "Locations" ? "Add Location" : table === "Vehicles" ? "Add Vehicle" : "Invite New User"}`;
+  const addLabel =
+    table === "Locations"
+      ? "Add location"
+      : table === "Vehicles"
+        ? "Add vehicle"
+        : "Invite user";
+
+  const deleteLabel =
+    table === "Locations"
+      ? "Delete location"
+      : table === "Vehicles"
+        ? "Delete vehicle"
+        : "Delete user";
 
   const formContent =
     table === "Students" ? (
@@ -351,24 +394,47 @@ export default function Admin() {
           />
         </div>
         <BogTextInput
+          name="preferredName"
+          label="Preferred Name"
+          placeholder="Optional"
+        />
+        <BogTextInput
           name="email"
           type="email"
           label="Email"
           placeholder="email@example.com"
           required
         />
-        <BogDropdown
-          name="accessibilityNeeds"
-          label="Accessibility needs"
-          options={[...STUDENT_ACCESSIBILITY_OPTIONS]}
-          placeholder="Select accessibility needs"
-          value={studentAccessibilityNeeds}
-          onSelectionChange={(v) =>
-            setStudentAccessibilityNeeds(
-              typeof v === "string" ? v : (v[0] ?? "None"),
-            )
-          }
-        />
+        <div className="flex flex-col gap-1">
+          <span className="text-[1.3rem] font-medium text-[var(--color-grey-text-strong)]">
+            Accessibility needs
+          </span>
+          <div className="flex flex-col gap-2 pt-1">
+            {STUDENT_ACCESSIBILITY_OPTIONS.map((opt) => (
+              <label
+                key={opt}
+                className="flex items-center gap-2 text-[1.3rem] cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 cursor-pointer accent-[var(--color-brand-stroke-strong,#183777)]"
+                  checked={studentAccessibilityNeeds.includes(opt)}
+                  onChange={(e) =>
+                    setStudentAccessibilityNeeds(
+                      e.target.checked
+                        ? [...studentAccessibilityNeeds, opt]
+                        : studentAccessibilityNeeds.filter((v) => v !== opt),
+                    )
+                  }
+                />
+                {opt === "Wheelchair" && "Wheelchair access needed"}
+                {opt === "LowMobility" && "Low mobility support needed"}
+                {opt === "VisualImpairment" && "Visual impairment"}
+                {opt === "ExtraTime" && "Extra time needed"}
+              </label>
+            ))}
+          </div>
+        </div>
         <BogTextInput
           name="additionalComments"
           label="Additional comments"
@@ -394,6 +460,11 @@ export default function Admin() {
             required
           />
         </div>
+        <BogTextInput
+          name="preferredName"
+          label="Preferred Name"
+          placeholder="Optional"
+        />
         <BogTextInput
           name="email"
           type="email"
@@ -421,6 +492,11 @@ export default function Admin() {
             required
           />
         </div>
+        <BogTextInput
+          name="preferredName"
+          label="Preferred Name"
+          placeholder="Optional"
+        />
         <BogTextInput
           name="email"
           type="email"
@@ -564,7 +640,7 @@ export default function Admin() {
                 onClick={() => {
                   setShowForm(false);
                   setSubmitError(null);
-                  setStudentAccessibilityNeeds("None");
+                  setStudentAccessibilityNeeds([]);
                   setVehicleAccessibility("None");
                 }}
               >
@@ -576,21 +652,8 @@ export default function Admin() {
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4 mb-[10vh]">
+            <div className="mb-[10vh]">
               <h1>{table}</h1>
-              {canDelete && (
-                <BogButton
-                  variant="primary"
-                  size="medium"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  style={{ backgroundColor: "#C73A3A", borderColor: "#C73A3A" }}
-                >
-                  {deleting
-                    ? "Deleting…"
-                    : `Delete ${selectedRows.size} selected`}
-                </BogButton>
-              )}
             </div>
             {table === "Rides" ? (
               <RidesTable />
@@ -604,22 +667,54 @@ export default function Admin() {
                 {loading ? (
                   <p className="text-gray-600">Loading…</p>
                 ) : (
-                  <div>
-                    <BogTable
-                      style={{ marginBottom: "5vh" } as React.CSSProperties}
-                      columnHeaders={columns}
-                      rows={rows}
-                      selectedRows={selectedRows}
-                      onSelectedRowsChange={setSelectedRows}
-                      selectable={true}
-                    />
-                    <button
-                      className="absolute bottom-[10%] right-[5%] rounded-full bg-[#D9D9D9] px-5 py-5 text-white hover:bg-[#a1a1a1] cursor-pointer"
-                      onClick={() => setShowForm(true)}
-                    >
-                      <BogIcon name="plus" size={40} color="white" />
-                    </button>
-                  </div>
+                  <BogTable
+                    style={{ marginBottom: "5vh" } as React.CSSProperties}
+                    columnHeaders={columns}
+                    rows={rows}
+                    selectedRows={selectedRows}
+                    onSelectedRowsChange={setSelectedRows}
+                    selectable={true}
+                    actions={
+                      <>
+                        {canDelete && (
+                          <BogButton
+                            variant="secondary"
+                            size="medium"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                            style={
+                              {
+                                "--color-brand-stroke-strong": "#C73A3A",
+                                "--color-brand-text": "#C73A3A",
+                                "--color-brand-hover": "#a02a2a",
+                                borderRadius: "0.5rem",
+                              } as React.CSSProperties
+                            }
+                          >
+                            {deleting ? "Deleting…" : deleteLabel}
+                          </BogButton>
+                        )}
+                        <BogButton
+                          variant="primary"
+                          size="medium"
+                          onClick={() => setShowForm(true)}
+                          iconProps={{
+                            position: "left",
+                            iconProps: { name: "plus", size: 16 },
+                          }}
+                          style={
+                            {
+                              "--color-brand-text": "#183777",
+                              "--color-brand-hover": "#2a52a0",
+                              borderRadius: "0.5rem",
+                            } as React.CSSProperties
+                          }
+                        >
+                          {addLabel}
+                        </BogButton>
+                      </>
+                    }
+                  />
                 )}
               </>
             )}

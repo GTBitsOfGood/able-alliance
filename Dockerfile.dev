@@ -1,13 +1,33 @@
-FROM node:24
+# ── Stage 1: deps ────────────────────────────────────────────────────────────
+# Install node_modules in an isolated layer so they are only reinstalled when
+# package-lock.json changes, not on every source code change.
+FROM node:24-slim AS deps
 
 WORKDIR /app
 
-COPY ./package.json ./package-lock.json ./
+# Copy only the lockfiles — changes to source never invalidate this layer
+COPY package.json package-lock.json ./
 
-RUN npm ci
+# ci installs exact versions from the lockfile; --prefer-offline avoids
+# redundant registry requests when the layer is cached
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline
 
-COPY . .
+# ── Stage 2: dev ─────────────────────────────────────────────────────────────
+# Runtime image — source is bind-mounted at run time, not baked in.
+FROM node:24-slim AS dev
+
+WORKDIR /app
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy static config files that don't change often
+# (source and public are bind-mounted via docker-compose volumes)
+COPY package.json package-lock.json ./
+COPY next.config.ts tsconfig.json postcss.config.mjs ./
 
 EXPOSE 3000
 
+# app-init.sh is bind-mounted by docker-compose, so the entrypoint is set there
 CMD ["npm", "run", "dev"]
