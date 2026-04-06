@@ -161,13 +161,15 @@ export function RideCard({
             >
               {route.status}
             </span>
-            {route.vehicle && typeof route.vehicle === "object" && route.vehicle.licensePlate && (
-              <span
-                className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
-              >
-                Assigned vehicle ID {route.vehicle.licensePlate}
-              </span>
-            )}
+            {route.vehicle &&
+              typeof route.vehicle === "object" &&
+              route.vehicle.licensePlate && (
+                <span
+                  className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
+                >
+                  Assigned vehicle ID {route.vehicle.licensePlate}
+                </span>
+              )}
           </div>
         </div>
 
