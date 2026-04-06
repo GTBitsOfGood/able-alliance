@@ -25,12 +25,7 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
 const StudentSchema: Schema<IStudentUser> = new Schema({
   studentInfo: {
     notes: { type: String },
-    accessibilityNeeds: [
-      {
-        type: String,
-        enum: ["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"],
-      },
-    ],
+    accessibilityNeeds: [{ type: String }],
   },
 });
 

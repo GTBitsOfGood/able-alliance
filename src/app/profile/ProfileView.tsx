@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BogButton from "@/components/BogButton/BogButton";
 import styles from "./profile.module.css";
 
 type UserType = "Student" | "Driver" | "Admin" | "SuperAdmin";
 
-export type AccessibilityNeed =
-  | "Wheelchair"
-  | "LowMobility"
-  | "VisualImpairment"
-  | "ExtraTime";
+export type AccessibilityNeed = string;
 
 export type ProfileUser = {
   id: string;
@@ -53,20 +49,6 @@ function avatarClass(type: UserType): string {
   }
 }
 
-const ACCESSIBILITY_LABELS: Record<AccessibilityNeed, string> = {
-  Wheelchair: "Wheelchair access needed",
-  LowMobility: "Low mobility support needed",
-  VisualImpairment: "Visual impairment",
-  ExtraTime: "Extra time needed",
-};
-
-const ACCESSIBILITY_OPTIONS: AccessibilityNeed[] = [
-  "Wheelchair",
-  "LowMobility",
-  "VisualImpairment",
-  "ExtraTime",
-];
-
 export function ProfileView({
   user,
   canEdit = false,
@@ -87,6 +69,20 @@ export function ProfileView({
   >(user.studentInfo?.accessibilityNeeds ?? []);
 
   const [displayUser, setDisplayUser] = useState(user);
+  const [accommodationOptions, setAccommodationOptions] = useState<string[]>(
+    [],
+  );
+
+  useEffect(() => {
+    if (user.type === "Student") {
+      fetch("/api/accommodations")
+        .then((r) => r.json())
+        .then((data: { label: string }[]) =>
+          setAccommodationOptions(data.map((d) => d.label)),
+        )
+        .catch(() => {});
+    }
+  }, [user.type]);
 
   const avatarLetter =
     displayUser.firstName.trim().charAt(0).toUpperCase() || "?";
@@ -277,7 +273,7 @@ export function ProfileView({
                   </span>
                   {editing ? (
                     <div className={styles.checkboxGroup}>
-                      {ACCESSIBILITY_OPTIONS.map((opt) => (
+                      {accommodationOptions.map((opt) => (
                         <label key={opt} className={styles.checkboxLabel}>
                           <input
                             type="checkbox"
@@ -291,7 +287,7 @@ export function ProfileView({
                               );
                             }}
                           />
-                          {ACCESSIBILITY_LABELS[opt]}
+                          {opt}
                         </label>
                       ))}
                     </div>
@@ -299,9 +295,9 @@ export function ProfileView({
                     <span className={styles.sectionRowValue}>
                       {(displayUser.studentInfo?.accessibilityNeeds ?? [])
                         .length > 0
-                        ? (displayUser.studentInfo?.accessibilityNeeds ?? [])
-                            .map((v) => ACCESSIBILITY_LABELS[v])
-                            .join(", ")
+                        ? (
+                            displayUser.studentInfo?.accessibilityNeeds ?? []
+                          ).join(", ")
                         : "-"}
                     </span>
                   )}

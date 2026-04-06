@@ -98,9 +98,7 @@ export async function updateStudentInfo(
   id: string,
   update: {
     notes?: string | null;
-    accessibilityNeeds?:
-      | ("Wheelchair" | "LowMobility" | "VisualImpairment" | "ExtraTime")[]
-      | null;
+    accessibilityNeeds?: string[] | null;
   },
 ) {
   await connectMongoDB();

@@ -130,6 +130,26 @@ async function seed() {
     console.log("– Admin already exists");
   }
 
+  // ---------- Accommodations ----------
+  const accCol = db.collection("accommodations");
+
+  const defaultAccommodations = [
+    "Wheelchair",
+    "LowMobility",
+    "VisualImpairment",
+    "ExtraTime",
+  ];
+
+  for (const label of defaultAccommodations) {
+    const existing = await accCol.findOne({ label });
+    if (!existing) {
+      await accCol.insertOne({ label });
+      console.log(`✓ Created accommodation: ${label}`);
+    } else {
+      console.log(`– Accommodation "${label}" already exists`);
+    }
+  }
+
   // ---------- Locations ----------
   const locsCol = db.collection("locations");
 

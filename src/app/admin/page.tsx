@@ -5,27 +5,22 @@ import BogForm from "@/components/BogForm/BogForm";
 import BogButton from "@/components/BogButton/BogButton";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import AccommodationsPanel from "./AccommodationsPanel";
 
-const STUDENT_ACCESSIBILITY_OPTIONS = [
-  "Wheelchair",
-  "LowMobility",
-  "VisualImpairment",
-  "ExtraTime",
-] as const;
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
 import RidesTable from "./RidesTable";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Form } from "radix-ui";
 
-const selected_color = "bg-[var(--color-admin-bg)]";
-
-export default function Admin() {
+function AdminContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [table, setTable] = useState<AdminTableType>("Students");
+  const searchParams = useSearchParams();
+  const table = (searchParams.get("tab") as AdminTableType) || "Students";
   const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { columns, rows, rowIds, loading, error, deleteRows, refetch } =
@@ -37,6 +32,18 @@ export default function Admin() {
   >([]);
   const [vehicleAccessibility, setVehicleAccessibility] =
     useState<string>("None");
+  const [accommodationOptions, setAccommodationOptions] = useState<string[]>(
+    [],
+  );
+
+  useEffect(() => {
+    fetch("/api/accommodations")
+      .then((r) => r.json())
+      .then((data: { label: string }[]) =>
+        setAccommodationOptions(data.map((d) => d.label)),
+      )
+      .catch(() => {});
+  }, []);
 
   const userType = session?.user?.type;
   useEffect(() => {
@@ -49,15 +56,21 @@ export default function Admin() {
     }
   }, [status, userType, router]);
 
+  // Reset selection and form when tab changes
+  useEffect(() => {
+    setSelectedRows(new Set());
+    setShowForm(false);
+    setSubmitError(null);
+    setStudentAccessibilityNeeds([]);
+    setVehicleAccessibility("None");
+  }, [table]);
+
   if (
     status === "loading" ||
     (userType !== "Admin" && userType !== "SuperAdmin")
   ) {
     return null;
   }
-
-  // Add setSelectedRows(new Set()) inside switchTable
-  // after setTable(value);
 
   const handleDelete = async () => {
     if (selectedRows.size === 0) return;
@@ -71,16 +84,6 @@ export default function Admin() {
   };
 
   const canDelete = selectedRows.size > 0 && rowIds.length > 0;
-
-  const switchTable = (
-    event: React.MouseEvent<HTMLHeadingElement>,
-    value: AdminTableType,
-  ) => {
-    setTable(value);
-    setSelectedRows(new Set());
-    setShowForm(false);
-    setSubmitError(null);
-  };
 
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -362,10 +365,23 @@ export default function Admin() {
 
   const addLabel =
     table === "Locations"
-      ? "Add location"
+      ? "Add Location"
       : table === "Vehicles"
-        ? "Add vehicle"
-        : "Invite user";
+        ? "Add Vehicle"
+        : table === "Admins"
+          ? "Invite User"
+          : "Invite User";
+
+  const formTitle =
+    table === "Locations"
+      ? "Add Location"
+      : table === "Vehicles"
+        ? "Add Vehicle"
+        : table === "Admins"
+          ? "Invite New Admin"
+          : table === "Drivers"
+            ? "Invite New Driver"
+            : "Invite New Student";
 
   const deleteLabel =
     table === "Locations"
@@ -376,136 +392,301 @@ export default function Admin() {
 
   const formContent =
     table === "Students" ? (
-      <BogForm onSubmit={handleAddStudent} submitLabel="Create student">
-        <div className="flex gap-20">
-          <BogTextInput
-            name="firstName"
-            label="First Name"
-            placeholder="ex: George"
-            className="flex-1"
-            required
-          />
-          <BogTextInput
-            name="lastName"
-            label="Last Name"
-            placeholder="ex: Burdell"
-            className="flex-1"
-            required
-          />
-        </div>
-        <BogTextInput
-          name="preferredName"
-          label="Preferred Name"
-          placeholder="Optional"
-        />
-        <BogTextInput
-          name="email"
-          type="email"
-          label="Email"
-          placeholder="email@example.com"
-          required
-        />
-        <div className="flex flex-col gap-1">
-          <span className="text-[1.3rem] font-medium text-[var(--color-grey-text-strong)]">
-            Accessibility needs
-          </span>
-          <div className="flex flex-col gap-2 pt-1">
-            {STUDENT_ACCESSIBILITY_OPTIONS.map((opt) => (
-              <label
-                key={opt}
-                className="flex items-center gap-2 text-[1.3rem] cursor-pointer select-none"
-              >
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 cursor-pointer accent-[var(--color-brand-stroke-strong,#183777)]"
-                  checked={studentAccessibilityNeeds.includes(opt)}
-                  onChange={(e) =>
-                    setStudentAccessibilityNeeds(
-                      e.target.checked
-                        ? [...studentAccessibilityNeeds, opt]
-                        : studentAccessibilityNeeds.filter((v) => v !== opt),
-                    )
-                  }
-                />
-                {opt === "Wheelchair" && "Wheelchair access needed"}
-                {opt === "LowMobility" && "Low mobility support needed"}
-                {opt === "VisualImpairment" && "Visual impairment"}
-                {opt === "ExtraTime" && "Extra time needed"}
-              </label>
-            ))}
+      <div className="flex flex-row">
+        <Form.Root
+          onSubmit={handleAddStudent}
+          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
+        >
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="firstName"
+              label="First Name"
+              placeholder="George"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+            <BogTextInput
+              name="lastName"
+              label="Last Name"
+              placeholder="Burdell"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
           </div>
-        </div>
-        <BogTextInput
-          name="additionalComments"
-          label="Additional comments"
-          placeholder="Optional"
-        />
-        {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-      </BogForm>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="preferredName"
+              label="Preferred Name"
+              placeholder="Buzz"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+            <BogTextInput
+              name="email"
+              type="email"
+              label="GT Email"
+              placeholder="gburdell01@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <div className="flex flex-col flex-1 basis-[20rem] max-w-[35rem] gap-3">
+              <span
+                style={{
+                  fontSize: "1.6rem",
+                  fontFamily: "var(--font-paragraph)",
+                  color: "var(--color-grey-text-strong)",
+                }}
+              >
+                Accommodations
+              </span>
+              {/* Dropdown */}
+              <div style={{ position: "relative" }}>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val && !studentAccessibilityNeeds.includes(val)) {
+                      setStudentAccessibilityNeeds([
+                        ...studentAccessibilityNeeds,
+                        val,
+                      ]);
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 0.5rem",
+                    paddingRight: "2.4rem",
+                    appearance: "none",
+                    border: "1px solid var(--color-grey-stroke-weak)",
+                    borderRadius: "0.4rem",
+                    fontSize: "1.4rem",
+                    fontFamily: "var(--font-paragraph)",
+                    color: "var(--color-grey-text-weak)",
+                    background: "var(--color-solid-bg-sunken)",
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <option value="" disabled>
+                    Select from list
+                  </option>
+                  {accommodationOptions
+                    .filter((opt) => !studentAccessibilityNeeds.includes(opt))
+                    .map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                </select>
+                <span
+                  style={{
+                    position: "absolute",
+                    right: "1rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                    width: "1.2rem",
+                    height: "1.2rem",
+                    display: "inline-block",
+                    backgroundColor: "var(--color-grey-text-weak)",
+                    clipPath:
+                      "polygon(20% 35%, 50% 65%, 80% 35%, 90% 45%, 50% 80%, 10% 45%)",
+                  }}
+                />
+              </div>
+              {/* Selected chips */}
+              {studentAccessibilityNeeds.length > 0 && (
+                <div
+                  style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem" }}
+                >
+                  {studentAccessibilityNeeds.map((opt) => (
+                    <span
+                      key={opt}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.6rem",
+                        padding: "0.5rem 1rem",
+                        border: "1px solid var(--color-grey-stroke-weak)",
+                        borderRadius: "0.4rem",
+                        fontSize: "1.4rem",
+                        fontFamily: "var(--font-paragraph)",
+                        background: "var(--color-solid-bg-sunken)",
+                        color: "var(--color-grey-text-strong)",
+                      }}
+                    >
+                      {opt}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStudentAccessibilityNeeds(
+                            studentAccessibilityNeeds.filter((v) => v !== opt),
+                          )
+                        }
+                        style={{
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                          fontSize: "1.5rem",
+                          lineHeight: 1,
+                          padding: 0,
+                          color: "var(--color-grey-text-strong)",
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <BogTextInput
+              name="additionalComments"
+              label="Additional Notes"
+              placeholder="Add any additional information here."
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="inviteMessage"
+              label="Invite message"
+              placeholder="Add custom invite message here."
+              className="flex w-full"
+              multiline={true}
+            />
+          </div>
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+
+          <Form.Submit asChild>
+            <BogButton
+              type="submit"
+              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
+            >
+              {"Invite"}
+            </BogButton>
+          </Form.Submit>
+        </Form.Root>
+      </div>
     ) : table === "Drivers" ? (
-      <BogForm onSubmit={handleAddDriver} submitLabel="Create driver">
-        <div className="flex gap-20">
-          <BogTextInput
-            name="firstName"
-            label="First Name"
-            placeholder="ex: George"
-            className="flex-1"
-            required
-          />
-          <BogTextInput
-            name="lastName"
-            label="Last Name"
-            placeholder="ex: Burdell"
-            className="flex-1"
-            required
-          />
-        </div>
-        <BogTextInput
-          name="preferredName"
-          label="Preferred Name"
-          placeholder="Optional"
-        />
-        <BogTextInput
-          name="email"
-          type="email"
-          label="Email"
-          placeholder="email@example.com"
-          required
-        />
-        {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-      </BogForm>
+      <div className="flex flex-row">
+        <Form.Root
+          onSubmit={handleAddDriver}
+          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
+        >
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="firstName"
+              label="First Name"
+              placeholder="George"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+            <BogTextInput
+              name="lastName"
+              label="Last Name"
+              placeholder="Burdell"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="preferredName"
+              label="Preferred Name"
+              placeholder="Buzz"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+            <BogTextInput
+              name="email"
+              type="email"
+              label="GT Email"
+              placeholder="gburdell01@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="inviteMessage"
+              label="Invite message"
+              placeholder="Add custom invite message here."
+              className="flex w-full"
+              multiline={true}
+            />
+          </div>
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+
+          <Form.Submit asChild>
+            <BogButton
+              type="submit"
+              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
+            >
+              {"Invite"}
+            </BogButton>
+          </Form.Submit>
+        </Form.Root>
+      </div>
     ) : table === "Admins" ? (
-      <BogForm onSubmit={handleAddAdmin} submitLabel="Create admin">
-        <div className="flex gap-20">
-          <BogTextInput
-            name="firstName"
-            label="First Name"
-            placeholder="ex: George"
-            className="flex-1"
-            required
-          />
-          <BogTextInput
-            name="lastName"
-            label="Last Name"
-            placeholder="ex: Burdell"
-            className="flex-1"
-            required
-          />
-        </div>
-        <BogTextInput
-          name="preferredName"
-          label="Preferred Name"
-          placeholder="Optional"
-        />
-        <BogTextInput
-          name="email"
-          type="email"
-          label="Email"
-          placeholder="email@example.com"
-          required
-        />
-        {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-      </BogForm>
+      <div className="flex flex-row">
+        <Form.Root
+          onSubmit={handleAddAdmin}
+          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
+        >
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="firstName"
+              label="First Name"
+              placeholder="George"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+            <BogTextInput
+              name="lastName"
+              label="Last Name"
+              placeholder="Burdell"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="preferredName"
+              label="Preferred Name"
+              placeholder="Buzz"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+            />
+            <BogTextInput
+              name="email"
+              type="email"
+              label="GT Email"
+              placeholder="gburdell01@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="inviteMessage"
+              label="Invite message"
+              placeholder="Add custom invite message here."
+              className="flex w-full"
+              multiline={true}
+            />
+          </div>
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+
+          <Form.Submit asChild>
+            <BogButton
+              type="submit"
+              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
+            >
+              {"Invite"}
+            </BogButton>
+          </Form.Submit>
+        </Form.Root>
+      </div>
     ) : table === "Locations" ? (
       <BogForm onSubmit={handleAddLocation} submitLabel="Create location">
         <BogTextInput
@@ -570,71 +751,11 @@ export default function Admin() {
     );
 
   return (
-    <div className="flex h-screen w-screen">
-      <div className="relative py-20 px-10 w-[12%] min-w-fit shadow-sm flex flex-col">
-        <div className="mb-[10vh]">
-          <h3>GT Paratransit</h3>
-        </div>
-        <div>
-          <h4
-            className={`rounded-md p-5 hover:cursor-pointer ${table === "Students" ? selected_color : ""}`}
-            onClick={(e) => switchTable(e, "Students")}
-          >
-            Students
-          </h4>
-          <h4
-            className={`rounded-md p-5 hover:cursor-pointer ${table === "Drivers" ? selected_color : ""}`}
-            onClick={(e) => switchTable(e, "Drivers")}
-          >
-            Drivers
-          </h4>
-          <h4
-            className={`rounded-md p-5 hover:cursor-pointer ${table === "Vehicles" ? selected_color : ""}`}
-            onClick={(e) => switchTable(e, "Vehicles")}
-          >
-            Vehicles
-          </h4>
-          <h4
-            className={`rounded-md p-5 hover:cursor-pointer ${table === "Locations" ? selected_color : ""}`}
-            onClick={(e) => switchTable(e, "Locations")}
-          >
-            Locations
-          </h4>
-          <h4
-            className={`rounded-md p-5 hover:cursor-pointer ${table === "Rides" ? selected_color : ""}`}
-            onClick={(e) => switchTable(e, "Rides")}
-          >
-            Ride List
-          </h4>
-          {userType === "SuperAdmin" ? (
-            <h4
-              className={`rounded-md p-5 hover:cursor-pointer ${table === "Admins" ? selected_color : ""}`}
-              onClick={(e) => switchTable(e, "Admins")}
-            >
-              Admins
-            </h4>
-          ) : (
-            ""
-          )}
-        </div>
-        <div className="mt-auto pt-10 flex items-center gap-8 border-t-1 border-t-[var(--color-grey-stroke-weak)]">
-          <div className="flex items-center justify-center rounded-full bg-[var(--color-admin-bg)] font-semibold shrink-0 w-[3.2rem] h-[3.2rem] text-[1.4rem]">
-            {session?.user?.firstName?.[0]?.toUpperCase() ?? "?"}
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-[1.3rem] leading-tight truncate">
-              {session?.user?.firstName} {session?.user?.lastName}
-            </span>
-            <span className="text-[1.1rem] text-gray-500 leading-tight">
-              {userType}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="py-20 px-10 relative flex-1">
-        {showForm ? (
-          <>
-            <div className="flex items-center gap-4 mb-[10vh]">
+    <div className="py-10 px-12 pr-20 relative flex flex-col flex-1 w-full">
+      {showForm ? (
+        <>
+          <div className="flex flex-col gap-4 mb-[2.4rem]">
+            <div className="flex text-paragraph-1 gap-2">
               <button
                 className="flex items-center gap-2 hover:cursor-pointer"
                 onClick={() => {
@@ -644,83 +765,111 @@ export default function Admin() {
                   setVehicleAccessibility("None");
                 }}
               >
-                <BogIcon name="arrow-left" size={24} />
+                <BogIcon name="arrow-left" size={20} />
               </button>
-              <h1>{addLabel}</h1>
+              Back to rides
             </div>
-            {formContent}
-          </>
-        ) : (
-          <>
-            <div className="mb-[10vh]">
-              <h1>{table}</h1>
-            </div>
-            {table === "Rides" ? (
-              <RidesTable />
-            ) : (
-              <>
-                {error && (
-                  <p className="mb-4 text-sm text-amber-700" role="status">
-                    {error}
-                  </p>
-                )}
-                {loading ? (
-                  <p className="text-gray-600">Loading…</p>
-                ) : (
-                  <BogTable
-                    style={{ marginBottom: "5vh" } as React.CSSProperties}
-                    columnHeaders={columns}
-                    rows={rows}
-                    selectedRows={selectedRows}
-                    onSelectedRowsChange={setSelectedRows}
-                    selectable={true}
-                    actions={
-                      <>
-                        {canDelete && (
-                          <BogButton
-                            variant="secondary"
-                            size="medium"
-                            onClick={handleDelete}
-                            disabled={deleting}
-                            style={
-                              {
-                                "--color-brand-stroke-strong": "#C73A3A",
-                                "--color-brand-text": "#C73A3A",
-                                "--color-brand-hover": "#a02a2a",
-                                borderRadius: "0.5rem",
-                              } as React.CSSProperties
-                            }
-                          >
-                            {deleting ? "Deleting…" : deleteLabel}
-                          </BogButton>
-                        )}
+            <h1>{formTitle}</h1>
+          </div>
+          {formContent}
+        </>
+      ) : (
+        <>
+          <div className="mb-[2.4rem]">
+            <h1>
+              {table === "Locations" || table === "Accommodations"
+                ? "Configurations"
+                : table}
+            </h1>
+            {table === "Locations" && (
+              <h2
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: "2.4rem",
+                  fontWeight: 700,
+                  color: "var(--color-grey-text-strong)",
+                  marginTop: "1.6rem",
+                }}
+              >
+                Pickup &amp; Dropoff Locations
+              </h2>
+            )}
+          </div>
+          {table === "Rides" ? (
+            <RidesTable />
+          ) : table === "Accommodations" ? (
+            <AccommodationsPanel />
+          ) : (
+            <>
+              {error && (
+                <p className="mb-4 text-sm text-amber-700" role="status">
+                  {error}
+                </p>
+              )}
+              {loading ? (
+                <p className="text-gray-600">Loading…</p>
+              ) : (
+                <BogTable
+                  style={{ marginBottom: "5vh" } as React.CSSProperties}
+                  columnHeaders={columns}
+                  rows={rows}
+                  selectedRows={selectedRows}
+                  onSelectedRowsChange={setSelectedRows}
+                  selectable={true}
+                  actions={
+                    <>
+                      {canDelete && (
                         <BogButton
-                          variant="primary"
+                          variant="secondary"
                           size="medium"
-                          onClick={() => setShowForm(true)}
-                          iconProps={{
-                            position: "left",
-                            iconProps: { name: "plus", size: 16 },
-                          }}
+                          onClick={handleDelete}
+                          disabled={deleting}
                           style={
                             {
-                              "--color-brand-text": "#183777",
-                              "--color-brand-hover": "#2a52a0",
+                              "--color-brand-stroke-strong": "#C73A3A",
+                              "--color-brand-text": "#C73A3A",
+                              "--color-brand-hover": "#a02a2a",
                               borderRadius: "0.5rem",
                             } as React.CSSProperties
                           }
                         >
-                          {addLabel}
+                          {deleting ? "Deleting…" : deleteLabel}
                         </BogButton>
-                      </>
-                    }
-                  />
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
+                      )}
+                      <BogButton
+                        variant="primary"
+                        size="medium"
+                        onClick={() => setShowForm(true)}
+                        iconProps={{
+                          position: "left",
+                          iconProps: { name: "plus", size: 16 },
+                        }}
+                        style={
+                          {
+                            "--color-brand-text": "#183777",
+                            "--color-brand-hover": "#2a52a0",
+                            borderRadius: "0.5rem",
+                          } as React.CSSProperties
+                        }
+                      >
+                        {addLabel}
+                      </BogButton>
+                    </>
+                  }
+                />
+              )}
+            </>
+          )}
+        </>
+      )}
     </div>
+  );
+}
+
+export default function Admin() {
+  return (
+    <Suspense fallback={null}>
+      <AdminContent />
+    </Suspense>
   );
 }

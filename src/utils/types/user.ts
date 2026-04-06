@@ -18,11 +18,7 @@ export const studentSchema = baseUserSchema.extend({
   type: z.literal("Student"),
   studentInfo: z.object({
     notes: z.string().optional(),
-    accessibilityNeeds: z
-      .array(
-        z.enum(["Wheelchair", "LowMobility", "VisualImpairment", "ExtraTime"]),
-      )
-      .optional(),
+    accessibilityNeeds: z.array(z.string().min(1)).optional(),
   }),
 });
 

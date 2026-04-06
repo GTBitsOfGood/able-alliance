@@ -1,0 +1,209 @@
+.sidebar {
+  width: 24rem;
+  min-width: 24rem;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-solid-bg-base);
+  border-right: 1px solid var(--color-grey-stroke-weak);
+  overflow-y: auto;
+}
+
+.top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 2.4rem 1.6rem 1.6rem;
+}
+
+.brand {
+  margin: 0 0 3.2rem;
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--color-grey-text-strong);
+  padding: 0 0.8rem;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.2rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  font-family: var(--font-paragraph);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--color-grey-text-strong);
+  transition: background 0.15s;
+}
+
+.navItem:hover {
+  background: var(--color-grey-fill-weak);
+}
+
+.navItem.active {
+  background: var(--color-admin-bg);
+  font-weight: 600;
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 1.2rem;
+  border-radius: 0.6rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-paragraph);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--color-grey-text-strong);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.navGroup:hover {
+  background: var(--color-grey-fill-weak);
+}
+
+.chevron {
+  margin-left: auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex-shrink: 0;
+  display: inline-block;
+  background-color: var(--color-grey-text-weak);
+  transition: transform 0.4s;
+  /* CSS chevron via clip-path */
+  clip-path: polygon(20% 35%, 50% 65%, 80% 35%, 90% 45%, 50% 80%, 10% 45%);
+}
+
+.chevronUp {
+  transform: rotate(180deg);
+}
+
+.chevronDown {
+  transform: rotate(0deg);
+}
+
+.subItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+  margin-left: 2rem;
+  padding-left: 1.2rem;
+  border-left: 2px solid var(--color-admin-bg);
+}
+
+.subItem {
+  display: block;
+  padding: 0.7rem 1rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--color-grey-text-strong);
+  transition: background 0.15s;
+}
+
+.subItem:hover {
+  background: var(--color-grey-fill-weak);
+}
+
+.subItem.active {
+  background: var(--color-admin-bg);
+  font-weight: 600;
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.6rem;
+  border-top: 1px solid var(--color-grey-stroke-weak);
+}
+
+.logoutBtn {
+  display: block;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.logoutBtn:hover {
+  background: var(--color-grey-fill-weaker);
+}
+
+.userCard {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.8rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.userCard:hover {
+  background: var(--color-grey-fill-weak);
+}
+
+.avatar {
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 999px;
+  background: var(--color-status-green-text);
+  color: var(--color-solid-bg-base);
+  font-family: var(--font-paragraph);
+  font-weight: 700;
+  font-size: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.userName {
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--color-grey-text-weak);
+}
