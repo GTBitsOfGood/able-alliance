@@ -31,6 +31,7 @@ type RouteData = {
     seatCount: number;
   };
   scheduledPickupTime: string;
+  estimatedDropoffTime?: string;
   status: string;
 };
 
@@ -63,7 +64,6 @@ function getStatusChipColor(
   switch (status) {
     case "Completed":
       return "green";
-    case "Cancelled by Driver":
     case "Cancelled by Student":
     case "Cancelled by Admin":
     case "Missing":
@@ -516,7 +516,6 @@ export default function RideDetailPage({
   const hasDriver = !!driverName;
 
   const scheduledDate = new Date(route.scheduledPickupTime);
-  const dropoffDate = new Date(scheduledDate.getTime() + 15 * 60 * 1000);
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("en-US", {
@@ -524,6 +523,10 @@ export default function RideDetailPage({
       minute: "2-digit",
       hour12: true,
     });
+
+  const dropoffTimeDisplay = route.estimatedDropoffTime
+    ? formatTime(new Date(route.estimatedDropoffTime))
+    : "N/A";
 
   const formatDateLabel = (d: Date) => {
     const today = new Date();
@@ -550,7 +553,6 @@ export default function RideDetailPage({
         return { background: "#fef3c7", color: "#92400e" };
       case "Completed":
         return { background: "#d1fae5", color: "#065f46" };
-      case "Cancelled by Driver":
       case "Cancelled by Student":
       case "Cancelled by Admin":
       case "Missing":
@@ -594,7 +596,7 @@ export default function RideDetailPage({
             <div className={styles.stopDivider} />
             <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
               <span className={styles.stopLabel}>Dropoff</span>
-              <span className={styles.stopTime}>{formatTime(dropoffDate)}</span>
+              <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
               <span className={styles.stopLocation}>{dropoffLocationName}</span>
             </div>
           </div>

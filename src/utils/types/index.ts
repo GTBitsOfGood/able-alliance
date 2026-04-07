@@ -38,7 +38,6 @@ export const routeStatusEnum = z.enum([
   "Pickedup",
   "Completed",
   "Missing",
-  "Cancelled by Driver",
   "Cancelled by Student",
   "Cancelled by Admin",
 ]);
@@ -52,6 +51,7 @@ export const routeSchema = z.object({
   driver: objectIdString.optional(),
   vehicle: objectIdString.optional(),
   scheduledPickupTime: z.coerce.date(),
+  estimatedDropoffTime: z.coerce.date().optional(),
   status: routeStatusEnum.default("Requested"),
 });
 

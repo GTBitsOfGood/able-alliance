@@ -18,6 +18,7 @@ export type RideCardRoute = {
   driver?: string | RouteUser;
   scheduledPickupTime: string;
   pickupWindowEnd?: string;
+  estimatedDropoffTime?: string;
   status: string;
   student?: string | { firstName: string; lastName: string };
   vehicle?: string | { licensePlate: string };
@@ -67,7 +68,6 @@ function getStudentStatusChipStyle(status: string): React.CSSProperties {
       return { background: "#ffd17f", color: "#22070b" };
     case "Completed":
       return { background: "#70cd87", color: "#22070b" };
-    case "Cancelled by Driver":
     case "Cancelled by Student":
     case "Cancelled by Admin":
     case "Missing":
@@ -83,7 +83,6 @@ function getDriverStatusChipColor(
   switch (status) {
     case "Completed":
       return "green";
-    case "Cancelled by Driver":
     case "Cancelled by Student":
     case "Cancelled by Admin":
     case "Missing":
@@ -121,9 +120,9 @@ export function RideCard({
         ? `${route.student.firstName} ${route.student.lastName}`.trim()
         : null;
 
-    const dropoffTimeDisplay = route.pickupWindowEnd
-      ? formatTime(route.pickupWindowEnd)
-      : null;
+    const dropoffTimeDisplay = route.estimatedDropoffTime
+      ? formatTime(route.estimatedDropoffTime)
+      : "N/A";
 
     const canStart = route.status === "Scheduled";
 
@@ -146,11 +145,9 @@ export function RideCard({
               className={`${styles.rideCardStopBlock} ${styles.rideCardStopBlockRight}`}
             >
               <span className={styles.rideCardStopLabel}>Dropoff</span>
-              {dropoffTimeDisplay && (
-                <span className={styles.rideCardStopTime}>
-                  {dropoffTimeDisplay}
-                </span>
-              )}
+              <span className={styles.rideCardStopTime}>
+                {dropoffTimeDisplay}
+              </span>
               <span className={styles.rideCardStopLocation}>{dropoffName}</span>
             </div>
           </div>
@@ -204,9 +201,9 @@ export function RideCard({
   }
 
   // Student card — Figma design
-  const dropoffTimeDisplay = route.pickupWindowEnd
-    ? formatTime(route.pickupWindowEnd)
-    : null;
+  const dropoffTimeDisplay = route.estimatedDropoffTime
+    ? formatTime(route.estimatedDropoffTime)
+    : "N/A";
 
   const chatEligible =
     isToday(route.scheduledPickupTime) &&
@@ -234,11 +231,9 @@ export function RideCard({
             className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
           >
             <span className={styles.rideCardStopLabelNew}>Dropoff</span>
-            {dropoffTimeDisplay && (
-              <span className={styles.rideCardStopTimeNew}>
-                {dropoffTimeDisplay}
-              </span>
-            )}
+            <span className={styles.rideCardStopTimeNew}>
+              {dropoffTimeDisplay}
+            </span>
             <span className={styles.rideCardStopLocationNew}>
               {dropoffName}
             </span>
