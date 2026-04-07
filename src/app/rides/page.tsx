@@ -31,6 +31,7 @@ export type Route = {
   vehicle?: string;
   scheduledPickupTime: string;
   pickupWindowEnd?: string;
+  estimatedDropoffTime?: string;
   status: string;
 };
 
@@ -58,7 +59,10 @@ function formatDayGroupHeader(iso: string): string {
 
 function getDateKey(iso: string): string {
   const d = new Date(iso);
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getWeekRange(offset: 0 | 1): [Date, Date] {

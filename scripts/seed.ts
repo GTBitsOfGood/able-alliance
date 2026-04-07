@@ -12,7 +12,9 @@
  * Idempotent — checks for existing data before inserting.
  */
 
+import "dotenv/config";
 import mongoose from "mongoose";
+import { getMapboxTravelDuration } from "@/server/mapbox";
 
 let MONGODB_URI =
   process.argv[2] ??
@@ -153,12 +155,15 @@ async function seed() {
   // ---------- Locations ----------
   const locsCol = db.collection("locations");
 
+  const pickupCoords = { latitude: 33.7756, longitude: -84.4027 };
+  const dropoffCoords = { latitude: 33.7767, longitude: -84.3891 };
+  const dropoff2Coords = { latitude: 33.7739, longitude: -84.3983 };
+
   let pickup = await locsCol.findOne({ name: "Exhibition Hall" });
   if (!pickup) {
     const res = await locsCol.insertOne({
       name: "Exhibition Hall",
-      latitude: 33.7756,
-      longitude: -84.4027,
+      ...pickupCoords,
     });
     pickup = { _id: res.insertedId, name: "Exhibition Hall" };
     console.log("✓ Created location: Exhibition Hall");
@@ -170,8 +175,7 @@ async function seed() {
   if (!dropoff) {
     const res = await locsCol.insertOne({
       name: "Tech Square Eastbound",
-      latitude: 33.7767,
-      longitude: -84.3891,
+      ...dropoffCoords,
     });
     dropoff = { _id: res.insertedId, name: "Tech Square Eastbound" };
     console.log("✓ Created location: Tech Square Eastbound");
@@ -183,8 +187,7 @@ async function seed() {
   if (!dropoff2) {
     const res = await locsCol.insertOne({
       name: "Student Center",
-      latitude: 33.7739,
-      longitude: -84.3983,
+      ...dropoff2Coords,
     });
     dropoff2 = { _id: res.insertedId, name: "Student Center" };
     console.log("✓ Created location: Student Center");
@@ -290,22 +293,54 @@ async function seed() {
   const makeRoute = (
     label: string,
     dropoffLocation: unknown,
+    dropoffLatLng: { latitude: number; longitude: number },
     scheduledPickupTime: Date,
   ) => ({
     label,
     dropoffLocation,
+    dropoffLatLng,
     scheduledPickupTime,
     pickupWindowStart: addMinutes(scheduledPickupTime, -30),
     pickupWindowEnd: addMinutes(scheduledPickupTime, 30),
   });
 
   const routeTemplates = [
-    makeRoute("today 10:00", dropoffId, withTime(todayStart, 10, 0)),
-    makeRoute("today 14:30", dropoffId, withTime(todayStart, 14, 30)),
-    makeRoute("today 16:00", dropoff2Id, withTime(todayStart, 16, 0)),
-    makeRoute("tomorrow 09:30", dropoffId, withTime(tomorrowStart, 9, 30)),
-    makeRoute("tomorrow 14:00", dropoff2Id, withTime(tomorrowStart, 14, 0)),
-    makeRoute("tomorrow 16:30", dropoffId, withTime(tomorrowStart, 16, 30)),
+    makeRoute(
+      "today 10:00",
+      dropoffId,
+      dropoffCoords,
+      withTime(todayStart, 10, 0),
+    ),
+    makeRoute(
+      "today 14:30",
+      dropoffId,
+      dropoffCoords,
+      withTime(todayStart, 14, 30),
+    ),
+    makeRoute(
+      "today 16:00",
+      dropoff2Id,
+      dropoff2Coords,
+      withTime(todayStart, 16, 0),
+    ),
+    makeRoute(
+      "tomorrow 09:30",
+      dropoffId,
+      dropoffCoords,
+      withTime(tomorrowStart, 9, 30),
+    ),
+    makeRoute(
+      "tomorrow 14:00",
+      dropoff2Id,
+      dropoff2Coords,
+      withTime(tomorrowStart, 14, 0),
+    ),
+    makeRoute(
+      "tomorrow 16:30",
+      dropoffId,
+      dropoffCoords,
+      withTime(tomorrowStart, 16, 30),
+    ),
   ];
 
   let createdRoutes = 0;
@@ -324,6 +359,21 @@ async function seed() {
       continue;
     }
 
+    const durationSeconds = await getMapboxTravelDuration(
+      pickupCoords.latitude,
+      pickupCoords.longitude,
+      template.dropoffLatLng.latitude,
+      template.dropoffLatLng.longitude,
+      template.scheduledPickupTime,
+    );
+
+    const estimatedDropoffTime =
+      durationSeconds !== null
+        ? new Date(
+            template.scheduledPickupTime.getTime() + durationSeconds * 1000,
+          )
+        : undefined;
+
     await routesCol.insertOne({
       pickupLocation: pickupId,
       dropoffLocation: template.dropoffLocation,
@@ -333,11 +383,15 @@ async function seed() {
       scheduledPickupTime: template.scheduledPickupTime,
       pickupWindowStart: template.pickupWindowStart,
       pickupWindowEnd: template.pickupWindowEnd,
+      estimatedDropoffTime,
       status: "Scheduled",
     });
 
     createdRoutes += 1;
-    console.log(`✓ Created route: ${template.label}`);
+    const dropoffLabel = estimatedDropoffTime
+      ? `est. dropoff ${estimatedDropoffTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`
+      : "no dropoff estimate (MAPBOX_TOKEN not set)";
+    console.log(`✓ Created route: ${template.label} (${dropoffLabel})`);
   }
 
   console.log(

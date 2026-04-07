@@ -8,6 +8,7 @@ import {
   RouteAlreadyExistsException,
   RouteReferenceNotFoundException,
 } from "@/utils/exceptions/route";
+import { getMapboxTravelDuration } from "@/server/mapbox";
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -53,6 +54,21 @@ export async function createRoute(data: CreateRouteInput) {
       {},
   };
 
+  const durationSeconds = await getMapboxTravelDuration(
+    pickupLoc.latitude,
+    pickupLoc.longitude,
+    dropoffLoc.latitude,
+    dropoffLoc.longitude,
+    validatedData.scheduledPickupTime,
+  );
+
+  const estimatedDropoffTime =
+    durationSeconds !== null
+      ? new Date(
+          validatedData.scheduledPickupTime.getTime() + durationSeconds * 1000,
+        )
+      : undefined;
+
   const route = await RouteModel.create({
     pickupLocation: validatedData.pickupLocation,
     dropoffLocation: validatedData.dropoffLocation,
@@ -60,6 +76,7 @@ export async function createRoute(data: CreateRouteInput) {
     scheduledPickupTime: validatedData.scheduledPickupTime,
     pickupWindowStart: validatedData.pickupWindowStart,
     pickupWindowEnd: validatedData.pickupWindowEnd,
+    estimatedDropoffTime,
     status: "Requested",
   });
   return route.toObject();
@@ -130,17 +147,6 @@ export async function cancelRoute(routeId: string, status?: string) {
   } else {
     route.status = RouteStatus.CancelledByStudent;
   }
-  await route.save();
-  return route.toObject();
-}
-
-export async function cancelRouteByDriver(routeId: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId);
-  if (!route) {
-    return null;
-  }
-  route.status = RouteStatus.CancelledByDriver;
   await route.save();
   return route.toObject();
 }
