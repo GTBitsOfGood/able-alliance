@@ -88,7 +88,7 @@ async function seed() {
     console.log("– Student Jane Doe already exists");
   }
 
-  // Driver with preferred name
+  // Driver with preferred name and weekday shifts
   let driver = await usersCol.findOne({ email: "driver1@gatech.edu" });
   if (!driver) {
     const res = await usersCol.insertOne({
@@ -97,6 +97,13 @@ async function seed() {
       preferredName: "TD",
       email: "driver1@gatech.edu",
       type: "Driver",
+      shifts: [
+        { dayOfWeek: 1, startTime: "08:00", endTime: "14:00" }, // Monday
+        { dayOfWeek: 2, startTime: "08:00", endTime: "14:00" }, // Tuesday
+        { dayOfWeek: 3, startTime: "08:00", endTime: "14:00" }, // Wednesday
+        { dayOfWeek: 4, startTime: "08:00", endTime: "14:00" }, // Thursday
+        { dayOfWeek: 5, startTime: "08:00", endTime: "14:00" }, // Friday
+      ],
     });
     driver = {
       _id: res.insertedId,
@@ -105,10 +112,54 @@ async function seed() {
       preferredName: "TD",
       email: "driver1@gatech.edu",
       type: "Driver",
+      shifts: [
+        { dayOfWeek: 1, startTime: "08:00", endTime: "14:00" },
+        { dayOfWeek: 2, startTime: "08:00", endTime: "14:00" },
+        { dayOfWeek: 3, startTime: "08:00", endTime: "14:00" },
+        { dayOfWeek: 4, startTime: "08:00", endTime: "14:00" },
+        { dayOfWeek: 5, startTime: "08:00", endTime: "14:00" },
+      ],
     };
-    console.log("✓ Created driver: Test Driver (preferred: TD)");
+    console.log(
+      "✓ Created driver: Test Driver (preferred: TD, Mon–Fri 08:00–14:00)",
+    );
   } else {
     console.log("– Driver already exists");
+  }
+
+  // Second driver with afternoon/weekend shifts
+  let driver2 = await usersCol.findOne({ email: "driver2@gatech.edu" });
+  if (!driver2) {
+    const res = await usersCol.insertOne({
+      firstName: "Alex",
+      lastName: "Smith",
+      email: "driver2@gatech.edu",
+      type: "Driver",
+      shifts: [
+        { dayOfWeek: 1, startTime: "13:00", endTime: "19:00" }, // Monday
+        { dayOfWeek: 3, startTime: "13:00", endTime: "19:00" }, // Wednesday
+        { dayOfWeek: 5, startTime: "13:00", endTime: "19:00" }, // Friday
+        { dayOfWeek: 6, startTime: "10:00", endTime: "16:00" }, // Saturday
+      ],
+    });
+    driver2 = {
+      _id: res.insertedId,
+      firstName: "Alex",
+      lastName: "Smith",
+      email: "driver2@gatech.edu",
+      type: "Driver",
+      shifts: [
+        { dayOfWeek: 1, startTime: "13:00", endTime: "19:00" },
+        { dayOfWeek: 3, startTime: "13:00", endTime: "19:00" },
+        { dayOfWeek: 5, startTime: "13:00", endTime: "19:00" },
+        { dayOfWeek: 6, startTime: "10:00", endTime: "16:00" },
+      ],
+    };
+    console.log(
+      "✓ Created driver: Alex Smith (Mon/Wed/Fri 13:00–19:00, Sat 10:00–16:00)",
+    );
+  } else {
+    console.log("– Driver Alex Smith already exists");
   }
 
   // Admin without preferred name

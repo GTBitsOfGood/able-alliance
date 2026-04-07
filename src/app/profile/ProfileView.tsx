@@ -485,14 +485,16 @@ export function ProfileView({
           </section>
         )}
 
-        <Shifts
-          user={displayUser}
-          canEdit={canEdit}
-          viewerType={viewerType}
-          onUpdate={(shifts) => {
-            setDisplayUser((prev) => ({ ...prev, shifts }));
-          }}
-        />
+        {activeTab === "profile" && (
+          <Shifts
+            user={displayUser}
+            canEdit={canEdit}
+            viewerType={viewerType}
+            onUpdate={(shifts) => {
+              setDisplayUser((prev) => ({ ...prev, shifts }));
+            }}
+          />
+        )}
       </div>
     </div>
   );
