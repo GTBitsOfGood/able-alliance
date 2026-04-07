@@ -1,11 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserById } from "@/server/db/actions/UserAction";
-import {
-  ProfileView,
-  type ProfileUser,
-  type AccessibilityNeed,
-} from "../ProfileView";
+import { ProfileView, type ProfileUser } from "../ProfileView";
+import type { UserType } from "@/utils/authUser";
 
 type UserDocument = {
   _id?: { toString(): string };
@@ -15,10 +12,8 @@ type UserDocument = {
   name?: string;
   email?: string;
   type?: ProfileUser["type"];
-  studentInfo?: {
-    notes?: string | null;
-    accessibilityNeeds?: AccessibilityNeed[] | null;
-  } | null;
+  studentInfo?: ProfileUser["studentInfo"];
+  shifts?: ProfileUser["shifts"];
 };
 
 export default async function ProfilePage({
@@ -67,7 +62,13 @@ export default async function ProfilePage({
       studentInfo: null,
     };
 
-    return <ProfileView user={selfFromSession} canEdit={canEdit} />;
+    return (
+      <ProfileView
+        user={selfFromSession}
+        canEdit={canEdit}
+        viewerType={viewerType as UserType}
+      />
+    );
   }
 
   const doc = data as UserDocument;
@@ -88,7 +89,14 @@ export default async function ProfilePage({
     email: doc.email ?? (session.user.email as string),
     type: doc.type ?? (session.user.type as ProfileUser["type"]),
     studentInfo: doc.studentInfo ?? null,
+    shifts: doc.shifts ?? [],
   };
 
-  return <ProfileView user={user} canEdit={canEdit} />;
+  return (
+    <ProfileView
+      user={user}
+      canEdit={canEdit}
+      viewerType={viewerType as UserType}
+    />
+  );
 }

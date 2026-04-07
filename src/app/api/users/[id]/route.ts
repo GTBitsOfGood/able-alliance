@@ -5,6 +5,7 @@ import {
   getUserById,
   deleteUser,
   updateStudentInfo,
+  updateDriverShifts,
   updatePreferredName,
 } from "@/server/db/actions/UserAction";
 import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
@@ -74,6 +75,25 @@ const studentInfoPatchSchema = z
   })
   .strict();
 
+const driverShiftsPatchSchema = z
+  .object({
+    shifts: z
+      .array(
+        z
+          .object({
+            dayOfWeek: z.number().int().min(0).max(6),
+            startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+            endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+          })
+          .refine((shift) => shift.startTime < shift.endTime, {
+            message: "Start time must be before end time",
+            path: ["startTime"],
+          }),
+      )
+      .optional(),
+  })
+  .strict();
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -119,60 +139,91 @@ export async function PATCH(
     );
   }
 
-  const parsed = studentInfoPatchSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(parsed.error.format(), {
-      status: HTTP_STATUS_CODE.BAD_REQUEST,
-    });
+  // Get the user to determine type
+  const user = await getUserById(id);
+  if (!user) {
+    return NextResponse.json(
+      { error: "User not found" },
+      { status: HTTP_STATUS_CODE.NOT_FOUND },
+    );
   }
 
   try {
-    const { preferredName, notes, accessibilityNeeds } = parsed.data;
-
-    if (accessibilityNeeds && accessibilityNeeds.length > 0) {
-      const invalid = await findInvalidAccommodations(accessibilityNeeds);
-      if (invalid.length > 0) {
+    let updated;
+    if (user.type === "Student") {
+      const parsed = studentInfoPatchSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(parsed.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      const { preferredName, notes, accessibilityNeeds } = parsed.data;
+      if (accessibilityNeeds && accessibilityNeeds.length > 0) {
+        const invalid = await findInvalidAccommodations(accessibilityNeeds);
+        if (invalid.length > 0) {
+          return NextResponse.json(
+            { error: `Invalid accommodations: ${invalid.join(", ")}` },
+            { status: HTTP_STATUS_CODE.BAD_REQUEST },
+          );
+        }
+      }
+      if (preferredName !== undefined) {
+        updated = await updatePreferredName(id, preferredName ?? null);
+        if (!updated) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
+      }
+      if (notes !== undefined || accessibilityNeeds !== undefined) {
+        updated = await updateStudentInfo(id, {
+          notes: notes ?? null,
+          accessibilityNeeds: accessibilityNeeds ?? null,
+        });
+        if (!updated) {
+          return NextResponse.json(
+            { error: "User not found or not a student" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
+      }
+      if (!updated) {
+        const currentUser = await getUserById(id);
+        if (!currentUser) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
+        updated = currentUser;
+      }
+    } else if (user.type === "Driver") {
+      // For drivers, only admins can update shifts
+      if (!isAdmin) {
         return NextResponse.json(
-          { error: `Invalid accommodations: ${invalid.join(", ")}` },
-          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+          { error: "Only admins can update driver shifts" },
+          { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-    }
-
-    let updated: unknown = null;
-
-    if (preferredName !== undefined) {
-      updated = await updatePreferredName(id, preferredName ?? null);
+      const parsed = driverShiftsPatchSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json(parsed.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      updated = await updateDriverShifts(id, parsed.data.shifts ?? []);
       if (!updated) {
         return NextResponse.json(
-          { error: "User not found" },
+          { error: "User not found or update failed" },
           { status: HTTP_STATUS_CODE.NOT_FOUND },
         );
       }
-    }
-
-    if (notes !== undefined || accessibilityNeeds !== undefined) {
-      updated = await updateStudentInfo(id, {
-        notes: notes ?? null,
-        accessibilityNeeds: accessibilityNeeds ?? null,
-      });
-      if (!updated) {
-        return NextResponse.json(
-          { error: "User not found or not a student" },
-          { status: HTTP_STATUS_CODE.NOT_FOUND },
-        );
-      }
-    }
-
-    if (!updated) {
-      const user = await getUserById(id);
-      if (!user) {
-        return NextResponse.json(
-          { error: "User not found" },
-          { status: HTTP_STATUS_CODE.NOT_FOUND },
-        );
-      }
-      updated = user;
+    } else {
+      return NextResponse.json(
+        { error: "Cannot update this user type" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
     }
 
     const userObj = updated as Record<string, unknown> & {

@@ -1,8 +1,30 @@
 import mongoose, { Schema } from "mongoose";
-import type { BaseUserInput, StudentInput } from "@/utils/types/user";
+import type {
+  BaseUserInput,
+  StudentInput,
+  DriverInput,
+} from "@/utils/types/user";
 
 export type IBaseUser = BaseUserInput;
 export type IStudentUser = StudentInput;
+export type IDriverUser = DriverInput;
+
+const ShiftSchema: Schema = new Schema(
+  {
+    dayOfWeek: { type: Number, required: true, min: 0, max: 6 },
+    startTime: {
+      type: String,
+      required: true,
+      match: /^([01]\d|2[0-3]):([0-5]\d)$/,
+    },
+    endTime: {
+      type: String,
+      required: true,
+      match: /^([01]\d|2[0-3]):([0-5]\d)$/,
+    },
+  },
+  { _id: false },
+);
 
 const BaseUserSchema: Schema<IBaseUser> = new Schema(
   {
@@ -29,6 +51,10 @@ const StudentSchema: Schema<IStudentUser> = new Schema({
   },
 });
 
+const DriverSchema: Schema<IDriverUser> = new Schema({
+  shifts: [ShiftSchema],
+});
+
 const BaseUserModel =
   (mongoose.models.User as mongoose.Model<IBaseUser>) ??
   mongoose.model<IBaseUser>("User", BaseUserSchema);
@@ -37,15 +63,17 @@ const StudentModel =
   (mongoose.models.Student as mongoose.Model<IStudentUser>) ??
   BaseUserModel.discriminator<IStudentUser>("Student", StudentSchema);
 
-// Blank discriminators so Mongoose accepts type "Driver" | "Admin" | "SuperAdmin" (no extra fields)
+const DriverModel =
+  (mongoose.models.Driver as mongoose.Model<IDriverUser>) ??
+  BaseUserModel.discriminator<IDriverUser>("Driver", DriverSchema);
+
+// Blank discriminators so Mongoose accepts type "Admin" | "SuperAdmin" (no extra fields)
 const emptySchema = new Schema({});
-if (!mongoose.models.Driver)
-  BaseUserModel.discriminator<IBaseUser>("Driver", emptySchema);
 if (!mongoose.models.Admin)
   BaseUserModel.discriminator<IBaseUser>("Admin", emptySchema);
 if (!mongoose.models.SuperAdmin)
   BaseUserModel.discriminator<IBaseUser>("SuperAdmin", emptySchema);
 
-export { BaseUserModel as UserModel, StudentModel };
-export { BaseUserSchema, StudentSchema };
+export { BaseUserModel as UserModel, StudentModel, DriverModel };
+export { BaseUserSchema, StudentSchema, DriverSchema };
 export default BaseUserModel;

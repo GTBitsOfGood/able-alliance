@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import BogButton from "@/components/BogButton/BogButton";
+import { Shifts } from "./Shifts";
 import styles from "./profile.module.css";
+import type { UserType } from "@/utils/authUser";
 
 type ProfileTab = "profile" | "rides";
-
-type UserType = "Student" | "Driver" | "Admin" | "SuperAdmin";
 
 export type AccessibilityNeed = string;
 
@@ -21,6 +21,11 @@ export type ProfileUser = {
     notes?: string | null;
     accessibilityNeeds?: AccessibilityNeed[] | null;
   } | null;
+  shifts?: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+  }>;
 };
 
 function roleLabel(type: UserType): string {
@@ -54,9 +59,11 @@ function avatarClass(type: UserType): string {
 export function ProfileView({
   user,
   canEdit = false,
+  viewerType = "Student",
 }: {
   user: ProfileUser;
   canEdit?: boolean;
+  viewerType?: UserType;
 }) {
   const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
   const [editing, setEditing] = useState(false);
@@ -476,6 +483,17 @@ export function ProfileView({
               </section>
             )}
           </section>
+        )}
+
+        {activeTab === "profile" && (
+          <Shifts
+            user={displayUser}
+            canEdit={canEdit}
+            viewerType={viewerType}
+            onUpdate={(shifts) => {
+              setDisplayUser((prev) => ({ ...prev, shifts }));
+            }}
+          />
         )}
       </div>
     </div>
