@@ -36,7 +36,7 @@ function AdminContent() {
     [],
   );
 
-  useEffect(() => {
+  const refetchAccommodations = React.useCallback(() => {
     fetch("/api/accommodations")
       .then((r) => r.json())
       .then((data: { label: string }[]) =>
@@ -44,6 +44,10 @@ function AdminContent() {
       )
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    refetchAccommodations();
+  }, [refetchAccommodations]);
 
   const userType = session?.user?.type;
   useEffect(() => {
@@ -798,7 +802,7 @@ function AdminContent() {
           {table === "Rides" ? (
             <RidesTable />
           ) : table === "Accommodations" ? (
-            <AccommodationsPanel />
+            <AccommodationsPanel onSaved={refetchAccommodations} />
           ) : (
             <>
               {error && (

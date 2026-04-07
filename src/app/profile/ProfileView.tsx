@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import BogButton from "@/components/BogButton/BogButton";
 import styles from "./profile.module.css";
 
@@ -76,7 +76,7 @@ export function ProfileView({
     [],
   );
 
-  useEffect(() => {
+  const fetchAccommodations = useCallback(() => {
     if (user.type === "Student") {
       fetch("/api/accommodations")
         .then((r) => r.json())
@@ -86,6 +86,10 @@ export function ProfileView({
         .catch(() => {});
     }
   }, [user.type]);
+
+  useEffect(() => {
+    fetchAccommodations();
+  }, [fetchAccommodations]);
 
   const avatarLetter =
     displayUser.firstName.trim().charAt(0).toUpperCase() || "?";
@@ -99,6 +103,7 @@ export function ProfileView({
     setDraftNotes(displayUser.studentInfo?.notes ?? "");
     setDraftAccessibility(displayUser.studentInfo?.accessibilityNeeds ?? []);
     setSaveError(null);
+    fetchAccommodations();
     setEditing(true);
   }
 

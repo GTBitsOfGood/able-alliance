@@ -4,7 +4,11 @@ import React, { useEffect, useState } from "react";
 
 type Accommodation = { _id: string; label: string };
 
-export default function AccommodationsPanel() {
+export default function AccommodationsPanel({
+  onSaved,
+}: {
+  onSaved?: () => void;
+}) {
   const [items, setItems] = useState<Accommodation[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -82,6 +86,7 @@ export default function AccommodationsPanel() {
 
       setItems([...draft.filter((d) => draftIds.has(d._id)), ...created]);
       setEditing(false);
+      onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
