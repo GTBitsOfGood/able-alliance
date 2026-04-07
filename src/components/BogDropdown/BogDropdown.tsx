@@ -24,6 +24,8 @@ interface BogDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
   label?: string;
   /** The placeholder text to be displayed when the dropdown is empty. */
   placeholder?: string;
+  /** Whether or not the text input is required for form submission. */
+  required?: boolean;
   /** Whether the dropdown is disabled or not. */
   disabled?: boolean;
   /** Function that is called when the selection is changed. */
@@ -44,6 +46,7 @@ export default function BogDropdown({
   name,
   label,
   placeholder = "Placeholder",
+  required = false,
   disabled = false,
   onSelectionChange,
   style,
@@ -169,7 +172,8 @@ export default function BogDropdown({
             const isChecked = Array.isArray(selected)
               ? !selected.includes(option)
               : true;
-            handleSelect(isChecked, option);
+            // Defer out of Radix UI's internal flushSync (React 19 compat)
+            Promise.resolve().then(() => handleSelect(isChecked, option));
           }}
           className={styles.dropdownItem}
           key={option}
@@ -211,7 +215,15 @@ export default function BogDropdown({
 
   return (
     <div className={`${styles.dropdownContainer} ${className}`} style={style}>
-      <label className={styles.label}>{label}</label>
+      <label className={styles.label}>
+        <span style={{ display: "inline-flex" }}>
+          {label}
+          &nbsp;
+          {required && (
+            <span style={{ color: "var(--color-status-red-text)" }}>*</span>
+          )}
+        </span>
+      </label>
       <DropdownMenu.Root modal={false} open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenu.Trigger
           ref={triggerRef}

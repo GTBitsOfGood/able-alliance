@@ -76,11 +76,29 @@ export async function deleteUser(id: string) {
   return deleted;
 }
 
+export async function updatePreferredName(
+  id: string,
+  preferredName: string | null,
+) {
+  await connectMongoDB();
+
+  const user = await UserModel.findById(id);
+  if (!user) {
+    return null;
+  }
+
+  (user as unknown as { preferredName?: string | null }).preferredName =
+    preferredName ?? undefined;
+
+  const saved = await user.save();
+  return saved.toObject();
+}
+
 export async function updateStudentInfo(
   id: string,
   update: {
     notes?: string | null;
-    accessibilityNeeds?: "Wheelchair" | "LowMobility" | null;
+    accessibilityNeeds?: string[] | null;
   },
 ) {
   await connectMongoDB();
@@ -93,7 +111,7 @@ export async function updateStudentInfo(
   const currentInfo =
     (
       student as unknown as {
-        studentInfo?: { notes?: string; accessibilityNeeds?: string };
+        studentInfo?: { notes?: string; accessibilityNeeds?: string[] };
       }
     ).studentInfo ?? {};
 

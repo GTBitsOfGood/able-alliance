@@ -9,9 +9,14 @@
   flex: 1;
   flex-direction: column;
   overflow: auto;
-  padding: 2rem 2.5rem;
+  padding: 2rem 5rem;
   background-color: var(--color-solid-bg-base);
   min-width: 0;
+  scrollbar-width: none;
+}
+
+.main::-webkit-scrollbar {
+  display: none;
 }
 
 .mainHeader {
@@ -58,31 +63,27 @@
 }
 
 .tabContentHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 2.5rem;
 }
 
 .pageTitle {
   color: var(--color-grey-text-strong);
-  font-size: var(--text-desktop-heading-1);
+  font-size: 4rem;
   font-weight: 700;
-  line-height: var(--text-desktop-heading-1--line-height);
+  line-height: 4.8rem;
+  font-family: var(--font-heading);
   margin: 0;
 }
 
 .requestRideButton {
   width: fit-content;
-  background-color: var(--color-status-blue-text);
-  border-color: var(--color-status-blue-text);
+  background-color: #183777;
+  border-color: #183777;
 }
 
 .requestRideButton:hover:not(:disabled) {
-  background-color: var(--color-status-blue-stroke-strong);
-  border-color: var(--color-status-blue-stroke-strong);
+  background-color: #0f2452;
+  border-color: #0f2452;
 }
 
 .errorMessage {
@@ -91,10 +92,91 @@
   color: var(--color-status-red-text, #c73a3a);
 }
 
+.cancelRideOverlay {
+  background-color: rgba(15, 23, 42, 0.48);
+}
+
+.cancelRideContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding: 2.5rem 2rem;
+  border-radius: 0.5rem;
+  max-width: 44rem;
+  width: 100%;
+}
+
+.cancelRideDescription {
+  margin: 0;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  color: var(--color-grey-text-strong);
+}
+
+.cancelRideActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+}
+
+.cancelModalNevermind {
+  padding: 0.75rem 2rem;
+  border: 2px solid #183777;
+  border-radius: 0.5rem;
+  background: white;
+  color: #183777;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.cancelModalNevermind:hover:not(:disabled) {
+  background: #f0f4fc;
+}
+
+.cancelModalNevermind:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelModalConfirm {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #183777;
+  color: white;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.cancelModalConfirm:hover:not(:disabled) {
+  background: #0f2452;
+}
+
+.cancelModalConfirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .rideList {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 3.2rem;
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -111,15 +193,41 @@
 .dateGroup {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.2rem;
   width: 100%;
   min-width: 0;
 }
 
-.dateHeader {
-  font-size: var(--text-desktop-heading-4);
+.dayHeaderRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.dayHeaderRowEnd {
+  justify-content: flex-end;
+}
+
+.dayGroupHeading {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 3.2rem;
   font-weight: 700;
-  line-height: var(--text-desktop-heading-3--line-height);
+  font-family: var(--font-heading);
+  color: var(--color-grey-text-strong);
+  flex: 1;
+  min-width: 0;
+}
+
+.dateHeader {
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 4rem;
+  font-family: var(--font-heading);
   color: var(--color-grey-text-strong);
   margin: 0;
 }
@@ -156,8 +264,7 @@
   flex-direction: column;
   gap: 0.25rem;
   min-width: 0;
-  flex: 0 0 11rem;
-  max-width: 11rem;
+  flex: 0 0 14rem;
 }
 
 .rideCardDivider {
@@ -169,35 +276,313 @@
   align-self: center;
 }
 
-.rideCardPickupDropoff > .rideCardStopBlock:last-of-type .rideCardStopTime {
-  font-size: var(--text-desktop-heading-4);
-}
-
 .rideCardPickupDropoff > .rideCardStopBlock:last-of-type {
   align-items: flex-end;
   text-align: right;
 }
 
+.rideCardStopBlockRight {
+  align-items: flex-end;
+  text-align: right;
+}
+
 .rideCardStopLabel {
-  font-size: var(--text-desktop-paragraph-1);
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-weak);
-  font-weight: 600;
+  font-weight: 400;
+  font-family: var(--font-paragraph), "Open Sans", sans-serif;
 }
 
 .rideCardStopTime {
-  font-size: var(--text-desktop-heading-4);
+  font-size: 3.2rem;
+  line-height: 4rem;
   font-weight: 700;
   color: var(--color-grey-text-strong);
+  font-family: var(--font-heading), "Visby CF", sans-serif;
 }
 
 .rideCardStopLocation {
   font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph), "Open Sans", sans-serif;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* Driver card layout */
+/* Student card — new Figma design */
+.rideCardStudent {
+  flex-direction: row;
+  padding: 0;
+  gap: 0;
+  min-height: 24.8rem;
+  align-items: stretch;
+}
+
+.rideCardStudentBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3.2rem;
+  min-width: 0;
+  gap: 3.2rem;
+}
+
+.rideCardPickupDropoffNew {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+  gap: 0;
+}
+
+.rideCardStopBlockNew {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.rideCardStopLabelNew {
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  color: rgba(34, 7, 11, 0.5);
+  white-space: nowrap;
+}
+
+.rideCardStopTimeNew {
+  font-size: 3.2rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  line-height: 4rem;
+}
+
+.rideCardStopLocationNew {
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  color: var(--color-grey-text-strong);
+}
+
+.rideCardHorizontalDivider {
+  flex: 1;
+  height: 1px;
+  background: var(--color-grey-stroke-weak);
+  align-self: center;
+  margin: 0 1.6rem;
+  margin-top: 5.4rem; /* align with midpoint of time text */
+}
+
+.rideCardStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.rideCardStatusChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 2.4rem;
+  border-radius: 9999px;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.rideDetailsLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.6rem;
+  border: 1px solid var(--color-checkbox-checked);
+  border-radius: 0.4rem;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 600;
+  color: var(--color-checkbox-checked);
+  text-decoration: none;
+  white-space: nowrap;
+  min-width: 17.2rem;
+  text-align: center;
+
+  &:hover {
+    background: var(--color-brand-fill);
+  }
+}
+
+.rideCardVerticalDivider {
+  width: 1px;
+  background: var(--color-grey-stroke-weak);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.rideCardStudentActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.2rem;
+  padding: 2.4rem 3.2rem;
+  flex-shrink: 0;
+}
+
+.rideCardActionBtn {
+  width: 17.2rem;
+  padding: 1.2rem 1.6rem;
+  border-radius: 0.4rem;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  background: none;
+  text-align: center;
+}
+
+.rideCardActionBtnBrand {
+  border: 1px solid var(--color-checkbox-checked);
+  color: var(--color-checkbox-checked);
+
+  &:hover:not(:disabled) {
+    background: var(--color-brand-fill);
+  }
+}
+
+.rideCardActionBtnDisabled {
+  border: 1px solid rgba(34, 7, 11, 0.1);
+  color: rgba(34, 7, 11, 0.15);
+  cursor: not-allowed;
+}
+
+.rideCardActionBtnCancel {
+  border: 1px solid rgba(199, 58, 58, 0.8);
+  color: rgba(199, 58, 58, 0.8);
+
+  &:hover:not(:disabled) {
+    background: var(--color-status-red-fill);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Driver card layout — new Figma-matched design */
+.rideCardDriverNew {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  min-height: 17.5rem;
+}
+
+.rideCardDriverBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 2rem;
+  min-width: 0;
+  justify-content: center;
+}
+
+.rideCardStudentName {
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading), "Visby CF", sans-serif;
+  margin: 0;
+}
+
+.rideCardDriverChipsRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Base chip style for driver card — solid background, pill shape */
+.rideCardDriverChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.6rem;
+  border-radius: 9999px;
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  font-weight: 500;
+  font-family: var(--font-paragraph), "Open Sans", sans-serif;
+  white-space: nowrap;
+}
+
+/* Status chip colors — matching Figma exactly */
+.rideCardDriverChip--amber {
+  background-color: #f6c75a;
+  color: #22070b;
+}
+
+.rideCardDriverChip--green {
+  background-color: #70cd87;
+  color: #22070b;
+}
+
+.rideCardDriverChip--red {
+  background-color: #f4a0a0;
+  color: #22070b;
+}
+
+.rideCardDriverChip--gray {
+  background-color: #e0e0e0;
+  color: #22070b;
+}
+
+/* Vehicle ID chip */
+.rideCardDriverChip--vehicle {
+  background-color: #a8cce4;
+  color: #183777;
+}
+
+.rideCardDriverDivider {
+  width: 0.1rem;
+  align-self: stretch;
+  background-color: var(--color-grey-stroke-weak);
+  flex-shrink: 0;
+  margin: 1rem 0;
+}
+
+.rideCardDriverButtons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.375rem;
+  padding: 1.5rem 2rem;
+  flex-shrink: 0;
+  /* Override brand color tokens to match Figma navy/blue palette */
+  --color-brand-text: #183777;
+  --color-brand-stroke-strong: #416ebc;
+  --color-brand-hover: #0f2452;
+}
+
+.rideCardDriverButton {
+  width: 15rem;
+  white-space: nowrap;
+}
+
+/* Legacy driver card layout (kept for reference) */
 .rideCardDriver {
   gap: 1.25rem;
   padding: 2.2rem 2.4rem;
@@ -459,6 +844,11 @@
   padding: 2rem 2.5rem;
   background-color: var(--color-solid-bg-base);
   min-width: 0;
+  scrollbar-width: none; /* Firefox */
+}
+
+.driverMain::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
 }
 
 .vehicleSection {

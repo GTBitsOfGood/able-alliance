@@ -28,6 +28,7 @@ type DriverRoute = {
   status: string;
   vehicle?: EmbeddedVehicle;
   driver?: { _id: string };
+  student?: { firstName: string; lastName: string };
 };
 
 function getDayRange(offset: 0 | 1): [Date, Date] {
@@ -38,53 +39,6 @@ function getDayRange(offset: 0 | 1): [Date, Date] {
   const end = new Date(start);
   end.setHours(23, 59, 59, 999);
   return [start, end];
-}
-
-function groupByVehicle(
-  routes: DriverRoute[],
-): Map<string, { vehicle: EmbeddedVehicle; rides: DriverRoute[] }> {
-  const map = new Map<
-    string,
-    { vehicle: EmbeddedVehicle; rides: DriverRoute[] }
-  >();
-  for (const route of routes) {
-    if (!route.vehicle) continue;
-    const key = route.vehicle._id;
-    if (!map.has(key)) {
-      map.set(key, { vehicle: route.vehicle, rides: [] });
-    }
-    map.get(key)!.rides.push(route);
-  }
-  // Sort rides within each vehicle by scheduled time
-  for (const group of map.values()) {
-    group.rides.sort(
-      (a, b) =>
-        new Date(a.scheduledPickupTime).getTime() -
-        new Date(b.scheduledPickupTime).getTime(),
-    );
-  }
-  return map;
-}
-
-function formatAssignedVehicleTitle(offset: 0 | 1) {
-  const date = new Date();
-  date.setDate(date.getDate() + offset);
-  const label = date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-  const prefix = offset === 0 ? "Today" : "Tomorrow";
-  return `Assigned Vehicle ${prefix}, ${label}`;
-}
-
-function getAccessibilityLabel(
-  accessibility: EmbeddedVehicle["accessibility"],
-) {
-  if (accessibility === "Wheelchair") {
-    return "Wheel-chair accessible";
-  }
-  return "None";
 }
 
 function getLocalDateKey(date: Date) {
@@ -219,7 +173,6 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     [locations],
   );
 
-  const vehicleGroups = useMemo(() => groupByVehicle(routes), [routes]);
   const activeDayRange = useMemo(
     () => (activeTab === "today" ? todayRange : tomorrowRange),
     [activeTab, todayRange, tomorrowRange],
@@ -227,14 +180,6 @@ export default function DriverRidesView({ userId }: { userId: string }) {
   const dayHeading = useMemo(
     () => (mounted ? formatDayRangeHeading(activeDayRange) : "—"),
     [mounted, activeDayRange],
-  );
-  const activeTabOffset = activeTab === "today" ? 0 : 1;
-  const assignedVehicleTitle = useMemo(
-    () =>
-      mounted
-        ? formatAssignedVehicleTitle(activeTabOffset)
-        : "Assigned Vehicle",
-    [mounted, activeTabOffset],
   );
 
   function renderDayToggle() {
@@ -285,95 +230,33 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     }
   }
 
-  function renderVehicleGroups() {
-    if (vehicleGroups.size === 0 && !loading) {
-      return (
-        <>
-          {renderDayToggle()}
-          <h2 className={styles.driverWeekHeading}>{dayHeading}</h2>
-          <p className={styles.rideListEmpty}>No rides yet.</p>
-        </>
-      );
+  function renderRides() {
+    const dayGroups = groupRidesByDay(routes);
+    if (dayGroups.length === 0) {
+      return <p className={styles.rideListEmpty}>No rides yet.</p>;
     }
-
-    return Array.from(vehicleGroups.values()).map(
-      ({ vehicle, rides }, index) => (
-        <div key={vehicle._id} className={styles.vehicleSection}>
-          <div className={styles.vehicleCard}>
-            <div className={styles.vehicleCardContent}>
-              <h2 className={styles.vehicleHeader}>{assignedVehicleTitle}</h2>
-
-              <div className={styles.vehicleInfoRow}>
-                <div className={styles.vehicleInfoItem}>
-                  <span className={styles.vehicleInfoLabel}>License plate</span>
-                  <span className={styles.vehiclePlateValue}>
-                    {vehicle.licensePlate}
-                  </span>
-                </div>
-                <div className={styles.vehicleInfoItem}>
-                  <span className={styles.vehicleInfoLabel}>Name</span>
-                  <span className={styles.vehicleInfoValue}>
-                    {vehicle.name}
-                  </span>
-                </div>
-                <div className={styles.vehicleInfoItem}>
-                  <span className={styles.vehicleInfoLabel}>Description</span>
-                  <span className={styles.vehicleInfoValue}>
-                    {vehicle.description || "—"}
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles.vehicleAccessibilitySection}>
-                <span className={styles.vehicleInfoLabel}>
-                  Disability features supported
-                </span>
-                <span className={styles.vehicleAccessibilityValue}>
-                  {getAccessibilityLabel(vehicle.accessibility)}
-                </span>
-              </div>
-            </div>
-
-            <div className={styles.vehicleImageSlot} aria-hidden="true">
-              <span className={styles.vehicleImageText}>Vehicle image</span>
-            </div>
-          </div>
-
-          {index === 0 && renderDayToggle()}
-          {index === 0 && (
-            <h2 className={styles.driverWeekHeading}>{dayHeading}</h2>
-          )}
-
-          <div className={styles.vehicleRides}>
-            {groupRidesByDay(rides).map((dayGroup) => (
-              <div key={dayGroup.key} className={styles.driverDayGroup}>
-                <h3 className={styles.driverDayHeading}>
-                  {mounted ? formatDayHeading(dayGroup.date) : "—"}
-                </h3>
-                <div className={styles.driverDayCards}>
-                  {dayGroup.rides.map((route) => {
-                    const isBusy = busyRoutes.has(route._id);
-                    const canAct =
-                      route.status === "Scheduled" ||
-                      route.status === "En-route";
-                    return (
-                      <RideCard
-                        key={route._id}
-                        route={{
-                          ...route,
-                          driver: route.driver?._id,
-                        }}
-                        locationIdToName={locationIdToName}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+    return dayGroups.map((dayGroup) => (
+      <div key={dayGroup.key} className={styles.driverDayGroup}>
+        <h3 className={styles.driverDayHeading}>
+          {mounted ? formatDayHeading(dayGroup.date) : "—"}
+        </h3>
+        <div className={styles.driverDayCards}>
+          {dayGroup.rides.map((route) => (
+            <RideCard
+              key={route._id}
+              route={{
+                ...route,
+                driver: route.driver?._id,
+              }}
+              locationIdToName={locationIdToName}
+              isDriverCard
+              onStart={() => handleStart(route._id)}
+              startBusy={busyRoutes.has(route._id)}
+            />
+          ))}
         </div>
-      ),
-    );
+      </div>
+    ));
   }
 
   return (
@@ -393,10 +276,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
         onValueChange={(v) => setActiveTab(v as "today" | "tomorrow")}
         className={styles.tabsLayout}
       >
+        {renderDayToggle()}
+        <h2 className={styles.driverWeekHeading}>{dayHeading}</h2>
         {loading ? (
           <p className={styles.rideListLoading}>Loading…</p>
         ) : (
-          renderVehicleGroups()
+          renderRides()
         )}
       </Tabs.Root>
     </main>

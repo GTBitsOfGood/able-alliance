@@ -20,6 +20,7 @@
 import http from "node:http";
 import mongoose from "mongoose";
 import { io as ioClient, Socket } from "socket.io-client";
+import jwt from "jsonwebtoken";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -33,6 +34,13 @@ const MONGO_URI =
 const WS_URL = process.argv[3] ?? "http://localhost:4000";
 
 const TIMEOUT_MS = 5000;
+
+const NEXTAUTH_SECRET =
+  process.env.NEXTAUTH_SECRET ?? "dev-secret-change-in-production";
+
+function makeToken(userId: string): string {
+  return jwt.sign({ userId }, NEXTAUTH_SECRET);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,7 +122,7 @@ function connectClient(
 ): Promise<Socket> {
   return new Promise((resolve, reject) => {
     const socket = ioClient(WS_URL, {
-      auth: { routeId, userId },
+      auth: { routeId, token: makeToken(userId) },
       transports: ["websocket"],
     });
 
@@ -238,7 +246,7 @@ async function run() {
 
   await new Promise<void>((resolve) => {
     const badSocket = ioClient(WS_URL, {
-      auth: { routeId, userId: "000000000000000000000000" },
+      auth: { routeId, token: makeToken("000000000000000000000000") },
       transports: ["websocket"],
     });
     const timer = setTimeout(() => {

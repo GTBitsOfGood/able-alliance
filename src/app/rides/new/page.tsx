@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
@@ -36,6 +37,12 @@ export default function CreateRidePage() {
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
+    if (error) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [error]);
+
+  useEffect(() => {
     async function fetchLocations() {
       try {
         const res = await fetch("/api/locations");
@@ -43,14 +50,12 @@ export default function CreateRidePage() {
         const data = await res.json();
         setLocations(data);
 
-        // Set first two locations as defaults if available
         if (data.length > 0) {
           setPickupLocationName(data[0].name);
         }
         if (data.length > 1) {
           setDropoffLocationName(data[1].name);
         } else if (data.length > 0) {
-          // If only one location available, set both to same (user can change)
           setDropoffLocationName(data[0].name);
         }
 
@@ -78,7 +83,7 @@ export default function CreateRidePage() {
       const container = mapContainerRef.current;
       if (!container || !token) return;
 
-      const defaultCenter: [number, number] = [-84.3988077, 33.7760948]; //middle of campus
+      const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
       const defaultZoom = 15;
 
       const pickup = locations.find((l) => l.name === pickupLocationName);
@@ -138,10 +143,7 @@ export default function CreateRidePage() {
 
       if (pickup) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(
-            `Pick Up: ${pickup.name}`,
-            "var(--color-status-blue-text)",
-          ),
+          element: createCustomPin("Pickup", "var(--color-status-blue-text)"),
           anchor: "bottom",
         })
           .setLngLat([pickup.longitude, pickup.latitude])
@@ -151,10 +153,7 @@ export default function CreateRidePage() {
 
       if (dropoff) {
         const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin(
-            `Drop Off: ${dropoff.name}`,
-            "var(--color-status-red-text)",
-          ),
+          element: createCustomPin("Dropoff", "var(--color-status-blue-text)"),
           anchor: "bottom",
         })
           .setLngLat([dropoff.longitude, dropoff.latitude])
@@ -249,7 +248,6 @@ export default function CreateRidePage() {
       return;
     }
 
-    // Create ISO string from selected date and user-selected time
     const [hours, minutes] = pickupTime.split(":").map(Number);
     const scheduledPickupTime = new Date(
       selectedDate.getFullYear(),
@@ -309,7 +307,6 @@ export default function CreateRidePage() {
         );
       }
 
-      // Success - redirect to /rides
       router.push("/rides");
     } catch (e) {
       setError(e instanceof Error ? e.message : "An error occurred");
@@ -330,12 +327,10 @@ export default function CreateRidePage() {
   const { firstDay, daysInMonth } = getDaysInMonth(currentMonth);
   const days = [];
 
-  // Add empty cells for days before the first day of the month
   for (let i = 0; i < firstDay; i++) {
-    days.push(<div key={`empty-${i}`} className={styles.dateEmpty}></div>);
+    days.push(<div key={`empty-${i}`} className={styles.dateEmpty} />);
   }
 
-  // Add cells for each day of the month
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(
       currentMonth.getFullYear(),
@@ -359,311 +354,297 @@ export default function CreateRidePage() {
 
   return (
     <div className={styles.container}>
-      <main className={styles.main}>
-        {/* Header with back button */}
-        <div className={styles.header}>
-          <Link href="/rides" className={styles.backButton}>
-            ← Back to Rides
-          </Link>
+      {error && (
+        <div className={styles.errorBanner} role="alert">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            className={styles.errorBannerIcon}
+          >
+            <circle cx="10" cy="10" r="9" stroke="#c73a3a" strokeWidth="2" />
+            <path
+              d="M10 6v5M10 13.5h.01"
+              stroke="#c73a3a"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+          Error: {error}
         </div>
+      )}
+      <main className={styles.main}>
+        <Link href="/rides" className={styles.backButton}>
+          ← Back to Rides
+        </Link>
 
-        {/* Page Title */}
         <h1 className={styles.pageTitle}>Create Ride</h1>
 
-        {/* Ride Details Section */}
         <div className={styles.rideDetailsSection}>
           <div className={styles.sectionHeader}>
-            <div className={styles.sectionHeaderLeft}>
-              <div className={styles.sectionTitleRow}>
-                <h2 className={styles.sectionTitle}>Ride Details</h2>
-                <button type="button" className={styles.helpIcon} title="Help">
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <path
-                      d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4C9.37258 4 4 9.37258 4 16C4 22.6274 9.37258 28 16 28Z"
-                      stroke="rgba(34, 7, 11, 0.7)"
-                      strokeWidth="2"
-                    />
-                    <path
-                      d="M16 22V16M16 10H16.01"
-                      stroke="rgba(34, 7, 11, 0.7)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <p className={styles.sectionDescription}>
-                Please enter your desired ride information accordingly.
-              </p>
-            </div>
+            <h2 className={styles.sectionTitle}>Ride Details</h2>
+            <p className={styles.sectionDescription}>
+              Please enter your desired ride information accordingly.
+            </p>
           </div>
 
-          {/* Ride Details Outline */}
           <form onSubmit={handleSubmit}>
             <div className={styles.rideDetailsOutline}>
-              {/* Form Content */}
-              <div className={styles.rideDetailsContent}>
-                {/* Left Column - Date Picker */}
-                <div className={styles.formColumn}>
-                  <div className={styles.formGroup}>
-                    <div className={styles.formGroupHeader}>
-                      <h3 className={styles.formGroupTitle}>Pick Up Date</h3>
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 32 32"
-                        fill="none"
-                        className={styles.calendarIcon}
+              {/* Left Column */}
+              <div className={styles.leftColumn}>
+                {/* Ride Date */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formGroupHeader}>
+                    <h3 className={styles.formGroupTitle}>
+                      Ride Date<span className={styles.required}>*</span>
+                    </h3>
+                    <Image
+                      src="/calendar.svg"
+                      alt="Calendar"
+                      width={32}
+                      height={32}
+                      className={styles.calendarIcon}
+                    />
+                  </div>
+                  <div className={styles.datePicker}>
+                    <div className={styles.calendarHeader}>
+                      <button
+                        type="button"
+                        onClick={prevMonth}
+                        className={styles.calendarNav}
                       >
-                        <rect
-                          x="4"
-                          y="6"
+                        <svg
                           width="24"
-                          height="22"
-                          rx="2"
-                          stroke="#22070B"
-                          strokeWidth="2"
-                        />
-                        <path
-                          d="M4 12H28M10 4V8M22 4V8"
-                          stroke="#22070B"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-
-                    {/* Calendar */}
-                    <div className={styles.datePicker}>
-                      {/* Calendar Header */}
-                      <div className={styles.calendarHeader}>
-                        <button
-                          type="button"
-                          onClick={prevMonth}
-                          className={styles.calendarNav}
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
                         >
-                          <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                          >
-                            <path
-                              d="M15 18L9 12L15 6"
-                              stroke="#FC5B43"
-                              strokeWidth="2"
-                            />
-                          </svg>
-                        </button>
-                        <div className={styles.calendarMonth}>
-                          <span className={styles.monthName}>
-                            {monthNames[currentMonth.getMonth()]}
-                          </span>
-                          <span className={styles.yearName}>
-                            {currentMonth.getFullYear()}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={nextMonth}
-                          className={styles.calendarNav}
+                          <path
+                            d="M15 18L9 12L15 6"
+                            stroke="#5B9BD5"
+                            strokeWidth="2"
+                          />
+                        </svg>
+                      </button>
+                      <div className={styles.calendarMonth}>
+                        <span className={styles.monthName}>
+                          {monthNames[currentMonth.getMonth()]}
+                        </span>
+                        <span className={styles.yearName}>
+                          {currentMonth.getFullYear()}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={nextMonth}
+                        className={styles.calendarNav}
+                      >
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
                         >
-                          <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                          >
-                            <path
-                              d="M9 18L15 12L9 6"
-                              stroke="#FC5B43"
-                              strokeWidth="2"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-
-                      {/* Calendar Grid */}
-                      <div className={styles.calendarGrid}>
-                        <div className={styles.weekDays}>
-                          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(
-                            (day) => (
-                              <div key={day} className={styles.weekDay}>
-                                {day}
-                              </div>
-                            ),
-                          )}
-                        </div>
-                        <div className={styles.datesGrid}>{days}</div>
-                      </div>
-                      <p className={styles.calendarHint}>Pick a day.</p>
+                          <path
+                            d="M9 18L15 12L9 6"
+                            stroke="#5B9BD5"
+                            strokeWidth="2"
+                          />
+                        </svg>
+                      </button>
                     </div>
+                    <div className={styles.calendarGrid}>
+                      <div className={styles.weekDays}>
+                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                          <div key={d} className={styles.weekDay}>
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+                      <div className={styles.datesGrid}>{days}</div>
+                    </div>
+                    <p className={styles.calendarHint}>Pick a day.</p>
                   </div>
                 </div>
 
-                {/* Right Column - Time and Locations */}
-                <div className={styles.formColumnRight}>
-                  {/* Pick Up Time */}
-                  <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Pick Up Time</h3>
-                    <div className={styles.timeCell}>
-                      <input
-                        type="time"
-                        value={pickupTime}
-                        onChange={(e) => setPickupTime(e.target.value)}
-                        className={styles.timeInput}
-                      />
-                    </div>
+                {/* Pickup Time */}
+                <div className={styles.formGroup}>
+                  <h3 className={styles.formGroupTitle}>
+                    Pickup Time<span className={styles.required}>*</span>
+                  </h3>
+                  <p className={styles.fieldDescription}>
+                    Please enter the exact time that you&apos;d like to be
+                    picked up.
+                  </p>
+                  <div className={styles.timeCell}>
+                    <input
+                      type="time"
+                      value={pickupTime}
+                      onChange={(e) => setPickupTime(e.target.value)}
+                      className={styles.timeInput}
+                    />
                   </div>
+                </div>
 
-                  {/* Pick Up Time Window */}
-                  <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>
-                      Pick Up Time Window
-                    </h3>
-                    <div className={styles.pickupWindowRow}>
-                      <div className={styles.pickupWindowField}>
-                        <label
-                          className={styles.pickupWindowLabel}
-                          htmlFor="pickup-window-from"
-                        >
-                          From
-                        </label>
-                        <div className={styles.pickupWindowCell}>
-                          <input
-                            id="pickup-window-from"
-                            type="time"
-                            value={pickupWindowFromTime}
-                            onChange={(e) =>
-                              setPickupWindowFromTime(e.target.value)
-                            }
-                            className={styles.pickupWindowInput}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <span className={styles.pickupWindowArrow}>→</span>
-                      <div className={styles.pickupWindowField}>
-                        <label
-                          className={styles.pickupWindowLabel}
-                          htmlFor="pickup-window-to"
-                        >
-                          To
-                        </label>
-                        <div className={styles.pickupWindowCell}>
-                          <input
-                            id="pickup-window-to"
-                            type="time"
-                            value={pickupWindowToTime}
-                            onChange={(e) =>
-                              setPickupWindowToTime(e.target.value)
-                            }
-                            className={styles.pickupWindowInput}
-                            required
-                          />
-                        </div>
+                {/* Pickup Time Window */}
+                <div className={styles.formGroup}>
+                  <h3 className={styles.formGroupTitle}>
+                    Pickup Time Window<span className={styles.required}>*</span>
+                  </h3>
+                  <p className={styles.fieldDescription}>
+                    (E.g. 12:15 PM - 12:45 PM)
+                  </p>
+                  <div className={styles.pickupWindowRow}>
+                    <div className={styles.pickupWindowField}>
+                      <label
+                        className={styles.pickupWindowLabel}
+                        htmlFor="pickup-window-from"
+                      >
+                        From
+                      </label>
+                      <div className={styles.pickupWindowCell}>
+                        <input
+                          id="pickup-window-from"
+                          type="time"
+                          value={pickupWindowFromTime}
+                          onChange={(e) =>
+                            setPickupWindowFromTime(e.target.value)
+                          }
+                          className={styles.pickupWindowInput}
+                          required
+                        />
                       </div>
                     </div>
-                  </div>
-
-                  {/* Pick Up Location */}
-                  <div className={styles.formGroup}>
-                    <h3 className={styles.formGroupTitle}>Pick Up Location</h3>
-                    <div className={styles.locationCell}>
-                      <svg
-                        width="16"
-                        height="20"
-                        viewBox="0 0 16 20"
-                        fill="none"
-                        className={styles.locationIcon}
+                    <span className={styles.pickupWindowArrow}>→</span>
+                    <div className={styles.pickupWindowField}>
+                      <label
+                        className={styles.pickupWindowLabel}
+                        htmlFor="pickup-window-to"
                       >
-                        <path
-                          d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
-                          fill="#325CE8"
+                        To
+                      </label>
+                      <div className={styles.pickupWindowCell}>
+                        <input
+                          id="pickup-window-to"
+                          type="time"
+                          value={pickupWindowToTime}
+                          onChange={(e) =>
+                            setPickupWindowToTime(e.target.value)
+                          }
+                          className={styles.pickupWindowInput}
+                          required
                         />
-                      </svg>
-                      <select
-                        value={pickupLocationName}
-                        onChange={(e) => setPickupLocationName(e.target.value)}
-                        className={styles.locationSelect}
-                        required
-                      >
-                        {!pickupLocationName && (
-                          <option value="" disabled>
-                            Select pickup location...
-                          </option>
-                        )}
-                        {locationNames.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Drop Off Location */}
-                  <div
-                    className={`${styles.formGroup} ${styles.formGroupDropoff}`}
-                  >
-                    <h3 className={styles.formGroupTitle}>Drop Off Location</h3>
-                    <div className={styles.locationCell}>
-                      <svg
-                        width="16"
-                        height="20"
-                        viewBox="0 0 16 20"
-                        fill="none"
-                        className={styles.locationIconRed}
-                      >
-                        <path
-                          d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
-                          fill="#C73A3A"
-                        />
-                      </svg>
-                      <select
-                        value={dropoffLocationName}
-                        onChange={(e) => setDropoffLocationName(e.target.value)}
-                        className={styles.locationSelect}
-                        required
-                      >
-                        {!dropoffLocationName && (
-                          <option value="" disabled>
-                            Select drop-off location...
-                          </option>
-                        )}
-                        {locationNames.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right: Map Image */}
-              <div className={styles.mapSection}>
+              {/* Column Divider */}
+              <div className={styles.columnDivider} aria-hidden />
+
+              {/* Right Column */}
+              <div className={styles.rightColumn}>
+                {/* Map */}
                 <div ref={mapContainerRef} className={styles.mapImage} />
+
+                {/* Pickup Location */}
+                <div className={styles.formGroup}>
+                  <h3 className={styles.formGroupTitle}>
+                    Pickup Location<span className={styles.required}>*</span>
+                  </h3>
+                  <p className={styles.fieldDescription}>
+                    Please type or locate on the above map the{" "}
+                    <strong>on campus location</strong> that you&apos;d like to
+                    be picked up at.
+                  </p>
+                  <div className={styles.locationCell}>
+                    <svg
+                      width="16"
+                      height="20"
+                      viewBox="0 0 16 20"
+                      fill="none"
+                      className={styles.locationIcon}
+                    >
+                      <path
+                        d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
+                        fill="#325CE8"
+                      />
+                    </svg>
+                    <select
+                      value={pickupLocationName}
+                      onChange={(e) => setPickupLocationName(e.target.value)}
+                      className={styles.locationSelect}
+                      required
+                    >
+                      {!pickupLocationName && (
+                        <option value="" disabled>
+                          Select pickup location...
+                        </option>
+                      )}
+                      {locationNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Dropoff Location */}
+                <div className={styles.formGroup}>
+                  <h3 className={styles.formGroupTitle}>
+                    Dropoff Location<span className={styles.required}>*</span>
+                  </h3>
+                  <p className={styles.fieldDescription}>
+                    Please type or locate on the above map the{" "}
+                    <strong>on campus location</strong> that you&apos;d like to
+                    be dropped off at.
+                  </p>
+                  <div className={styles.locationCell}>
+                    <svg
+                      width="16"
+                      height="20"
+                      viewBox="0 0 16 20"
+                      fill="none"
+                      className={styles.locationIconGreen}
+                    >
+                      <path
+                        d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
+                        fill="#3aaa5c"
+                      />
+                    </svg>
+                    <select
+                      value={dropoffLocationName}
+                      onChange={(e) => setDropoffLocationName(e.target.value)}
+                      className={styles.locationSelect}
+                      required
+                    >
+                      {!dropoffLocationName && (
+                        <option value="" disabled>
+                          Select drop-off location...
+                        </option>
+                      )}
+                      {locationNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={styles.submitButton}
+                >
+                  {submitting ? "Submitting..." : "Submit"}
+                </button>
               </div>
             </div>
-
-            {error && (
-              <div className={styles.errorMessage} role="alert">
-                {error}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className={styles.submitButton}
-            >
-              <span className={styles.submitButtonText}>
-                {submitting ? "Submitting..." : "Submit"}
-              </span>
-            </button>
           </form>
         </div>
       </main>

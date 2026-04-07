@@ -12,7 +12,6 @@ export enum RouteStatus {
   Pickedup = "Pickedup",
   Completed = "Completed",
   Missing = "Missing",
-  CancelledByDriver = "Cancelled by Driver",
   CancelledByStudent = "Cancelled by Student",
   CancelledByAdmin = "Cancelled by Admin",
 }
@@ -26,6 +25,7 @@ interface IRouteDocument {
   scheduledPickupTime: Date;
   pickupWindowStart: Date;
   pickupWindowEnd: Date;
+  estimatedDropoffTime?: Date;
   status: RouteStatus;
 }
 
@@ -53,7 +53,7 @@ const EmbeddedStudentSchema = new Schema(
     type: { type: String, required: true, enum: ["Student"] },
     studentInfo: {
       notes: { type: String },
-      accessibilityNeeds: { type: String, enum: ["Wheelchair", "LowMobility"] },
+      accessibilityNeeds: [{ type: String }],
     },
   },
   { _id: true, versionKey: false },
@@ -94,6 +94,7 @@ const RouteSchema = new Schema<IRouteDocument>(
     scheduledPickupTime: { type: Date, required: true },
     pickupWindowStart: { type: Date, required: true },
     pickupWindowEnd: { type: Date, required: true },
+    estimatedDropoffTime: { type: Date, required: false },
     status: {
       type: String,
       enum: Object.values(RouteStatus),

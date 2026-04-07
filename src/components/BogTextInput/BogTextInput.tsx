@@ -67,7 +67,15 @@ export default function BogTextInput({
       className={`${styles.container} ${className} text-paragraph-2`}
       style={style}
     >
-      {label}
+      {(label !== undefined || required) && (
+        <span style={{ display: "inline-flex" }}>
+          {label}
+          &nbsp;
+          {required && (
+            <span style={{ color: "var(--color-status-red-text)" }}>*</span>
+          )}
+        </span>
+      )}
       <div
         className={`${styles.inputWrapper} ${
           iconProps &&

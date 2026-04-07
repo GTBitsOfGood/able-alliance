@@ -71,6 +71,10 @@ interface BogTableProps extends Omit<
   selectedRows?: Set<number>;
   /** Called when selection changes */
   onSelectedRowsChange?: (selected: Set<number>) => void;
+  /** Called when a row is clicked with the row index */
+  onRowClick?: (rowIndex: number, rowElement: HTMLTableRowElement) => void;
+  /** Optional action buttons rendered to the right of the search bar in the toolbar */
+  actions?: React.ReactNode;
 }
 
 // Helper functions moved outside component to be stable
@@ -133,6 +137,8 @@ const BogTable: React.FC<BogTableProps> = ({
   selectable = false,
   selectedRows: controlledSelected,
   onSelectedRowsChange,
+  onRowClick,
+  actions,
   ...rootProps
 }) => {
   const breakpoint = useResponsive();
@@ -286,6 +292,7 @@ const BogTable: React.FC<BogTableProps> = ({
             />
             <BogIcon name="search" size={16} className={styles.searchIcon} />
           </div>
+          {actions && <div className={styles.tableActions}>{actions}</div>}
           {/* Filter button — hidden per design request
           <BogPopover
             title=""
@@ -672,7 +679,24 @@ const BogTable: React.FC<BogTableProps> = ({
             </Table.Header>
             <Table.Body>
               {sortedRows.map((row, rIdx) => (
-                <Table.Row key={`row-${rIdx}`} {...row.styleProps}>
+                <Table.Row
+                  key={`row-${rIdx}`}
+                  {...row.styleProps}
+                  onClick={(e) => {
+                    if (
+                      onRowClick &&
+                      e.currentTarget instanceof HTMLTableRowElement
+                    ) {
+                      onRowClick(rIdx, e.currentTarget);
+                    }
+                  }}
+                  style={
+                    {
+                      cursor: onRowClick ? "pointer" : "default",
+                      ...((row.styleProps as React.CSSProperties) || {}),
+                    } as React.CSSProperties
+                  }
+                >
                   {selectable && (
                     <Table.Cell
                       className={`${styles.cell} ${styles.cellBase} ${styles[sizeClass]} ${styles.selectCell}`}
@@ -686,25 +710,15 @@ const BogTable: React.FC<BogTableProps> = ({
                       </div>
                     </Table.Cell>
                   )}
-                  {row.cells.map((cell, cIdx) =>
-                    cIdx === 0 ? (
-                      <Table.RowHeaderCell
-                        key={`row-${rIdx}-cell-${cIdx}`}
-                        {...cell.styleProps}
-                        className={`${styles.rowHeaderCell} ${styles.cellBase} ${styles[sizeClass]}`}
-                      >
-                        {cell.content}
-                      </Table.RowHeaderCell>
-                    ) : (
-                      <Table.Cell
-                        key={`row-${rIdx}-cell-${cIdx}`}
-                        {...cell.styleProps}
-                        className={`${styles.cell} ${styles.cellBase} ${styles[sizeClass]}`}
-                      >
-                        {cell.content}
-                      </Table.Cell>
-                    ),
-                  )}
+                  {row.cells.map((cell, cIdx) => (
+                    <Table.Cell
+                      key={`row-${rIdx}-cell-${cIdx}`}
+                      {...cell.styleProps}
+                      className={`${styles.cell} ${styles.cellBase} ${styles[sizeClass]}`}
+                    >
+                      {cell.content}
+                    </Table.Cell>
+                  ))}
                 </Table.Row>
               ))}
             </Table.Body>

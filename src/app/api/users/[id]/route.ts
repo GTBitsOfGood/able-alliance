@@ -6,7 +6,9 @@ import {
   deleteUser,
   updateStudentInfo,
   updateDriverShifts,
+  updatePreferredName,
 } from "@/server/db/actions/UserAction";
+import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
 import { auth } from "@/auth";
@@ -67,11 +69,9 @@ export async function GET(
 
 const studentInfoPatchSchema = z
   .object({
+    preferredName: z.string().max(100).nullable().optional(),
     notes: z.string().max(2000).nullable().optional(),
-    accessibilityNeeds: z
-      .enum(["Wheelchair", "LowMobility"])
-      .nullable()
-      .optional(),
+    accessibilityNeeds: z.array(z.string().min(1)).nullable().optional(),
   })
   .strict();
 
@@ -157,10 +157,47 @@ export async function PATCH(
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      updated = await updateStudentInfo(id, {
-        notes: parsed.data.notes ?? null,
-        accessibilityNeeds: parsed.data.accessibilityNeeds ?? null,
-      });
+      const { preferredName, notes, accessibilityNeeds } = parsed.data;
+      if (accessibilityNeeds && accessibilityNeeds.length > 0) {
+        const invalid = await findInvalidAccommodations(accessibilityNeeds);
+        if (invalid.length > 0) {
+          return NextResponse.json(
+            { error: `Invalid accommodations: ${invalid.join(", ")}` },
+            { status: HTTP_STATUS_CODE.BAD_REQUEST },
+          );
+        }
+      }
+      if (preferredName !== undefined) {
+        updated = await updatePreferredName(id, preferredName ?? null);
+        if (!updated) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
+      }
+      if (notes !== undefined || accessibilityNeeds !== undefined) {
+        updated = await updateStudentInfo(id, {
+          notes: notes ?? null,
+          accessibilityNeeds: accessibilityNeeds ?? null,
+        });
+        if (!updated) {
+          return NextResponse.json(
+            { error: "User not found or not a student" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
+      }
+      if (!updated) {
+        const currentUser = await getUserById(id);
+        if (!currentUser) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
+        updated = currentUser;
+      }
     } else if (user.type === "Driver") {
       // For drivers, only admins can update shifts
       if (!isAdmin) {
@@ -176,6 +213,12 @@ export async function PATCH(
         });
       }
       updated = await updateDriverShifts(id, parsed.data.shifts ?? []);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "User not found or update failed" },
+          { status: HTTP_STATUS_CODE.NOT_FOUND },
+        );
+      }
     } else {
       return NextResponse.json(
         { error: "Cannot update this user type" },
@@ -183,14 +226,7 @@ export async function PATCH(
       );
     }
 
-    if (!updated) {
-      return NextResponse.json(
-        { error: "User not found or update failed" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
-
-    const userObj = updated as unknown as Record<string, unknown> & {
+    const userObj = updated as Record<string, unknown> & {
       _id: { toString(): string };
     };
     return NextResponse.json(
