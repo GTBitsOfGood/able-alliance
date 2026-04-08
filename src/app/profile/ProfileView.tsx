@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import { Shifts } from "./Shifts";
 import { DeleteUserModal } from "./DeleteUserModal";
+import { ProfileRidesTab } from "./ProfileRidesTab";
 import styles from "./profile.module.css";
 import type { UserType } from "@/utils/authUser";
 
@@ -226,8 +227,13 @@ export function ProfileView({
           );
         })()}
 
-        {/* Rides tab — blank for now */}
-        {activeTab === "rides" && <div className={styles.ridesPlaceholder} />}
+        {/* Rides tab */}
+        {activeTab === "rides" && (
+          <ProfileRidesTab
+            userId={displayUser.id}
+            userType={displayUser.type as "Student" | "Driver"}
+          />
+        )}
 
         {/* Card */}
         {activeTab === "profile" && (
@@ -360,6 +366,7 @@ export function ProfileView({
                     </span>
                     {editing ? (
                       <div
+                        className={styles.accommodationField}
                         style={{
                           display: "flex",
                           flexDirection: "column",
