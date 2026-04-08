@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import BogButton from "@/components/BogButton/BogButton";
+import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./profile.module.css";
 
 type Shift = {
@@ -128,26 +129,22 @@ function ShiftEditor({
           <div className={styles.shiftList}>
             {(shiftsByDay[dayOfWeek] || []).map((shift) => (
               <div key={shift.originalIndex} className={styles.shiftItem}>
-                <input
-                  type="time"
-                  className={styles.shiftTimeInput}
+                <TimeInput
                   value={shift.startTime}
-                  onChange={(e) =>
-                    updateShift(
-                      shift.originalIndex,
-                      "startTime",
-                      e.target.value,
-                    )
+                  onChange={(v) =>
+                    updateShift(shift.originalIndex, "startTime", v)
                   }
+                  inputClassName={styles.shiftTimeInput}
+                  className={styles.shiftTimeInputWrapper}
                 />
                 <span className={styles.shiftTimeSeparator}>to</span>
-                <input
-                  type="time"
-                  className={styles.shiftTimeInput}
+                <TimeInput
                   value={shift.endTime}
-                  onChange={(e) =>
-                    updateShift(shift.originalIndex, "endTime", e.target.value)
+                  onChange={(v) =>
+                    updateShift(shift.originalIndex, "endTime", v)
                   }
+                  inputClassName={styles.shiftTimeInput}
+                  className={styles.shiftTimeInputWrapper}
                 />
                 <BogButton
                   variant="secondary"

@@ -110,6 +110,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     const studentInfo: {
       notes?: string;
       accessibilityNeeds?: (
@@ -181,6 +186,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -229,6 +239,11 @@ function AdminContent() {
 
     if (!firstName || !lastName || !email) {
       setSubmitError("First name, last name, and email are required.");
+      return;
+    }
+
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
       return;
     }
 

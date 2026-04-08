@@ -292,6 +292,58 @@
   display: none;
 }
 
+/* Logout button */
+.logoutButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 2rem;
+  padding: 0.8rem 1.6rem;
+  border: 0.1rem solid var(--color-status-red-text);
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--color-status-red-text);
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-family: var(--font-paragraph);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.logoutButton:hover {
+  background: var(--color-status-red-fill);
+}
+
+/* Delete button */
+.deleteSection {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1.6rem;
+  border: 0.1rem solid var(--color-status-red-text);
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--color-status-red-text);
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-family: var(--font-paragraph);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.deleteButton:hover {
+  background: var(--color-status-red-fill);
+}
+
 .shiftCard {
   margin-top: 2rem;
   padding: 1.75rem 2rem;
@@ -337,6 +389,11 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.shiftTimeInputWrapper {
+  position: relative;
+  display: inline-block;
 }
 
 .shiftTimeInput {

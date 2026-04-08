@@ -67,6 +67,7 @@ export default async function ProfilePage({
         user={selfFromSession}
         canEdit={canEdit}
         viewerType={viewerType as UserType}
+        isOwnProfile={viewerId === targetId}
       />
     );
   }
@@ -92,11 +93,21 @@ export default async function ProfilePage({
     shifts: doc.shifts ?? [],
   };
 
+  const isOwnProfile = viewerId === targetId;
+  const targetType = user.type;
+  const canDelete =
+    !isOwnProfile &&
+    (viewerType === "SuperAdmin" ||
+      ((viewerType === "Admin" || viewerType === "SuperAdmin") &&
+        (targetType === "Student" || targetType === "Driver")));
+
   return (
     <ProfileView
       user={user}
       canEdit={canEdit}
       viewerType={viewerType as UserType}
+      isOwnProfile={isOwnProfile}
+      canDelete={canDelete}
     />
   );
 }

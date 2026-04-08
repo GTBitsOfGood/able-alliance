@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import { Shifts } from "./Shifts";
+import { DeleteUserModal } from "./DeleteUserModal";
 import styles from "./profile.module.css";
 import type { UserType } from "@/utils/authUser";
 
@@ -60,15 +62,23 @@ export function ProfileView({
   user,
   canEdit = false,
   viewerType = "Student",
+  isOwnProfile = false,
+  canDelete = false,
 }: {
   user: ProfileUser;
   canEdit?: boolean;
   viewerType?: UserType;
+  isOwnProfile?: boolean;
+  canDelete?: boolean;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [draftPreferredName, setDraftPreferredName] = useState(
     user.preferredName ?? "",
@@ -112,6 +122,25 @@ export function ProfileView({
   function handleCancel() {
     setEditing(false);
     setSaveError(null);
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/users/${displayUser.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error ?? "Failed to delete user");
+      }
+      router.push("/admin");
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete user");
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
   }
 
   async function handleSave() {
@@ -173,20 +202,29 @@ export function ProfileView({
         </header>
 
         {/* Tabs */}
-        <div className={styles.tabBar}>
-          <button
-            className={`${styles.tab} ${activeTab === "profile" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("profile")}
-          >
-            Profile
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === "rides" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("rides")}
-          >
-            Rides
-          </button>
-        </div>
+        {(() => {
+          const showRidesTab =
+            (displayUser.type === "Student" || displayUser.type === "Driver") &&
+            (viewerType === "Admin" || viewerType === "SuperAdmin");
+          return (
+            <div className={styles.tabBar}>
+              <button
+                className={`${styles.tab} ${activeTab === "profile" ? styles.tabActive : ""}`}
+                onClick={() => setActiveTab("profile")}
+              >
+                Profile
+              </button>
+              {showRidesTab && (
+                <button
+                  className={`${styles.tab} ${activeTab === "rides" ? styles.tabActive : ""}`}
+                  onClick={() => setActiveTab("rides")}
+                >
+                  Rides
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Rides tab — blank for now */}
         {activeTab === "rides" && <div className={styles.ridesPlaceholder} />}
@@ -494,6 +532,54 @@ export function ProfileView({
               setDisplayUser((prev) => ({ ...prev, shifts }));
             }}
           />
+        )}
+
+        {activeTab === "profile" && isOwnProfile && (
+          // eslint-disable-next-line @next/next/no-html-link-for-pages
+          <a href="/api/auth/cas/logout" className={styles.logoutButton}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Log out
+          </a>
+        )}
+
+        {activeTab === "profile" && canDelete && (
+          <div className={styles.deleteSection}>
+            {deleteError && (
+              <p className={styles.saveError} role="alert">
+                {deleteError}
+              </p>
+            )}
+            <button
+              type="button"
+              className={styles.deleteButton}
+              onClick={() => setShowDeleteModal(true)}
+            >
+              Delete user
+            </button>
+            <DeleteUserModal
+              open={showDeleteModal}
+              onOpenChange={(open) => {
+                if (!open) setShowDeleteModal(false);
+              }}
+              onConfirmDelete={() => void handleDelete()}
+              confirming={deleting}
+            />
+          </div>
         )}
       </div>
     </div>
