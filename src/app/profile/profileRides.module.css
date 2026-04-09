@@ -131,3 +131,45 @@
   white-space: nowrap;
   color: #22070b;
 }
+
+/* Tab-underline style filter (used for Vehicle view) */
+.tabRow {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(34, 7, 11, 0.12);
+}
+
+.tabBtn {
+  padding: 0.8rem 2rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 1.6rem;
+  font-family: var(--font-paragraph);
+  color: rgba(34, 7, 11, 0.5);
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.tabBtn:hover {
+  color: #22070b;
+}
+
+.tabBtnActive {
+  color: #22070b;
+  border-bottom: 2px solid #22070b;
+  font-weight: 600;
+}
+
+.weekLabel {
+  font-size: 2.4rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: #22070b;
+  line-height: 3.2rem;
+  margin-top: 2.4rem;
+  margin-bottom: 1.6rem;
+}

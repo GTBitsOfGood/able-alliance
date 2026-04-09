@@ -1,11 +1,7 @@
 "use client";
 
-<<<<<<< HEAD
 import React, { useState, useEffect, useCallback } from "react";
-=======
-import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
->>>>>>> b5b2bb87ae342fb57aceb60074e45b0320163b34
 import BogButton from "@/components/BogButton/BogButton";
 import { Shifts } from "./Shifts";
 import { DeleteUserModal } from "./DeleteUserModal";

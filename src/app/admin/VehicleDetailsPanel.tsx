@@ -5,65 +5,19 @@ import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
-import BogTable from "@/components/BogTable/BogTable";
-import type { TableRow } from "@/components/BogTable/BogTable";
+import { ProfileRidesTab } from "@/app/profile/ProfileRidesTab";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 
 type Vehicle = {
   _id: string;
+  vehicleId?: string;
   name: string;
   licensePlate: string;
   description?: string;
   accessibility: "None" | "Wheelchair";
   seatCount: number;
 };
-
-type RouteEntry = {
-  _id: string;
-  student: { firstName: string; lastName: string };
-  driver?: { firstName: string; lastName: string };
-  vehicle?: { _id: string };
-  pickupLocation: string;
-  dropoffLocation: string;
-  scheduledPickupTime: string;
-  estimatedDropoffTime?: string;
-  status: string;
-};
-
-type LocationEntry = { _id: string; name: string };
-
-function getWeekBounds(weekOffset: 0 | 1): { start: Date; end: Date } {
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay() + weekOffset * 7);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
-
-function formatWeekLabel(start: Date, end: Date): string {
-  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  return `Week of ${start.toLocaleDateString("en-US", opts)} - ${end.toLocaleDateString("en-US", opts)}`;
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-const RIDE_COLUMNS = [
-  { content: "Student", datatype: "string" as const },
-  { content: "Driver", datatype: "string" as const },
-  { content: "Date", datatype: "string" as const },
-  { content: "Pickup", datatype: "string" as const },
-  { content: "Dropoff", datatype: "string" as const },
-  { content: "Status", datatype: "string" as const },
-];
 
 interface VehicleDetailsPanelProps {
   vehicleId: string;
@@ -95,12 +49,6 @@ export default function VehicleDetailsPanel({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Rides state
-  const [activeTab, setActiveTab] = useState<0 | 1>(0);
-  const [routes, setRoutes] = useState<RouteEntry[]>([]);
-  const [locationMap, setLocationMap] = useState<Record<string, string>>({});
-  const [loadingRides, setLoadingRides] = useState(true);
-
   useEffect(() => {
     setLoadingVehicle(true);
     setVehicleError(null);
@@ -120,35 +68,6 @@ export default function VehicleDetailsPanel({
         setLoadingVehicle(false);
       });
   }, [vehicleId]);
-
-  useEffect(() => {
-    setLoadingRides(true);
-    const { start, end } = getWeekBounds(activeTab);
-    Promise.all([
-      fetch(
-        `/api/routes?start_time=${start.toISOString()}&end_time=${end.toISOString()}`,
-      ).then((r) => r.json()),
-      fetch("/api/locations").then((r) => r.json()),
-    ])
-      .then(([routesData, locationsData]) => {
-        const locMap: Record<string, string> = {};
-        if (Array.isArray(locationsData)) {
-          for (const loc of locationsData as LocationEntry[]) {
-            locMap[String(loc._id)] = String(loc.name);
-          }
-        }
-        setLocationMap(locMap);
-        const filtered = Array.isArray(routesData)
-          ? routesData.filter(
-              (r: RouteEntry) =>
-                r.vehicle && String(r.vehicle._id) === vehicleId,
-            )
-          : [];
-        setRoutes(filtered);
-        setLoadingRides(false);
-      })
-      .catch(() => setLoadingRides(false));
-  }, [vehicleId, activeTab]);
 
   const handleCancel = () => {
     if (!vehicle) return;
@@ -216,37 +135,6 @@ export default function VehicleDetailsPanel({
     }
   };
 
-  const rideRows: TableRow[] = routes.map((r) => {
-    const pickupDate = new Date(r.scheduledPickupTime).toLocaleDateString();
-    const pickupTime = formatTime(r.scheduledPickupTime);
-    const dropoffTime = r.estimatedDropoffTime
-      ? formatTime(r.estimatedDropoffTime)
-      : "—";
-    const pickupLoc = locationMap[r.pickupLocation] ?? r.pickupLocation;
-    const dropoffLoc = locationMap[r.dropoffLocation] ?? r.dropoffLocation;
-    return {
-      cells: [
-        { content: `${r.student.firstName} ${r.student.lastName}` },
-        {
-          content: r.driver
-            ? `${r.driver.firstName} ${r.driver.lastName}`
-            : "—",
-        },
-        { content: pickupDate },
-        { content: `${pickupTime} @ ${pickupLoc}` },
-        { content: `${dropoffTime} @ ${dropoffLoc}` },
-        { content: r.status },
-      ],
-    };
-  });
-
-  const thisWeekBounds = getWeekBounds(0);
-  const nextWeekBounds = getWeekBounds(1);
-  const weekLabel =
-    activeTab === 0
-      ? formatWeekLabel(thisWeekBounds.start, thisWeekBounds.end)
-      : formatWeekLabel(nextWeekBounds.start, nextWeekBounds.end);
-
   if (loadingVehicle) return <p className="text-gray-600">Loading…</p>;
   if (vehicleError)
     return <p className="text-sm text-amber-700">{vehicleError}</p>;
@@ -291,7 +179,7 @@ export default function VehicleDetailsPanel({
           color: "var(--color-grey-text-strong)",
         }}
       >
-        Vehicle ID {vehicle?.name}
+        Vehicle ID {vehicle?.vehicleId ?? vehicle?.name}
       </h2>
 
       {/* Vehicle Information Card */}
@@ -489,7 +377,7 @@ export default function VehicleDetailsPanel({
       </div>
 
       {/* Assigned Rides */}
-      <div className="flex flex-col gap-[1.6rem]">
+      <div className="flex flex-col gap-[0.8rem]">
         <h2
           style={{
             fontFamily: "var(--font-heading)",
@@ -499,60 +387,7 @@ export default function VehicleDetailsPanel({
         >
           Assigned Rides
         </h2>
-
-        {/* Tabs */}
-        <div
-          className="flex gap-0 border-b"
-          style={{ borderColor: "var(--color-grey-stroke-weak)" }}
-        >
-          {(["This week", "Next week"] as const).map((label, i) => (
-            <button
-              key={label}
-              onClick={() => setActiveTab(i as 0 | 1)}
-              style={{
-                padding: "0.8rem 1.6rem",
-                fontSize: "var(--text-desktop-paragraph-2)",
-                fontFamily: "var(--font-paragraph)",
-                fontWeight: activeTab === i ? 700 : 400,
-                color:
-                  activeTab === i
-                    ? "var(--color-grey-text-strong)"
-                    : "var(--color-grey-off-state)",
-                borderBottom:
-                  activeTab === i
-                    ? "2px solid var(--color-grey-text-strong)"
-                    : "2px solid transparent",
-                background: "none",
-                cursor: "pointer",
-                marginBottom: "-1px",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <h3
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "var(--text-desktop-paragraph-1)",
-            fontWeight: 700,
-          }}
-        >
-          {weekLabel}
-        </h3>
-
-        {loadingRides ? (
-          <p className="text-gray-600">Loading rides…</p>
-        ) : rideRows.length === 0 ? (
-          <p className="text-gray-600">No rides assigned for this week.</p>
-        ) : (
-          <BogTable
-            columnHeaders={RIDE_COLUMNS}
-            rows={rideRows}
-            selectable={false}
-          />
-        )}
+        <ProfileRidesTab userId={vehicleId} userType="Vehicle" />
       </div>
     </div>
   );
