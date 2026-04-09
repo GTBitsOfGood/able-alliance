@@ -378,9 +378,20 @@ async function seed() {
     return d;
   };
 
+  type AnyUser = {
+    _id: mongoose.Types.ObjectId;
+    firstName: string;
+    lastName: string;
+    email: string;
+    type: string;
+    preferredName?: string;
+    shifts?: { dayOfWeek: number; startTime: string; endTime: string }[];
+    studentInfo?: { accessibilityNeeds?: string[]; notes?: string };
+  };
+
   type RouteTemplate = {
-    student: typeof student1;
-    driver: typeof driver1;
+    student: AnyUser;
+    driver: AnyUser;
     vehicle: (typeof vehicleDefs)[0] & { _id: mongoose.Types.ObjectId };
     pickupLocation: keyof typeof locations;
     dropoffLocation: keyof typeof locations;

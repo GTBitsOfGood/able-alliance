@@ -731,15 +731,15 @@ function AdminContent() {
     ) : (
       <BogForm onSubmit={handleAddVehicle} submitLabel="Create vehicle">
         <BogTextInput
-          name="vehicleId"
-          label="Vehicle ID"
-          placeholder="e.g. 1234"
-          required
-        />
-        <BogTextInput
           name="name"
           label="Name"
           placeholder="Vehicle name"
+          required
+        />
+        <BogTextInput
+          name="vehicleId"
+          label="Vehicle ID"
+          placeholder="e.g. 1234"
           required
         />
         <BogTextInput
