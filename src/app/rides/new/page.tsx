@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
@@ -286,6 +287,22 @@ export default function CreateRidePage() {
       return;
     }
 
+    const scheduledPickupDate = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      hours,
+      minutes,
+      0,
+    );
+    if (
+      scheduledPickupDate < pickupWindowStart ||
+      scheduledPickupDate > pickupWindowEnd
+    ) {
+      setError("Pickup time must fall within the pickup time window.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -478,11 +495,11 @@ export default function CreateRidePage() {
                     picked up.
                   </p>
                   <div className={styles.timeCell}>
-                    <input
-                      type="time"
+                    <TimeInput
                       value={pickupTime}
-                      onChange={(e) => setPickupTime(e.target.value)}
-                      className={styles.timeInput}
+                      onChange={setPickupTime}
+                      inputClassName={styles.timeInput}
+                      className={styles.timeInputWrapper}
                     />
                   </div>
                 </div>
@@ -504,15 +521,12 @@ export default function CreateRidePage() {
                         From
                       </label>
                       <div className={styles.pickupWindowCell}>
-                        <input
+                        <TimeInput
                           id="pickup-window-from"
-                          type="time"
                           value={pickupWindowFromTime}
-                          onChange={(e) =>
-                            setPickupWindowFromTime(e.target.value)
-                          }
-                          className={styles.pickupWindowInput}
-                          required
+                          onChange={setPickupWindowFromTime}
+                          inputClassName={styles.pickupWindowInput}
+                          className={styles.pickupWindowInputWrapper}
                         />
                       </div>
                     </div>
@@ -525,15 +539,12 @@ export default function CreateRidePage() {
                         To
                       </label>
                       <div className={styles.pickupWindowCell}>
-                        <input
+                        <TimeInput
                           id="pickup-window-to"
-                          type="time"
                           value={pickupWindowToTime}
-                          onChange={(e) =>
-                            setPickupWindowToTime(e.target.value)
-                          }
-                          className={styles.pickupWindowInput}
-                          required
+                          onChange={setPickupWindowToTime}
+                          inputClassName={styles.pickupWindowInput}
+                          className={styles.pickupWindowInputWrapper}
                         />
                       </div>
                     </div>

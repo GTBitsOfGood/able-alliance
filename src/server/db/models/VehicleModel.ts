@@ -4,6 +4,7 @@ import { VehicleInput } from "@/utils/types/vehicle";
 export type IVehicle = VehicleInput;
 
 const VehicleSchema: Schema<IVehicle> = new Schema({
+  vehicleId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   licensePlate: { type: String, required: true, unique: true },
   description: { type: String },

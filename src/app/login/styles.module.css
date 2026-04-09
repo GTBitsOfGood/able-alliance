@@ -1,9 +1,15 @@
-/* Container - 1440x1024 viewport */
+/* Container */
 .container {
   position: relative;
   width: 100vw;
   min-height: 100vh;
   background: var(--color-solid-bg-sunken);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
@@ -21,54 +27,44 @@
   z-index: 0;
 }
 
-/* Card - Rectangle 4 */
+/* Card */
 .card {
-  position: absolute;
-  width: 80.4rem;
-  height: 44.2rem;
-  left: calc(50% - 80.4rem / 2);
-  top: calc(50% - 44.2rem / 2);
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 80.4rem;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0.4rem 0.4rem 5rem rgba(0, 0, 0, 0.25);
   border-radius: 2.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
+  padding: 5rem 4rem;
+  box-sizing: border-box;
 }
 
-/* Frame 127 */
+/* Content */
 .content {
-  /* Auto layout */
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0;
   gap: 4.2rem;
-  position: absolute;
-  width: 51.5rem;
-  height: 26.2rem;
-  left: calc(50% - 51.5rem / 2);
-  top: calc(50% - 26.2rem / 2);
+  width: 100%;
+  max-width: 51.5rem;
 }
 
-/* Frame 126 */
+/* Header Row */
 .headerRow {
-  /* Auto layout */
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 0;
   gap: 1.2rem;
-  width: 48.9rem;
-  height: 7.8rem;
-  /* Inside auto layout */
-  flex: none;
-  order: 0;
-  flex-grow: 0;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-/* image 5 */
+/* Logo */
 .logoImage {
   width: 20.4rem;
   height: 7.8rem;
@@ -76,89 +72,57 @@
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  /* Inside auto layout */
-  flex: none;
-  order: 0;
-  flex-grow: 0;
+  flex-shrink: 0;
 }
 
-/* Line 1 */
+/* Divider */
 .divider {
-  width: 4.7rem;
-  height: 0;
-  border: 0.1rem solid var(--color-grey-stroke-strong);
-  transform: rotate(90deg);
-  /* Inside auto layout */
-  flex: none;
-  order: 1;
-  flex-grow: 0;
+  width: 0;
+  height: 5.6rem;
+  border-left: 0.1rem solid var(--color-grey-stroke-strong);
+  flex-shrink: 0;
 }
 
 /* Parking and Transportation Services */
 .serviceText {
-  width: 24rem;
-  height: 5.6rem;
   font-family: "Visby Extra Bold";
   font-style: normal;
   font-size: 2rem;
   line-height: 2.8rem;
-  /* or 140% */
   color: var(--color-grey-text-strong);
-  /* Inside auto layout */
-  flex: none;
-  order: 2;
-  flex-grow: 0;
+  max-width: 24rem;
 }
 
 /* Student Paratransit Service */
 .appTitle {
-  width: 60rem;
-  height: 4.8rem;
-
-  /* Heading 1/Regular */
   font-family: "Visby Light";
   font-style: normal;
   font-weight: 600;
   font-size: 4rem;
   line-height: 4.8rem;
-  /* identical to box height, or 120% */
   text-align: center;
-
   color: var(--color-grey-text-strong);
-
   margin: 0;
-
-  /* Inside auto layout */
-  flex: none;
-  order: 1;
-  flex-grow: 0;
+  width: 100%;
 }
 
-/* Frame 125 */
+/* Login Button */
 .loginButton {
-  /* Auto layout */
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
   padding: 1.4rem 2.4rem;
   gap: 1rem;
-
   width: 21.4rem;
+  max-width: 100%;
   height: 5.2rem;
-
   background: var(--color-checkbox-checked);
   border-radius: 0.8rem;
-
   border: none;
   cursor: pointer;
   transition: background-color 0.2s;
   text-decoration: none;
-
-  /* Inside auto layout */
-  flex: none;
-  order: 2;
-  flex-grow: 0;
 }
 
 .loginButton:hover {
@@ -171,47 +135,39 @@
 
 /* Log in with GT SSO */
 .loginButtonText {
-  width: 16.6rem;
-  height: 2.4rem;
-
-  /* Paragraph 1/Bold */
   font-family: "Open Sans";
   font-style: normal;
   font-weight: 700;
   font-size: 1.8rem;
   line-height: 2.4rem;
-  /* identical to box height, or 133% */
   display: flex;
   align-items: center;
   text-align: center;
-
   color: var(--color-solid-bg-base);
-
-  /* Inside auto layout */
-  flex: none;
-  order: 0;
-  flex-grow: 0;
+  white-space: nowrap;
 }
 
 /* Error banner */
 .errorBanner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 2;
+  width: 100%;
+  max-width: 80.4rem;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
   padding: 1.2rem 2rem;
+  margin-bottom: 1.5rem;
   background-color: #ffdddd;
-  border-bottom: 0.15rem solid #bb2020;
+  border: 0.15rem solid #bb2020;
+  border-radius: 0.8rem;
   color: #bb2020;
   font-size: 1.4rem;
   font-weight: 600;
   line-height: 1.5;
+  box-sizing: border-box;
 }
 
 .errorBannerIcon {
@@ -221,68 +177,47 @@
   color: #bb2020;
 }
 
-/* Responsive adjustments */
-@media (max-width: 900px) {
-  .container {
-    width: 100vw;
-    height: 100vh;
-  }
-
+/* Small screens */
+@media (max-width: 600px) {
   .card {
-    width: min(80.4rem, 90vw);
-    height: auto;
-    min-height: 44.2rem;
-    position: static;
-    margin: auto;
+    padding: 3.5rem 2.5rem;
+    border-radius: 1.6rem;
   }
 
   .content {
-    width: min(51.5rem, 100%);
-    height: auto;
+    gap: 3rem;
   }
 
   .headerRow {
     flex-direction: column;
-    width: 100%;
-    height: auto;
+    align-items: center;
     gap: 1rem;
   }
 
   .divider {
-    transform: rotate(0deg);
     width: 10rem;
     height: 0;
-    border: 0.15rem solid var(--color-grey-stroke-strong);
+    border-left: none;
+    border-top: 0.1rem solid var(--color-grey-stroke-strong);
   }
 
-  .serviceLabel {
+  .logoImage {
+    width: 16rem;
+    height: 6rem;
+  }
+
+  .serviceText {
+    font-size: 1.8rem;
     text-align: center;
-    width: 100%;
-    height: auto;
+    max-width: 100%;
   }
 
-  .heading {
-    font-size: 3.2rem;
-    line-height: 4rem;
-    width: 100%;
-    height: auto;
-  }
-}
-
-@media (max-width: 600px) {
-  .logo {
-    width: auto;
-    max-width: 18rem;
-    height: auto;
-  }
-
-  .heading {
-    font-size: 2.8rem;
-    line-height: 3.6rem;
+  .appTitle {
+    font-size: 3rem;
+    line-height: 3.8rem;
   }
 
   .loginButton {
     width: 100%;
-    max-width: 21.4rem;
   }
 }

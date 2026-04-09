@@ -40,7 +40,7 @@ function AdminContent() {
     [],
   );
 
-  useEffect(() => {
+  const refetchAccommodations = React.useCallback(() => {
     fetch("/api/accommodations")
       .then((r) => r.json())
       .then((data: { label: string }[]) =>
@@ -48,6 +48,10 @@ function AdminContent() {
       )
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    refetchAccommodations();
+  }, [refetchAccommodations]);
 
   const userType = session?.user?.type;
   useEffect(() => {
@@ -112,6 +116,11 @@ function AdminContent() {
 
     if (!firstName || !lastName || !email) {
       setSubmitError("First name, last name, and email are required.");
+      return;
+    }
+
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
       return;
     }
 
@@ -186,6 +195,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -237,6 +251,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -270,6 +289,9 @@ function AdminContent() {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
+    const vehicleId = (
+      form.elements.namedItem("vehicleId") as HTMLInputElement
+    ).value.trim();
     const name = (
       form.elements.namedItem("name") as HTMLInputElement
     ).value.trim();
@@ -284,8 +306,8 @@ function AdminContent() {
       10,
     );
 
-    if (!name || !licensePlate) {
-      setSubmitError("Name and license plate are required.");
+    if (!vehicleId || !name || !licensePlate) {
+      setSubmitError("Vehicle ID, name, and license plate are required.");
       return;
     }
     if (!Number.isInteger(seatCount) || seatCount < 1) {
@@ -297,6 +319,7 @@ function AdminContent() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        vehicleId,
         name,
         licensePlate,
         description: description || undefined,
@@ -723,6 +746,12 @@ function AdminContent() {
           required
         />
         <BogTextInput
+          name="vehicleId"
+          label="Vehicle ID"
+          placeholder="e.g. 1234"
+          required
+        />
+        <BogTextInput
           name="licensePlate"
           label="License plate"
           placeholder="Required"
@@ -813,7 +842,7 @@ function AdminContent() {
           {table === "Rides" ? (
             <RidesTable />
           ) : table === "Accommodations" ? (
-            <AccommodationsPanel />
+            <AccommodationsPanel onSaved={refetchAccommodations} />
           ) : (
             <>
               {error && (

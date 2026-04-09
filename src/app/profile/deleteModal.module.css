@@ -1,0 +1,80 @@
+.overlay {
+  background-color: rgba(15, 23, 42, 0.48);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding: 2.5rem 2rem;
+  border-radius: 0.5rem;
+  max-width: 44rem;
+  width: 100%;
+}
+
+.description {
+  margin: 0;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  color: var(--color-grey-text-strong);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+}
+
+.nevermind {
+  padding: 0.75rem 2rem;
+  border: 2px solid #183777;
+  border-radius: 0.5rem;
+  background: white;
+  color: #183777;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nevermind:hover:not(:disabled) {
+  background: #f0f4fc;
+}
+
+.nevermind:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirm {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--color-status-red-text);
+  color: white;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.confirm:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

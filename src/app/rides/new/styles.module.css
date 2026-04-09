@@ -359,6 +359,15 @@
   cursor: text;
 }
 
+.timeInputWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.pickupWindowInputWrapper {
+  width: 100%;
+}
+
 /* Hide browser-native clock icon on time inputs */
 .timeInput::-webkit-calendar-picker-indicator {
   display: none;

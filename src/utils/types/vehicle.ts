@@ -3,6 +3,7 @@ import { z } from "zod";
 export const accessibilityEnum = z.enum(["None", "Wheelchair"]);
 
 export const vehicleSchema = z.object({
+  vehicleId: z.string().min(1, "Vehicle ID is required"),
   name: z.string().min(1, "Name is required"),
   licensePlate: z.string().min(1, "License plate is required"),
   description: z.string().optional(),

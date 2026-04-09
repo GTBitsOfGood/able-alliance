@@ -1,0 +1,133 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  padding: 2.4rem 0;
+}
+
+.filterRow {
+  display: flex;
+  gap: 2rem;
+}
+
+.filterBtn {
+  padding: 0.8rem 1.6rem;
+  border-radius: 0.8rem;
+  font-size: 1.8rem;
+  font-family: var(--font-paragraph);
+  cursor: pointer;
+  border: none;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  line-height: 2.4rem;
+  min-width: 5.4rem;
+}
+
+.filterBtnActive {
+  background: #416ebc;
+  color: #fff;
+  font-weight: 600;
+}
+
+.filterBtnOutline {
+  background: #efeded;
+  color: #22070b;
+  font-weight: 400;
+}
+
+.filterBtnOutline:hover {
+  background: #e0dede;
+}
+
+.stateMsg {
+  font-size: 1.4rem;
+  font-family: var(--font-paragraph);
+  color: var(--color-grey-text-weak, #6b7280);
+  padding: 2rem 0;
+}
+
+.errorMsg {
+  font-size: 1.4rem;
+  font-family: var(--font-paragraph);
+  color: var(--color-status-red-text, #991b1b);
+  padding: 2rem 0;
+}
+
+.tableWrapper {
+  width: 100%;
+  border-radius: 0.8rem;
+  border: 1px solid var(--color-grey-stroke-weak, #e5e7eb);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  table-layout: auto;
+}
+
+.headerRow {
+  background: #dcecf8;
+  border-bottom: 1px solid rgba(34, 7, 11, 0.1);
+}
+
+.th {
+  padding: 1.6rem;
+  text-align: left;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #22070b;
+  white-space: nowrap;
+  position: relative;
+}
+
+.th + .th::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2.2rem;
+  width: 1px;
+  background: rgba(34, 7, 11, 0.15);
+}
+
+.row {
+  border-bottom: 1px solid rgba(34, 7, 11, 0.05);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: #f9f9f9;
+}
+
+.td {
+  padding: 1.6rem;
+  color: rgba(34, 7, 11, 0.7);
+  font-size: 1.4rem;
+  white-space: nowrap;
+}
+
+.emptyCell {
+  padding: 3.2rem 2rem;
+  text-align: center;
+  color: var(--color-grey-text-weak, #6b7280);
+  font-size: 1.4rem;
+}
+
+.statusChip {
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border-radius: 2.4rem;
+  font-size: 1.2rem;
+  font-weight: 400;
+  white-space: nowrap;
+  color: #22070b;
+}

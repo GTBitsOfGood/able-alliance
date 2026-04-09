@@ -221,6 +221,7 @@ export async function scheduleRoute(
   };
   const vehicleEmbed = {
     _id: vehicle._id,
+    vehicleId: vehicle.vehicleId,
     name: vehicle.name,
     licensePlate: vehicle.licensePlate,
     description: vehicle.description,
