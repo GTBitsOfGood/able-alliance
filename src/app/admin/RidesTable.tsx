@@ -206,7 +206,6 @@ export default function RidesTable() {
     const activeError = assignError ?? cancelError;
 
     return {
-      styleProps: { style: { verticalAlign: "middle" } },
       cells: [
         { content: studentName },
         {

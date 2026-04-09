@@ -33,3 +33,12 @@ export async function deleteVehicleById(id: string) {
   const deleted = await VehicleModel.findByIdAndDelete(id);
   return deleted;
 }
+
+export async function updateVehicleById(id: string, data: Partial<IVehicle>) {
+  await connectMongoDB();
+  const updated = await VehicleModel.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  }).lean();
+  return updated;
+}
