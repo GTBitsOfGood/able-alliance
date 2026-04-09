@@ -7,6 +7,7 @@ import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import {
   RouteAlreadyExistsException,
   RouteReferenceNotFoundException,
+  DriverNotAvailableException,
 } from "@/utils/exceptions/route";
 import { getMapboxTravelDuration } from "@/server/mapbox";
 
@@ -180,6 +181,33 @@ export async function scheduleRoute(
       "Driver not found or not a driver",
     );
   }
+
+  // Check if driver is available at the scheduled time
+  const pickupTime = route.scheduledPickupTime;
+  const dayOfWeek = pickupTime.getDay(); // 0=Sun, 6=Sat
+  const timeStr = pickupTime.toTimeString().slice(0, 5); // HH:MM
+
+  const driverShifts =
+    (
+      driver as {
+        shifts?: Array<{
+          dayOfWeek: number;
+          startTime: string;
+          endTime: string;
+        }>;
+      }
+    ).shifts || [];
+  const isAvailable = driverShifts.some(
+    (shift) =>
+      shift.dayOfWeek === dayOfWeek &&
+      shift.startTime <= timeStr &&
+      timeStr <= shift.endTime,
+  );
+
+  if (!isAvailable) {
+    throw new DriverNotAvailableException();
+  }
+
   const vehicle = await VehicleModel.findById(vehicleId).lean();
   if (!vehicle) {
     throw new RouteReferenceNotFoundException("Vehicle not found");
@@ -193,6 +221,7 @@ export async function scheduleRoute(
   };
   const vehicleEmbed = {
     _id: vehicle._id,
+    vehicleId: vehicle.vehicleId,
     name: vehicle.name,
     licensePlate: vehicle.licensePlate,
     description: vehicle.description,

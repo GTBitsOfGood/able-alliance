@@ -114,6 +114,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     const studentInfo: {
       notes?: string;
       accessibilityNeeds?: (
@@ -185,6 +190,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -236,6 +246,11 @@ function AdminContent() {
       return;
     }
 
+    if (!email.toLowerCase().endsWith("@gatech.edu")) {
+      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+      return;
+    }
+
     fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -269,6 +284,9 @@ function AdminContent() {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
+    const vehicleId = (
+      form.elements.namedItem("vehicleId") as HTMLInputElement
+    ).value.trim();
     const name = (
       form.elements.namedItem("name") as HTMLInputElement
     ).value.trim();
@@ -283,8 +301,8 @@ function AdminContent() {
       10,
     );
 
-    if (!name || !licensePlate) {
-      setSubmitError("Name and license plate are required.");
+    if (!vehicleId || !name || !licensePlate) {
+      setSubmitError("Vehicle ID, name, and license plate are required.");
       return;
     }
     if (!Number.isInteger(seatCount) || seatCount < 1) {
@@ -296,6 +314,7 @@ function AdminContent() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        vehicleId,
         name,
         licensePlate,
         description: description || undefined,
@@ -719,6 +738,12 @@ function AdminContent() {
           name="name"
           label="Name"
           placeholder="Vehicle name"
+          required
+        />
+        <BogTextInput
+          name="vehicleId"
+          label="Vehicle ID"
+          placeholder="e.g. 1234"
           required
         />
         <BogTextInput
