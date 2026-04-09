@@ -125,10 +125,6 @@ function AdminSidebarContent() {
       </div>
 
       <div className={styles.bottom}>
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a href="/api/auth/cas/logout" className={styles.logoutBtn}>
-          Logout
-        </a>
         <Link href={`/profile/${userId}`} className={styles.userCard}>
           <div className={styles.avatar}>{avatarLetter}</div>
           <div className={styles.userInfo}>

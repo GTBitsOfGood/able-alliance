@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
+import { CancelRideModal } from "../CancelRideModal";
 import styles from "./styles.module.css";
+
+const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
 
 type RouteUser = {
   _id: string;
@@ -102,11 +106,14 @@ export default function RideDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { data: session, status: sessionStatus } = useSession();
+  const router = useRouter();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
   const [locations, setLocations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingRide, setCancellingRide] = useState(false);
 
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -479,6 +486,28 @@ export default function RideDetailPage({
     }
   };
 
+  const handleCancelRide = useCallback(async () => {
+    if (!routeId) return;
+    setCancellingRide(true);
+    try {
+      const res = await fetch("/api/routes/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? res.statusText);
+      }
+      setShowCancelModal(false);
+      router.push("/rides");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Cancellation failed.");
+    } finally {
+      setCancellingRide(false);
+    }
+  }, [routeId, router]);
+
   if (sessionStatus === "loading" || loading) {
     return (
       <div className={styles.rideDetailPage}>
@@ -564,6 +593,14 @@ export default function RideDetailPage({
 
   return (
     <div className={styles.rideDetailPage}>
+      <CancelRideModal
+        open={showCancelModal}
+        onOpenChange={(open) => {
+          if (!open) setShowCancelModal(false);
+        }}
+        onConfirmCancel={() => void handleCancelRide()}
+        confirming={cancellingRide}
+      />
       <main className={styles.main}>
         <header className={styles.header}>
           <Link href="/rides" className={styles.backLink}>
@@ -648,6 +685,25 @@ export default function RideDetailPage({
               <BogIcon name="chats" size={18} />
               <span>Chat with driver</span>
             </button>
+
+            <button
+              type="button"
+              className={styles.editButton}
+              onClick={() => {}}
+            >
+              Edit ride
+            </button>
+
+            {CANCELLABLE_STATUSES.has(route.status) && (
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={() => setShowCancelModal(true)}
+                disabled={cancellingRide}
+              >
+                {cancellingRide ? "Cancelling…" : "Cancel ride"}
+              </button>
+            )}
           </div>
 
           {/* Right Column - Map */}

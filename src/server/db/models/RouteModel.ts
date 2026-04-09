@@ -63,6 +63,7 @@ const EmbeddedStudentSchema = new Schema(
 // makes sense in the vehicles collection, not as a subdocument).
 const EmbeddedVehicleSchema = new Schema(
   {
+    vehicleId: { type: String },
     name: { type: String, required: true },
     licensePlate: { type: String, required: true },
     description: { type: String },
