@@ -215,15 +215,17 @@ export default function BogDropdown({
 
   return (
     <div className={`${styles.dropdownContainer} ${className}`} style={style}>
-      <label className={styles.label}>
-        <span style={{ display: "inline-flex" }}>
-          {label}
-          &nbsp;
-          {required && (
-            <span style={{ color: "var(--color-status-red-text)" }}>*</span>
-          )}
-        </span>
-      </label>
+      {(label || required) && (
+        <label className={styles.label}>
+          <span style={{ display: "inline-flex" }}>
+            {label}
+            &nbsp;
+            {required && (
+              <span style={{ color: "var(--color-status-red-text)" }}>*</span>
+            )}
+          </span>
+        </label>
+      )}
       <DropdownMenu.Root modal={false} open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenu.Trigger
           ref={triggerRef}

@@ -15,6 +15,10 @@
     font-size: var(--text-desktop-small);
   }
 
+  .cell {
+    vertical-align: middle;
+  }
+
   .columnHeaderCell {
     background-color: var(--color-admin-bg) !important;
     position: relative;

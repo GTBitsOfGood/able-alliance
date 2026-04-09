@@ -7,6 +7,7 @@ import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect, Suspense } from "react";
 import AccommodationsPanel from "./AccommodationsPanel";
+import VehicleDetailsPanel from "./VehicleDetailsPanel";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
@@ -22,6 +23,9 @@ function AdminContent() {
   const searchParams = useSearchParams();
   const table = (searchParams.get("tab") as AdminTableType) || "Students";
   const [showForm, setShowForm] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(
+    null,
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { columns, rows, rowIds, loading, error, deleteRows, refetch } =
     useAdminTableData(table);
@@ -64,6 +68,7 @@ function AdminContent() {
   useEffect(() => {
     setSelectedRows(new Set());
     setShowForm(false);
+    setSelectedVehicleId(null);
     setSubmitError(null);
     setStudentAccessibilityNeeds([]);
     setVehicleAccessibility("None");
@@ -781,7 +786,17 @@ function AdminContent() {
 
   return (
     <div className="py-10 px-12 pr-20 relative flex flex-col flex-1 w-full">
-      {showForm ? (
+      {selectedVehicleId ? (
+        <VehicleDetailsPanel
+          vehicleId={selectedVehicleId}
+          onBack={() => setSelectedVehicleId(null)}
+          onDeleted={() => {
+            setSelectedVehicleId(null);
+            refetch();
+          }}
+          onSaved={refetch}
+        />
+      ) : showForm ? (
         <>
           <div className="flex flex-col gap-4 mb-[2.4rem]">
             <div className="flex text-paragraph-1 gap-2">
@@ -841,7 +856,40 @@ function AdminContent() {
                 <BogTable
                   style={{ marginBottom: "5vh" } as React.CSSProperties}
                   columnHeaders={columns}
-                  rows={rows}
+                  rows={
+                    table === "Vehicles"
+                      ? rows.map((row, i) => ({
+                          ...row,
+                          cells: row.cells.map((cell, cIdx) =>
+                            cIdx === 0
+                              ? {
+                                  ...cell,
+                                  content: (
+                                    <button
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: 0,
+                                        fontSize: "inherit",
+                                        fontFamily: "inherit",
+                                        color: "inherit",
+                                        cursor: "pointer",
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const id = rowIds[i];
+                                        if (id) setSelectedVehicleId(id);
+                                      }}
+                                    >
+                                      {cell.content}
+                                    </button>
+                                  ),
+                                }
+                              : cell,
+                          ),
+                        }))
+                      : rows
+                  }
                   selectedRows={selectedRows}
                   onSelectedRowsChange={setSelectedRows}
                   selectable={true}

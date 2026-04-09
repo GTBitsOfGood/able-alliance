@@ -30,6 +30,7 @@ type Route = {
 type LocationMap = Record<string, string>;
 
 type Filter = "all" | "this-week" | "next-week";
+type WeekFilter = "this-week" | "next-week";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
@@ -50,6 +51,27 @@ function getWeekRange(offset: 0 | 1): [Date, Date] {
   e.setDate(s.getDate() + 6);
   e.setHours(23, 59, 59, 999);
   return [s, e];
+}
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function fmtWeekLabel(start: Date, end: Date): string {
+  const s = `${MONTHS[start.getMonth()]} ${start.getDate()}`;
+  const e = `${MONTHS[end.getMonth()]} ${end.getDate()}`;
+  return `Week of ${s} - ${e}`;
 }
 
 function fmtTime(iso: string): string {
@@ -91,17 +113,23 @@ export function ProfileRidesTab({
   userType,
 }: {
   userId: string;
-  userType: "Student" | "Driver";
+  userType: "Student" | "Driver" | "Vehicle";
 }) {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [locations, setLocations] = useState<LocationMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(
+    userType === "Vehicle" ? "this-week" : "all",
+  );
 
   useEffect(() => {
     const param =
-      userType === "Driver" ? `driver=${userId}` : `student=${userId}`;
+      userType === "Driver"
+        ? `driver=${userId}`
+        : userType === "Vehicle"
+          ? `vehicle=${userId}`
+          : `student=${userId}`;
     Promise.all([
       fetch(`/api/routes?${param}`).then((r) => r.json()),
       fetch("/api/locations").then((r) => r.json()),
@@ -127,32 +155,61 @@ export function ProfileRidesTab({
 
   const locName = (id: string) => locations[id] ?? id;
 
+  const [thisWeekStart, thisWeekEnd] = getWeekRange(0);
+  const [nextWeekStart, nextWeekEnd] = getWeekRange(1);
+  const weekLabel =
+    filter === "this-week"
+      ? fmtWeekLabel(thisWeekStart, thisWeekEnd)
+      : fmtWeekLabel(nextWeekStart, nextWeekEnd);
+
   return (
     <div className={styles.container}>
       {/* Filter tabs */}
-      <div className={styles.filterRow}>
-        <button
-          type="button"
-          className={`${styles.filterBtn} ${filter === "all" ? styles.filterBtnActive : styles.filterBtnOutline}`}
-          onClick={() => setFilter("all")}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          className={`${styles.filterBtn} ${filter === "this-week" ? styles.filterBtnActive : styles.filterBtnOutline}`}
-          onClick={() => setFilter("this-week")}
-        >
-          This week
-        </button>
-        <button
-          type="button"
-          className={`${styles.filterBtn} ${filter === "next-week" ? styles.filterBtnActive : styles.filterBtnOutline}`}
-          onClick={() => setFilter("next-week")}
-        >
-          Next week
-        </button>
-      </div>
+      {userType === "Vehicle" ? (
+        <>
+          <div className={styles.tabRow}>
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${filter === "this-week" ? styles.tabBtnActive : ""}`}
+              onClick={() => setFilter("this-week")}
+            >
+              This week
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${filter === "next-week" ? styles.tabBtnActive : ""}`}
+              onClick={() => setFilter("next-week")}
+            >
+              Next week
+            </button>
+          </div>
+          <span className={styles.weekLabel}>{weekLabel}</span>
+        </>
+      ) : (
+        <div className={styles.filterRow}>
+          <button
+            type="button"
+            className={`${styles.filterBtn} ${filter === "all" ? styles.filterBtnActive : styles.filterBtnOutline}`}
+            onClick={() => setFilter("all")}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            className={`${styles.filterBtn} ${filter === "this-week" ? styles.filterBtnActive : styles.filterBtnOutline}`}
+            onClick={() => setFilter("this-week")}
+          >
+            This week
+          </button>
+          <button
+            type="button"
+            className={`${styles.filterBtn} ${filter === "next-week" ? styles.filterBtnActive : styles.filterBtnOutline}`}
+            onClick={() => setFilter("next-week")}
+          >
+            Next week
+          </button>
+        </div>
+      )}
 
       {loading && <p className={styles.stateMsg}>Loading…</p>}
       {error && <p className={styles.errorMsg}>{error}</p>}
@@ -162,16 +219,22 @@ export function ProfileRidesTab({
           <table className={styles.table}>
             <thead>
               <tr className={styles.headerRow}>
-                {userType === "Driver" ? (
+                {userType === "Vehicle" ? (
+                  <th className={styles.th}>Student</th>
+                ) : userType === "Driver" ? (
                   <th className={styles.th}>Student</th>
                 ) : (
                   <th className={styles.th}>Driver</th>
                 )}
-                <th className={styles.th}>Vehicle ID</th>
-                <th className={styles.th}>Status</th>
+                {userType === "Vehicle" ? (
+                  <th className={styles.th}>Driver</th>
+                ) : (
+                  <th className={styles.th}>Vehicle ID</th>
+                )}
                 <th className={styles.th}>Date</th>
                 <th className={styles.th}>Pickup</th>
                 <th className={styles.th}>Dropoff</th>
+                <th className={styles.th}>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -183,20 +246,31 @@ export function ProfileRidesTab({
                 </tr>
               ) : (
                 filtered.map((route) => {
-                  const person =
-                    userType === "Driver" ? route.student : route.driver;
-                  const personName = person
-                    ? `${person.firstName} ${person.lastName}`.trim()
-                    : "—";
-                  const vehicleId = route.vehicle?.vehicleId ?? "—";
+                  const col1 =
+                    userType === "Student"
+                      ? route.driver
+                        ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
+                        : "—"
+                      : `${route.student.firstName} ${route.student.lastName}`.trim();
+                  const col2 =
+                    userType === "Vehicle"
+                      ? route.driver
+                        ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
+                        : "—"
+                      : (route.vehicle?.vehicleId ?? "—");
                   const pickup = `${fmtTime(route.scheduledPickupTime)} @ ${locName(route.pickupLocation)}`;
                   const dropoff = route.estimatedDropoffTime
                     ? `${fmtTime(route.estimatedDropoffTime)} @ ${locName(route.dropoffLocation)}`
                     : `— @ ${locName(route.dropoffLocation)}`;
                   return (
                     <tr key={route._id} className={styles.row}>
-                      <td className={styles.td}>{personName}</td>
-                      <td className={styles.td}>{vehicleId}</td>
+                      <td className={styles.td}>{col1}</td>
+                      <td className={styles.td}>{col2}</td>
+                      <td className={styles.td}>
+                        {fmtDate(route.scheduledPickupTime)}
+                      </td>
+                      <td className={styles.td}>{pickup}</td>
+                      <td className={styles.td}>{dropoff}</td>
                       <td className={styles.td}>
                         <span
                           className={styles.statusChip}
@@ -205,11 +279,6 @@ export function ProfileRidesTab({
                           {route.status}
                         </span>
                       </td>
-                      <td className={styles.td}>
-                        {fmtDate(route.scheduledPickupTime)}
-                      </td>
-                      <td className={styles.td}>{pickup}</td>
-                      <td className={styles.td}>{dropoff}</td>
                     </tr>
                   );
                 })

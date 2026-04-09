@@ -5,7 +5,11 @@
       "mcp__plugin_figma_figma__get_design_context",
       "mcp__plugin_figma_figma__get_screenshot",
       "mcp__plugin_figma_figma__get_metadata",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npm run:*)",
+      "Bash(python -c \"import sys,re; c=sys.stdin.read\\(\\); m=re.findall\\(r'id=\\\\\"\\([^\\\\\"]+\\)\\\\\" name=\\\\\"\\([^\\\\\"]+\\)\\\\\"',c\\); [print\\(x\\) for x in m if 'ehicle' in x[1].lower\\(\\) or 'ehicle' in x[1]]\")",
+      "Bash(python:*)"
     ]
   }
 }

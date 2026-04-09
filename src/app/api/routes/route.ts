@@ -73,9 +73,10 @@ export async function GET(req: NextRequest) {
     const userType = session.user.type;
     const loggedInUserId = session.user.userId;
 
-    // optional filters: ?student=ID | ?driver=ID | ?start_time=<time> | ?end_time=<time>
+    // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?start_time=<time> | ?end_time=<time>
     const studentParam = searchParams.get("student");
     const driver = searchParams.get("driver");
+    const vehicleParam = searchParams.get("vehicle");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
@@ -109,6 +110,12 @@ export async function GET(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
+    if (vehicleParam && !mongoose.Types.ObjectId.isValid(vehicleParam)) {
+      return NextResponse.json(
+        { error: "Invalid vehicle ID" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
 
     let startDate: Date | undefined;
     let endDate: Date | undefined;
@@ -134,6 +141,7 @@ export async function GET(req: NextRequest) {
     const routes = await getRoutes({
       student: studentFilter,
       driver: driver ?? undefined,
+      vehicle: vehicleParam ?? undefined,
       start_time: startDate,
       end_time: endDate,
     });

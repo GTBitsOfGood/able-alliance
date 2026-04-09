@@ -98,6 +98,7 @@ export async function deleteRouteById(id: string) {
 export async function getRoutes(filters?: {
   student?: string;
   driver?: string;
+  vehicle?: string;
   start_time?: Date;
   end_time?: Date;
 }) {
@@ -110,6 +111,9 @@ export async function getRoutes(filters?: {
   }
   if (filters?.driver) {
     query["driver._id"] = filters.driver;
+  }
+  if (filters?.vehicle) {
+    query["vehicle._id"] = filters.vehicle;
   }
   if (filters?.start_time != null || filters?.end_time != null) {
     query.scheduledPickupTime = {};
