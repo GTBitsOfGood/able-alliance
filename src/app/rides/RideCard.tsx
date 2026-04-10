@@ -48,13 +48,9 @@ function formatTime(iso: string): string {
 }
 
 function isToday(iso: string): boolean {
-  const date = new Date(iso);
-  const today = new Date();
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
+  return fmt(new Date(iso)) === fmt(new Date());
 }
 
 function getStudentStatusChipStyle(status: string): React.CSSProperties {
@@ -125,6 +121,16 @@ export function RideCard({
       : "N/A";
 
     const canStart = route.status === "Scheduled";
+    const CHAT_DISABLED_STATUSES = new Set([
+      "Pickedup",
+      "Completed",
+      "Missing",
+      "Cancelled by Student",
+      "Cancelled by Admin",
+    ]);
+    const canChat =
+      isToday(route.scheduledPickupTime) &&
+      !CHAT_DISABLED_STATUSES.has(route.status);
 
     return (
       <div className={`${styles.rideCard} ${styles.rideCardDriverNew}`}>
@@ -181,20 +187,47 @@ export function RideCard({
           >
             {startBusy ? "Starting…" : "Start ride"}
           </BogButton>
-          <BogButton
-            variant="secondary"
-            size="medium"
-            className={styles.rideCardDriverButton}
-          >
-            Ride details
-          </BogButton>
-          <BogButton
-            variant="secondary"
-            size="medium"
-            className={styles.rideCardDriverButton}
-          >
-            Chat with student
-          </BogButton>
+          {href ? (
+            <Link href={href} className={styles.rideCardDriverButton}>
+              <BogButton
+                variant="secondary"
+                size="medium"
+                className={styles.rideCardDriverButton}
+                style={{ width: "100%" }}
+              >
+                Ride details
+              </BogButton>
+            </Link>
+          ) : (
+            <BogButton
+              variant="secondary"
+              size="medium"
+              className={styles.rideCardDriverButton}
+            >
+              Ride details
+            </BogButton>
+          )}
+          {canChat && href ? (
+            <Link href={`${href}?chat=1`}>
+              <BogButton
+                variant="secondary"
+                size="medium"
+                className={styles.rideCardDriverButton}
+                style={{ width: "100%" }}
+              >
+                Chat with student
+              </BogButton>
+            </Link>
+          ) : (
+            <BogButton
+              variant="secondary"
+              size="medium"
+              disabled={!canChat}
+              className={styles.rideCardDriverButton}
+            >
+              Chat with student
+            </BogButton>
+          )}
         </div>
       </div>
     );
@@ -257,13 +290,23 @@ export function RideCard({
 
       {/* Right section — action buttons */}
       <div className={styles.rideCardStudentActions}>
-        <button
-          type="button"
-          className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${!chatEligible ? styles.rideCardActionBtnDisabled : ""}`}
-          disabled={!chatEligible}
-        >
-          Chat with driver
-        </button>
+        {chatEligible && href ? (
+          <Link
+            href={`${href}?chat=1`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            style={{ textDecoration: "none", textAlign: "center" }}
+          >
+            Chat with driver
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${styles.rideCardActionBtnDisabled}`}
+            disabled
+          >
+            Chat with driver
+          </button>
+        )}
         <button
           type="button"
           className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}

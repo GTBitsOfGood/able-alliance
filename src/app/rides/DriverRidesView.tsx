@@ -250,6 +250,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
               }}
               locationIdToName={locationIdToName}
               isDriverCard
+              href={`/rides/${route._id}`}
               onStart={() => handleStart(route._id)}
               startBusy={busyRoutes.has(route._id)}
             />

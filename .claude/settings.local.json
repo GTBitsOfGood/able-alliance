@@ -9,7 +9,12 @@
       "Bash(npx ts-node:*)",
       "Bash(npm run:*)",
       "Bash(python -c \"import sys,re; c=sys.stdin.read\\(\\); m=re.findall\\(r'id=\\\\\"\\([^\\\\\"]+\\)\\\\\" name=\\\\\"\\([^\\\\\"]+\\)\\\\\"',c\\); [print\\(x\\) for x in m if 'ehicle' in x[1].lower\\(\\) or 'ehicle' in x[1]]\")",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(cmd /c \"node_modules\\\\\\\\.bin\\\\\\\\tsc --noEmit\")",
+      "Bash(powershell:*)",
+      "Bash(docker compose:*)"
     ]
   }
 }
