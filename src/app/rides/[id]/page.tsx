@@ -425,12 +425,36 @@ export default function RideDetailPage({
     fetchLocations();
   }, [route]);
 
-  // Driver: connect WebSocket on page load when ride is today
+  // ── WebSocket lifecycle ─────────────────────────────────────────────────────
+  //
+  // Single connection effect.  Intentionally returns no cleanup function so
+  // the socket stays alive across status / modal changes — the unmount effect
+  // below is the only place that actually disconnects.
+  //
+  // Connection is established when:
+  //   • Driver: isChatEligible (ride is today)
+  //   • Student: isChatEligible AND (status is En-route OR chat modal is open)
+  //
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (session?.user?.type !== "Driver") return;
-    if (!isChatEligible || !route || !routeId || !session?.user?.accessToken)
-      return;
-    if (socketRef.current) return;
+    const isDriver = session?.user?.type === "Driver";
+    const isStudent = session?.user?.type === "Student";
+
+    const shouldConnect =
+      isChatEligible &&
+      !!routeId &&
+      !!session?.user?.accessToken &&
+      (isDriver ||
+        (isStudent &&
+          ![
+            "Missing",
+            "Completed",
+            "Cancelled by Student",
+            "Cancelled by Admin",
+          ].includes(route?.status ?? "") &&
+          (route?.status === "En-route" || showChatModal)));
+
+    if (!shouldConnect || socketRef.current) return;
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
     if (!wsUrl) {
@@ -443,95 +467,89 @@ export default function RideDetailPage({
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionDelayMax: 30000,
+      reconnectionAttempts: 20,
     });
 
+    // Single source of truth: ref is set immediately, state follows
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
     newSocket.on("connect", () => setChatError(null));
-    newSocket.on("receiveChatMessage", (message: string) => {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "other", text: message, timestamp: new Date() },
-      ]);
+
+    newSocket.on("disconnect", (reason) => {
+      // "io server disconnect" = server explicitly closed the connection.
+      // All other reasons (transport error, ping timeout, etc.) are handled
+      // by Socket.IO's built-in reconnection — don't touch the ref here.
+      if (reason === "io server disconnect") {
+        socketRef.current = null;
+        setSocket(null);
+      }
     });
+
+    // Don't call disconnect() here — doing so cancels Socket.IO's own
+    // reconnection logic.  Just surface the error and let it retry.
+    newSocket.on("connect_error", () => {
+      setChatError("Connection issue — retrying…");
+    });
+
+    newSocket.on("reconnect", () => setChatError(null));
+
+    newSocket.on("reconnect_failed", () => {
+      setChatError("Could not connect to chat. Please refresh the page.");
+      socketRef.current = null;
+      setSocket(null);
+    });
+
+    // Server sends { senderType, text, time } objects
+    const userType = session.user.type;
+    newSocket.on(
+      "chatHistory",
+      (history: { senderType: string; text: string; time: string }[]) => {
+        setMessages(
+          history.map((m) => ({
+            sender: m.senderType === userType.toLowerCase() ? "user" : "other",
+            text: m.text,
+            timestamp: new Date(m.time),
+          })),
+        );
+      },
+    );
+
+    newSocket.on(
+      "receiveChatMessage",
+      (message: { senderType: string; text: string; time: string }) => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender:
+              message.senderType === userType.toLowerCase() ? "user" : "other",
+            text: message.text,
+            timestamp: new Date(message.time),
+          },
+        ]);
+      },
+    );
+
     newSocket.on(
       "broadcastLocation",
       (loc: { latitude: number; longitude: number }) => {
         setOtherPartyLocation(loc);
       },
     );
+
     newSocket.on("chatError", (msg: string) => setChatError(msg));
-    newSocket.on("connect_error", (err: Error) => {
-      setChatError(`Connection error: ${err.message}`);
-      newSocket.disconnect();
-      socketRef.current = null;
-      setSocket(null);
-    });
+  }, [isChatEligible, route?.status, routeId, session, showChatModal]);
 
-    socketRef.current = newSocket;
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-      socketRef.current = null;
-      setSocket(null);
-    };
-  }, [isChatEligible, route, routeId, session]);
-
-  // Student: connect WebSocket early when ride is En-route (for live location tracking)
+  // Disconnect only on unmount — not on dep changes
   useEffect(() => {
-    if (session?.user?.type !== "Student") return;
-    if (
-      !isChatEligible ||
-      route?.status !== "En-route" ||
-      !routeId ||
-      !session?.user?.accessToken
-    )
-      return;
-    if (socketRef.current) return;
-
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-    if (!wsUrl) return;
-
-    const newSocket = io(wsUrl, {
-      auth: { routeId, token: session.user.accessToken },
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-    });
-
-    newSocket.on("connect", () => setChatError(null));
-    newSocket.on("receiveChatMessage", (message: string) => {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "other", text: message, timestamp: new Date() },
-      ]);
-    });
-    newSocket.on(
-      "broadcastLocation",
-      (loc: { latitude: number; longitude: number }) => {
-        setOtherPartyLocation(loc);
-      },
-    );
-    newSocket.on("chatError", (msg: string) => setChatError(msg));
-    newSocket.on("connect_error", (err: Error) => {
-      setChatError(`Connection error: ${err.message}`);
-      newSocket.disconnect();
-      socketRef.current = null;
-      setSocket(null);
-    });
-
-    socketRef.current = newSocket;
-    setSocket(newSocket);
-
     return () => {
-      newSocket.disconnect();
-      socketRef.current = null;
-      setSocket(null);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
-  }, [isChatEligible, route?.status, routeId, session]);
+  }, []);
 
   // Broadcast own GPS location every 5 seconds when En-route (both driver and student)
   useEffect(() => {
@@ -652,133 +670,16 @@ export default function RideDetailPage({
     }
   }, [selfLocation]);
 
-  // WebSocket connection for chat
-  useEffect(() => {
-    if (!showChatModal || !route || !routeId || !session?.user?.userId) {
-      return;
-    }
-    // Driver already connects on page load above
-    if (session?.user?.type === "Driver") return;
-
-    if (socket) {
-      return;
-    }
-
-    let isMounted = true;
-
-    (async () => {
-      try {
-        if (!isMounted) return;
-
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-        if (!wsUrl) {
-          setChatError("WebSocket server URL not configured");
-          return;
-        }
-
-        const newSocket = io(wsUrl, {
-          auth: {
-            routeId,
-            token: session.user.accessToken,
-          },
-          transports: ["websocket", "polling"],
-          reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          reconnectionAttempts: 5,
-        });
-
-        if (!isMounted) {
-          newSocket.disconnect();
-          return;
-        }
-
-        newSocket.on("connect", () => {
-          if (isMounted) {
-            setChatError(null);
-          }
-        });
-
-        newSocket.on("receiveChatMessage", (message: string) => {
-          if (isMounted) {
-            const chatMessage: ChatMessage = {
-              sender: "other",
-              text: message,
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, chatMessage]);
-          }
-        });
-
-        newSocket.on(
-          "broadcastLocation",
-          (loc: { latitude: number; longitude: number }) => {
-            if (isMounted) setOtherPartyLocation(loc);
-          },
-        );
-
-        newSocket.on("chatError", (errorMessage: string) => {
-          if (isMounted) {
-            setChatError(errorMessage);
-          }
-        });
-
-        newSocket.on("connect_error", (err: Error) => {
-          if (isMounted) {
-            setChatError(`Connection error: ${err.message}`);
-            newSocket.disconnect();
-            socketRef.current = null;
-            setSocket(null);
-          }
-        });
-
-        if (isMounted) {
-          socketRef.current = newSocket;
-          setSocket(newSocket);
-        }
-      } catch (e) {
-        if (isMounted) {
-          const errorMsg =
-            e instanceof Error ? e.message : "Failed to connect to chat";
-          setChatError(errorMsg);
-        }
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      setSocket(null);
-    };
-  }, [showChatModal, route, routeId, session]);
-
-  const handleSendMessage = useCallback(async () => {
+  const handleSendMessage = useCallback(() => {
     if (!chatInput.trim() || !socket || sendingMessage) return;
 
     setSendingMessage(true);
-    try {
-      const messageText = chatInput.trim();
-      const chatMessage: ChatMessage = {
-        sender: "user",
-        text: messageText,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, chatMessage]);
-
-      // Emit the message to the server
-      socket.emit("sendChatMessage", messageText);
-      setChatInput("");
-      setChatError(null);
-    } catch (e) {
-      const errorMsg =
-        e instanceof Error ? e.message : "Failed to send message";
-      setChatError(errorMsg);
-    } finally {
-      setSendingMessage(false);
-    }
+    // Server broadcasts receiveChatMessage back to all room members including
+    // the sender, so we don't optimistically add here — the echo is the add.
+    socket.emit("sendChatMessage", chatInput.trim());
+    setChatInput("");
+    setChatError(null);
+    setSendingMessage(false);
   }, [chatInput, socket, sendingMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -801,6 +702,7 @@ export default function RideDetailPage({
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
+      socketRef.current?.emit("endRoute");
       setShowCancelModal(false);
       router.push("/rides");
     } catch (e) {
@@ -811,7 +713,7 @@ export default function RideDetailPage({
   }, [routeId, router]);
 
   const handleDriverAction = useCallback(
-    async (endpoint: string, errorMsg: string) => {
+    async (endpoint: string, errorMsg: string, terminal = false) => {
       if (!routeId) return;
       setDriverActionBusy(true);
       setDriverActionError(null);
@@ -827,6 +729,7 @@ export default function RideDetailPage({
         }
         const updated: RouteData = await res.json();
         setRoute(updated);
+        if (terminal) socketRef.current?.emit("endRoute");
       } catch (e) {
         setDriverActionError(e instanceof Error ? e.message : errorMsg);
       } finally {
@@ -849,7 +752,11 @@ export default function RideDetailPage({
 
   const handleDropoffStudent = useCallback(
     () =>
-      handleDriverAction("/api/routes/complete", "Failed to complete ride."),
+      handleDriverAction(
+        "/api/routes/complete",
+        "Failed to complete ride.",
+        true,
+      ),
     [handleDriverAction],
   );
 
@@ -869,6 +776,7 @@ export default function RideDetailPage({
       }
       const updated: RouteData = await res.json();
       setRoute(updated);
+      socketRef.current?.emit("endRoute");
     } catch (e) {
       setMissingError(
         e instanceof Error ? e.message : "Failed to mark as missing.",
@@ -1328,7 +1236,15 @@ export default function RideDetailPage({
               type="button"
               className={styles.chatButton}
               onClick={() => isChatEligible && setShowChatModal(true)}
-              disabled={!isChatEligible}
+              disabled={
+                !isChatEligible ||
+                [
+                  "Missing",
+                  "Completed",
+                  "Cancelled by Student",
+                  "Cancelled by Admin",
+                ].includes(route.status)
+              }
             >
               <BogIcon name="chats" size={18} />
               <span>Chat with driver</span>
