@@ -32,7 +32,9 @@ export default function SocketTest() {
       }
 
       const routeId = routes[0]._id;
-      console.log("Using route ID:", routeId);
+      console.log(
+        `Using route ID: ${routeId} with student ${routes[0].student._id} and driver ${routes[0].driver._id} for testing`,
+      );
 
       const socket = io(
         process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "http://127.0.0.1:4000",

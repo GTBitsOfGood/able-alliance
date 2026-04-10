@@ -76,6 +76,7 @@ const io = new Server(server, {
             secret?.length,
           );
           decoded = jwt.verify(token, secret);
+          console.log("JWT decoded successfully:", decoded);
         } catch (error) {
           console.error("JWT verify failed:", error.message);
           return next(new Error("Invalid JWT token"));
@@ -105,10 +106,10 @@ const io = new Server(server, {
         }
 
         const isStudent = route.student?._id?.toString() === userId;
-
         const isDriver = route.driver?._id?.toString() === userId;
+        const isSuperAdmin = decoded.type === "SuperAdmin";
 
-        if (!isStudent && !isDriver) {
+        if (!isStudent && !isDriver && !isSuperAdmin) {
           return next(new Error("User not authorized for this route"));
         }
 

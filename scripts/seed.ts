@@ -197,7 +197,7 @@ async function seed() {
     "admin: Daniele Nestani",
   );
 
-  await upsertOne(
+  const superAdmin = await upsertOne(
     usersCol,
     { email: "superadmin@gatech.edu" },
     {
@@ -400,6 +400,16 @@ async function seed() {
   };
 
   const routeTemplates: RouteTemplate[] = [
+    // SuperAdmin + driver1 + vehicle 1001 (TESTING)
+    {
+      student: superAdmin,
+      driver: driver1,
+      vehicle: vehicles["1001"],
+      pickupLocation: "Exhibition Hall",
+      dropoffLocation: "Tech Square Eastbound",
+      pickupTime: makeDate(0, 10, 0),
+      status: "Scheduled",
+    },
     // George + driver1 + vehicle 1001
     {
       student: student1,
