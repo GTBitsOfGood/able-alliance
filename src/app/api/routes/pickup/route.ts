@@ -32,10 +32,8 @@ export async function POST(request: NextRequest) {
     }
 
     const driverId = (
-      route as unknown as {
-        driver?: { _id: { toString(): string } };
-      }
-    ).driver?._id?.toString();
+      route.driver as { _id?: { toString(): string } } | undefined
+    )?._id?.toString();
 
     if (!driverId || driverId !== session.user.userId) {
       return NextResponse.json(

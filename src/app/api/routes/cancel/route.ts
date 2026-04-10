@@ -43,8 +43,11 @@ export async function POST(request: NextRequest) {
 
     // Ownership/role check
     if (type === "Student") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((route.student as any)?._id?.toString() !== userId) {
+      if (
+        (
+          route.student as { _id?: { toString(): string } } | undefined
+        )?._id?.toString() !== userId
+      ) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },

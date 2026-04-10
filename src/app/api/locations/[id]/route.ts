@@ -18,7 +18,7 @@ export async function GET(
   }
   const { id } = await context.params; // Await params before accessing id
   try {
-    const location = await Location.findById(id);
+    const location = await Location.findById(id).lean();
     if (!location) {
       return NextResponse.json(
         { error: "Location not found" },
@@ -27,7 +27,10 @@ export async function GET(
     }
     return NextResponse.json(location, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "[GET /api/locations/:id]",
+      error instanceof Error ? error.message : error,
+    );
     return NextResponse.json(
       { error: "Failed to fetch location" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
@@ -57,20 +60,22 @@ export async function DELETE(
   }
   const { id } = await context.params; // Await params before accessing id
   try {
-    const location = await Location.findById(id);
-    if (!location) {
+    const deleted = await Location.findByIdAndDelete(id).lean();
+    if (!deleted) {
       return NextResponse.json(
         { error: "Location not found" },
         { status: HTTP_STATUS_CODE.NOT_FOUND },
       );
     }
-    await location.deleteOne();
     return NextResponse.json(
       { message: "Location deleted successfully" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "[DELETE /api/locations/:id]",
+      error instanceof Error ? error.message : error,
+    );
     return NextResponse.json(
       { error: "Failed to delete location" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },

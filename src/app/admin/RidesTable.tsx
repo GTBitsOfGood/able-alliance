@@ -190,10 +190,17 @@ export default function RidesTable() {
     const dropoffName =
       locationMap[route.dropoffLocation] ?? route.dropoffLocation;
     const pickupDate = route.scheduledPickupTime
-      ? new Date(route.scheduledPickupTime).toLocaleDateString()
+      ? new Date(route.scheduledPickupTime).toLocaleDateString("en-US", {
+          timeZone: "America/New_York",
+        })
       : "—";
     const pickupTime = route.scheduledPickupTime
-      ? new Date(route.scheduledPickupTime).toLocaleTimeString()
+      ? new Date(route.scheduledPickupTime).toLocaleTimeString("en-US", {
+          timeZone: "America/New_York",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
       : "—";
 
     const selectedDriver = driverLabels[route._id] ?? "";

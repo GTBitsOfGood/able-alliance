@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate caller is the assigned driver
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const driverId = (route.driver as any)?._id?.toString();
+    const driverId = (
+      route.driver as { _id?: { toString(): string } } | undefined
+    )?._id?.toString();
     if (!driverId || driverId !== user.userId) {
       return NextResponse.json(
         { error: "Forbidden" },

@@ -39,8 +39,11 @@ export async function POST(request: NextRequest) {
           { status: HTTP_STATUS_CODE.NOT_FOUND },
         );
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((route.driver as any)?._id?.toString() !== userId) {
+      if (
+        (
+          route.driver as { _id?: { toString(): string } } | undefined
+        )?._id?.toString() !== userId
+      ) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
