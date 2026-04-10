@@ -26,6 +26,7 @@ services:
           path: Dockerfile.dev
     volumes:
       - ./src:/app/src
+      - ./scripts:/app/scripts
       - ./public:/app/public
       - ./.env:/app/.env
       - ./next.config.ts:/app/next.config.ts
