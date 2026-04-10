@@ -5,6 +5,12 @@ import * as Tabs from "@radix-ui/react-tabs";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import styles from "./styles.module.css";
+import {
+  estDateKey,
+  estDayRange,
+  formatEstDate,
+  isEstToday,
+} from "@/utils/dateEst";
 
 type Location = {
   _id: string;
@@ -31,22 +37,8 @@ type DriverRoute = {
   student?: { firstName: string; lastName: string };
 };
 
-function getDayRange(offset: 0 | 1): [Date, Date] {
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() + offset);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
-  return [start, end];
-}
-
-function getLocalDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function formatDayRangeHeading(range: [Date, Date]) {
-  return range[0].toLocaleDateString("en-US", {
+  return formatEstDate(range[0], {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -54,23 +46,9 @@ function formatDayRangeHeading(range: [Date, Date]) {
 }
 
 function formatDayHeading(date: Date) {
-  const today = new Date();
-  const isToday =
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate();
-
-  const monthAndDay = date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-  });
-
-  if (isToday) {
-    return `Today, ${monthAndDay}`;
-  }
-
-  const weekDay = date.toLocaleDateString("en-US", { weekday: "long" });
-  return `${weekDay}, ${monthAndDay}`;
+  const monthAndDay = formatEstDate(date, { month: "long", day: "numeric" });
+  if (isEstToday(date)) return `Today, ${monthAndDay}`;
+  return `${formatEstDate(date, { weekday: "long" })}, ${monthAndDay}`;
 }
 
 function groupRidesByDay(rides: DriverRoute[]) {
@@ -78,15 +56,10 @@ function groupRidesByDay(rides: DriverRoute[]) {
 
   for (const route of rides) {
     const routeDate = new Date(route.scheduledPickupTime);
-    const dayDate = new Date(
-      routeDate.getFullYear(),
-      routeDate.getMonth(),
-      routeDate.getDate(),
-    );
-    const key = getLocalDateKey(dayDate);
+    const key = estDateKey(routeDate);
 
     if (!dayMap.has(key)) {
-      dayMap.set(key, { date: dayDate, rides: [] });
+      dayMap.set(key, { date: routeDate, rides: [] });
     }
     dayMap.get(key)!.rides.push(route);
   }
@@ -119,12 +92,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
 
   const todayRange = useMemo(
     () =>
-      mounted ? getDayRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
+      mounted ? estDayRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
   const tomorrowRange = useMemo(
     () =>
-      mounted ? getDayRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
+      mounted ? estDayRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
 

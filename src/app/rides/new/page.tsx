@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { fromZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -36,6 +37,7 @@ export default function CreateRidePage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
+  const dotMarkerRefs = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     if (error) {
@@ -117,10 +119,13 @@ export default function CreateRidePage() {
 
       markerRefs.current.forEach((marker) => marker.remove());
       markerRefs.current = [];
+      dotMarkerRefs.current.forEach((marker) => marker.remove());
+      dotMarkerRefs.current = [];
 
       const createCustomPin = (
         labelText: string,
         color: string,
+        extraStemPx = 0,
       ): HTMLDivElement => {
         const root = document.createElement("div");
         root.className = styles.mapPinRoot;
@@ -132,6 +137,9 @@ export default function CreateRidePage() {
 
         const stem = document.createElement("div");
         stem.className = styles.mapPinStem;
+        if (extraStemPx > 0) {
+          stem.style.height = `calc(2.2rem + ${extraStemPx}px)`;
+        }
 
         const dot = document.createElement("div");
         dot.className = styles.mapPinDot;
@@ -142,22 +150,71 @@ export default function CreateRidePage() {
         return root;
       };
 
-      if (pickup) {
+      const createLocationDot = (name: string): HTMLDivElement => {
+        const wrapper = document.createElement("div");
+        wrapper.className = styles.mapLocationDotWrapper;
+
+        const tooltip = document.createElement("div");
+        tooltip.className = styles.mapDotTooltip;
+        tooltip.textContent = name;
+
+        const dot = document.createElement("div");
+        dot.className = styles.mapLocationDot;
+
+        wrapper.appendChild(tooltip);
+        wrapper.appendChild(dot);
+        return wrapper;
+      };
+
+      const pinColor = "#183777";
+      const pickupLngLat: [number, number] | null = pickup
+        ? [pickup.longitude, pickup.latitude]
+        : null;
+      const dropoffLngLat: [number, number] | null = dropoff
+        ? [dropoff.longitude, dropoff.latitude]
+        : null;
+      const overlap =
+        pickupLngLat !== null &&
+        dropoffLngLat !== null &&
+        Math.abs(pickupLngLat[0] - dropoffLngLat[0]) < 0.0003 &&
+        Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
+
+      // Add blue dot markers for all non-selected locations
+      for (const loc of locations) {
+        const isPickup = loc.name === pickupLocationName;
+        const isDropoff = loc.name === dropoffLocationName;
+        if (!isPickup && !isDropoff) {
+          const dotMarker = new mapboxgl.Marker({
+            element: createLocationDot(loc.name),
+            anchor: "center",
+          })
+            .setLngLat([loc.longitude, loc.latitude])
+            .addTo(mapRef.current);
+          dotMarkerRefs.current.push(dotMarker);
+        }
+      }
+
+      if (pickup && pickupLngLat) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin("Pickup", "var(--color-status-blue-text)"),
+          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
           anchor: "bottom",
         })
-          .setLngLat([pickup.longitude, pickup.latitude])
+          .setLngLat(pickupLngLat)
           .addTo(mapRef.current);
         markerRefs.current.push(pickupMarker);
       }
 
-      if (dropoff) {
+      if (dropoff && dropoffLngLat) {
+        // Raise dropoff pin above pickup when they share the same location
         const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin("Dropoff", "var(--color-status-blue-text)"),
+          element: createCustomPin(
+            `Dropoff: ${dropoff.name}`,
+            pinColor,
+            overlap ? 50 : 0,
+          ),
           anchor: "bottom",
         })
-          .setLngLat([dropoff.longitude, dropoff.latitude])
+          .setLngLat(dropoffLngLat)
           .addTo(mapRef.current);
         markerRefs.current.push(dropoffMarker);
       }
@@ -173,6 +230,8 @@ export default function CreateRidePage() {
     return () => {
       markerRefs.current.forEach((marker) => marker.remove());
       markerRefs.current = [];
+      dotMarkerRefs.current.forEach((marker) => marker.remove());
+      dotMarkerRefs.current = [];
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -249,14 +308,19 @@ export default function CreateRidePage() {
       return;
     }
 
+    // Build UTC timestamps treating the user-selected date/time as America/New_York
+    const toEstUtc = (date: Date, timeStr: string): Date => {
+      const [h, m] = timeStr.split(":").map(Number);
+      return fromZonedTime(
+        new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m, 0),
+        "America/New_York",
+      );
+    };
+
     const [hours, minutes] = pickupTime.split(":").map(Number);
-    const scheduledPickupTime = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      hours,
-      minutes,
-      0,
+    const scheduledPickupTime = toEstUtc(
+      selectedDate,
+      `${hours}:${minutes}`,
     ).toISOString();
 
     const [windowStartHours, windowStartMinutes] = pickupWindowFromTime
@@ -265,21 +329,13 @@ export default function CreateRidePage() {
     const [windowEndHours, windowEndMinutes] = pickupWindowToTime
       .split(":")
       .map(Number);
-    const pickupWindowStart = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      windowStartHours,
-      windowStartMinutes,
-      0,
+    const pickupWindowStart = toEstUtc(
+      selectedDate,
+      `${windowStartHours}:${windowStartMinutes}`,
     );
-    const pickupWindowEnd = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      windowEndHours,
-      windowEndMinutes,
-      0,
+    const pickupWindowEnd = toEstUtc(
+      selectedDate,
+      `${windowEndHours}:${windowEndMinutes}`,
     );
 
     if (pickupWindowEnd <= pickupWindowStart) {
@@ -287,14 +343,7 @@ export default function CreateRidePage() {
       return;
     }
 
-    const scheduledPickupDate = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      hours,
-      minutes,
-      0,
-    );
+    const scheduledPickupDate = toEstUtc(selectedDate, `${hours}:${minutes}`);
     if (
       scheduledPickupDate < pickupWindowStart ||
       scheduledPickupDate > pickupWindowEnd

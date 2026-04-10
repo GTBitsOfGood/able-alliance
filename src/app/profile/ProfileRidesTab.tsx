@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import styles from "./profileRides.module.css";
+import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
 
 type RouteUser = {
   _id: string;
@@ -32,25 +33,13 @@ type LocationMap = Record<string, string>;
 type Filter = "all" | "this-week" | "next-week";
 type WeekFilter = "this-week" | "next-week";
 
-function startOfWeek(d: Date): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() - x.getDay());
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
 function inRange(iso: string, start: Date, end: Date): boolean {
   const t = new Date(iso).getTime();
   return t >= start.getTime() && t <= end.getTime();
 }
 
 function getWeekRange(offset: 0 | 1): [Date, Date] {
-  const s = startOfWeek(new Date());
-  s.setDate(s.getDate() + offset * 7);
-  const e = new Date(s);
-  e.setDate(s.getDate() + 6);
-  e.setHours(23, 59, 59, 999);
-  return [s, e];
+  return estWeekRange(offset);
 }
 
 const MONTHS = [
@@ -69,23 +58,21 @@ const MONTHS = [
 ];
 
 function fmtWeekLabel(start: Date, end: Date): string {
-  const s = `${MONTHS[start.getMonth()]} ${start.getDate()}`;
-  const e = `${MONTHS[end.getMonth()]} ${end.getDate()}`;
+  const s = formatEstDate(start, { month: "short", day: "numeric" });
+  const e = formatEstDate(end, { month: "short", day: "numeric" });
   return `Week of ${s} - ${e}`;
 }
 
 function fmtTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return formatEstTime(new Date(iso));
 }
 
 function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  return formatEstDate(new Date(iso), {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function statusChipStyle(status: string): React.CSSProperties {

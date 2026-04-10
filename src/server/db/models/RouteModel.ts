@@ -106,6 +106,12 @@ const RouteSchema = new Schema<IRouteDocument>(
   { versionKey: false },
 );
 
+RouteSchema.index({ scheduledPickupTime: 1 });
+RouteSchema.index({ status: 1 });
+RouteSchema.index({ "student._id": 1 });
+RouteSchema.index({ "driver._id": 1 });
+RouteSchema.index({ "vehicle._id": 1 });
+
 const RouteModel =
   (mongoose.models.Route as mongoose.Model<IRouteDocument>) ??
   mongoose.model<IRouteDocument>("Route", RouteSchema);

@@ -166,7 +166,6 @@ export async function GET(request: NextRequest) {
     const attributes = result.attributes;
 
     // Look up the user in our database (do not auto-provision from CAS).
-    console.log(`[CAS Callback] Looking up user: ${attributes.email}`);
     const user = await (async () => {
       try {
         return await getProvisionedUserFromCAS({
@@ -185,9 +184,6 @@ export async function GET(request: NextRequest) {
     if (user instanceof NextResponse) {
       return user;
     }
-    console.log(
-      `[CAS Callback] User ${user._id} retrieved (type: ${user.type})`,
-    );
 
     const userId = (user._id as object).toString();
     const userType = user.type;

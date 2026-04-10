@@ -3,11 +3,10 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./styles.module.css";
 
-// All 15-minute-interval slots across 24 hours
-const ALL_SLOTS: { value: string; label: string }[] = (() => {
+function makeSlots(step: number): { value: string; label: string }[] {
   const slots = [];
   for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 15) {
+    for (let m = 0; m < 60; m += step) {
       const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
       const period = h >= 12 ? "PM" : "AM";
       const displayH = h % 12 || 12;
@@ -16,7 +15,12 @@ const ALL_SLOTS: { value: string; label: string }[] = (() => {
     }
   }
   return slots;
-})();
+}
+
+// 15-minute slots for the default (empty) dropdown
+const QUARTER_SLOTS = makeSlots(15);
+// Every-minute slots for filtered search
+const MINUTE_SLOTS = makeSlots(1);
 
 function valueToLabel(value: string): string {
   if (!value) return "";
@@ -31,11 +35,10 @@ function valueToLabel(value: string): string {
 
 function filterSlots(query: string): { value: string; label: string }[] {
   const q = query.trim().toLowerCase();
-  if (!q) return ALL_SLOTS;
-  const startsWith = ALL_SLOTS.filter((s) =>
-    s.label.toLowerCase().startsWith(q),
-  );
-  const contains = ALL_SLOTS.filter(
+  if (!q) return QUARTER_SLOTS;
+  const source = MINUTE_SLOTS;
+  const startsWith = source.filter((s) => s.label.toLowerCase().startsWith(q));
+  const contains = source.filter(
     (s) =>
       !s.label.toLowerCase().startsWith(q) && s.label.toLowerCase().includes(q),
   );
