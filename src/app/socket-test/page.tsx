@@ -51,17 +51,14 @@ export default function SocketTest() {
 
       socket.on("connect", () => {
         console.log("Connected:", socket.id);
-
-        socket.emit("sendChatMessage", "Hello from Next.js");
-
-        socket.emit("updateLocation", {
-          latitude: 12.34,
-          longitude: 56.78,
-        });
       });
 
       socket.on("receiveChatMessage", (msg: string) => {
         console.log("Chat:", msg);
+      });
+
+      socket.on("chatHistory", (messages) => {
+        console.log("Chat history:", messages);
       });
 
       socket.on(
@@ -70,6 +67,10 @@ export default function SocketTest() {
           console.log("Location:", loc);
         },
       );
+
+      socket.on("routeEnded", () => {
+        console.log("Route ended");
+      });
 
       socket.on("connect_error", (err: Error) => {
         console.error("Connection error:", err.message);
@@ -83,5 +84,39 @@ export default function SocketTest() {
     };
   }, []);
 
-  return <div>Socket Test Page (check console)</div>;
+  return (
+    <div>
+      Socket Test Page (check console)
+      <br /> <br /> <br /> <br /> <br />
+      <input
+        type="text"
+        placeholder="Type a message and press Enter"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && socketRef.current) {
+            socketRef.current.emit("sendChatMessage", e.currentTarget.value);
+            e.currentTarget.value = "";
+          }
+        }}
+      />
+      <br /> <br /> <br /> <br /> <br />
+      <button
+        onClick={() =>
+          socketRef.current?.emit("updateLocation", {
+            latitude: 12.34,
+            longitude: 56.78,
+          })
+        }
+        className="bg-slate-400 p-5 m-5 rounded-lg"
+      >
+        Update Location
+      </button>
+      <br /> <br /> <br /> <br /> <br />
+      <button
+        className="bg-slate-400 p-5 m-5 rounded-lg"
+        onClick={() => socketRef.current?.emit("endRoute")}
+      >
+        End Route
+      </button>
+    </div>
+  );
 }

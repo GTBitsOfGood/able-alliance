@@ -131,7 +131,7 @@ const io = new Server(server, {
       const history = chatStore.get(room) || [];
       socket.emit("chatHistory", history);
       console.log(
-        `Sent chat history to user ${socket.user} for room ${room}: ${JSON.stringify(history)}`,
+        `Sent chat history to user ${socket.user} for room ${room} with ${history.length} messages`,
       );
 
       // Chat
@@ -190,22 +190,26 @@ const io = new Server(server, {
           const routeId = socket.routeId;
           const route = await getRouteForAuth(routeId);
           const isDriver = route.driver?._id?.toString() === socket.user;
-          if (!isDriver) {
-            throw new Error("Only the driver can end the route");
+          const isSuperAdmin = socket.user === "69d8392ed589ac8dd451ce65";
+          if (!isDriver && !isSuperAdmin) {
+            throw new Error("Only the driver or super admin can end the route");
           }
+
           const messages = chatStore.get(routeId) || [];
           const chatlogs = mongoose.connection.db.collection("chatlogs");
           await chatlogs.insertOne({
+            routeId: mongoose.Types.ObjectId.createFromHexString(routeId),
             student: route.student,
             driver: route.driver,
-            vehicle: route.vehicle,
             time: new Date(),
-            routeId: mongoose.Types.ObjectId.createFromHexString(routeId),
             messages,
           });
-          console.log("Chat log saved for route", routeId);
+          console.log(`Chat log saved for route ${routeId}`);
+          console.log("Chat log content:" + JSON.stringify(messages)); //TESTING
+
           chatStore.delete(routeId);
-          io.to(room).emit("routeEnded");
+          io.to(room).emit("routeClosed");
+
           const sockets = await io.in(routeId).fetchSockets();
           for (const s of sockets) {
             s.disconnect(true);
@@ -215,10 +219,6 @@ const io = new Server(server, {
           console.error("Failed to end route", error);
           socket.emit("endRouteError", "Failed to end route");
         }
-
-        socket.on("disconnect", () => {
-          console.log("A user disconnected", socket.id);
-        });
       });
     });
 
