@@ -7,6 +7,8 @@ import jwt from "jsonwebtoken";
 
 dotenv.config();
 
+const chatStore = new Map(); // Map<routeId, messages[]>
+
 // Minimal route shape for auth — only the fields we need.
 // Uses raw collection; no Mongoose model/schema.
 async function getRouteForAuth(routeId) {
@@ -74,6 +76,7 @@ const io = new Server(server, {
             secret?.length,
           );
           decoded = jwt.verify(token, secret);
+          console.log("JWT decoded successfully:", decoded);
         } catch (error) {
           console.error("JWT verify failed:", error.message);
           return next(new Error("Invalid JWT token"));
@@ -109,10 +112,10 @@ const io = new Server(server, {
         }
 
         const isStudent = route.student?._id?.toString() === userId;
-
         const isDriver = route.driver?._id?.toString() === userId;
+        const isSuperAdmin = decoded.type === "SuperAdmin";
 
-        if (!isStudent && !isDriver) {
+        if (!isStudent && !isDriver && !isSuperAdmin) {
           return next(new Error("User not authorized for this route"));
         }
 
@@ -131,13 +134,35 @@ const io = new Server(server, {
       socket.join(room);
       console.log(`User ${socket.user} joined room ${room}`);
 
+      const history = chatStore.get(room) || [];
+      socket.emit("chatHistory", history);
+      console.log(
+        `Sent chat history to user ${socket.user} for room ${room} with ${history.length} messages`,
+      );
+
       // Chat
-      socket.on("sendChatMessage", async (message) => {
+      socket.on("sendChatMessage", async (text) => {
         try {
-          if (typeof message !== "string") {
+          if (typeof text !== "string") {
             throw new Error("Message text is required");
           }
-          socket.to(room).emit("receiveChatMessage", message);
+
+          const routeId = socket.routeId;
+          const route = await getRouteForAuth(routeId);
+          const senderType =
+            route.driver?._id?.toString() === socket.user
+              ? "driver"
+              : "student";
+
+          const message = { senderType, text, time: new Date() };
+
+          if (!chatStore.has(routeId)) {
+            chatStore.set(routeId, []);
+          }
+
+          chatStore.get(routeId).push(message);
+
+          io.to(room).emit("receiveChatMessage", message);
           console.log(
             `User ${socket.user} sent message to room ${room}: ${message}!`,
           );
@@ -166,8 +191,40 @@ const io = new Server(server, {
         }
       });
 
-      socket.on("disconnect", () => {
-        console.log("A user disconnected", socket.id);
+      socket.on("endRoute", async () => {
+        try {
+          const routeId = socket.routeId;
+          const route = await getRouteForAuth(routeId);
+          const isDriver = route.driver?._id?.toString() === socket.user;
+          const isSuperAdmin = socket.user === "69d8392ed589ac8dd451ce65";
+          if (!isDriver && !isSuperAdmin) {
+            throw new Error("Only the driver or super admin can end the route");
+          }
+
+          const messages = chatStore.get(routeId) || [];
+          const chatlogs = mongoose.connection.db.collection("chatlogs");
+          await chatlogs.insertOne({
+            routeId: mongoose.Types.ObjectId.createFromHexString(routeId),
+            student: route.student,
+            driver: route.driver,
+            time: new Date(),
+            messages,
+          });
+          console.log(`Chat log saved for route ${routeId}`);
+          console.log("Chat log content:" + JSON.stringify(messages)); //TESTING
+
+          chatStore.delete(routeId);
+          io.to(room).emit("routeClosed");
+
+          const sockets = await io.in(routeId).fetchSockets();
+          for (const s of sockets) {
+            s.disconnect(true);
+          }
+          console.log(`Route ${routeId} closed`);
+        } catch (error) {
+          console.error("Failed to end route", error);
+          socket.emit("endRouteError", "Failed to end route");
+        }
       });
     });
 
