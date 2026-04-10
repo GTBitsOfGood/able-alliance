@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
-import { getRouteById, startRoute } from "@/server/db/actions/RouteAction";
+import { getRouteById, pickupStudent } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 
 export async function POST(request: NextRequest) {
@@ -16,13 +16,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { routeId } = body;
-    if (!routeId) {
-      return NextResponse.json(
-        { error: "routeId is required" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    if (!mongoose.Types.ObjectId.isValid(routeId)) {
+    if (!routeId || !mongoose.Types.ObjectId.isValid(routeId)) {
       return NextResponse.json(
         { error: "Invalid routeId" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -48,10 +42,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updated = await startRoute(routeId);
+    const updated = await pickupStudent(routeId);
     if (!updated) {
       return NextResponse.json(
-        { error: "Route not found or not in Scheduled state" },
+        { error: "Route not found or not in En-route state" },
         { status: HTTP_STATUS_CODE.NOT_FOUND },
       );
     }

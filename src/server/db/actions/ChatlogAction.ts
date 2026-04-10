@@ -3,12 +3,12 @@ import connectMongoDB from "../mongodb";
 
 export const getChatlogById = async (id: string) => {
   await connectMongoDB();
-  return await Chatlog.findById(id);
+  return await Chatlog.findById(id).lean();
 };
 
 export const getChatlogs = async (filters: Record<string, string>) => {
   await connectMongoDB();
-  const query: Record<string, unknown> = {}; // Replace 'any' with 'unknown' for better type safety
+  const query: Record<string, unknown> = {};
 
   if (filters.studentId) query.studentId = filters.studentId;
   if (filters.driverId) query.driverId = filters.driverId;
@@ -21,5 +21,5 @@ export const getChatlogs = async (filters: Record<string, string>) => {
     query.time = timeQuery;
   }
 
-  return await Chatlog.find(query);
+  return await Chatlog.find(query).lean();
 };

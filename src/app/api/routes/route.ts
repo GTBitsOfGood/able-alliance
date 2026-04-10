@@ -49,10 +49,12 @@ export async function GET(req: NextRequest) {
         user.type === "Admin" ||
         user.type === "SuperAdmin" ||
         (route.student &&
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (route.student as any)._id?.toString() === user.userId) ||
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (route.driver && (route.driver as any)._id?.toString() === user.userId)
+          (
+            route.student as { _id?: { toString(): string } }
+          )._id?.toString() === user.userId) ||
+        (route.driver &&
+          (route.driver as { _id?: { toString(): string } })._id?.toString() ===
+            user.userId)
       ) {
         return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
       }

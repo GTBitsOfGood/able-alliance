@@ -10,6 +10,7 @@ import {
   DriverNotAvailableException,
 } from "@/utils/exceptions/route";
 import { getMapboxTravelDuration } from "@/server/mapbox";
+import { estDayOfWeek, estTimeStr } from "@/utils/dateEst";
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -134,9 +135,8 @@ export async function getRoutes(filters?: {
 export async function completeRoute(routeId: string) {
   await connectMongoDB();
   const route = await RouteModel.findById(routeId);
-  if (!route) {
-    return null;
-  }
+  if (!route) return null;
+  if (route.status !== RouteStatus.Pickedup) return null;
   route.status = RouteStatus.Completed;
   await route.save();
   return route.toObject();
@@ -167,29 +167,62 @@ export async function startRoute(routeId: string) {
   return route.toObject();
 }
 
+export async function pickupStudent(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route || route.status !== RouteStatus.EnRoute) return null;
+  route.status = RouteStatus.Pickedup;
+  await route.save();
+  return route.toObject();
+}
+
+export async function markRouteMissing(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) return null;
+  if (
+    route.status !== RouteStatus.Scheduled &&
+    route.status !== RouteStatus.EnRoute
+  ) {
+    return null;
+  }
+  route.status = RouteStatus.Missing;
+  await route.save();
+  return route.toObject();
+}
+
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
 ) {
   await connectMongoDB();
-  // Find the route and ensure it's in Requested state
-  const route = await RouteModel.findById(routeId);
+
+  // Fetch route, driver, and vehicle in parallel
+  const [route, driver, vehicle] = await Promise.all([
+    RouteModel.findById(routeId),
+    UserModel.findById(driverId).lean(),
+    VehicleModel.findById(vehicleId).lean(),
+  ]);
+
   if (!route || route.status !== RouteStatus.Requested) {
     return null;
   }
-  // Find driver and vehicle
-  const driver = await UserModel.findById(driverId).lean();
+
   if (!driver || driver.type !== "Driver") {
     throw new RouteReferenceNotFoundException(
       "Driver not found or not a driver",
     );
   }
 
-  // Check if driver is available at the scheduled time
+  if (!vehicle) {
+    throw new RouteReferenceNotFoundException("Vehicle not found");
+  }
+
+  // Check if driver is available at the scheduled time (in EST/EDT)
   const pickupTime = route.scheduledPickupTime;
-  const dayOfWeek = pickupTime.getDay(); // 0=Sun, 6=Sat
-  const timeStr = pickupTime.toTimeString().slice(0, 5); // HH:MM
+  const dayOfWeek = estDayOfWeek(pickupTime); // 0=Sun, 6=Sat in America/New_York
+  const timeStr = estTimeStr(pickupTime); // HH:MM in America/New_York
 
   const driverShifts =
     (
@@ -210,11 +243,6 @@ export async function scheduleRoute(
 
   if (!isAvailable) {
     throw new DriverNotAvailableException();
-  }
-
-  const vehicle = await VehicleModel.findById(vehicleId).lean();
-  if (!vehicle) {
-    throw new RouteReferenceNotFoundException("Vehicle not found");
   }
   const driverEmbed = {
     _id: driver._id,

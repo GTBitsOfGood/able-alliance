@@ -31,11 +31,8 @@ export async function GET(
       user.type === "Admin" ||
       user.type === "SuperAdmin" ||
       (user.type === "Student" &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (chatlog as any).student?._id?.toString() === user.userId) ||
-      (user.type === "Driver" &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (chatlog as any).driver?._id?.toString() === user.userId)
+        chatlog.student._id.toString() === user.userId) ||
+      (user.type === "Driver" && chatlog.driver._id.toString() === user.userId)
     ) {
       return NextResponse.json(chatlog, { status: HTTP_STATUS_CODE.OK });
     }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
@@ -18,6 +18,10 @@ type RouteUser = {
   _id: string;
   firstName: string;
   lastName: string;
+  studentInfo?: {
+    accessibilityNeeds?: string[];
+    notes?: string;
+  };
 };
 
 type RouteData = {
@@ -52,14 +56,49 @@ type ChatMessage = {
   timestamp: Date;
 };
 
-function isToday(iso: string): boolean {
-  const date = new Date(iso);
-  const today = new Date();
+function createCustomPin(
+  labelText: string,
+  color: string,
+  extraStemPx = 0,
+): HTMLDivElement {
+  const root = document.createElement("div");
+  root.className = styles.mapPinRoot;
+  root.style.setProperty("--pin-color", color);
+
+  const label = document.createElement("div");
+  label.textContent = labelText;
+  label.className = styles.mapPinLabel;
+
+  const stem = document.createElement("div");
+  stem.className = styles.mapPinStem;
+  if (extraStemPx > 0) {
+    stem.style.height = `calc(2.2rem + ${extraStemPx}px)`;
+  }
+
+  const dot = document.createElement("div");
+  dot.className = styles.mapPinDot;
+
+  root.appendChild(label);
+  root.appendChild(stem);
+  root.appendChild(dot);
+  return root;
+}
+
+/** Returns true when two [lng, lat] pairs are close enough to visually overlap. */
+function coordsOverlap(
+  a: [number, number],
+  b: [number, number],
+  thresholdDeg = 0.0003,
+): boolean {
   return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
+    Math.abs(a[0] - b[0]) < thresholdDeg && Math.abs(a[1] - b[1]) < thresholdDeg
   );
+}
+
+function isToday(iso: string): boolean {
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
+  return fmt(new Date(iso)) === fmt(new Date());
 }
 
 function getStatusChipColor(
@@ -107,6 +146,7 @@ export default function RideDetailPage({
 }) {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
   const [locations, setLocations] = useState<Record<string, string>>({});
@@ -121,12 +161,42 @@ export default function RideDetailPage({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
+  const otherPartyMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const selfMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const staticCoordsRef = useRef<[number, number][]>([]);
+  const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const watchIdRef = useRef<number | null>(null);
+  const [otherPartyLocation, setOtherPartyLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [selfLocation, setSelfLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [isChatEligible, setIsChatEligible] = useState(false);
+
+  // Auto-open chat if ?chat=1
+  useEffect(() => {
+    if (searchParams.get("chat") === "1" && isChatEligible && route) {
+      setShowChatModal(true);
+    }
+  }, [searchParams, isChatEligible, route]);
+
+  // Driver-specific state
+  const [markingMissing, setMarkingMissing] = useState(false);
+  const [missingError, setMissingError] = useState<string | null>(null);
+  const [driverActionBusy, setDriverActionBusy] = useState(false);
+  const [driverActionError, setDriverActionError] = useState<string | null>(
+    null,
+  );
 
   // Extract ID from params
   useEffect(() => {
@@ -155,15 +225,19 @@ export default function RideDetailPage({
 
         const routeData: RouteData = await res.json();
 
-        // Check if current user is the student
-        const studentId = getStudentId(routeData.student);
-        if (studentId !== session.user.userId) {
-          throw new Error("You are not the student for this route");
-        }
-
-        // Only show student view (driver view is handled separately)
-        if (session.user.type !== "Student") {
-          throw new Error("Only students can view this page");
+        if (session.user.type === "Student") {
+          const studentId = getStudentId(routeData.student);
+          if (studentId !== session.user.userId) {
+            throw new Error("You are not the student for this route");
+          }
+        } else if (session.user.type === "Driver") {
+          const driverId = getDriverId(routeData.driver);
+          if (driverId !== session.user.userId) {
+            router.push("/rides");
+            return;
+          }
+        } else {
+          throw new Error("Unauthorized");
         }
 
         setRoute(routeData);
@@ -265,60 +339,41 @@ export default function RideDetailPage({
       markerRefs.current.forEach((marker) => marker.remove());
       markerRefs.current = [];
 
-      const createCustomPin = (
-        labelText: string,
-        color: string,
-      ): HTMLDivElement => {
-        const root = document.createElement("div");
-        root.style.display = "flex";
-        root.style.flexDirection = "column";
-        root.style.alignItems = "center";
-        root.style.gap = "0";
+      const pinColor = "#183777";
+      const pickupLngLat: [number, number] = [
+        pickup.longitude,
+        pickup.latitude,
+      ];
+      const dropoffLngLat: [number, number] = [
+        dropoff.longitude,
+        dropoff.latitude,
+      ];
+      const overlap = coordsOverlap(pickupLngLat, dropoffLngLat);
 
-        const label = document.createElement("div");
-        label.textContent = labelText;
-        label.style.backgroundColor = color;
-        label.style.color = "white";
-        label.style.padding = "0.25rem 0.5rem";
-        label.style.borderRadius = "0.25rem";
-        label.style.fontSize = "0.75rem";
-        label.style.fontWeight = "bold";
-        label.style.whiteSpace = "nowrap";
-
-        const stem = document.createElement("div");
-        stem.style.width = "2px";
-        stem.style.height = "0.5rem";
-        stem.style.backgroundColor = color;
-
-        const dot = document.createElement("div");
-        dot.style.width = "0.75rem";
-        dot.style.height = "0.75rem";
-        dot.style.borderRadius = "50%";
-        dot.style.backgroundColor = color;
-        dot.style.border = "2px solid white";
-
-        root.appendChild(label);
-        root.appendChild(stem);
-        root.appendChild(dot);
-        return root;
-      };
+      // Store static pin coords so the self-marker effect can check for overlap
+      staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
 
       if (pickup && mapRef.current) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin("Pickup", "var(--color-status-blue-text)"),
+          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
           anchor: "bottom",
         })
-          .setLngLat([pickup.longitude, pickup.latitude])
+          .setLngLat(pickupLngLat)
           .addTo(mapRef.current);
         markerRefs.current.push(pickupMarker);
       }
 
       if (dropoff && mapRef.current) {
+        // If pickup/dropoff overlap, raise the dropoff pin one label-height above
         const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin("Dropoff", "var(--color-status-blue-text)"),
+          element: createCustomPin(
+            `Dropoff: ${dropoff.name}`,
+            pinColor,
+            overlap ? 50 : 0,
+          ),
           anchor: "bottom",
         })
-          .setLngLat([dropoff.longitude, dropoff.latitude])
+          .setLngLat(dropoffLngLat)
           .addTo(mapRef.current);
         markerRefs.current.push(dropoffMarker);
       }
@@ -331,6 +386,18 @@ export default function RideDetailPage({
     return () => {
       markerRefs.current.forEach((marker) => marker.remove());
       markerRefs.current = [];
+      otherPartyMarkerRef.current?.remove();
+      otherPartyMarkerRef.current = null;
+      selfMarkerRef.current?.remove();
+      selfMarkerRef.current = null;
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -358,11 +425,240 @@ export default function RideDetailPage({
     fetchLocations();
   }, [route]);
 
+  // Driver: connect WebSocket on page load when ride is today
+  useEffect(() => {
+    if (session?.user?.type !== "Driver") return;
+    if (!isChatEligible || !route || !routeId || !session?.user?.accessToken)
+      return;
+    if (socketRef.current) return;
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsUrl) {
+      setChatError("WebSocket server URL not configured");
+      return;
+    }
+
+    const newSocket = io(wsUrl, {
+      auth: { routeId, token: session.user.accessToken },
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+    });
+
+    newSocket.on("connect", () => setChatError(null));
+    newSocket.on("receiveChatMessage", (message: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "other", text: message, timestamp: new Date() },
+      ]);
+    });
+    newSocket.on(
+      "broadcastLocation",
+      (loc: { latitude: number; longitude: number }) => {
+        setOtherPartyLocation(loc);
+      },
+    );
+    newSocket.on("chatError", (msg: string) => setChatError(msg));
+    newSocket.on("connect_error", (err: Error) => {
+      setChatError(`Connection error: ${err.message}`);
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    });
+
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    };
+  }, [isChatEligible, route, routeId, session]);
+
+  // Student: connect WebSocket early when ride is En-route (for live location tracking)
+  useEffect(() => {
+    if (session?.user?.type !== "Student") return;
+    if (
+      !isChatEligible ||
+      route?.status !== "En-route" ||
+      !routeId ||
+      !session?.user?.accessToken
+    )
+      return;
+    if (socketRef.current) return;
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsUrl) return;
+
+    const newSocket = io(wsUrl, {
+      auth: { routeId, token: session.user.accessToken },
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+    });
+
+    newSocket.on("connect", () => setChatError(null));
+    newSocket.on("receiveChatMessage", (message: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "other", text: message, timestamp: new Date() },
+      ]);
+    });
+    newSocket.on(
+      "broadcastLocation",
+      (loc: { latitude: number; longitude: number }) => {
+        setOtherPartyLocation(loc);
+      },
+    );
+    newSocket.on("chatError", (msg: string) => setChatError(msg));
+    newSocket.on("connect_error", (err: Error) => {
+      setChatError(`Connection error: ${err.message}`);
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    });
+
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    };
+  }, [isChatEligible, route?.status, routeId, session]);
+
+  // Broadcast own GPS location every 5 seconds when En-route (both driver and student)
+  useEffect(() => {
+    if (route?.status !== "En-route" || !socket) return;
+
+    const sendLocation = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          socket.emit("updateLocation", {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        },
+        () => {
+          // High-accuracy timed out — retry with low accuracy (no GPS lock required)
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              socket.emit("updateLocation", {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+              });
+            },
+            () => {
+              // Low-accuracy also failed — skip this interval silently
+            },
+            { enableHighAccuracy: false, timeout: 10000 },
+          );
+        },
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    };
+
+    sendLocation();
+    locationIntervalRef.current = setInterval(sendLocation, 5000);
+
+    return () => {
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+    };
+  }, [route?.status, socket]);
+
+  // Show other party's live location on the map
+  useEffect(() => {
+    if (!otherPartyLocation || !mapRef.current) return;
+
+    const label = session?.user?.type === "Driver" ? "Student" : "Driver";
+    const color = session?.user?.type === "Driver" ? "#ea580c" : "#16a34a";
+
+    if (!otherPartyMarkerRef.current) {
+      otherPartyMarkerRef.current = new mapboxgl.Marker({
+        element: createCustomPin(label, color),
+        anchor: "bottom",
+      })
+        .setLngLat([otherPartyLocation.longitude, otherPartyLocation.latitude])
+        .addTo(mapRef.current);
+    } else {
+      otherPartyMarkerRef.current.setLngLat([
+        otherPartyLocation.longitude,
+        otherPartyLocation.latitude,
+      ]);
+    }
+
+    mapRef.current.panTo(
+      [otherPartyLocation.longitude, otherPartyLocation.latitude],
+      { duration: 800 },
+    );
+  }, [otherPartyLocation, session?.user?.type]);
+
+  // Watch own GPS position and update selfLocation state
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setSelfLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+      },
+      () => {
+        // Permission denied or unavailable — no pin shown
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
+    );
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, []);
+
+  // Place/update "You" dot on the map as self location changes
+  useEffect(() => {
+    if (!selfLocation || !mapRef.current) return;
+
+    const selfLngLat: [number, number] = [
+      selfLocation.longitude,
+      selfLocation.latitude,
+    ];
+
+    if (!selfMarkerRef.current) {
+      const dot = document.createElement("div");
+      dot.style.cssText =
+        "width:16px;height:16px;border-radius:50%;background:#2563eb;" +
+        "border:3px solid white;box-shadow:0 0 0 2px #2563eb,0 2px 8px rgba(0,0,0,.3);";
+      selfMarkerRef.current = new mapboxgl.Marker({
+        element: dot,
+        anchor: "center",
+      })
+        .setLngLat(selfLngLat)
+        .addTo(mapRef.current);
+    } else {
+      selfMarkerRef.current.setLngLat(selfLngLat);
+    }
+  }, [selfLocation]);
+
   // WebSocket connection for chat
   useEffect(() => {
     if (!showChatModal || !route || !routeId || !session?.user?.userId) {
       return;
     }
+    // Driver already connects on page load above
+    if (session?.user?.type === "Driver") return;
 
     if (socket) {
       return;
@@ -414,6 +710,13 @@ export default function RideDetailPage({
           }
         });
 
+        newSocket.on(
+          "broadcastLocation",
+          (loc: { latitude: number; longitude: number }) => {
+            if (isMounted) setOtherPartyLocation(loc);
+          },
+        );
+
         newSocket.on("chatError", (errorMessage: string) => {
           if (isMounted) {
             setChatError(errorMessage);
@@ -423,11 +726,10 @@ export default function RideDetailPage({
         newSocket.on("connect_error", (err: Error) => {
           if (isMounted) {
             setChatError(`Connection error: ${err.message}`);
+            newSocket.disconnect();
+            socketRef.current = null;
+            setSocket(null);
           }
-        });
-
-        newSocket.on("disconnect", () => {
-          // Socket disconnected
         });
 
         if (isMounted) {
@@ -508,6 +810,74 @@ export default function RideDetailPage({
     }
   }, [routeId, router]);
 
+  const handleDriverAction = useCallback(
+    async (endpoint: string, errorMsg: string) => {
+      if (!routeId) return;
+      setDriverActionBusy(true);
+      setDriverActionError(null);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId }),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? res.statusText);
+        }
+        const updated: RouteData = await res.json();
+        setRoute(updated);
+      } catch (e) {
+        setDriverActionError(e instanceof Error ? e.message : errorMsg);
+      } finally {
+        setDriverActionBusy(false);
+      }
+    },
+    [routeId],
+  );
+
+  const handleStartRide = useCallback(
+    () => handleDriverAction("/api/routes/start", "Failed to start ride."),
+    [handleDriverAction],
+  );
+
+  const handlePickupStudent = useCallback(
+    () =>
+      handleDriverAction("/api/routes/pickup", "Failed to mark as picked up."),
+    [handleDriverAction],
+  );
+
+  const handleDropoffStudent = useCallback(
+    () =>
+      handleDriverAction("/api/routes/complete", "Failed to complete ride."),
+    [handleDriverAction],
+  );
+
+  const handleMarkMissing = useCallback(async () => {
+    if (!routeId) return;
+    setMarkingMissing(true);
+    setMissingError(null);
+    try {
+      const res = await fetch("/api/routes/missing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? res.statusText);
+      }
+      const updated: RouteData = await res.json();
+      setRoute(updated);
+    } catch (e) {
+      setMissingError(
+        e instanceof Error ? e.message : "Failed to mark as missing.",
+      );
+    } finally {
+      setMarkingMissing(false);
+    }
+  }, [routeId]);
+
   if (sessionStatus === "loading" || loading) {
     return (
       <div className={styles.rideDetailPage}>
@@ -548,6 +918,7 @@ export default function RideDetailPage({
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("en-US", {
+      timeZone: "America/New_York",
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -558,15 +929,24 @@ export default function RideDetailPage({
     : "N/A";
 
   const formatDateLabel = (d: Date) => {
-    const today = new Date();
-    const isToday =
-      d.getDate() === today.getDate() &&
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear();
-    if (isToday) {
-      return `Today, ${d.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+    const tz = "America/New_York";
+    const todayKey = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const dKey = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+    if (dKey === todayKey) {
+      return `Today, ${d.toLocaleDateString("en-US", { timeZone: tz, month: "long", day: "numeric" })}`;
     }
     return d.toLocaleDateString("en-US", {
+      timeZone: tz,
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -590,6 +970,274 @@ export default function RideDetailPage({
         return { background: "#1e293b", color: "#fff" };
     }
   })();
+
+  // ── Driver view ────────────────────────────────────────────────────────────
+  if (session?.user?.type === "Driver") {
+    const studentObj =
+      route.student && typeof route.student !== "string"
+        ? (route.student as RouteUser)
+        : null;
+    const studentName = studentObj
+      ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
+      : "—";
+    const accommodations =
+      studentObj?.studentInfo?.accessibilityNeeds?.join(", ") || "—";
+    const additionalComments = studentObj?.studentInfo?.notes || "—";
+
+    const chatModal = showChatModal && (
+      <div
+        className={styles.chatModalOverlay}
+        onClick={() => setShowChatModal(false)}
+      >
+        <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.chatModalHeader}>
+            <h2 className={styles.chatModalTitle}>Chat with Student</h2>
+            <button
+              type="button"
+              className={styles.chatModalCloseButton}
+              onClick={() => setShowChatModal(false)}
+              aria-label="Close chat"
+            >
+              <BogIcon name="x" size={20} />
+            </button>
+          </div>
+          {chatError && (
+            <div className={styles.chatErrorBanner}>
+              <p className={styles.chatErrorText}>{chatError}</p>
+            </div>
+          )}
+          <div className={styles.messagesContainer}>
+            {messages.length === 0 && (
+              <div className={styles.noMessages}>
+                <p>No messages yet. Start the conversation!</p>
+              </div>
+            )}
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`${styles.messageRow} ${
+                  msg.sender === "user"
+                    ? styles.messageRowUser
+                    : styles.messageRowOther
+                }`}
+              >
+                <div className={styles.messageBubble}>
+                  <p className={styles.messageText}>{msg.text}</p>
+                  <span className={styles.messageTime}>
+                    {msg.timestamp.toLocaleTimeString("en-US", {
+                      timeZone: "America/New_York",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.chatInputContainer}>
+            <input
+              type="text"
+              className={styles.chatInput}
+              placeholder="Type a message…"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={!socket || sendingMessage}
+            />
+            <button
+              type="button"
+              className={styles.sendButton}
+              onClick={handleSendMessage}
+              disabled={!chatInput.trim() || !socket || sendingMessage}
+              aria-label="Send message"
+            >
+              <BogIcon name="arrow-right" size={20} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className={styles.rideDetailPage}>
+        {chatModal}
+        <main className={styles.main}>
+          <header className={styles.header}>
+            <Link href="/rides" className={styles.backLink}>
+              <BogIcon name="arrow-left" size={20} />
+              <span>Back to rides</span>
+            </Link>
+          </header>
+
+          <div className={styles.titleRow}>
+            <h1 className={styles.pageTitle}>Ride Details</h1>
+            <span className={styles.statusChip} style={statusChipStyle}>
+              {route.status}
+            </span>
+          </div>
+
+          <div className={styles.rideSummaryCard}>
+            <p className={styles.rideDateLabel}>
+              {formatDateLabel(scheduledDate)}
+            </p>
+            <div className={styles.pickupDropoffRow}>
+              <div className={styles.stopBlock}>
+                <span className={styles.stopLabel}>Pickup</span>
+                <span className={styles.stopTime}>
+                  {formatTime(scheduledDate)}
+                </span>
+                <span className={styles.stopLocation}>
+                  {pickupLocationName}
+                </span>
+              </div>
+              <div className={styles.stopDivider} />
+              <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
+                <span className={styles.stopLabel}>Dropoff</span>
+                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <span className={styles.stopLocation}>
+                  {dropoffLocationName}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.contentContainer}>
+            {/* Left column — student info + actions */}
+            <div className={styles.leftColumn}>
+              <div className={styles.driverSection}>
+                <h2 className={styles.sectionTitle}>Student Information</h2>
+                <div className={styles.driverInfoGrid}>
+                  <div className={styles.studentInfoItem}>
+                    <span className={styles.studentInfoLabel}>Name</span>
+                    <span className={styles.studentInfoValue}>
+                      {studentName}
+                    </span>
+                  </div>
+                  <div className={styles.studentInfoItem}>
+                    <span className={styles.studentInfoLabel}>
+                      Accommodations
+                    </span>
+                    <span className={styles.studentInfoValue}>
+                      {accommodations}
+                    </span>
+                  </div>
+                  <div className={styles.studentInfoItem}>
+                    <span className={styles.studentInfoLabel}>
+                      Additional Comments
+                    </span>
+                    <span className={styles.studentInfoValue}>
+                      {additionalComments}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.chatButtonWrapper}>
+                {!isChatEligible && (
+                  <span className={styles.chatTooltip}>
+                    Chat is only available on the day of the ride
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.chatButton}
+                  onClick={() => isChatEligible && setShowChatModal(true)}
+                  disabled={
+                    !isChatEligible ||
+                    [
+                      "Pickedup",
+                      "Completed",
+                      "Missing",
+                      "Cancelled by Student",
+                      "Cancelled by Admin",
+                    ].includes(route.status)
+                  }
+                >
+                  <BogIcon name="chats" size={18} />
+                  <span>Chat with student</span>
+                </button>
+              </div>
+
+              {/* Scheduled: Start ride */}
+              {route.status === "Scheduled" && (
+                <button
+                  type="button"
+                  className={styles.startRideButton}
+                  onClick={() => void handleStartRide()}
+                  disabled={driverActionBusy}
+                >
+                  {driverActionBusy ? "Starting…" : "Start ride"}
+                </button>
+              )}
+
+              {/* En-route: Student picked up + Student no-show */}
+              {route.status === "En-route" && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.greenOutlineButton}
+                    onClick={() => void handlePickupStudent()}
+                    disabled={driverActionBusy}
+                  >
+                    {driverActionBusy ? "Updating…" : "Student picked up"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={() => void handleMarkMissing()}
+                    disabled={markingMissing}
+                  >
+                    {markingMissing ? "Marking…" : "Student no-show"}
+                  </button>
+                </>
+              )}
+
+              {/* Pickedup: Student dropped off */}
+              {route.status === "Pickedup" && (
+                <button
+                  type="button"
+                  className={styles.greenOutlineButton}
+                  onClick={() => void handleDropoffStudent()}
+                  disabled={driverActionBusy}
+                >
+                  {driverActionBusy ? "Completing…" : "Student dropped off"}
+                </button>
+              )}
+
+              {(missingError || driverActionError) && (
+                <p
+                  style={{
+                    color: "var(--color-status-red-text)",
+                    fontSize: "1.4rem",
+                    margin: 0,
+                  }}
+                >
+                  {missingError || driverActionError}
+                </p>
+              )}
+            </div>
+
+            {/* Right column — map */}
+            <div className={styles.rightColumn}>
+              <div className={styles.mapContainer}>
+                <div
+                  ref={mapContainerRef}
+                  className={styles.mapImage}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "0.5rem",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+  // ── End driver view ─────────────────────────────────────────────────────────
 
   return (
     <div className={styles.rideDetailPage}>

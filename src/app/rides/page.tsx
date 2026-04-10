@@ -10,6 +10,7 @@ import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import { CancelRideModal } from "./CancelRideModal";
+import { estDateKey, estWeekRange, formatEstDate } from "@/utils/dateEst";
 
 export type Location = {
   _id: string;
@@ -35,22 +36,13 @@ export type Route = {
   status: string;
 };
 
-function startOfWeekSunday(d: Date): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() - x.getDay());
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
 function formatWeekRangeHeader(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  const a = start.toLocaleDateString("en-US", opts);
-  const b = end.toLocaleDateString("en-US", opts);
-  return `Week of ${a} - ${b}`;
+  return `Week of ${formatEstDate(start, opts)} - ${formatEstDate(end, opts)}`;
 }
 
 function formatDayGroupHeader(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return formatEstDate(new Date(iso), {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -58,21 +50,11 @@ function formatDayGroupHeader(iso: string): string {
 }
 
 function getDateKey(iso: string): string {
-  const d = new Date(iso);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return estDateKey(new Date(iso));
 }
 
 function getWeekRange(offset: 0 | 1): [Date, Date] {
-  const weekStart = startOfWeekSunday(new Date());
-  const start = new Date(weekStart);
-  start.setDate(weekStart.getDate() + offset * 7);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return [start, end];
+  return estWeekRange(offset);
 }
 
 function isInRange(iso: string, [start, end]: [Date, Date]): boolean {
@@ -193,7 +175,14 @@ export default function RidesPage() {
     return groupRoutesByDate(filtered);
   }, [routes, nextWeekRange]);
 
-  const dateKeysThisWeek = Object.keys(routesByDateThisWeek).sort();
+  const todayKey = React.useMemo(
+    () => (mounted ? estDateKey(new Date()) : ""),
+    [mounted],
+  );
+
+  const dateKeysThisWeek = Object.keys(routesByDateThisWeek)
+    .sort()
+    .filter((k) => k >= todayKey);
   const dateKeysNextWeek = Object.keys(routesByDateNextWeek).sort();
 
   if (sessionStatus === "loading") {

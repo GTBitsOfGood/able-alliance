@@ -48,17 +48,29 @@ export default function AccommodationsPanel({
     setNewLabel("");
   }
 
+  function updateDraftLabel(id: string, value: string) {
+    setDraft((prev) =>
+      prev.map((d) => (d._id === id ? { ...d, label: value } : d)),
+    );
+  }
+
   async function saveChanges() {
     setSaving(true);
     setError(null);
     try {
+      const originalMap = new Map(items.map((i) => [i._id, i.label]));
       const draftIds = new Set(draft.map((d) => d._id));
       const toDelete = items.filter((i) => !draftIds.has(i._id));
-
-      // Also add current newLabel if non-empty
+      const toRename = draft.filter(
+        (d) => d.label.trim() && d.label.trim() !== originalMap.get(d._id),
+      );
       const allNew = newLabel.trim()
         ? [...pendingNew, newLabel.trim()]
         : [...pendingNew];
+
+      // Validate no blank labels
+      const blankDraft = draft.find((d) => !d.label.trim());
+      if (blankDraft) throw new Error("Accommodation labels cannot be empty");
 
       await Promise.all(
         toDelete.map((i) =>
@@ -69,6 +81,18 @@ export default function AccommodationsPanel({
           ),
         ),
       );
+
+      for (const item of toRename) {
+        const res = await fetch(`/api/accommodations/${item._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: item.label.trim() }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error ?? `Failed to rename "${item.label}"`);
+        }
+      }
 
       const created: Accommodation[] = [];
       for (const label of allNew) {
@@ -84,7 +108,12 @@ export default function AccommodationsPanel({
         created.push(await res.json());
       }
 
-      setItems([...draft.filter((d) => draftIds.has(d._id)), ...created]);
+      setItems([
+        ...draft
+          .filter((d) => draftIds.has(d._id))
+          .map((d) => ({ ...d, label: d.label.trim() })),
+        ...created,
+      ]);
       setEditing(false);
       onSaved?.();
     } catch (e) {
@@ -118,10 +147,14 @@ export default function AccommodationsPanel({
         <div
           style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}
         >
-          {/* Existing items */}
+          {/* Existing items — editable */}
           {draft.map((item) => (
             <div key={item._id} style={rowStyle}>
-              <div style={itemBoxStyle}>{item.label}</div>
+              <input
+                style={newInputStyle}
+                value={item.label}
+                onChange={(e) => updateDraftLabel(item._id, e.target.value)}
+              />
               <button
                 onClick={() => removeFromDraft(item._id)}
                 style={xBtnStyle}

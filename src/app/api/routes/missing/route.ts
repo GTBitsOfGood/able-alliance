@@ -1,30 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest } from "@/utils/authUser";
 import mongoose from "mongoose";
-import { auth } from "@/auth";
-import { getRouteById, startRoute } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import {
+  getRouteById,
+  markRouteMissing,
+} from "@/server/db/actions/RouteAction";
 
 export async function POST(request: NextRequest) {
+  let user;
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
-      );
-    }
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
 
+  if (user.type !== "Driver") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: HTTP_STATUS_CODE.FORBIDDEN },
+    );
+  }
+
+  try {
     const body = await request.json();
-    const { routeId } = body;
-    if (!routeId) {
+    const { routeId } = body as { routeId?: string };
+
+    if (!routeId || !mongoose.Types.ObjectId.isValid(routeId)) {
       return NextResponse.json(
-        { error: "routeId is required" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    if (!mongoose.Types.ObjectId.isValid(routeId)) {
-      return NextResponse.json(
-        { error: "Invalid routeId" },
+        { error: "Invalid route ID" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
@@ -37,24 +44,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate caller is the assigned driver
     const driverId = (
       route.driver as { _id?: { toString(): string } } | undefined
     )?._id?.toString();
-
-    if (!driverId || driverId !== session.user.userId) {
+    if (!driverId || driverId !== user.userId) {
       return NextResponse.json(
-        { error: "Forbidden: you are not the assigned driver for this route" },
+        { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
 
-    const updated = await startRoute(routeId);
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Route not found or not in Scheduled state" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    const updated = await markRouteMissing(routeId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch {
     return NextResponse.json(
