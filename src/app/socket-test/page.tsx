@@ -23,11 +23,22 @@ export default function SocketTest() {
         return;
       }
 
+      const res = await fetch("/api/routes");
+      const routes = await res.json();
+
+      if (!routes.length) {
+        console.error("No routes found in DB");
+        return;
+      }
+
+      const routeId = routes[0]._id;
+      console.log("Using route ID:", routeId);
+
       const socket = io(
         process.env.NEXT_PUBLIC_WEBSOCKET_URL ?? "http://127.0.0.1:4000",
         {
           auth: {
-            routeId: "69cc4f9aa34509334ad805db",
+            routeId,
             token,
           },
           transports: ["websocket", "polling"],
