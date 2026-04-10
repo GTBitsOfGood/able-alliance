@@ -164,10 +164,8 @@ export default function RideDetailPage({
   const otherPartyMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const selfMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const staticCoordsRef = useRef<[number, number][]>([]);
-  const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
   const watchIdRef = useRef<number | null>(null);
+  const routeStatusRef = useRef<string | undefined>(undefined);
   const [otherPartyLocation, setOtherPartyLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -390,10 +388,6 @@ export default function RideDetailPage({
       otherPartyMarkerRef.current = null;
       selfMarkerRef.current?.remove();
       selfMarkerRef.current = null;
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
-        locationIntervalRef.current = null;
-      }
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -551,47 +545,10 @@ export default function RideDetailPage({
     };
   }, []);
 
-  // Broadcast own GPS location every 5 seconds when En-route (both driver and student)
+  // Keep routeStatusRef in sync so watchPosition callback can read it without a stale closure
   useEffect(() => {
-    if (route?.status !== "En-route" || !socket) return;
-
-    const sendLocation = () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          socket.emit("updateLocation", {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          });
-        },
-        () => {
-          // High-accuracy timed out — retry with low accuracy (no GPS lock required)
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              socket.emit("updateLocation", {
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-              });
-            },
-            () => {
-              // Low-accuracy also failed — skip this interval silently
-            },
-            { enableHighAccuracy: false, timeout: 10000 },
-          );
-        },
-        { enableHighAccuracy: true, timeout: 10000 },
-      );
-    };
-
-    sendLocation();
-    locationIntervalRef.current = setInterval(sendLocation, 5000);
-
-    return () => {
-      if (locationIntervalRef.current) {
-        clearInterval(locationIntervalRef.current);
-        locationIntervalRef.current = null;
-      }
-    };
-  }, [route?.status, socket]);
+    routeStatusRef.current = route?.status;
+  }, [route?.status]);
 
   // Show other party's live location on the map
   useEffect(() => {
@@ -620,7 +577,7 @@ export default function RideDetailPage({
     );
   }, [otherPartyLocation, session?.user?.type]);
 
-  // Watch own GPS position and update selfLocation state
+  // Watch own GPS position — updates selfLocation state and emits location to socket when En-route
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -630,6 +587,15 @@ export default function RideDetailPage({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         });
+        if (
+          routeStatusRef.current === "En-route" &&
+          socketRef.current?.connected
+        ) {
+          socketRef.current.emit("updateLocation", {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        }
       },
       () => {
         // Permission denied or unavailable — no pin shown
