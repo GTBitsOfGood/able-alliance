@@ -87,17 +87,23 @@ const io = new Server(server, {
         if (!route) {
           return next(new Error("Route not found"));
         }
-        const allowedStatuses = ["Scheduled", "En-route"];
-        if (!allowedStatuses.includes(route.status)) {
-          return next(new Error("Route is not available for communication"));
-        }
-
-        const routeDate = new Date(route.scheduledPickupTime);
-        const today = new Date();
-        const isSameDay =
-          routeDate.getFullYear() === today.getFullYear() &&
-          routeDate.getMonth() === today.getMonth() &&
-          routeDate.getDate() === today.getDate();
+        // Compare dates in America/New_York using Intl (works reliably in Node)
+        const estDateStr = (d) => {
+          const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/New_York",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).formatToParts(d);
+          const get = (type) => parts.find((p) => p.type === type)?.value;
+          return `${get("year")}-${get("month")}-${get("day")}`;
+        };
+        const routeDateStr = estDateStr(new Date(route.scheduledPickupTime));
+        const todayStr = estDateStr(new Date());
+        const isSameDay = routeDateStr === todayStr;
+        console.log(
+          `Date check: route=${routeDateStr}, today=${todayStr}, same=${isSameDay}`,
+        );
         if (!isSameDay) {
           return next(new Error("Route is not scheduled for today"));
         }

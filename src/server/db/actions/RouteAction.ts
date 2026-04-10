@@ -167,6 +167,24 @@ export async function startRoute(routeId: string) {
   return route.toObject();
 }
 
+export async function pickupStudent(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route || route.status !== RouteStatus.EnRoute) return null;
+  route.status = RouteStatus.Pickedup;
+  await route.save();
+  return route.toObject();
+}
+
+export async function markRouteMissing(routeId: string) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId);
+  if (!route) return null;
+  route.status = RouteStatus.Missing;
+  await route.save();
+  return route.toObject();
+}
+
 export async function scheduleRoute(
   routeId: string,
   driverId: string,

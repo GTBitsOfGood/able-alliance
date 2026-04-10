@@ -289,9 +289,6 @@ function AdminContent() {
     e.preventDefault();
     setSubmitError(null);
     const form = e.currentTarget;
-    const vehicleId = (
-      form.elements.namedItem("vehicleId") as HTMLInputElement
-    ).value.trim();
     const name = (
       form.elements.namedItem("name") as HTMLInputElement
     ).value.trim();
@@ -306,8 +303,8 @@ function AdminContent() {
       10,
     );
 
-    if (!vehicleId || !name || !licensePlate) {
-      setSubmitError("Vehicle ID, name, and license plate are required.");
+    if (!name || !licensePlate) {
+      setSubmitError("Vehicle number and license plate are required.");
       return;
     }
     if (!Number.isInteger(seatCount) || seatCount < 1) {
@@ -319,7 +316,7 @@ function AdminContent() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vehicleId,
+        vehicleId: name,
         name,
         licensePlate,
         description: description || undefined,
@@ -738,54 +735,76 @@ function AdminContent() {
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : (
-      <BogForm onSubmit={handleAddVehicle} submitLabel="Create vehicle">
-        <BogTextInput
-          name="name"
-          label="Name"
-          placeholder="Vehicle name"
-          required
-        />
-        <BogTextInput
-          name="vehicleId"
-          label="Vehicle ID"
-          placeholder="e.g. 1234"
-          required
-        />
-        <BogTextInput
-          name="licensePlate"
-          label="License plate"
-          placeholder="Required"
-          required
-        />
-        <BogTextInput
-          name="description"
-          label="Make & model"
-          placeholder="e.g. Honda Odyssey"
-        />
-        <BogDropdown
-          name="accessibility"
-          label="Accessibility"
-          options={[...VEHICLE_ACCESSIBILITY_OPTIONS]}
-          placeholder="Select accessibility"
-          value={vehicleAccessibility}
-          onSelectionChange={(v) =>
-            setVehicleAccessibility(
-              typeof v === "string" ? v : (v[0] ?? "None"),
-            )
-          }
-        />
-        <BogTextInput
-          name="seatCount"
-          label="Seat count"
-          placeholder="Number"
-          required
-        />
+      <BogForm
+        onSubmit={handleAddVehicle}
+        submitLabel="Add vehicle"
+        style={{
+          background: "#fff",
+          border: "1px solid rgba(34,7,11,0.15)",
+          borderRadius: "0.8rem",
+          padding: "3.2rem",
+          maxWidth: "80rem",
+          alignItems: "flex-start",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "4.3rem 5.8rem",
+            width: "100%",
+          }}
+        >
+          <BogTextInput
+            name="name"
+            label="Vehicle Number"
+            placeholder="e.g. V001"
+            required
+          />
+          <BogTextInput
+            name="licensePlate"
+            label="License Plate"
+            placeholder="e.g. ABC-1234"
+            required
+          />
+          <BogTextInput
+            name="description"
+            label="Description"
+            placeholder="e.g. Honda Odyssey"
+          />
+          <BogTextInput
+            name="seatCount"
+            label="Seat Capacity"
+            placeholder="e.g. 4"
+            required
+          />
+        </div>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "calc(50% - 2.9rem)",
+            marginBottom: "1.6rem",
+          }}
+        >
+          <BogDropdown
+            name="accessibility"
+            label="Accommodations"
+            options={[...VEHICLE_ACCESSIBILITY_OPTIONS]}
+            placeholder="Select accommodations"
+            value={vehicleAccessibility}
+            onSelectionChange={(v) =>
+              setVehicleAccessibility(
+                typeof v === "string" ? v : (v[0] ?? "None"),
+              )
+            }
+          />
+        </div>
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     );
 
   return (
-    <div className="py-10 px-12 pr-20 relative flex flex-col flex-1 w-full">
+    <div className="py-10 pl-[4.35rem] pr-20 relative flex flex-col flex-1 w-full">
       {selectedVehicleId ? (
         <VehicleDetailsPanel
           vehicleId={selectedVehicleId}

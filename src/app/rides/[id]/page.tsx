@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
@@ -18,6 +18,10 @@ type RouteUser = {
   _id: string;
   firstName: string;
   lastName: string;
+  studentInfo?: {
+    accessibilityNeeds?: string[];
+    notes?: string;
+  };
 };
 
 type RouteData = {
@@ -53,13 +57,9 @@ type ChatMessage = {
 };
 
 function isToday(iso: string): boolean {
-  const date = new Date(iso);
-  const today = new Date();
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
+  return fmt(new Date(iso)) === fmt(new Date());
 }
 
 function getStatusChipColor(
@@ -107,6 +107,7 @@ export default function RideDetailPage({
 }) {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
   const [locations, setLocations] = useState<Record<string, string>>({});
@@ -127,6 +128,21 @@ export default function RideDetailPage({
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [isChatEligible, setIsChatEligible] = useState(false);
+
+  // Auto-open chat if ?chat=1
+  useEffect(() => {
+    if (searchParams.get("chat") === "1" && isChatEligible && route) {
+      setShowChatModal(true);
+    }
+  }, [searchParams, isChatEligible, route]);
+
+  // Driver-specific state
+  const [markingMissing, setMarkingMissing] = useState(false);
+  const [missingError, setMissingError] = useState<string | null>(null);
+  const [driverActionBusy, setDriverActionBusy] = useState(false);
+  const [driverActionError, setDriverActionError] = useState<string | null>(
+    null,
+  );
 
   // Extract ID from params
   useEffect(() => {
@@ -155,15 +171,19 @@ export default function RideDetailPage({
 
         const routeData: RouteData = await res.json();
 
-        // Check if current user is the student
-        const studentId = getStudentId(routeData.student);
-        if (studentId !== session.user.userId) {
-          throw new Error("You are not the student for this route");
-        }
-
-        // Only show student view (driver view is handled separately)
-        if (session.user.type !== "Student") {
-          throw new Error("Only students can view this page");
+        if (session.user.type === "Student") {
+          const studentId = getStudentId(routeData.student);
+          if (studentId !== session.user.userId) {
+            throw new Error("You are not the student for this route");
+          }
+        } else if (session.user.type === "Driver") {
+          const driverId = getDriverId(routeData.driver);
+          if (driverId !== session.user.userId) {
+            router.push("/rides");
+            return;
+          }
+        } else {
+          throw new Error("Unauthorized");
         }
 
         setRoute(routeData);
@@ -358,11 +378,60 @@ export default function RideDetailPage({
     fetchLocations();
   }, [route]);
 
+  // Driver: connect WebSocket on page load when ride is today
+  useEffect(() => {
+    if (session?.user?.type !== "Driver") return;
+    if (!isChatEligible || !route || !routeId || !session?.user?.accessToken)
+      return;
+    if (socketRef.current) return;
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsUrl) {
+      setChatError("WebSocket server URL not configured");
+      return;
+    }
+
+    const newSocket = io(wsUrl, {
+      auth: { routeId, token: session.user.accessToken },
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+    });
+
+    newSocket.on("connect", () => setChatError(null));
+    newSocket.on("receiveChatMessage", (message: string) => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "other", text: message, timestamp: new Date() },
+      ]);
+    });
+    newSocket.on("chatError", (msg: string) => setChatError(msg));
+    newSocket.on("connect_error", (err: Error) => {
+      setChatError(`Connection error: ${err.message}`);
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    });
+
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    };
+  }, [isChatEligible, route, routeId, session]);
+
   // WebSocket connection for chat
   useEffect(() => {
     if (!showChatModal || !route || !routeId || !session?.user?.userId) {
       return;
     }
+    // Driver already connects on page load above
+    if (session?.user?.type === "Driver") return;
 
     if (socket) {
       return;
@@ -423,11 +492,10 @@ export default function RideDetailPage({
         newSocket.on("connect_error", (err: Error) => {
           if (isMounted) {
             setChatError(`Connection error: ${err.message}`);
+            newSocket.disconnect();
+            socketRef.current = null;
+            setSocket(null);
           }
-        });
-
-        newSocket.on("disconnect", () => {
-          // Socket disconnected
         });
 
         if (isMounted) {
@@ -507,6 +575,74 @@ export default function RideDetailPage({
       setCancellingRide(false);
     }
   }, [routeId, router]);
+
+  const handleDriverAction = useCallback(
+    async (endpoint: string, errorMsg: string) => {
+      if (!routeId) return;
+      setDriverActionBusy(true);
+      setDriverActionError(null);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId }),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? res.statusText);
+        }
+        const updated: RouteData = await res.json();
+        setRoute(updated);
+      } catch (e) {
+        setDriverActionError(e instanceof Error ? e.message : errorMsg);
+      } finally {
+        setDriverActionBusy(false);
+      }
+    },
+    [routeId],
+  );
+
+  const handleStartRide = useCallback(
+    () => handleDriverAction("/api/routes/start", "Failed to start ride."),
+    [handleDriverAction],
+  );
+
+  const handlePickupStudent = useCallback(
+    () =>
+      handleDriverAction("/api/routes/pickup", "Failed to mark as picked up."),
+    [handleDriverAction],
+  );
+
+  const handleDropoffStudent = useCallback(
+    () =>
+      handleDriverAction("/api/routes/complete", "Failed to complete ride."),
+    [handleDriverAction],
+  );
+
+  const handleMarkMissing = useCallback(async () => {
+    if (!routeId) return;
+    setMarkingMissing(true);
+    setMissingError(null);
+    try {
+      const res = await fetch("/api/routes/missing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? res.statusText);
+      }
+      const updated: RouteData = await res.json();
+      setRoute(updated);
+    } catch (e) {
+      setMissingError(
+        e instanceof Error ? e.message : "Failed to mark as missing.",
+      );
+    } finally {
+      setMarkingMissing(false);
+    }
+  }, [routeId]);
 
   if (sessionStatus === "loading" || loading) {
     return (
@@ -590,6 +726,273 @@ export default function RideDetailPage({
         return { background: "#1e293b", color: "#fff" };
     }
   })();
+
+  // ── Driver view ────────────────────────────────────────────────────────────
+  if (session?.user?.type === "Driver") {
+    const studentObj =
+      route.student && typeof route.student !== "string"
+        ? (route.student as RouteUser)
+        : null;
+    const studentName = studentObj
+      ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
+      : "—";
+    const accommodations =
+      studentObj?.studentInfo?.accessibilityNeeds?.join(", ") || "—";
+    const additionalComments = studentObj?.studentInfo?.notes || "—";
+
+    const chatModal = showChatModal && (
+      <div
+        className={styles.chatModalOverlay}
+        onClick={() => setShowChatModal(false)}
+      >
+        <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.chatModalHeader}>
+            <h2 className={styles.chatModalTitle}>Chat with Student</h2>
+            <button
+              type="button"
+              className={styles.chatModalCloseButton}
+              onClick={() => setShowChatModal(false)}
+              aria-label="Close chat"
+            >
+              <BogIcon name="x" size={20} />
+            </button>
+          </div>
+          {chatError && (
+            <div className={styles.chatErrorBanner}>
+              <p className={styles.chatErrorText}>{chatError}</p>
+            </div>
+          )}
+          <div className={styles.messagesContainer}>
+            {messages.length === 0 && (
+              <div className={styles.noMessages}>
+                <p>No messages yet. Start the conversation!</p>
+              </div>
+            )}
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`${styles.messageRow} ${
+                  msg.sender === "user"
+                    ? styles.messageRowUser
+                    : styles.messageRowOther
+                }`}
+              >
+                <div className={styles.messageBubble}>
+                  <p className={styles.messageText}>{msg.text}</p>
+                  <span className={styles.messageTime}>
+                    {msg.timestamp.toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.chatInputContainer}>
+            <input
+              type="text"
+              className={styles.chatInput}
+              placeholder="Type a message…"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={!socket || sendingMessage}
+            />
+            <button
+              type="button"
+              className={styles.sendButton}
+              onClick={handleSendMessage}
+              disabled={!chatInput.trim() || !socket || sendingMessage}
+              aria-label="Send message"
+            >
+              <BogIcon name="arrow-right" size={20} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className={styles.rideDetailPage}>
+        {chatModal}
+        <main className={styles.main}>
+          <header className={styles.header}>
+            <Link href="/rides" className={styles.backLink}>
+              <BogIcon name="arrow-left" size={20} />
+              <span>Back to rides</span>
+            </Link>
+          </header>
+
+          <div className={styles.titleRow}>
+            <h1 className={styles.pageTitle}>Ride Details</h1>
+            <span className={styles.statusChip} style={statusChipStyle}>
+              {route.status}
+            </span>
+          </div>
+
+          <div className={styles.rideSummaryCard}>
+            <p className={styles.rideDateLabel}>
+              {formatDateLabel(scheduledDate)}
+            </p>
+            <div className={styles.pickupDropoffRow}>
+              <div className={styles.stopBlock}>
+                <span className={styles.stopLabel}>Pickup</span>
+                <span className={styles.stopTime}>
+                  {formatTime(scheduledDate)}
+                </span>
+                <span className={styles.stopLocation}>
+                  {pickupLocationName}
+                </span>
+              </div>
+              <div className={styles.stopDivider} />
+              <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
+                <span className={styles.stopLabel}>Dropoff</span>
+                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <span className={styles.stopLocation}>
+                  {dropoffLocationName}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.contentContainer}>
+            {/* Left column — student info + actions */}
+            <div className={styles.leftColumn}>
+              <div className={styles.driverSection}>
+                <h2 className={styles.sectionTitle}>Student Information</h2>
+                <div className={styles.driverInfoGrid}>
+                  <div className={styles.studentInfoItem}>
+                    <span className={styles.studentInfoLabel}>Name</span>
+                    <span className={styles.studentInfoValue}>
+                      {studentName}
+                    </span>
+                  </div>
+                  <div className={styles.studentInfoItem}>
+                    <span className={styles.studentInfoLabel}>
+                      Accommodations
+                    </span>
+                    <span className={styles.studentInfoValue}>
+                      {accommodations}
+                    </span>
+                  </div>
+                  <div className={styles.studentInfoItem}>
+                    <span className={styles.studentInfoLabel}>
+                      Additional Comments
+                    </span>
+                    <span className={styles.studentInfoValue}>
+                      {additionalComments}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.chatButtonWrapper}>
+                {!isChatEligible && (
+                  <span className={styles.chatTooltip}>
+                    Chat is only available on the day of the ride
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className={styles.chatButton}
+                  onClick={() => isChatEligible && setShowChatModal(true)}
+                  disabled={
+                    !isChatEligible ||
+                    [
+                      "Pickedup",
+                      "Completed",
+                      "Missing",
+                      "Cancelled by Student",
+                      "Cancelled by Admin",
+                    ].includes(route.status)
+                  }
+                >
+                  <BogIcon name="chats" size={18} />
+                  <span>Chat with student</span>
+                </button>
+              </div>
+
+              {/* Scheduled: Start ride */}
+              {route.status === "Scheduled" && (
+                <button
+                  type="button"
+                  className={styles.startRideButton}
+                  onClick={() => void handleStartRide()}
+                  disabled={driverActionBusy}
+                >
+                  {driverActionBusy ? "Starting…" : "Start ride"}
+                </button>
+              )}
+
+              {/* En-route: Student picked up + Student no-show */}
+              {route.status === "En-route" && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.greenOutlineButton}
+                    onClick={() => void handlePickupStudent()}
+                    disabled={driverActionBusy}
+                  >
+                    {driverActionBusy ? "Updating…" : "Student picked up"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancelButton}
+                    onClick={() => void handleMarkMissing()}
+                    disabled={markingMissing}
+                  >
+                    {markingMissing ? "Marking…" : "Student no-show"}
+                  </button>
+                </>
+              )}
+
+              {/* Pickedup: Student dropped off */}
+              {route.status === "Pickedup" && (
+                <button
+                  type="button"
+                  className={styles.greenOutlineButton}
+                  onClick={() => void handleDropoffStudent()}
+                  disabled={driverActionBusy}
+                >
+                  {driverActionBusy ? "Completing…" : "Student dropped off"}
+                </button>
+              )}
+
+              {(missingError || driverActionError) && (
+                <p
+                  style={{
+                    color: "var(--color-status-red-text)",
+                    fontSize: "1.4rem",
+                    margin: 0,
+                  }}
+                >
+                  {missingError || driverActionError}
+                </p>
+              )}
+            </div>
+
+            {/* Right column — map */}
+            <div className={styles.rightColumn}>
+              <div className={styles.mapContainer}>
+                <div
+                  ref={mapContainerRef}
+                  className={styles.mapImage}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "0.5rem",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+  // ── End driver view ─────────────────────────────────────────────────────────
 
   return (
     <div className={styles.rideDetailPage}>
