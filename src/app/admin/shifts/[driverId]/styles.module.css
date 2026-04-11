@@ -1,0 +1,402 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  padding: 3.2rem 4rem;
+  gap: 2.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Back link ── */
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  color: var(--color-grey-text-weak);
+  text-decoration: none;
+  margin-bottom: 0.4rem;
+}
+
+.backLink:hover {
+  color: var(--color-grey-text-strong);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 3.6rem;
+  line-height: 1.1;
+  color: var(--color-grey-text-strong);
+}
+
+/* ── Info card ── */
+.infoCard {
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+  padding: 2.4rem 3.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.8rem;
+}
+
+.infoCardRow {
+  display: flex;
+  justify-content: space-between;
+  max-width: 54%;
+}
+
+.infoField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.infoLabel {
+  font-size: 1.8rem;
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+}
+
+.infoValue {
+  font-size: 1.8rem;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+}
+
+.infoCardBottom {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+.dayLabel {
+  font-size: 1.8rem;
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+}
+
+.timeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.4rem;
+  font-size: 1.8rem;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  background: #efeded;
+}
+
+/* ── Section ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+  padding: 1.6rem 2rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+}
+
+/* ── Custom table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+}
+
+.table thead tr {
+  background: #dcecf8;
+}
+
+.table th {
+  padding: 1rem 1.2rem;
+  text-align: left;
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 1rem 1.2rem;
+  color: var(--color-grey-text-strong);
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Timeline ── */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.timelineLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.4rem;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+}
+
+.timelineBar {
+  position: relative;
+  height: 2.6rem;
+  background: #9beba0;
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+.timelineBlock {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+/* Scheduled rides = grey (marks occupied time) */
+.timelineBlockScheduled {
+  background: #e4e4e4;
+}
+
+/* Selected-to-add rides = darker green indicator */
+.timelineBlockSelected {
+  background: #2e7d32;
+  opacity: 0.6;
+}
+
+.timelineBlockConflict {
+  background: var(--color-status-red-text);
+  opacity: 0.7;
+}
+
+/* Thin vertical tick at each hour boundary */
+.timelineHourMark {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+/* ── Separator ── */
+.separator {
+  width: 100%;
+  height: 1px;
+  background: var(--color-grey-stroke-weak);
+  border: none;
+  margin: 0.4rem 0;
+}
+
+/* ── Add Rides table ── */
+.addTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+}
+
+.addTable thead tr {
+  background: #dcecf8;
+}
+
+.addTable th {
+  padding: 1rem 1.2rem;
+  text-align: left;
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  white-space: nowrap;
+}
+
+.addTable td {
+  padding: 0.8rem 1.2rem;
+  color: var(--color-grey-text-strong);
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  vertical-align: middle;
+}
+
+.addTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.addTable tbody tr.rowConflict {
+  background: var(--color-status-red-fill);
+}
+
+/* ── Vehicle select ── */
+.vehicleSelect {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.5rem;
+  font-size: 1.3rem;
+  font-family: var(--font-paragraph);
+  color: var(--color-grey-text-strong);
+  background: var(--color-solid-bg-base);
+  min-width: 9rem;
+}
+
+.vehicleSelect:focus {
+  outline: none;
+  border-color: var(--color-brand-text);
+}
+
+/* ── Status badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeRequested {
+  background: #432c30;
+  color: #fff;
+}
+
+.badgeScheduled {
+  background: var(--color-status-amber-fill);
+  color: var(--color-status-amber-text);
+  border: 1px solid var(--color-status-amber-stroke-weak);
+}
+
+/* ── Add rides footer ── */
+.addRidesFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 0.8rem;
+}
+
+.bannerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  font-size: 1.3rem;
+  font-family: var(--font-paragraph);
+}
+
+.bannerError {
+  color: var(--color-status-red-text);
+}
+
+.bannerWarning {
+  color: var(--color-status-amber-text);
+}
+
+/* ── Buttons ── */
+.btnSecondary {
+  padding: 0.8rem 1.8rem;
+  border: 1px solid var(--color-brand-text);
+  border-radius: 0.4rem;
+  background: transparent;
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--color-brand-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: rgba(24, 55, 119, 0.06);
+}
+
+.btnPrimary {
+  padding: 0.8rem 1.8rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--color-brand-text);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #152d55;
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnAddRide {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--color-brand-text);
+  border-radius: 0.4rem;
+  background: transparent;
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--color-brand-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnAddRide:hover {
+  background: rgba(24, 55, 119, 0.06);
+}
+
+/* ── Empty / loading ── */
+.empty {
+  padding: 2.4rem 0;
+  text-align: center;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.errorText {
+  color: var(--color-status-red-text);
+  font-size: 1.4rem;
+}
+
+/* ── Row checkbox ── */
+.checkbox {
+  width: 1.6rem;
+  height: 1.6rem;
+  cursor: pointer;
+  accent-color: var(--color-brand-text);
+}

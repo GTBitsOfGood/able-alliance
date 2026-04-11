@@ -101,27 +101,6 @@ function isToday(iso: string): boolean {
   return fmt(new Date(iso)) === fmt(new Date());
 }
 
-function getStatusChipColor(
-  status: string,
-): "green" | "red" | "amber" | "blue" | "gray" {
-  switch (status) {
-    case "Completed":
-      return "green";
-    case "Cancelled by Student":
-    case "Cancelled by Admin":
-    case "Missing":
-      return "red";
-    case "Requested":
-    case "Scheduled":
-      return "blue";
-    case "En-route":
-    case "Pickedup":
-      return "amber";
-    default:
-      return "gray";
-  }
-}
-
 function getStudentId(student: string | RouteUser): string {
   if (typeof student === "string") return student;
   return student._id;
@@ -253,7 +232,7 @@ export default function RideDetailPage({
     };
 
     fetchRoute();
-  }, [routeId, session, sessionStatus]);
+  }, [routeId, session, sessionStatus, router]);
 
   // Fetch locations
   useEffect(() => {
@@ -429,7 +408,6 @@ export default function RideDetailPage({
   //   • Driver: isChatEligible (ride is today)
   //   • Student: isChatEligible AND (status is En-route OR chat modal is open)
   //
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const isDriver = session?.user?.type === "Driver";
     const isStudent = session?.user?.type === "Student";
@@ -886,34 +864,37 @@ export default function RideDetailPage({
                 <p>No messages yet. Start the conversation!</p>
               </div>
             )}
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`${styles.messageRow} ${
-                  msg.sender === "user"
-                    ? styles.messageRowUser
-                    : styles.messageRowOther
-                }`}
-              >
-                <div className={styles.messageBubble}>
-                  <p className={styles.messageText}>{msg.text}</p>
-                  <span className={styles.messageTime}>
-                    {msg.timestamp.toLocaleTimeString("en-US", {
-                      timeZone: "America/New_York",
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                    })}
-                  </span>
+            {messages.map((msg, idx) => {
+              const isUser = msg.sender === "user";
+              const prevIsOther =
+                !isUser && idx > 0 && messages[idx - 1].sender === "other";
+              return (
+                <div
+                  key={idx}
+                  className={`${styles.messageRow} ${
+                    isUser ? styles.messageRowUser : styles.messageRowOther
+                  }`}
+                >
+                  {!isUser &&
+                    (prevIsOther ? (
+                      <div className={styles.messageAvatarSpacer} />
+                    ) : (
+                      <div className={styles.messageAvatar}>
+                        <BogIcon name="user" size={18} />
+                      </div>
+                    ))}
+                  <div className={styles.messageBubble}>
+                    <p className={styles.messageText}>{msg.text}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className={styles.chatInputContainer}>
             <input
               type="text"
               className={styles.chatInput}
-              placeholder="Type a message…"
+              placeholder="Type a message..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -926,7 +907,7 @@ export default function RideDetailPage({
               disabled={!chatInput.trim() || !socket || sendingMessage}
               aria-label="Send message"
             >
-              <BogIcon name="arrow-right" size={20} />
+              <BogIcon name="arrow-right" size={18} />
             </button>
           </div>
         </div>
@@ -1287,34 +1268,38 @@ export default function RideDetailPage({
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               )}
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`${styles.messageRow} ${
-                    msg.sender === "user"
-                      ? styles.messageRowUser
-                      : styles.messageRowOther
-                  }`}
-                >
-                  <div className={styles.messageBubble}>
-                    <p className={styles.messageText}>{msg.text}</p>
-                    <span className={styles.messageTime}>
-                      {msg.timestamp.toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </span>
+              {messages.map((msg, idx) => {
+                const isUser = msg.sender === "user";
+                const prevIsOther =
+                  !isUser && idx > 0 && messages[idx - 1].sender === "other";
+                return (
+                  <div
+                    key={idx}
+                    className={`${styles.messageRow} ${
+                      isUser ? styles.messageRowUser : styles.messageRowOther
+                    }`}
+                  >
+                    {!isUser &&
+                      (prevIsOther ? (
+                        <div className={styles.messageAvatarSpacer} />
+                      ) : (
+                        <div className={styles.messageAvatar}>
+                          <BogIcon name="user" size={18} />
+                        </div>
+                      ))}
+                    <div className={styles.messageBubble}>
+                      <p className={styles.messageText}>{msg.text}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className={styles.chatInputContainer}>
               <input
                 type="text"
                 className={styles.chatInput}
-                placeholder="Type a message…"
+                placeholder="Type a message..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -1327,7 +1312,7 @@ export default function RideDetailPage({
                 disabled={!chatInput.trim() || !socket || sendingMessage}
                 aria-label="Send message"
               >
-                <BogIcon name="arrow-right" size={20} />
+                <BogIcon name="arrow-right" size={18} />
               </button>
             </div>
           </div>

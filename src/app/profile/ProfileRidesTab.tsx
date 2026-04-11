@@ -31,7 +31,6 @@ type Route = {
 type LocationMap = Record<string, string>;
 
 type Filter = "all" | "this-week" | "next-week";
-type WeekFilter = "this-week" | "next-week";
 
 function inRange(iso: string, start: Date, end: Date): boolean {
   const t = new Date(iso).getTime();
@@ -41,21 +40,6 @@ function inRange(iso: string, start: Date, end: Date): boolean {
 function getWeekRange(offset: 0 | 1): [Date, Date] {
   return estWeekRange(offset);
 }
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
 
 function fmtWeekLabel(start: Date, end: Date): string {
   const s = formatEstDate(start, { month: "short", day: "numeric" });

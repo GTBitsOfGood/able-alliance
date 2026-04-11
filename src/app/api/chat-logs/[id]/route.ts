@@ -40,7 +40,7 @@ export async function GET(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch chatlog" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },

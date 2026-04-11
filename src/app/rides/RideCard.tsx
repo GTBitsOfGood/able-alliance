@@ -98,7 +98,6 @@ function getDriverStatusChipColor(
 export function RideCard({
   route,
   locationIdToName,
-  actions,
   isDriverCard = false,
   href,
   onCancel,

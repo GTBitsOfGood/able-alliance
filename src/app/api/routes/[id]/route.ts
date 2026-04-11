@@ -48,7 +48,7 @@ export async function GET(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
@@ -94,7 +94,7 @@ export async function DELETE(
       { message: "Route deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },

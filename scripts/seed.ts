@@ -581,6 +581,210 @@ async function seed() {
     },
   ];
 
+  // ---------- Requested routes (no driver/vehicle — available to schedule) ----------
+  // Spread across next week Mon–Fri, timed within each driver's shift windows:
+  //   driver1 (Test):  Mon–Fri 08:00–14:00
+  //   driver2 (Alex):  Mon/Wed/Fri 13:00–19:00, Sat 10:00–16:00
+  //   driver3 (Austin):Tue/Thu 09:00–15:00
+  // Today is treated as day 0; Mon=+2, Tue=+3, Wed=+4, Thu=+5, Fri=+6
+  type RequestedTemplate = {
+    student: AnyUser;
+    pickupLocation: keyof typeof locations;
+    dropoffLocation: keyof typeof locations;
+    pickupTime: Date;
+  };
+
+  const requestedTemplates: RequestedTemplate[] = [
+    // ── Monday (driver1 08–14, driver2 13–19) ──────────────────────────────
+    {
+      student: student1,
+      pickupLocation: "West Village Dining",
+      dropoffLocation: "Tech Square Eastbound",
+      pickupTime: makeDate(2, 8, 30),
+    },
+    {
+      student: student2,
+      pickupLocation: "North Avenue Apartments",
+      dropoffLocation: "Student Center",
+      pickupTime: makeDate(2, 9, 15),
+    },
+    {
+      student: student3,
+      pickupLocation: "Exhibition Hall",
+      dropoffLocation: "Clough Undergraduate Learning Commons",
+      pickupTime: makeDate(2, 10, 0),
+    },
+    {
+      student: student4,
+      pickupLocation: "Campus Recreation Center",
+      dropoffLocation: "Stamps Health Services",
+      pickupTime: makeDate(2, 11, 30),
+    },
+    {
+      student: student2,
+      pickupLocation: "Student Center",
+      dropoffLocation: "Eighth Street Apartments",
+      pickupTime: makeDate(2, 14, 30),
+    },
+    {
+      student: student3,
+      pickupLocation: "Ferst Center for the Arts",
+      dropoffLocation: "West Village Dining",
+      pickupTime: makeDate(2, 16, 0),
+    },
+
+    // ── Tuesday (driver1 08–14, driver3 09–15) ────────────────────────────
+    {
+      student: student4,
+      pickupLocation: "Exhibition Hall",
+      dropoffLocation: "Tech Square Eastbound",
+      pickupTime: makeDate(3, 8, 30),
+    },
+    {
+      student: student1,
+      pickupLocation: "West Village Dining",
+      dropoffLocation: "Student Center",
+      pickupTime: makeDate(3, 9, 0),
+    },
+    {
+      student: student2,
+      pickupLocation: "North Avenue Apartments",
+      dropoffLocation: "Campus Recreation Center",
+      pickupTime: makeDate(3, 10, 30),
+    },
+    {
+      student: student3,
+      pickupLocation: "Eighth Street Apartments",
+      dropoffLocation: "Stamps Health Services",
+      pickupTime: makeDate(3, 12, 0),
+    },
+    {
+      student: student4,
+      pickupLocation: "Clough Undergraduate Learning Commons",
+      dropoffLocation: "Ferst Center for the Arts",
+      pickupTime: makeDate(3, 13, 30),
+    },
+
+    // ── Wednesday (driver1 08–14, driver2 13–19, driver3 09–15) ──────────
+    {
+      student: student1,
+      pickupLocation: "Exhibition Hall",
+      dropoffLocation: "Eighth Street Apartments",
+      pickupTime: makeDate(4, 9, 0),
+    },
+    {
+      student: student2,
+      pickupLocation: "Student Center",
+      dropoffLocation: "Ferst Center for the Arts",
+      pickupTime: makeDate(4, 11, 0),
+    },
+    {
+      student: student3,
+      pickupLocation: "West Village Dining",
+      dropoffLocation: "North Avenue Apartments",
+      pickupTime: makeDate(4, 14, 0),
+    },
+    {
+      student: student4,
+      pickupLocation: "Tech Square Eastbound",
+      dropoffLocation: "Campus Recreation Center",
+      pickupTime: makeDate(4, 15, 30),
+    },
+
+    // ── Thursday (driver1 08–14, driver3 09–15) ───────────────────────────
+    {
+      student: student1,
+      pickupLocation: "Campus Recreation Center",
+      dropoffLocation: "Clough Undergraduate Learning Commons",
+      pickupTime: makeDate(5, 9, 30),
+    },
+    {
+      student: student2,
+      pickupLocation: "North Avenue Apartments",
+      dropoffLocation: "Exhibition Hall",
+      pickupTime: makeDate(5, 11, 0),
+    },
+    {
+      student: student3,
+      pickupLocation: "West Village Dining",
+      dropoffLocation: "Stamps Health Services",
+      pickupTime: makeDate(5, 13, 0),
+    },
+
+    // ── Friday (driver1 08–14, driver2 13–19) ────────────────────────────
+    {
+      student: student4,
+      pickupLocation: "Eighth Street Apartments",
+      dropoffLocation: "Student Center",
+      pickupTime: makeDate(6, 8, 30),
+    },
+    {
+      student: student1,
+      pickupLocation: "Ferst Center for the Arts",
+      dropoffLocation: "Tech Square Eastbound",
+      pickupTime: makeDate(6, 10, 0),
+    },
+    {
+      student: student2,
+      pickupLocation: "Student Center",
+      dropoffLocation: "West Village Dining",
+      pickupTime: makeDate(6, 13, 30),
+    },
+  ];
+
+  let createdReq = 0;
+  let skippedReq = 0;
+
+  for (const t of requestedTemplates) {
+    const pickupLoc = locations[t.pickupLocation];
+    const dropoffLoc = locations[t.dropoffLocation];
+    if (!pickupLoc || !dropoffLoc) continue;
+
+    const existing = await routesCol.findOne({
+      "student._id": t.student._id,
+      scheduledPickupTime: t.pickupTime,
+    });
+    if (existing) {
+      skippedReq++;
+      continue;
+    }
+
+    const windowStart = addMinutes(t.pickupTime, -30);
+    const windowEnd = addMinutes(t.pickupTime, 30);
+
+    let estimatedDropoffTime: Date | undefined;
+    try {
+      const secs = await getMapboxTravelDuration(
+        pickupLoc.latitude,
+        pickupLoc.longitude,
+        dropoffLoc.latitude,
+        dropoffLoc.longitude,
+        t.pickupTime,
+      );
+      if (secs !== null) {
+        estimatedDropoffTime = new Date(t.pickupTime.getTime() + secs * 1000);
+      }
+    } catch {
+      /* skip if Mapbox unavailable */
+    }
+
+    await routesCol.insertOne({
+      pickupLocation: pickupLoc._id,
+      dropoffLocation: dropoffLoc._id,
+      student: makeEmbed(t.student as unknown as Record<string, unknown>),
+      scheduledPickupTime: t.pickupTime,
+      pickupWindowStart: windowStart,
+      pickupWindowEnd: windowEnd,
+      estimatedDropoffTime,
+      status: "Requested",
+    });
+    createdReq++;
+  }
+
+  console.log(
+    `– Requested routes: created ${createdReq}, skipped ${skippedReq}`,
+  );
+
   let created = 0;
   let skipped = 0;
 

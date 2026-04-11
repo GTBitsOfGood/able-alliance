@@ -7,11 +7,9 @@ import {
   startOfDay,
   endOfDay,
   startOfWeek,
-  endOfDay as _endOfDay,
   addDays,
   addWeeks,
   getDay,
-  format as dateFnsFormat,
 } from "date-fns";
 import { toZonedTime, fromZonedTime, format as tzFormat } from "date-fns-tz";
 

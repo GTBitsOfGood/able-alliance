@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 /**
  * GET /api/auth/cas/login
@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Redirects the browser to the CAS login page.
  * The CAS server will redirect back to /api/auth/cas/callback with a ticket.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   const casBaseUrl = process.env.CAS_BASE_URL_BROWSER;
   if (!casBaseUrl) {
     throw new Error("CAS_BASE_URL_BROWSER environment variable is required");

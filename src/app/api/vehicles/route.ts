@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
       );
     }
-  } catch (_e) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
@@ -62,7 +62,7 @@ export async function GET() {
   try {
     const vehicles = await getVehicles();
     return NextResponse.json(vehicles);
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },

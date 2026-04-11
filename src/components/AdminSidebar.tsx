@@ -55,6 +55,15 @@ function AdminSidebarContent() {
             <span>Rides</span>
           </Link>
 
+          {/* Shifts */}
+          <Link
+            href="/admin/shifts"
+            className={`${styles.navItem} ${pathname.startsWith("/admin/shifts") ? styles.active : ""}`}
+          >
+            <Image src="/clock.svg" alt="" width={20} height={20} />
+            <span>Shifts</span>
+          </Link>
+
           {/* Directory */}
           <div>
             <button

@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   // Remove null values
   const validFilters = Object.fromEntries(
-    Object.entries(filters).filter(([_, value]) => value !== null),
+    Object.entries(filters).filter(([, value]) => value !== null),
   ) as Record<string, string>;
 
   // Validate ObjectId fields
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
   try {
     const chatlogs = await getChatlogs(validFilters);
     return NextResponse.json(chatlogs);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch chatlogs" },
       { status: 500 },
