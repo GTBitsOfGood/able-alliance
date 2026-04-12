@@ -11,6 +11,12 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import { getMapboxTravelDuration } from "@/server/mapbox";
 
+// Local dev usually only sets the public token. Reuse it for seed-time
+// directions estimates so test routes get dropoff times without extra env work.
+const reusingPublicMapboxToken =
+  !process.env.MAPBOX_TOKEN && !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+process.env.MAPBOX_TOKEN ??= process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
 let MONGODB_URI =
   process.argv[2] ??
   process.env.MONGODB_URI ??
@@ -47,6 +53,12 @@ async function seed() {
   console.log("Connecting to MongoDB…");
   await mongoose.connect(MONGODB_URI);
   const db = mongoose.connection.db!;
+
+  if (reusingPublicMapboxToken) {
+    console.log(
+      "Using NEXT_PUBLIC_MAPBOX_TOKEN for seed-time Mapbox directions estimates.",
+    );
+  }
 
   // ---------- Accommodations ----------
   const accCol = db.collection("accommodations");
@@ -347,6 +359,53 @@ async function seed() {
   const addMinutes = (date: Date, minutes: number): Date =>
     new Date(date.getTime() + minutes * 60 * 1000);
 
+  const computeEstimatedDropoffTime = async (
+    pickupLoc: { latitude: number; longitude: number },
+    dropoffLoc: { latitude: number; longitude: number },
+    pickupTime: Date,
+  ): Promise<Date | undefined> => {
+    try {
+      const secs = await getMapboxTravelDuration(
+        pickupLoc.latitude,
+        pickupLoc.longitude,
+        dropoffLoc.latitude,
+        dropoffLoc.longitude,
+        pickupTime,
+      );
+      if (secs !== null) {
+        return new Date(pickupTime.getTime() + secs * 1000);
+      }
+    } catch {
+      /* skip if Mapbox unavailable */
+    }
+    return undefined;
+  };
+
+  const backfillEstimatedDropoffTime = async (
+    existing: {
+      _id: mongoose.Types.ObjectId;
+      estimatedDropoffTime?: Date | null;
+    } | null,
+    pickupLoc: { latitude: number; longitude: number },
+    dropoffLoc: { latitude: number; longitude: number },
+    pickupTime: Date,
+  ): Promise<boolean> => {
+    if (!existing || existing.estimatedDropoffTime) return false;
+
+    const estimatedDropoffTime = await computeEstimatedDropoffTime(
+      pickupLoc,
+      dropoffLoc,
+      pickupTime,
+    );
+    if (!estimatedDropoffTime) return false;
+
+    await routesCol.updateOne(
+      { _id: existing._id },
+      { $set: { estimatedDropoffTime } },
+    );
+    return true;
+  };
+
   const makeEmbed = (user: Record<string, unknown>) => ({
     _id: user._id,
     firstName: user.firstName,
@@ -378,6 +437,24 @@ async function seed() {
     return d;
   };
 
+  const nextOccurrence = (
+    dayOfWeek: number,
+    hour: number,
+    minute: number,
+  ): Date => {
+    const candidate = new Date(now);
+    const daysUntil = (dayOfWeek - candidate.getDay() + 7) % 7;
+    candidate.setDate(candidate.getDate() + daysUntil);
+    candidate.setHours(hour, minute, 0, 0);
+
+    // If we've already passed this timeslot today, roll to next week.
+    if (daysUntil === 0 && candidate.getTime() <= now.getTime()) {
+      candidate.setDate(candidate.getDate() + 7);
+    }
+
+    return candidate;
+  };
+
   type AnyUser = {
     _id: mongoose.Types.ObjectId;
     firstName: string;
@@ -400,7 +477,45 @@ async function seed() {
   };
 
   const routeTemplates: RouteTemplate[] = [
-    // SuperAdmin + driver1 + vehicle 1001 (TESTING)
+    // George + driver1 + vehicle 1001 (dedicated local dev test rides)
+    {
+      student: student1,
+      driver: driver1,
+      vehicle: vehicles["1001"],
+      pickupLocation: "Student Center",
+      dropoffLocation: "Clough Undergraduate Learning Commons",
+      pickupTime: makeDate(0, 12, 0),
+      status: "Scheduled",
+    },
+    {
+      student: student1,
+      driver: driver1,
+      vehicle: vehicles["1001"],
+      pickupLocation: "Clough Undergraduate Learning Commons",
+      dropoffLocation: "Student Center",
+      pickupTime: makeDate(1, 12, 30),
+      status: "Scheduled",
+    },
+    {
+      student: student1,
+      driver: driver1,
+      vehicle: vehicles["1001"],
+      pickupLocation: "Exhibition Hall",
+      dropoffLocation: "Tech Square Eastbound",
+      pickupTime: nextOccurrence(1, 10, 0),
+      status: "Scheduled",
+    },
+    {
+      student: student1,
+      driver: driver1,
+      vehicle: vehicles["1001"],
+      pickupLocation: "Campus Recreation Center",
+      dropoffLocation: "Stamps Health Services",
+      pickupTime: nextOccurrence(2, 11, 15),
+      status: "Scheduled",
+    },
+
+    // SuperAdmin + driver1 + vehicle 1001 (legacy test ride)
     {
       student: superAdmin,
       driver: driver1,
@@ -595,6 +710,20 @@ async function seed() {
   };
 
   const requestedTemplates: RequestedTemplate[] = [
+    // Dedicated local dev requested rides for the mock CAS student account.
+    {
+      student: student1,
+      pickupLocation: "West Village Dining",
+      dropoffLocation: "Student Center",
+      pickupTime: makeDate(0, 16, 0),
+    },
+    {
+      student: student1,
+      pickupLocation: "Student Center",
+      dropoffLocation: "North Avenue Apartments",
+      pickupTime: makeDate(1, 15, 30),
+    },
+
     // ── Monday (driver1 08–14, driver2 13–19) ──────────────────────────────
     {
       student: student1,
@@ -734,39 +863,42 @@ async function seed() {
 
   let createdReq = 0;
   let skippedReq = 0;
+  let backfilledReq = 0;
 
   for (const t of requestedTemplates) {
     const pickupLoc = locations[t.pickupLocation];
     const dropoffLoc = locations[t.dropoffLocation];
     if (!pickupLoc || !dropoffLoc) continue;
 
-    const existing = await routesCol.findOne({
+    const existing = (await routesCol.findOne({
       "student._id": t.student._id,
       scheduledPickupTime: t.pickupTime,
-    });
+    })) as {
+      _id: mongoose.Types.ObjectId;
+      estimatedDropoffTime?: Date | null;
+    } | null;
     if (existing) {
+      if (
+        await backfillEstimatedDropoffTime(
+          existing,
+          pickupLoc,
+          dropoffLoc,
+          t.pickupTime,
+        )
+      ) {
+        backfilledReq++;
+      }
       skippedReq++;
       continue;
     }
 
     const windowStart = addMinutes(t.pickupTime, -30);
     const windowEnd = addMinutes(t.pickupTime, 30);
-
-    let estimatedDropoffTime: Date | undefined;
-    try {
-      const secs = await getMapboxTravelDuration(
-        pickupLoc.latitude,
-        pickupLoc.longitude,
-        dropoffLoc.latitude,
-        dropoffLoc.longitude,
-        t.pickupTime,
-      );
-      if (secs !== null) {
-        estimatedDropoffTime = new Date(t.pickupTime.getTime() + secs * 1000);
-      }
-    } catch {
-      /* skip if Mapbox unavailable */
-    }
+    const estimatedDropoffTime = await computeEstimatedDropoffTime(
+      pickupLoc,
+      dropoffLoc,
+      t.pickupTime,
+    );
 
     await routesCol.insertOne({
       pickupLocation: pickupLoc._id,
@@ -782,46 +914,49 @@ async function seed() {
   }
 
   console.log(
-    `– Requested routes: created ${createdReq}, skipped ${skippedReq}`,
+    `– Requested routes: created ${createdReq}, skipped ${skippedReq}, backfilled ${backfilledReq}`,
   );
 
   let created = 0;
   let skipped = 0;
+  let backfilled = 0;
 
   for (const t of routeTemplates) {
     const pickupLoc = locations[t.pickupLocation];
     const dropoffLoc = locations[t.dropoffLocation];
     if (!pickupLoc || !dropoffLoc) continue;
 
-    const existing = await routesCol.findOne({
+    const existing = (await routesCol.findOne({
       "student._id": t.student._id,
       pickupLocation: pickupLoc._id,
       dropoffLocation: dropoffLoc._id,
       scheduledPickupTime: t.pickupTime,
-    });
+    })) as {
+      _id: mongoose.Types.ObjectId;
+      estimatedDropoffTime?: Date | null;
+    } | null;
     if (existing) {
+      if (
+        await backfillEstimatedDropoffTime(
+          existing,
+          pickupLoc,
+          dropoffLoc,
+          t.pickupTime,
+        )
+      ) {
+        backfilled++;
+      }
       skipped++;
       continue;
     }
 
     const windowStart = addMinutes(t.pickupTime, -30);
     const windowEnd = addMinutes(t.pickupTime, 30);
-
-    let estimatedDropoffTime: Date | undefined;
-    try {
-      const secs = await getMapboxTravelDuration(
-        pickupLoc.latitude,
-        pickupLoc.longitude,
-        dropoffLoc.latitude,
-        dropoffLoc.longitude,
-        t.pickupTime,
-      );
-      if (secs !== null) {
-        estimatedDropoffTime = new Date(t.pickupTime.getTime() + secs * 1000);
-      }
-    } catch {
-      /* skip if Mapbox unavailable */
-    }
+    const estimatedDropoffTime = await computeEstimatedDropoffTime(
+      pickupLoc,
+      dropoffLoc,
+      t.pickupTime,
+    );
 
     await routesCol.insertOne({
       pickupLocation: pickupLoc._id,
@@ -838,7 +973,35 @@ async function seed() {
     created++;
   }
 
-  console.log(`\n– Routes: created ${created}, skipped ${skipped}`);
+  console.log(
+    `\n– Routes: created ${created}, skipped ${skipped}, backfilled ${backfilled}`,
+  );
+
+  const localTestStudentId = student1._id;
+  const localTestDriverId = driver1._id;
+  const localTestRequestedCount = await routesCol.countDocuments({
+    "student._id": localTestStudentId,
+    status: "Requested",
+  });
+  const localTestScheduledCount = await routesCol.countDocuments({
+    "student._id": localTestStudentId,
+    "driver._id": localTestDriverId,
+    status: "Scheduled",
+  });
+  const driverUpcomingCount = await routesCol.countDocuments({
+    "driver._id": localTestDriverId,
+    status: "Scheduled",
+    scheduledPickupTime: {
+      $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    },
+  });
+
+  console.log(
+    `– Local test rides for ${student1.email}: ${localTestRequestedCount} requested, ${localTestScheduledCount} scheduled with ${driver1.email}`,
+  );
+  console.log(
+    `– Upcoming scheduled rides for ${driver1.email}: ${driverUpcomingCount}`,
+  );
   console.log("\nSeed complete!");
   await mongoose.disconnect();
 }

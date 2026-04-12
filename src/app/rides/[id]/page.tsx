@@ -5,10 +5,12 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
+import RideMap, {
+  type RideMapLiveMarker,
+  type RideMapLocation,
+} from "@/components/RideMap/RideMap";
 import { CancelRideModal } from "../CancelRideModal";
 import styles from "./styles.module.css";
 
@@ -43,57 +45,13 @@ type RouteData = {
   status: string;
 };
 
-type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
+type Location = RideMapLocation;
 
 type ChatMessage = {
   sender: "user" | "other";
   text: string;
   timestamp: Date;
 };
-
-function createCustomPin(
-  labelText: string,
-  color: string,
-  extraStemPx = 0,
-): HTMLDivElement {
-  const root = document.createElement("div");
-  root.className = styles.mapPinRoot;
-  root.style.setProperty("--pin-color", color);
-
-  const label = document.createElement("div");
-  label.textContent = labelText;
-  label.className = styles.mapPinLabel;
-
-  const stem = document.createElement("div");
-  stem.className = styles.mapPinStem;
-  if (extraStemPx > 0) {
-    stem.style.height = `calc(2.2rem + ${extraStemPx}px)`;
-  }
-
-  const dot = document.createElement("div");
-  dot.className = styles.mapPinDot;
-
-  root.appendChild(label);
-  root.appendChild(stem);
-  root.appendChild(dot);
-  return root;
-}
-
-/** Returns true when two [lng, lat] pairs are close enough to visually overlap. */
-function coordsOverlap(
-  a: [number, number],
-  b: [number, number],
-  thresholdDeg = 0.0003,
-): boolean {
-  return (
-    Math.abs(a[0] - b[0]) < thresholdDeg && Math.abs(a[1] - b[1]) < thresholdDeg
-  );
-}
 
 function isToday(iso: string): boolean {
   const fmt = (d: Date) =>
@@ -128,7 +86,7 @@ export default function RideDetailPage({
   const searchParams = useSearchParams();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
-  const [locations, setLocations] = useState<Record<string, string>>({});
+  const [locations, setLocations] = useState<Record<string, Location>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -137,12 +95,6 @@ export default function RideDetailPage({
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markerRefs = useRef<mapboxgl.Marker[]>([]);
-  const otherPartyMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const selfMarkerRef = useRef<mapboxgl.Marker | null>(null);
-  const staticCoordsRef = useRef<[number, number][]>([]);
   const watchIdRef = useRef<number | null>(null);
   const routeStatusRef = useRef<string | undefined>(undefined);
   const [otherPartyLocation, setOtherPartyLocation] = useState<{
@@ -243,151 +195,9 @@ export default function RideDetailPage({
         const res = await fetch("/api/locations");
         if (!res.ok) throw new Error("Failed to fetch locations");
         const locationsData: Location[] = await res.json();
-        const locationMap: Record<string, string> = {};
+        const locationMap: Record<string, Location> = {};
         for (const loc of locationsData) {
-          locationMap[loc._id] = loc.name;
-        }
-        setLocations(locationMap);
-      } catch (e) {
-        console.error("Failed to fetch locations:", e);
-      }
-    };
-
-    fetchLocations();
-  }, [route]);
-
-  // Initialize and update Mapbox map
-  useEffect(() => {
-    if (!route || !locations[route.pickupLocation]) {
-      return;
-    }
-
-    const initializeMap = async () => {
-      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-      const container = mapContainerRef.current;
-      if (!container || !token) return;
-
-      // Get location coordinates from the locations object (fetched from API)
-      const pickupLocationName = locations[route.pickupLocation] || "Pickup";
-      const dropoffLocationName = locations[route.dropoffLocation] || "Dropoff";
-
-      // Default GT campus coordinates for fallback
-      const defaultPickup = { latitude: 33.7756, longitude: -84.4027 };
-      const defaultDropoff = { latitude: 33.7767, longitude: -84.3891 };
-
-      const pickup = {
-        name: pickupLocationName,
-        latitude: defaultPickup.latitude,
-        longitude: defaultPickup.longitude,
-      };
-
-      const dropoff = {
-        name: dropoffLocationName,
-        latitude: defaultDropoff.latitude,
-        longitude: defaultDropoff.longitude,
-      };
-
-      const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
-
-      const fitToBounds = (map: mapboxgl.Map) => {
-        const bounds = new mapboxgl.LngLatBounds(
-          [pickup.longitude, pickup.latitude],
-          [dropoff.longitude, dropoff.latitude],
-        );
-        map.fitBounds(bounds, { padding: 80, maxZoom: 16, duration: 0 });
-      };
-
-      mapboxgl.accessToken = token;
-      if (!mapRef.current) {
-        mapRef.current = new mapboxgl.Map({
-          container,
-          style: "mapbox://styles/mapbox/streets-v12",
-          center: defaultCenter,
-          zoom: 13,
-        });
-        mapRef.current.on("load", () => {
-          mapRef.current?.resize();
-          fitToBounds(mapRef.current!);
-        });
-      } else {
-        fitToBounds(mapRef.current);
-      }
-
-      markerRefs.current.forEach((marker) => marker.remove());
-      markerRefs.current = [];
-
-      const pinColor = "#183777";
-      const pickupLngLat: [number, number] = [
-        pickup.longitude,
-        pickup.latitude,
-      ];
-      const dropoffLngLat: [number, number] = [
-        dropoff.longitude,
-        dropoff.latitude,
-      ];
-      const overlap = coordsOverlap(pickupLngLat, dropoffLngLat);
-
-      // Store static pin coords so the self-marker effect can check for overlap
-      staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
-
-      if (pickup && mapRef.current) {
-        const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
-          anchor: "bottom",
-        })
-          .setLngLat(pickupLngLat)
-          .addTo(mapRef.current);
-        markerRefs.current.push(pickupMarker);
-      }
-
-      if (dropoff && mapRef.current) {
-        // If pickup/dropoff overlap, raise the dropoff pin one label-height above
-        const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin(
-            `Dropoff: ${dropoff.name}`,
-            pinColor,
-            overlap ? 50 : 0,
-          ),
-          anchor: "bottom",
-        })
-          .setLngLat(dropoffLngLat)
-          .addTo(mapRef.current);
-        markerRefs.current.push(dropoffMarker);
-      }
-    };
-
-    initializeMap();
-  }, [route, locations]);
-
-  useEffect(() => {
-    return () => {
-      markerRefs.current.forEach((marker) => marker.remove());
-      markerRefs.current = [];
-      otherPartyMarkerRef.current?.remove();
-      otherPartyMarkerRef.current = null;
-      selfMarkerRef.current?.remove();
-      selfMarkerRef.current = null;
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, []);
-
-  // Fetch locations (original - keep for backward compatibility)
-  useEffect(() => {
-    if (!route) return;
-
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch("/api/locations");
-        if (!res.ok) throw new Error("Failed to fetch locations");
-        const locationsData: Location[] = await res.json();
-        const locationMap: Record<string, string> = {};
-        for (const loc of locationsData) {
-          locationMap[loc._id] = loc.name;
+          locationMap[loc._id] = loc;
         }
         setLocations(locationMap);
       } catch (e) {
@@ -449,7 +259,7 @@ export default function RideDetailPage({
 
     newSocket.on("connect", () => setChatError(null));
 
-    newSocket.on("disconnect", (reason) => {
+    newSocket.on("disconnect", (reason: string) => {
       // "io server disconnect" = server explicitly closed the connection.
       // All other reasons (transport error, ping timeout, etc.) are handled
       // by Socket.IO's built-in reconnection — don't touch the ref here.
@@ -528,33 +338,6 @@ export default function RideDetailPage({
     routeStatusRef.current = route?.status;
   }, [route?.status]);
 
-  // Show other party's live location on the map
-  useEffect(() => {
-    if (!otherPartyLocation || !mapRef.current) return;
-
-    const label = session?.user?.type === "Driver" ? "Student" : "Driver";
-    const color = session?.user?.type === "Driver" ? "#ea580c" : "#16a34a";
-
-    if (!otherPartyMarkerRef.current) {
-      otherPartyMarkerRef.current = new mapboxgl.Marker({
-        element: createCustomPin(label, color),
-        anchor: "bottom",
-      })
-        .setLngLat([otherPartyLocation.longitude, otherPartyLocation.latitude])
-        .addTo(mapRef.current);
-    } else {
-      otherPartyMarkerRef.current.setLngLat([
-        otherPartyLocation.longitude,
-        otherPartyLocation.latitude,
-      ]);
-    }
-
-    mapRef.current.panTo(
-      [otherPartyLocation.longitude, otherPartyLocation.latitude],
-      { duration: 800 },
-    );
-  }, [otherPartyLocation, session?.user?.type]);
-
   // Watch own GPS position — updates selfLocation state and emits location to socket when En-route
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -588,31 +371,6 @@ export default function RideDetailPage({
       }
     };
   }, []);
-
-  // Place/update "You" dot on the map as self location changes
-  useEffect(() => {
-    if (!selfLocation || !mapRef.current) return;
-
-    const selfLngLat: [number, number] = [
-      selfLocation.longitude,
-      selfLocation.latitude,
-    ];
-
-    if (!selfMarkerRef.current) {
-      const dot = document.createElement("div");
-      dot.style.cssText =
-        "width:16px;height:16px;border-radius:50%;background:#2563eb;" +
-        "border:3px solid white;box-shadow:0 0 0 2px #2563eb,0 2px 8px rgba(0,0,0,.3);";
-      selfMarkerRef.current = new mapboxgl.Marker({
-        element: dot,
-        anchor: "center",
-      })
-        .setLngLat(selfLngLat)
-        .addTo(mapRef.current);
-    } else {
-      selfMarkerRef.current.setLngLat(selfLngLat);
-    }
-  }, [selfLocation]);
 
   const handleSendMessage = useCallback(() => {
     if (!chatInput.trim() || !socket || sendingMessage) return;
@@ -760,9 +518,9 @@ export default function RideDetailPage({
   }
 
   const pickupLocationName =
-    locations[route.pickupLocation] ?? route.pickupLocation;
+    locations[route.pickupLocation]?.name ?? route.pickupLocation;
   const dropoffLocationName =
-    locations[route.dropoffLocation] ?? route.dropoffLocation;
+    locations[route.dropoffLocation]?.name ?? route.dropoffLocation;
   const driverName = getDriverName(route.driver);
   const hasDriver = !!driverName;
 
@@ -822,6 +580,30 @@ export default function RideDetailPage({
         return { background: "#1e293b", color: "#fff" };
     }
   })();
+
+  const rideMapLiveMarkers: RideMapLiveMarker[] = [
+    ...(otherPartyLocation
+      ? [
+          {
+            latitude: otherPartyLocation.latitude,
+            longitude: otherPartyLocation.longitude,
+            label: session?.user?.type === "Driver" ? "Student" : "Driver",
+            color: session?.user?.type === "Driver" ? "#ea580c" : "#16a34a",
+            variant: "pin" as const,
+          },
+        ]
+      : []),
+    ...(selfLocation
+      ? [
+          {
+            latitude: selfLocation.latitude,
+            longitude: selfLocation.longitude,
+            color: "#2563eb",
+            variant: "dot" as const,
+          },
+        ]
+      : []),
+  ];
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.type === "Driver") {
@@ -1076,14 +858,12 @@ export default function RideDetailPage({
             {/* Right column — map */}
             <div className={styles.rightColumn}>
               <div className={styles.mapContainer}>
-                <div
-                  ref={mapContainerRef}
+                <RideMap
+                  locations={Object.values(locations)}
+                  pickupLocationId={route.pickupLocation}
+                  dropoffLocationId={route.dropoffLocation}
+                  liveMarkers={rideMapLiveMarkers}
                   className={styles.mapImage}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: "0.5rem",
-                  }}
                 />
               </div>
             </div>
@@ -1220,14 +1000,12 @@ export default function RideDetailPage({
           {/* Right Column - Map */}
           <div className={styles.rightColumn}>
             <div className={styles.mapContainer}>
-              <div
-                ref={mapContainerRef}
+              <RideMap
+                locations={Object.values(locations)}
+                pickupLocationId={route.pickupLocation}
+                dropoffLocationId={route.dropoffLocation}
+                liveMarkers={rideMapLiveMarkers}
                 className={styles.mapImage}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "0.5rem",
-                }}
               />
             </div>
           </div>

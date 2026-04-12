@@ -1,22 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { fromZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
+import RideMap, { type RideMapLocation } from "@/components/RideMap/RideMap";
 import styles from "./styles.module.css";
 
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-
-type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
+type Location = RideMapLocation;
 
 export default function CreateRidePage() {
   const router = useRouter();
@@ -26,18 +19,13 @@ export default function CreateRidePage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form fields
-  const [pickupLocationName, setPickupLocationName] = useState("");
-  const [dropoffLocationName, setDropoffLocationName] = useState("");
+  const [pickupLocationId, setPickupLocationId] = useState("");
+  const [dropoffLocationId, setDropoffLocationId] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [pickupTime, setPickupTime] = useState("13:00");
   const [pickupWindowFromTime, setPickupWindowFromTime] = useState("12:10");
   const [pickupWindowToTime, setPickupWindowToTime] = useState("12:45");
   const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markerRefs = useRef<mapboxgl.Marker[]>([]);
-  const dotMarkerRefs = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     if (error) {
@@ -54,12 +42,12 @@ export default function CreateRidePage() {
         setLocations(data);
 
         if (data.length > 0) {
-          setPickupLocationName(data[0].name);
+          setPickupLocationId(data[0]._id);
         }
         if (data.length > 1) {
-          setDropoffLocationName(data[1].name);
+          setDropoffLocationId(data[1]._id);
         } else if (data.length > 0) {
-          setDropoffLocationName(data[0].name);
+          setDropoffLocationId(data[0]._id);
         }
 
         if (data.length === 0) {
@@ -77,174 +65,6 @@ export default function CreateRidePage() {
 
     fetchLocations();
   }, []);
-
-  useEffect(() => {
-    try {
-      if (loading) return;
-
-      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-      const container = mapContainerRef.current;
-      if (!container || !token) return;
-
-      const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
-      const defaultZoom = 15;
-
-      const pickup = locations.find((l) => l.name === pickupLocationName);
-      const dropoff = locations.find((l) => l.name === dropoffLocationName);
-
-      const center = (): [number, number] => {
-        if (pickup && dropoff) {
-          return [
-            (pickup.longitude + dropoff.longitude) / 2,
-            (pickup.latitude + dropoff.latitude) / 2,
-          ];
-        }
-        if (pickup) return [pickup.longitude, pickup.latitude];
-        if (dropoff) return [dropoff.longitude, dropoff.latitude];
-        return defaultCenter;
-      };
-
-      mapboxgl.accessToken = token;
-      if (!mapRef.current) {
-        mapRef.current = new mapboxgl.Map({
-          container,
-          style: "mapbox://styles/mapbox/streets-v12",
-          center: center(),
-          zoom: defaultZoom,
-        });
-        mapRef.current.on("load", () => mapRef.current?.resize());
-      } else {
-        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
-      }
-
-      markerRefs.current.forEach((marker) => marker.remove());
-      markerRefs.current = [];
-      dotMarkerRefs.current.forEach((marker) => marker.remove());
-      dotMarkerRefs.current = [];
-
-      const createCustomPin = (
-        labelText: string,
-        color: string,
-        extraStemPx = 0,
-      ): HTMLDivElement => {
-        const root = document.createElement("div");
-        root.className = styles.mapPinRoot;
-        root.style.setProperty("--pin-color", color);
-
-        const label = document.createElement("div");
-        label.textContent = labelText;
-        label.className = styles.mapPinLabel;
-
-        const stem = document.createElement("div");
-        stem.className = styles.mapPinStem;
-        if (extraStemPx > 0) {
-          stem.style.height = `calc(2.2rem + ${extraStemPx}px)`;
-        }
-
-        const dot = document.createElement("div");
-        dot.className = styles.mapPinDot;
-
-        root.appendChild(label);
-        root.appendChild(stem);
-        root.appendChild(dot);
-        return root;
-      };
-
-      const createLocationDot = (name: string): HTMLDivElement => {
-        const wrapper = document.createElement("div");
-        wrapper.className = styles.mapLocationDotWrapper;
-
-        const tooltip = document.createElement("div");
-        tooltip.className = styles.mapDotTooltip;
-        tooltip.textContent = name;
-
-        const dot = document.createElement("div");
-        dot.className = styles.mapLocationDot;
-
-        wrapper.appendChild(tooltip);
-        wrapper.appendChild(dot);
-        return wrapper;
-      };
-
-      const pinColor = "#183777";
-      const pickupLngLat: [number, number] | null = pickup
-        ? [pickup.longitude, pickup.latitude]
-        : null;
-      const dropoffLngLat: [number, number] | null = dropoff
-        ? [dropoff.longitude, dropoff.latitude]
-        : null;
-      const overlap =
-        pickupLngLat !== null &&
-        dropoffLngLat !== null &&
-        Math.abs(pickupLngLat[0] - dropoffLngLat[0]) < 0.0003 &&
-        Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
-
-      // Add blue dot markers for all non-selected locations
-      for (const loc of locations) {
-        const isPickup = loc.name === pickupLocationName;
-        const isDropoff = loc.name === dropoffLocationName;
-        if (!isPickup && !isDropoff) {
-          const dotMarker = new mapboxgl.Marker({
-            element: createLocationDot(loc.name),
-            anchor: "center",
-          })
-            .setLngLat([loc.longitude, loc.latitude])
-            .addTo(mapRef.current);
-          dotMarkerRefs.current.push(dotMarker);
-        }
-      }
-
-      if (pickup && pickupLngLat) {
-        const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
-          anchor: "bottom",
-        })
-          .setLngLat(pickupLngLat)
-          .addTo(mapRef.current);
-        markerRefs.current.push(pickupMarker);
-      }
-
-      if (dropoff && dropoffLngLat) {
-        // Raise dropoff pin above pickup when they share the same location
-        const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin(
-            `Dropoff: ${dropoff.name}`,
-            pinColor,
-            overlap ? 50 : 0,
-          ),
-          anchor: "bottom",
-        })
-          .setLngLat(dropoffLngLat)
-          .addTo(mapRef.current);
-        markerRefs.current.push(dropoffMarker);
-      }
-    } catch (e) {
-      setError(
-        "Unable to load map. " +
-          (e instanceof Error ? e.message : "Unknown error"),
-      );
-    }
-  }, [loading, locations, pickupLocationName, dropoffLocationName]);
-
-  useEffect(() => {
-    return () => {
-      markerRefs.current.forEach((marker) => marker.remove());
-      markerRefs.current = [];
-      dotMarkerRefs.current.forEach((marker) => marker.remove());
-      dotMarkerRefs.current = [];
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, []);
-
-  const locationNames = locations.map((l) => l.name);
-  const nameToId = locations.reduce(
-    (acc, loc) => {
-      acc[loc.name] = loc._id;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -285,8 +105,8 @@ export default function CreateRidePage() {
     e.preventDefault();
     setError(null);
 
-    const pickupId = nameToId[pickupLocationName];
-    const dropoffId = nameToId[dropoffLocationName];
+    const pickupId = pickupLocationId;
+    const dropoffId = dropoffLocationId;
 
     if (!pickupId || !dropoffId) {
       setError("Please select both pickup and drop-off locations.");
@@ -607,7 +427,18 @@ export default function CreateRidePage() {
               {/* Right Column */}
               <div className={styles.rightColumn}>
                 {/* Map */}
-                <div ref={mapContainerRef} className={styles.mapImage} />
+                <RideMap
+                  locations={locations}
+                  pickupLocationId={pickupLocationId}
+                  dropoffLocationId={dropoffLocationId}
+                  showOtherLocations
+                  className={styles.mapImage}
+                  onError={(message) =>
+                    setError(
+                      (current) => current ?? `Unable to load map. ${message}`,
+                    )
+                  }
+                />
 
                 {/* Pickup Location */}
                 <div className={styles.formGroup}>
@@ -633,19 +464,19 @@ export default function CreateRidePage() {
                       />
                     </svg>
                     <select
-                      value={pickupLocationName}
-                      onChange={(e) => setPickupLocationName(e.target.value)}
+                      value={pickupLocationId}
+                      onChange={(e) => setPickupLocationId(e.target.value)}
                       className={styles.locationSelect}
                       required
                     >
-                      {!pickupLocationName && (
+                      {!pickupLocationId && (
                         <option value="" disabled>
                           Select pickup location...
                         </option>
                       )}
-                      {locationNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
+                      {locations.map((location) => (
+                        <option key={location._id} value={location._id}>
+                          {location.name}
                         </option>
                       ))}
                     </select>
@@ -676,19 +507,19 @@ export default function CreateRidePage() {
                       />
                     </svg>
                     <select
-                      value={dropoffLocationName}
-                      onChange={(e) => setDropoffLocationName(e.target.value)}
+                      value={dropoffLocationId}
+                      onChange={(e) => setDropoffLocationId(e.target.value)}
                       className={styles.locationSelect}
                       required
                     >
-                      {!dropoffLocationName && (
+                      {!dropoffLocationId && (
                         <option value="" disabled>
                           Select drop-off location...
                         </option>
                       )}
-                      {locationNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
+                      {locations.map((location) => (
+                        <option key={location._id} value={location._id}>
+                          {location.name}
                         </option>
                       ))}
                     </select>
