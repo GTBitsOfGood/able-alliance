@@ -29,5 +29,5 @@ COPY next.config.ts tsconfig.json postcss.config.mjs ./
 
 EXPOSE 3000
 
-# app-init.sh is bind-mounted by docker-compose, so the entrypoint is set there
+# Docker Compose supplies the development command so it can filter noisy watch output.
 CMD ["npm", "run", "dev"]
