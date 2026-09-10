@@ -8,6 +8,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect, Suspense } from "react";
 import AccommodationsPanel from "./AccommodationsPanel";
 import VehicleDetailsPanel from "./VehicleDetailsPanel";
+import ConfirmActionModal from "./ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
@@ -31,6 +32,7 @@ function AdminContent() {
     useAdminTableData(table);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] = useState<
     string[]
   >([]);
@@ -68,6 +70,7 @@ function AdminContent() {
   useEffect(() => {
     setSelectedRows(new Set());
     setShowForm(false);
+    setShowDeleteConfirm(false);
     setSelectedVehicleId(null);
     setSubmitError(null);
     setStudentAccessibilityNeeds([]);
@@ -89,10 +92,18 @@ function AdminContent() {
       setSelectedRows(new Set());
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
   const canDelete = selectedRows.size > 0 && rowIds.length > 0;
+
+  const deleteNoun =
+    table === "Vehicles"
+      ? "vehicle"
+      : table === "Locations"
+        ? "location"
+        : "user";
 
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -918,7 +929,7 @@ function AdminContent() {
                         <BogButton
                           variant="secondary"
                           size="medium"
-                          onClick={handleDelete}
+                          onClick={() => setShowDeleteConfirm(true)}
                           disabled={deleting}
                           style={
                             {
@@ -958,6 +969,23 @@ function AdminContent() {
           )}
         </>
       )}
+
+      <ConfirmActionModal
+        open={showDeleteConfirm}
+        onOpenChange={(o) => {
+          if (!o) setShowDeleteConfirm(false);
+        }}
+        onConfirm={handleDelete}
+        title={`Delete ${deleteNoun}${selectedRows.size === 1 ? "" : "s"}?`}
+        description={
+          selectedRows.size === 1
+            ? `Are you sure you want to delete this ${deleteNoun}? This action cannot be undone.`
+            : `Are you sure you want to delete these ${selectedRows.size} ${deleteNoun}s? This action cannot be undone.`
+        }
+        confirmLabel={deleteLabel}
+        confirmingLabel="Deleting…"
+        confirming={deleting}
+      />
     </div>
   );
 }

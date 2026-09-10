@@ -6,6 +6,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import { ProfileRidesTab } from "@/app/profile/ProfileRidesTab";
+import ConfirmActionModal from "./ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 
@@ -48,6 +49,7 @@ export default function VehicleDetailsPanel({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     setLoadingVehicle(true);
@@ -132,6 +134,7 @@ export default function VehicleDetailsPanel({
       onDeleted();
     } catch {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -156,7 +159,7 @@ export default function VehicleDetailsPanel({
           variant="secondary"
           size="medium"
           disabled={deleting}
-          onClick={handleDelete}
+          onClick={() => setShowDeleteConfirm(true)}
           style={
             {
               "--color-brand-stroke-strong": "var(--color-status-red-text)",
@@ -389,6 +392,21 @@ export default function VehicleDetailsPanel({
         </h2>
         <ProfileRidesTab userId={vehicleId} userType="Vehicle" />
       </div>
+
+      <ConfirmActionModal
+        open={showDeleteConfirm}
+        onOpenChange={(o) => {
+          if (!o) setShowDeleteConfirm(false);
+        }}
+        onConfirm={handleDelete}
+        title="Delete this vehicle?"
+        description={`Are you sure you want to delete ${
+          vehicle?.name ? `vehicle ${vehicle.name}` : "this vehicle"
+        }? This action cannot be undone.`}
+        confirmLabel="Delete vehicle"
+        confirmingLabel="Deleting…"
+        confirming={deleting}
+      />
     </div>
   );
 }

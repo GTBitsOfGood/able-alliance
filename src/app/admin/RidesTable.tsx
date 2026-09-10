@@ -6,6 +6,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import BogButton from "@/components/BogButton/BogButton";
 import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
+import ConfirmActionModal from "./ConfirmActionModal";
 
 type RouteEntry = {
   _id: string;
@@ -45,6 +46,7 @@ export default function RidesTable() {
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({});
   const [canceling, setCanceling] = useState<Set<string>>(new Set());
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -272,7 +274,7 @@ export default function RidesTable() {
                   variant="secondary"
                   size="small"
                   disabled={isCanceling || isAssigning}
-                  onClick={() => handleCancel(route._id)}
+                  onClick={() => setPendingCancelId(route._id)}
                 >
                   {isCanceling ? "Canceling…" : "Cancel"}
                 </BogButton>
@@ -297,7 +299,34 @@ export default function RidesTable() {
   if (routes.length === 0)
     return <p className="text-gray-600">No requested rides.</p>;
 
+  const pendingCancelRoute = pendingCancelId
+    ? routes.find((r) => r._id === pendingCancelId)
+    : undefined;
+
   return (
-    <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
+    <>
+      <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
+      <ConfirmActionModal
+        open={pendingCancelId !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingCancelId(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingCancelId) return;
+          await handleCancel(pendingCancelId);
+          setPendingCancelId(null);
+        }}
+        title="Cancel this ride?"
+        description={
+          pendingCancelRoute
+            ? `This cancels the requested ride for ${pendingCancelRoute.student.firstName} ${pendingCancelRoute.student.lastName}. This action cannot be undone.`
+            : "This cancels the requested ride. This action cannot be undone."
+        }
+        confirmLabel="Cancel ride"
+        confirmingLabel="Canceling…"
+        cancelLabel="Keep ride"
+        confirming={pendingCancelId !== null && canceling.has(pendingCancelId)}
+      />
+    </>
   );
 }
