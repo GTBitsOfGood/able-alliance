@@ -65,6 +65,8 @@ export async function authenticateSocket(socket, next) {
     socket.routeId = routeId;
     socket.user = userId;
     socket.userType = decoded.type;
+    socket.routeStudent = route.student;
+    socket.routeDriver = route.driver;
     next();
   } catch (error) {
     console.error(`Auth error for routeId ${routeId}:`, error);

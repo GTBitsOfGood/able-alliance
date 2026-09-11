@@ -1,25 +1,31 @@
-import { getRouteForAuth } from "../utils/db.mjs";
-import { addMessage } from "../utils/chatStore.mjs";
+import { appendMessage } from "../utils/db.mjs";
 import { debugLog } from "../utils/logger.mjs";
 
-export function registerChatHandler(io, socket, room) {
+export function registerChatHandler(io, socket, room, chatReady) {
   socket.on("sendChatMessage", async (text) => {
     try {
+      await chatReady;
+
       if (typeof text !== "string") {
         throw new Error("Message text is required");
       }
 
       const routeId = socket.routeId;
-      const route = await getRouteForAuth(routeId);
+      // Lowercase to match the client's senderType === userType.toLowerCase()
+      // comparison (src/app/rides/[id]/page.tsx).
       const senderType =
-        route.driver?._id?.toString() === socket.user
+        socket.routeDriver?._id?.toString() === socket.user
           ? "driver"
-          : route.student?._id?.toString() === socket.user
+          : socket.routeStudent?._id?.toString() === socket.user
             ? "student"
             : "admin";
 
       const message = { senderType, text, time: new Date() };
-      addMessage(routeId, message);
+      const saved = await appendMessage(routeId, message);
+      if (!saved) {
+        socket.emit("chatError", "This ride's chat has ended");
+        return;
+      }
 
       io.to(room).emit("receiveChatMessage", message);
       debugLog(`User ${socket.user} sent a message to room ${room}`);

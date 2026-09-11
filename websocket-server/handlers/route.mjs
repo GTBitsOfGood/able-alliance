@@ -1,9 +1,10 @@
-import { getRouteForAuth, saveChatLog } from "../utils/db.mjs";
-import { getMessages, clearMessages } from "../utils/chatStore.mjs";
+import { getRouteForAuth, archiveChatlog } from "../utils/db.mjs";
 
-export function registerRouteHandler(io, socket, room) {
+export function registerRouteHandler(io, socket, room, chatReady) {
   socket.on("endRoute", async () => {
     try {
+      await chatReady;
+
       const routeId = socket.routeId;
       const route = await getRouteForAuth(routeId);
       const isStudent = route.student?._id?.toString() === socket.user;
@@ -15,16 +16,9 @@ export function registerRouteHandler(io, socket, room) {
         );
       }
 
-      const messages = getMessages(routeId);
-      await saveChatLog({
-        routeId,
-        student: route.student,
-        driver: route.driver,
-        messages,
-      });
-      console.log(`Chat log saved for route ${routeId}`);
+      await archiveChatlog(routeId);
+      console.log(`Chat log archived for route ${routeId}`);
 
-      clearMessages(routeId);
       io.to(room).emit("routeClosed");
 
       const sockets = await io.in(routeId).fetchSockets();

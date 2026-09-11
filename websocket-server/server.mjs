@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { registerHttpRoutes } from "./httpRoutes.mjs";
 import { authenticateSocket } from "./auth.mjs";
 import { handleConnection } from "./handlers/connection.mjs";
+import { ensureChatlogIndexes } from "./utils/db.mjs";
 
 export async function startServer() {
   const PORT = process.env.PORT ?? 4000;
@@ -29,6 +30,8 @@ export async function startServer() {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log("Websocket server connected to MongoDB");
+
+    await ensureChatlogIndexes();
 
     io.use(authenticateSocket);
     io.on("connection", (socket) => handleConnection(io, socket));
