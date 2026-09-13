@@ -14,6 +14,7 @@ type UserDocument = {
   type?: ProfileUser["type"];
   studentInfo?: ProfileUser["studentInfo"];
   shifts?: ProfileUser["shifts"];
+  settings?: ProfileUser["settings"];
 };
 
 export default async function ProfilePage({
@@ -91,6 +92,7 @@ export default async function ProfilePage({
     type: doc.type ?? (session.user.type as ProfileUser["type"]),
     studentInfo: doc.studentInfo ?? null,
     shifts: doc.shifts ?? [],
+    settings: doc.settings ?? { notifications: {} },
   };
 
   const isOwnProfile = viewerId === targetId;

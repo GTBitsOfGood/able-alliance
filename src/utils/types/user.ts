@@ -15,6 +15,19 @@ export const shiftSchema = z
     path: ["startTime"],
   });
 
+const notificationSchema = z.object({
+  dailySummary: z.boolean().default(false),
+  driverAssigned: z.boolean().default(false),
+  driverEnRoute: z.boolean().default(false),
+  rideCancelled: z.boolean().default(false),
+  rideAssigned: z.boolean().default(false),
+  rideCompleted: z.boolean().default(false),
+});
+
+const userSettingsSchema = z.object({
+  notifications: notificationSchema.default({}),
+});
+
 export const baseUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -27,6 +40,7 @@ export const baseUserSchema = z.object({
       "Email must be a valid Georgia Tech email ending with @gatech.edu",
     ),
   type: z.enum(["Student", "Driver", "Admin", "SuperAdmin"]),
+  settings: userSettingsSchema.default({}),
 });
 
 export const studentSchema = baseUserSchema.extend({

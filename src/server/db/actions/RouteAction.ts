@@ -10,7 +10,13 @@ import {
   DriverNotAvailableException,
 } from "@/utils/exceptions/route";
 import { getMapboxTravelDuration } from "@/server/mapbox";
-import { estDayOfWeek, estTimeStr } from "@/utils/dateEst";
+import {
+  estDayOfWeek,
+  estTimeStr,
+  formatEstDate,
+  formatEstTime,
+} from "@/utils/dateEst";
+import { EmailTemplates } from "@/server/email/EmailAction";
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -139,6 +145,26 @@ export async function completeRoute(routeId: string) {
   if (route.status !== RouteStatus.Pickedup) return null;
   route.status = RouteStatus.Completed;
   await route.save();
+
+  const studentUser = await UserModel.findById(route.student._id).lean();
+  if (
+    studentUser &&
+    (
+      studentUser as {
+        settings?: { notifications?: { rideCompleted?: boolean } };
+      }
+    ).settings?.notifications?.rideCompleted
+  ) {
+    await EmailTemplates.rideCompleted(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      {
+        rideId: route._id.toString(),
+      },
+    );
+  }
+
   return route.toObject();
 }
 export async function cancelRoute(routeId: string, status?: string) {
@@ -153,6 +179,46 @@ export async function cancelRoute(routeId: string, status?: string) {
     route.status = RouteStatus.CancelledByStudent;
   }
   await route.save();
+
+  const studentUser = await UserModel.findById(route.student._id).lean();
+  if (
+    studentUser &&
+    (
+      studentUser as {
+        settings?: { notifications?: { rideCancelled?: boolean } };
+      }
+    ).settings?.notifications?.rideCancelled
+  ) {
+    await EmailTemplates.rideCancelled(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      { rideId: route._id.toString(), reason: `Ride status: ${route.status}` },
+    );
+  }
+
+  if (route.driver?._id) {
+    const driverUser = await UserModel.findById(route.driver._id).lean();
+    if (
+      driverUser &&
+      (
+        driverUser as {
+          settings?: { notifications?: { rideCancelled?: boolean } };
+        }
+      ).settings?.notifications?.rideCancelled
+    ) {
+      await EmailTemplates.rideCancelled(
+        driverUser.email,
+        driverUser.preferredName ??
+          `${driverUser.firstName} ${driverUser.lastName}`,
+        {
+          rideId: route._id.toString(),
+          reason: `Ride status: ${route.status}`,
+        },
+      );
+    }
+  }
+
   return route.toObject();
 }
 
@@ -164,6 +230,30 @@ export async function startRoute(routeId: string) {
   }
   route.status = RouteStatus.EnRoute;
   await route.save();
+
+  const studentUser = await UserModel.findById(route.student._id).lean();
+  if (
+    studentUser &&
+    (
+      studentUser as {
+        settings?: { notifications?: { driverEnRoute?: boolean } };
+      }
+    ).settings?.notifications?.driverEnRoute
+  ) {
+    await EmailTemplates.driverEnRoute(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      {
+        name: route.driver
+          ? `${route.driver.firstName} ${route.driver.lastName}`
+          : "Driver",
+        eta: formatEstTime(route.scheduledPickupTime),
+        vehicle: route.vehicle?.licensePlate ?? "Assigned vehicle",
+      },
+    );
+  }
+
   return route.toObject();
 }
 
@@ -264,5 +354,43 @@ export async function scheduleRoute(
   route.vehicle = vehicleEmbed;
   route.status = RouteStatus.Scheduled;
   await route.save();
+
+  const studentUser = await UserModel.findById(route.student._id).lean();
+  if (
+    studentUser &&
+    (
+      studentUser as {
+        settings?: { notifications?: { driverAssigned?: boolean } };
+      }
+    ).settings?.notifications?.driverAssigned
+  ) {
+    await EmailTemplates.driverAssigned(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      {
+        name: `${driver.firstName} ${driver.lastName}`,
+        vehicle: vehicle.licensePlate,
+      },
+    );
+  }
+
+  if (
+    driver &&
+    (driver as { settings?: { notifications?: { rideAssigned?: boolean } } })
+      .settings?.notifications?.rideAssigned
+  ) {
+    await EmailTemplates.rideAssigned(
+      driver.email,
+      driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
+      {
+        rideId: route._id.toString(),
+        pickup: route.pickupLocation.toString(),
+        dropoff: route.dropoffLocation.toString(),
+        time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
+      },
+    );
+  }
+
   return route.toObject();
 }

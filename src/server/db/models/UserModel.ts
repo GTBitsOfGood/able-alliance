@@ -26,6 +26,25 @@ const ShiftSchema: Schema = new Schema(
   { _id: false },
 );
 
+const NotificationSchema: Schema = new Schema(
+  {
+    dailySummary: { type: Boolean, default: false },
+    driverAssigned: { type: Boolean, default: false },
+    driverEnRoute: { type: Boolean, default: false },
+    rideCancelled: { type: Boolean, default: false },
+    rideAssigned: { type: Boolean, default: false },
+    rideCompleted: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
+const UserSettingsSchema: Schema = new Schema(
+  {
+    notifications: { type: NotificationSchema, default: {} },
+  },
+  { _id: false },
+);
+
 const BaseUserSchema: Schema<IBaseUser> = new Schema(
   {
     firstName: { type: String, required: true },
@@ -37,6 +56,7 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
       required: true,
       enum: ["Student", "Driver", "Admin", "SuperAdmin"],
     },
+    settings: { type: UserSettingsSchema, default: {} },
   },
   {
     discriminatorKey: "type",
