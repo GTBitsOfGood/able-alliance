@@ -804,7 +804,7 @@ function AdminContent() {
     );
 
   return (
-    <div className="py-10 pl-[4.35rem] pr-20 relative flex flex-col flex-1 w-full">
+    <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 w-full">
       {selectedVehicleId ? (
         <VehicleDetailsPanel
           vehicleId={selectedVehicleId}
@@ -832,28 +832,20 @@ function AdminContent() {
               </button>
               Back to rides
             </div>
-            <h1>{formTitle}</h1>
+            <h1 className="text-display">{formTitle}</h1>
           </div>
           {formContent}
         </>
       ) : (
         <>
           <div className="mb-[2.4rem]">
-            <h1>
+            <h1 className="text-display">
               {table === "Locations" || table === "Accommodations"
                 ? "Configurations"
                 : table}
             </h1>
             {table === "Locations" && (
-              <h2
-                style={{
-                  fontFamily: "var(--font-heading)",
-                  fontSize: "2.4rem",
-                  fontWeight: 700,
-                  color: "var(--color-grey-text-strong)",
-                  marginTop: "1.6rem",
-                }}
-              >
+              <h2 className="text-heading-3 mt-[1.6rem] text-[var(--color-grey-text-strong)]">
                 Pickup &amp; Dropoff Locations
               </h2>
             )}

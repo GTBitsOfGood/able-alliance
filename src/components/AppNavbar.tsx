@@ -23,6 +23,23 @@ export default function AppNavbar() {
     "User";
   const avatarLetter = fullName.charAt(0).toUpperCase();
 
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
+
+  const linkClass = (href: string) =>
+    `${styles.link} ${isActive(href) ? styles.linkActive : ""}`.trim();
+
+  // The profile name is a nav link too, so it takes the same active treatment.
+  const profileHref = `/profile/${session.user.userId}`;
+  const profileActive = isActive(profileHref);
+
+  const avatarClass =
+    userType === "Driver"
+      ? styles.avatarDriver
+      : userType === "Admin" || userType === "SuperAdmin"
+        ? styles.avatarAdmin
+        : styles.avatarStudent;
+
   return (
     <header className={styles.navbar}>
       <div className={styles.inner}>
@@ -31,12 +48,20 @@ export default function AppNavbar() {
 
           <nav className={styles.navLinks} aria-label="Primary navigation">
             {showRides && (
-              <Link href="/rides" className={styles.link}>
+              <Link
+                href="/rides"
+                className={linkClass("/rides")}
+                aria-current={isActive("/rides") ? "page" : undefined}
+              >
                 Your Rides
               </Link>
             )}
             {showAdmin && (
-              <Link href="/admin" className={styles.link}>
+              <Link
+                href="/admin"
+                className={linkClass("/admin")}
+                aria-current={isActive("/admin") ? "page" : undefined}
+              >
                 Admin Dashboard
               </Link>
             )}
@@ -45,13 +70,21 @@ export default function AppNavbar() {
 
         <div className={styles.right}>
           <Link
-            href={`/profile/${session.user.userId}`}
+            href={profileHref}
             className={styles.profileLink}
+            aria-current={profileActive ? "page" : undefined}
           >
-            <span className={styles.avatar} aria-hidden="true">
+            <span
+              className={`${styles.avatar} ${avatarClass}`}
+              aria-hidden="true"
+            >
               {avatarLetter}
             </span>
-            <span className={styles.userName}>{fullName}</span>
+            <span
+              className={`${styles.userName} ${profileActive ? styles.userNameActive : ""}`.trim()}
+            >
+              {fullName}
+            </span>
           </Link>
         </div>
       </div>
