@@ -4,8 +4,11 @@ import type {
   StudentInput,
   DriverInput,
 } from "@/utils/types/user";
+import type { GoogleCalendarConnection } from "@/utils/types/googleCalendar";
 
-export type IBaseUser = BaseUserInput;
+export type IBaseUser = BaseUserInput & {
+  googleCalendar?: GoogleCalendarConnection;
+};
 export type IStudentUser = StudentInput;
 export type IDriverUser = DriverInput;
 
@@ -26,6 +29,27 @@ const ShiftSchema: Schema = new Schema(
   { _id: false },
 );
 
+/**
+ * Per-user Google Calendar connection.
+ *
+ * `refreshTokenEncrypted` is `select: false` so it never leaves the DB layer by
+ * accident (e.g. via the generic `GET /api/users/:id` handler). Read it only
+ * through GoogleCalendarAction, which opts in explicitly.
+ */
+const GoogleCalendarSchema: Schema = new Schema(
+  {
+    refreshTokenEncrypted: { type: String, select: false },
+    calendarId: { type: String, default: "primary" },
+    connectedAt: { type: Date },
+    lastSyncedAt: { type: Date },
+    // Which Google account is connected, so the UI can show it when disconnecting.
+    googleEmail: { type: String },
+    // Number of ride events on the calendar as of the last successful sync.
+    syncedEventCount: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
 const BaseUserSchema: Schema<IBaseUser> = new Schema(
   {
     firstName: { type: String, required: true },
@@ -37,6 +61,7 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
       required: true,
       enum: ["Student", "Driver", "Admin", "SuperAdmin"],
     },
+    googleCalendar: { type: GoogleCalendarSchema, required: false },
   },
   {
     discriminatorKey: "type",
@@ -75,5 +100,5 @@ if (!mongoose.models.SuperAdmin)
   BaseUserModel.discriminator<IBaseUser>("SuperAdmin", emptySchema);
 
 export { BaseUserModel as UserModel, StudentModel, DriverModel };
-export { BaseUserSchema, StudentSchema, DriverSchema };
+export { BaseUserSchema, StudentSchema, DriverSchema, GoogleCalendarSchema };
 export default BaseUserModel;
