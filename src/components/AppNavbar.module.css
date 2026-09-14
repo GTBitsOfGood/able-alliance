@@ -2,15 +2,13 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  height: 8rem;
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-bottom: 1px solid var(--color-grey-off-state);
   background: var(--color-solid-bg-base);
 }
 
 .inner {
   margin: 0;
-  height: 100%;
-  padding: 0 2.4rem 0;
+  padding: 2.4rem 3.2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -20,29 +18,39 @@
 .left {
   display: flex;
   align-items: center;
-  gap: 4.8rem;
+  gap: 5.6rem;
 }
 
 .brand {
   margin: 0;
-  font-family: "Visby", sans-serif;
-  font-weight: 500;
-  font-size: 2rem;
-  line-height: 1;
+  font-family: var(--font-heading);
+  font-size: var(--text-desktop-heading-3);
+  line-height: var(--text-desktop-heading-3--line-height);
   color: var(--color-grey-text-strong);
 }
 
 .navLinks {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 5.6rem;
+}
+
+/* Figma: nav links and the profile name are one ramp — Paragraph 1 (18/24),
+   Open Sans Regular when inactive, Bold when active. */
+.link,
+.userName {
+  font-family: var(--font-paragraph);
+  font-size: var(--text-mobile-paragraph-1);
+  line-height: var(--text-mobile-paragraph-1--line-height);
+  font-weight: 400;
 }
 
 .link {
   text-decoration: none;
-  font-family: "Open Sans", sans-serif;
-  font-weight: 500;
-  line-height: 3.2rem;
+  color: var(--color-grey-text-weak);
+}
+
+.userName {
   color: var(--color-grey-text-strong);
 }
 
@@ -51,30 +59,39 @@
   text-underline-offset: 0.4rem;
 }
 
-.right {
-  display: flex;
-  align-items: center;
-  gap: 1.2rem;
+.linkActive,
+.userNameActive {
+  font-weight: 700;
 }
 
-.userName {
-  font-family: "Open Sans", sans-serif;
-  font-weight: 600;
-  font-size: 1.6rem;
-  line-height: 2.4rem;
+.linkActive {
   color: var(--color-grey-text-strong);
 }
 
+@media (width >= 1024px) {
+  .link,
+  .userName {
+    font-size: var(--text-desktop-paragraph-1);
+    line-height: var(--text-desktop-paragraph-1--line-height);
+  }
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
 .avatar {
-  width: 4.4rem;
-  height: 4.4rem;
+  width: 4rem;
+  height: 4rem;
   border-radius: 999px;
   border: none;
-  background: var(--color-status-green-text);
+  background: var(--avatar-bg, var(--color-status-green-text));
   color: var(--color-solid-bg-base);
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 700;
-  font-size: 2.4rem;
+  font-size: var(--text-desktop-paragraph-1);
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -84,7 +101,7 @@
 .profileLink {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 0.8rem;
   text-decoration: none;
 }
 
@@ -99,7 +116,7 @@
   border-radius: 0.8rem;
   background: var(--color-solid-bg-base);
   color: var(--color-grey-text-strong);
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-size: 1.4rem;
   font-weight: 600;
   padding: 0.8rem 1.2rem;
@@ -108,4 +125,17 @@
 
 .logout:hover {
   background: var(--color-grey-fill-weaker);
+}
+
+/* Avatar tints per role (Figma) */
+.avatarStudent {
+  --avatar-bg: #ffcb14;
+}
+
+.avatarDriver {
+  --avatar-bg: #70cd87;
+}
+
+.avatarAdmin {
+  --avatar-bg: var(--color-status-red-text);
 }

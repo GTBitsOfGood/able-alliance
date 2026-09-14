@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-size: 1.6rem;
   color: #c73a3a;
   box-sizing: border-box;
@@ -25,8 +25,8 @@
 }
 
 .main {
-  max-width: 130rem;
-  margin: 0 auto;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
   padding: 2.4rem 5rem 4rem;
   display: flex;
   flex-direction: column;
@@ -35,7 +35,7 @@
 
 /* Back Button */
 .backButton {
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 400;
   font-size: 1.6rem;
   line-height: 2rem;
@@ -53,12 +53,7 @@
 
 /* Page Title */
 .pageTitle {
-  font-family:
-    var(--font-heading),
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
-  font-weight: 700;
+  font-family: var(--font-heading);
   font-size: 4.8rem;
   line-height: 5.6rem;
   color: var(--color-grey-text-strong);
@@ -79,12 +74,7 @@
 }
 
 .sectionTitle {
-  font-family:
-    var(--font-heading),
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
-  font-weight: 700;
+  font-family: var(--font-heading);
   font-size: 4rem;
   line-height: 4.8rem;
   color: var(--color-grey-text-strong);
@@ -92,7 +82,7 @@
 }
 
 .sectionDescription {
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 400;
   font-size: 1.8rem;
   line-height: 2.4rem;
@@ -156,8 +146,7 @@
 }
 
 .formGroupTitle {
-  font-family: var(--font-heading), "Visby", sans-serif;
-  font-weight: 700;
+  font-family: var(--font-heading);
   font-size: 2.4rem;
   line-height: 3.2rem;
   color: var(--color-grey-text-strong);
@@ -170,7 +159,7 @@
 }
 
 .fieldDescription {
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 400;
   font-size: 1.4rem;
   line-height: 2rem;
@@ -233,7 +222,7 @@
 
 .monthName,
 .yearName {
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 700;
   font-size: 1.8rem;
   line-height: 2.4rem;
@@ -261,7 +250,7 @@
   align-items: center;
   width: 3.2rem;
   height: 3.2rem;
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 600;
   font-size: 1.2rem;
   line-height: 1.6rem;
@@ -290,7 +279,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 600;
   font-size: 1.2rem;
   line-height: 1.6rem;
@@ -316,7 +305,7 @@
 }
 
 .calendarHint {
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 400;
   font-size: 1.2rem;
   line-height: 1.6rem;
@@ -346,7 +335,7 @@
   min-width: 0;
   border: none;
   background: transparent;
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 400;
   font-size: 1.6rem;
   line-height: 2rem;
@@ -419,7 +408,7 @@
 }
 
 .pickupWindowLabel {
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-size: 1.2rem;
   line-height: 1.6rem;
   font-weight: 600;
@@ -432,7 +421,7 @@
   background: transparent;
   width: 100%;
   min-width: 0;
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-size: 1.6rem;
   line-height: 2rem;
   color: var(--color-grey-text-strong);
@@ -558,7 +547,7 @@
   border-radius: 0.4rem;
   border: none;
   cursor: pointer;
-  font-family: "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   font-weight: 600;
   font-size: 1.8rem;
   line-height: 2.4rem;
