@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   background: var(--color-solid-bg-base);
-  border-right: 1px solid var(--color-grey-stroke-weak);
+  border-right: 1px solid var(--color-grey-off-state);
   overflow-y: auto;
 }
 
@@ -36,14 +36,15 @@
 .navItem {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.9rem 1.2rem;
-  border-radius: 0.6rem;
+  gap: 1.2rem;
+  height: 4.2rem;
+  padding: 0.8rem 1.6rem 0.8rem 1.2rem;
+  border-radius: 0.4rem;
   text-decoration: none;
-  font-family: var(--font-paragraph);
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  color: var(--color-grey-text-weak);
   transition: background 0.15s;
 }
 
@@ -53,23 +54,24 @@
 
 .navItem.active {
   background: var(--color-admin-bg);
-  font-weight: 600;
+  color: var(--color-grey-text-strong);
 }
 
 .navGroup {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.2rem;
   width: 100%;
-  padding: 0.9rem 1.2rem;
-  border-radius: 0.6rem;
+  height: 4.2rem;
+  padding: 0.8rem 0.4rem 0.8rem 1.2rem;
+  border-radius: 0.4rem;
   border: none;
   background: none;
   cursor: pointer;
-  font-family: var(--font-paragraph);
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  color: var(--color-grey-text-weak);
   text-align: left;
   transition: background 0.15s;
 }
@@ -109,14 +111,16 @@
 }
 
 .subItem {
-  display: block;
-  padding: 0.7rem 1rem;
-  border-radius: 0.6rem;
+  display: flex;
+  align-items: center;
+  height: 4.2rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.4rem;
   text-decoration: none;
-  font-family: var(--font-paragraph);
-  font-size: 1.4rem;
-  font-weight: 400;
-  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  color: var(--color-grey-text-weak);
   transition: background 0.15s;
 }
 
@@ -126,7 +130,7 @@
 
 .subItem.active {
   background: var(--color-admin-bg);
-  font-weight: 600;
+  color: var(--color-grey-text-strong);
 }
 
 .bottom {
@@ -171,8 +175,8 @@
 }
 
 .avatar {
-  width: 3.6rem;
-  height: 3.6rem;
+  width: 4.8rem;
+  height: 4.8rem;
   border-radius: 999px;
   background: var(--color-status-green-text);
   color: var(--color-solid-bg-base);
@@ -193,7 +197,8 @@
 
 .userName {
   font-family: var(--font-paragraph);
-  font-size: 1.4rem;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   font-weight: 600;
   color: var(--color-grey-text-strong);
   white-space: nowrap;
@@ -203,7 +208,8 @@
 
 .userRole {
   font-family: var(--font-paragraph);
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   font-weight: 400;
-  color: var(--color-grey-text-weak);
+  color: var(--color-grey-stroke-strong);
 }

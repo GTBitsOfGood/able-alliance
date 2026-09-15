@@ -79,7 +79,7 @@
   text-align: left;
   font-size: 1.6rem;
   font-weight: 700;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-paragraph);
   color: #22070b;
   white-space: nowrap;
   position: relative;
@@ -167,7 +167,6 @@
 .weekLabel {
   font-size: 2.4rem;
   font-family: var(--font-heading);
-  font-weight: 700;
   color: #22070b;
   line-height: 3.2rem;
   margin-top: 2.4rem;
