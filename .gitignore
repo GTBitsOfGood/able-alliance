@@ -42,6 +42,9 @@ next-env.d.ts
 dist
 .cursor
 
+# genai
+CLAUDE.md
+
 # playwright
 /test-results/
 /playwright-report/

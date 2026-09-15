@@ -646,7 +646,7 @@ export default function RideDetailPage({
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      socketRef.current?.emit("endRoute");
+      socketRef.current?.emit("closeRouteRoom");
       setShowCancelModal(false);
       router.push("/rides");
     } catch (e) {
@@ -673,7 +673,7 @@ export default function RideDetailPage({
         }
         const updated: RouteData = await res.json();
         setRoute(updated);
-        if (terminal) socketRef.current?.emit("endRoute");
+        if (terminal) socketRef.current?.emit("closeRouteRoom");
       } catch (e) {
         setDriverActionError(e instanceof Error ? e.message : errorMsg);
       } finally {
@@ -720,7 +720,7 @@ export default function RideDetailPage({
       }
       const updated: RouteData = await res.json();
       setRoute(updated);
-      socketRef.current?.emit("endRoute");
+      socketRef.current?.emit("closeRouteRoom");
     } catch (e) {
       setMissingError(
         e instanceof Error ? e.message : "Failed to mark as missing.",
