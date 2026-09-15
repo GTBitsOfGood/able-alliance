@@ -14,7 +14,11 @@
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format:check": "prettier --check .",
-    "prettier-format": "prettier --write ."
+    "prettier-format": "prettier --write .",
+    "test:e2e": "playwright test",
+    "test:e2e:api": "playwright test --project=api",
+    "test:e2e:ui": "playwright test --project=ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -43,6 +47,7 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.9",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",

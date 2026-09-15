@@ -8,6 +8,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect, Suspense } from "react";
 import AccommodationsPanel from "./AccommodationsPanel";
 import VehicleDetailsPanel from "./VehicleDetailsPanel";
+import ConfirmActionModal from "./ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
@@ -31,6 +32,7 @@ function AdminContent() {
     useAdminTableData(table);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] = useState<
     string[]
   >([]);
@@ -68,6 +70,7 @@ function AdminContent() {
   useEffect(() => {
     setSelectedRows(new Set());
     setShowForm(false);
+    setShowDeleteConfirm(false);
     setSelectedVehicleId(null);
     setSubmitError(null);
     setStudentAccessibilityNeeds([]);
@@ -89,10 +92,18 @@ function AdminContent() {
       setSelectedRows(new Set());
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
   const canDelete = selectedRows.size > 0 && rowIds.length > 0;
+
+  const deleteNoun =
+    table === "Vehicles"
+      ? "vehicle"
+      : table === "Locations"
+        ? "location"
+        : "user";
 
   const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -804,7 +815,7 @@ function AdminContent() {
     );
 
   return (
-    <div className="py-10 pl-[4.35rem] pr-20 relative flex flex-col flex-1 w-full">
+    <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 w-full">
       {selectedVehicleId ? (
         <VehicleDetailsPanel
           vehicleId={selectedVehicleId}
@@ -832,28 +843,20 @@ function AdminContent() {
               </button>
               Back to rides
             </div>
-            <h1>{formTitle}</h1>
+            <h1 className="text-display">{formTitle}</h1>
           </div>
           {formContent}
         </>
       ) : (
         <>
           <div className="mb-[2.4rem]">
-            <h1>
+            <h1 className="text-display">
               {table === "Locations" || table === "Accommodations"
                 ? "Configurations"
                 : table}
             </h1>
             {table === "Locations" && (
-              <h2
-                style={{
-                  fontFamily: "var(--font-heading)",
-                  fontSize: "2.4rem",
-                  fontWeight: 700,
-                  color: "var(--color-grey-text-strong)",
-                  marginTop: "1.6rem",
-                }}
-              >
+              <h2 className="text-heading-3 mt-[1.6rem] text-[var(--color-grey-text-strong)]">
                 Pickup &amp; Dropoff Locations
               </h2>
             )}
@@ -918,7 +921,7 @@ function AdminContent() {
                         <BogButton
                           variant="secondary"
                           size="medium"
-                          onClick={handleDelete}
+                          onClick={() => setShowDeleteConfirm(true)}
                           disabled={deleting}
                           style={
                             {
@@ -958,6 +961,23 @@ function AdminContent() {
           )}
         </>
       )}
+
+      <ConfirmActionModal
+        open={showDeleteConfirm}
+        onOpenChange={(o) => {
+          if (!o) setShowDeleteConfirm(false);
+        }}
+        onConfirm={handleDelete}
+        title={`Delete ${deleteNoun}${selectedRows.size === 1 ? "" : "s"}?`}
+        description={
+          selectedRows.size === 1
+            ? `Are you sure you want to delete this ${deleteNoun}? This action cannot be undone.`
+            : `Are you sure you want to delete these ${selectedRows.size} ${deleteNoun}s? This action cannot be undone.`
+        }
+        confirmLabel={deleteLabel}
+        confirmingLabel="Deleting…"
+        confirming={deleting}
+      />
     </div>
   );
 }

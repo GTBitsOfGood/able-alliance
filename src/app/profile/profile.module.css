@@ -1,13 +1,14 @@
 .profilePage {
   min-height: 100vh;
-  padding: 4rem 4.8rem;
+  padding: var(--layout-content-pad-y) var(--layout-content-pad-x);
   box-sizing: border-box;
   background-color: var(--color-solid-bg-base);
 }
 
 .profileInner {
-  max-width: none;
-  margin: 0;
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
 }
 
 .profileHeader {
@@ -19,20 +20,20 @@
 }
 
 .profileAvatar {
-  width: 8rem;
-  height: 8rem;
+  width: 10rem;
+  height: 10rem;
   border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--text-desktop-heading-2);
-  font-weight: 700;
+  font-size: var(--text-desktop-display);
+  font-weight: 500;
   color: var(--color-solid-bg-base);
   flex-shrink: 0;
 }
 
 .profileAvatarStudent {
-  background-color: #d4a017;
+  background-color: #ffcb14;
 }
 
 .profileAvatarDriver {
@@ -50,16 +51,18 @@
 }
 
 .profileDisplayName {
-  font-size: var(--text-desktop-heading-3);
-  line-height: var(--text-desktop-heading-3--line-height);
-  font-weight: 700;
+  font-size: var(--text-desktop-heading-2);
+  line-height: var(--text-desktop-heading-2--line-height);
   color: var(--color-grey-text-strong);
   margin: 0;
 }
 
 .profileRole {
-  font-size: var(--text-desktop-paragraph-2);
-  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
+  font-weight: 600;
+  color: var(--color-grey-stroke-strong);
 }
 
 /* Tab bar */
@@ -102,10 +105,9 @@
 
 .profileCard {
   padding: 3.2rem;
-  border-radius: 1rem;
-  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+  border: 0.1rem solid var(--color-grey-off-state);
   background-color: var(--color-solid-bg-base);
-  box-shadow: 0 0.1rem 0.6rem rgba(0, 0, 0, 0.05);
   max-width: 72rem;
 }
 
@@ -118,8 +120,9 @@
 }
 
 .sectionTitle {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: var(--text-desktop-heading-4);
+  line-height: var(--text-desktop-heading-4--line-height);
   color: var(--color-grey-text-strong);
   margin: 0;
 }
@@ -164,13 +167,15 @@
 }
 
 .fieldLabel {
-  font-size: var(--text-desktop-paragraph-2);
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   color: var(--color-grey-text-weak);
   font-family: var(--font-paragraph);
 }
 
 .fieldValue {
-  font-size: var(--text-desktop-paragraph-2);
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   color: var(--color-grey-text-strong);
   font-family: var(--font-paragraph);
 }
@@ -215,11 +220,11 @@
 }
 
 .sectionSubtitle {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: var(--text-desktop-heading-4);
+  line-height: var(--text-desktop-heading-4--line-height);
   color: var(--color-grey-text-strong);
   margin: 0 0 2rem 0;
-  font-family: var(--font-paragraph);
 }
 
 .sectionBody {

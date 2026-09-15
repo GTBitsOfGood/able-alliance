@@ -53,6 +53,7 @@
   --text-desktop-paragraph-1: 18px;
   --text-desktop-paragraph-2: 16px;
   --text-desktop-small: 12px;
+  --text-label: 16px;
   --text-mobile-paragraph-1: 16px;
   --text-mobile-paragraph-2: 14px;
   --text-mobile-small: 12px;
@@ -61,20 +62,26 @@
   --text-desktop-heading-1--line-height: 48px;
   --text-desktop-heading-2--line-height: 40px;
   --text-desktop-heading-3--line-height: 32px;
-  --text-desktop-heading-4--line-height: 24px;
+  --text-desktop-heading-4--line-height: 28px;
   --text-mobile-display--line-height: 40px;
   --text-mobile-heading-1--line-height: 36px;
   --text-mobile-heading-2--line-height: 32px;
   --text-mobile-heading-3--line-height: 28px;
   --text-mobile-heading-4--line-height: 24px;
   --text-desktop-paragraph-1--line-height: 24px;
-  --text-desktop-paragraph-2--line-height: 22px;
+  --text-desktop-paragraph-2--line-height: 20px;
   --text-desktop-small--line-height: 18px;
+  --text-label--line-height: 28px;
   --text-mobile-paragraph-1--line-height: 24px;
   --text-mobile-paragraph-2--line-height: 22px;
   --text-mobile-small--line-height: 18px;
 
   --font-heading:
+    Visby Bold, Visby Extra Bold, ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* Figma draws Heading 1 and the admin brand in Extrabold; the ticket asks for
+     Bold throughout, so nothing uses this yet — swap it in if that reverses. */
+  --font-heading-display:
     Visby Extra Bold, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-paragraph:
@@ -83,6 +90,24 @@
 
   --animate-fade-in: fade-in 0.25s ease-out;
   --animate-fade-out: fade-out 0.25s ease-out;
+
+  /* Shared page-content column. Figma centres content at 994px (student ride
+     list) / 1016px (driver) on a 1440 frame; 100rem splits the two. */
+  --layout-content-max: 100rem;
+  --layout-content-pad-x: 3.2rem;
+  --layout-content-pad-y: 3.2rem;
+  /* Admin views sit beside the sidebar and fill the remainder (Figma: 58px) */
+  --layout-admin-pad-x: 5.6rem;
+}
+
+/* Tighten the shared gutters on small screens. Declared unlayered so it wins
+   over the @theme defaults above; every page on the token follows automatically. */
+@media (width < 768px) {
+  :root {
+    --layout-content-pad-x: 2rem;
+    --layout-content-pad-y: 2.4rem;
+    --layout-admin-pad-x: 2rem;
+  }
 }
 
 @keyframes fade-in {
@@ -131,7 +156,7 @@
 
   body {
     padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--font-paragraph);
   }
 
   h1 {
@@ -179,6 +204,15 @@
   }
 
   @font-face {
+    font-family: "Visby Bold";
+    src:
+      url("/fonts/VisbyCF-Bold.woff2") format("woff2"),
+      url("/fonts/VisbyCF-Bold.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
     font-family: "Visby Extra Bold";
     src:
       url("/fonts/visbyextrabold-webfont.woff2") format("woff2"),
@@ -196,22 +230,18 @@
     font-style: normal;
   }
 
+  /* Open Sans variable (wght 300-800, width axis pinned to 100, Latin + Latin-Ext).
+     The range here is real, so 400/600/700 are genuine cuts, not synthetic bold.
+     The static Regular stays as the last-resort fallback. */
   @font-face {
     font-family: "Open Sans Regular";
     src:
-      url("/fonts/opensans-regular-webfont.woff2") format("woff2"),
-      url("/fonts/opensans-regular-webfont.woff") format("woff");
-    font-weight: normal;
-    font-style: normal;
-  }
-
-  @font-face {
-    font-family: "Open Sans Regular";
-    font-style: normal;
+      url("/fonts/opensans-variable.woff2") format("woff2-variations"),
+      url("/fonts/opensans-variable.woff") format("woff-variations"),
+      url("/fonts/opensans-regular-webfont.woff2") format("woff2");
     font-weight: 300 800;
-    font-stretch: 100%;
+    font-style: normal;
     font-display: swap;
-    src: url("/fonts/opensans-regular-webfont.woff2") format("woff2");
   }
 
   html {

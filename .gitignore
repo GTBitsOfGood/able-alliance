@@ -42,5 +42,11 @@ next-env.d.ts
 dist
 .cursor
 
-# claude code
+# genai
 CLAUDE.md
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

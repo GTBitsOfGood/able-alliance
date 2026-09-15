@@ -9,7 +9,10 @@
   flex: 1;
   flex-direction: column;
   overflow: auto;
-  padding: 2rem 5rem;
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding: var(--layout-content-pad-y) var(--layout-content-pad-x);
   background-color: var(--color-solid-bg-base);
   min-width: 0;
   scrollbar-width: none;
@@ -69,7 +72,6 @@
 .pageTitle {
   color: var(--color-grey-text-strong);
   font-size: 4rem;
-  font-weight: 700;
   line-height: 4.8rem;
   font-family: var(--font-heading);
   margin: 0;
@@ -216,7 +218,6 @@
   margin: 0;
   font-size: 2.4rem;
   line-height: 3.2rem;
-  font-weight: 700;
   font-family: var(--font-heading);
   color: var(--color-grey-text-strong);
   flex: 1;
@@ -225,7 +226,6 @@
 
 .dateHeader {
   font-size: 3.2rem;
-  font-weight: 700;
   line-height: 4rem;
   font-family: var(--font-heading);
   color: var(--color-grey-text-strong);
@@ -291,22 +291,22 @@
   line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-weak);
   font-weight: 400;
-  font-family: var(--font-paragraph), "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
 }
 
 .rideCardStopTime {
+  white-space: nowrap;
   font-size: 3.2rem;
   line-height: 4rem;
-  font-weight: 700;
   color: var(--color-grey-text-strong);
-  font-family: var(--font-heading), "Visby CF", sans-serif;
+  font-family: var(--font-heading);
 }
 
 .rideCardStopLocation {
   font-size: var(--text-desktop-paragraph-2);
   line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-strong);
-  font-family: var(--font-paragraph), "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -342,7 +342,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  min-width: 0;
+  /* Matches the student card's basis; keeps the divider from squeezing the time */
+  min-width: 14rem;
 }
 
 .rideCardStopLabelNew {
@@ -354,9 +355,9 @@
 }
 
 .rideCardStopTimeNew {
+  white-space: nowrap;
   font-size: 3.2rem;
   font-family: var(--font-heading);
-  font-weight: 700;
   color: var(--color-grey-text-strong);
   line-height: 4rem;
 }
@@ -498,9 +499,8 @@
 .rideCardStudentName {
   font-size: var(--text-desktop-heading-3);
   line-height: var(--text-desktop-heading-3--line-height);
-  font-weight: 700;
   color: var(--color-grey-text-strong);
-  font-family: var(--font-heading), "Visby CF", sans-serif;
+  font-family: var(--font-heading);
   margin: 0;
 }
 
@@ -524,7 +524,7 @@
   font-size: var(--text-desktop-paragraph-2);
   line-height: var(--text-desktop-paragraph-2--line-height);
   font-weight: 500;
-  font-family: var(--font-paragraph), "Open Sans", sans-serif;
+  font-family: var(--font-paragraph);
   white-space: nowrap;
 }
 
@@ -836,12 +836,16 @@
 }
 
 /* Driver view styles */
+/* Driver list shares the Student list's column so the two views line up */
 .driverMain {
   display: flex;
   flex: 1;
   flex-direction: column;
   overflow: auto;
-  padding: 2rem 2.5rem;
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
+  padding: var(--layout-content-pad-y) var(--layout-content-pad-x);
   background-color: var(--color-solid-bg-base);
   min-width: 0;
   scrollbar-width: none; /* Firefox */
@@ -890,8 +894,8 @@
   margin: 0.25rem 0 0;
   font-size: var(--text-desktop-heading-2);
   line-height: var(--text-desktop-heading-2--line-height);
-  font-weight: 700;
   color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
 }
 
 .driverDayGroup {
@@ -910,8 +914,8 @@
   margin: 0;
   font-size: var(--text-desktop-heading-3);
   line-height: var(--text-desktop-heading-3--line-height);
-  font-weight: 700;
   color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
 }
 
 .vehicleCardContent {

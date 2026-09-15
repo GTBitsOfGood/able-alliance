@@ -47,9 +47,9 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 1.2rem 2rem 2.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 1.2rem var(--layout-content-pad-x) 2.5rem;
+  max-width: var(--layout-content-max);
+  margin-inline: auto;
   width: 100%;
   gap: 1rem;
   overflow: hidden;
@@ -69,7 +69,6 @@
 
 .pageTitle {
   font-size: 4rem;
-  font-weight: 700;
   color: #000;
   margin: 0;
   font-family: var(--font-heading);
@@ -99,7 +98,6 @@
 
 .rideDateLabel {
   font-size: 2rem;
-  font-weight: 700;
   color: var(--color-grey-text-strong);
   margin: 0 0 0.8rem 0;
   font-family: var(--font-heading);
@@ -130,7 +128,6 @@
 
 .stopTime {
   font-size: 3.2rem;
-  font-weight: 700;
   color: var(--color-grey-text-strong);
   font-family: var(--font-heading);
   line-height: 4rem;
@@ -251,7 +248,6 @@
 
 .sectionTitle {
   font-size: 2rem;
-  font-weight: 700;
   margin: 0;
   color: var(--color-grey-text-strong);
   font-family: var(--font-heading);
@@ -397,11 +393,11 @@
 .chatModal {
   display: flex;
   flex-direction: column;
-  width: 23.75rem;
+  width: 62rem;
   height: 100%;
   background-color: var(--color-solid-bg-base);
   border-radius: 0;
-  box-shadow: 0.125rem 0 1rem rgba(34, 7, 11, 0.2);
+  box-shadow: 0.2rem 0 1.6rem rgba(34, 7, 11, 0.2);
   animation: slideInFromLeft 0.3s ease-out;
 }
 
@@ -420,13 +416,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  padding: 2.1rem 1.7rem;
+  background: var(--color-solid-bg-sunken);
+  border-bottom: 1px solid var(--color-grey-off-state);
 }
 
 .chatModalTitle {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--text-desktop-heading-2);
+  line-height: var(--text-desktop-heading-2--line-height);
   margin: 0;
   color: var(--color-grey-text-strong);
 }
@@ -435,14 +432,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 4rem;
+  height: 4rem;
   padding: 0;
   border: none;
   background-color: transparent;
   color: var(--color-grey-text-strong);
   cursor: pointer;
-  border-radius: 0.375rem;
+  border-radius: 0.6rem;
   transition: all 0.2s ease;
 
   &:hover {
@@ -456,14 +453,14 @@
 }
 
 .chatErrorBanner {
-  padding: 0.75rem 1.5rem;
+  padding: 1.2rem 2.4rem;
   background-color: var(--color-status-red-fill);
   border-bottom: 1px solid var(--color-status-red-stroke-weak);
 }
 
 .chatErrorText {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   color: var(--color-status-red-text);
 }
 
@@ -472,18 +469,18 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.25rem 1.25rem 1rem;
-  min-height: 15.625rem;
+  gap: 0.8rem;
+  padding: 2rem 2rem 1.6rem;
+  min-height: 25rem;
 }
 
 .noMessages {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 15.625rem;
+  min-height: 25rem;
   color: var(--color-grey-text-weak);
-  font-size: 0.875rem;
+  font-size: 1.4rem;
 
   p {
     margin: 0;
@@ -493,7 +490,7 @@
 .messageRow {
   display: flex;
   align-items: flex-start;
-  gap: 0.625rem;
+  gap: 1rem;
 
   &.messageRowUser {
     justify-content: flex-end;
@@ -507,71 +504,71 @@
 /* Avatar shown on the first message of a consecutive "other" group */
 .messageAvatar {
   flex-shrink: 0;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 3.6rem;
+  height: 3.6rem;
   border-radius: 50%;
   background-color: #111;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  margin-top: 0.125rem;
+  margin-top: 0.2rem;
 }
 
 /* Spacer keeps subsequent grouped messages aligned with the first */
 .messageAvatarSpacer {
   flex-shrink: 0;
-  width: 2.25rem;
+  width: 3.6rem;
 }
 
 .messageBubble {
   max-width: 72%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 1.25rem;
+  padding: 1.2rem 1.9rem;
   word-wrap: break-word;
 
   .messageRowUser & {
-    background-color: #1b3a6b;
-    border-radius: 1.25rem;
+    background-color: var(--color-brand-text);
+    border-radius: 0.8rem 0.8rem 0 0.8rem;
   }
 
   .messageRowOther & {
-    background-color: #e9eaec;
-    border-radius: 1.25rem;
+    background-color: #efeded;
+    border-radius: 0.8rem 0.8rem 0.8rem 0;
   }
 }
 
 .messageText {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   font-weight: 400;
-  line-height: 1.45;
 
   .messageRowUser & {
-    color: white;
+    color: var(--color-solid-bg-sunken);
   }
 
   .messageRowOther & {
-    color: #1a1a2e;
+    color: var(--color-grey-text-strong);
   }
 }
 
 .chatInputContainer {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 1rem;
   border-top: 1px solid var(--color-grey-stroke-weak);
-  padding: 0.875rem 1.25rem;
+  padding: 1.4rem 2rem;
 }
 
 .chatInput {
   flex: 1;
-  padding: 0.75rem 1.1rem;
-  border: 1px solid var(--color-grey-stroke-weak);
-  border-radius: 9999px;
-  font-size: 0.9rem;
+  padding: 0.9rem 1.7rem;
+  border: 1px solid var(--color-grey-off-state);
+  border-radius: 2.4rem;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   font-family: inherit;
-  background-color: var(--color-solid-bg-base);
+  background-color: var(--color-solid-bg-sunken);
   color: var(--color-grey-text-strong);
 
   &::placeholder {
@@ -594,12 +591,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2.625rem;
-  height: 2.625rem;
+  width: 4.2rem;
+  height: 4.2rem;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background-color: #1b3a6b;
+  background-color: var(--color-brand-text);
   color: white;
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -624,23 +621,23 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 2rem;
+  gap: 1.6rem;
+  padding: 3.2rem;
   background-color: var(--color-solid-bg-sunken);
-  border-radius: 0.5rem;
+  border-radius: 0.8rem;
   border: 1px solid var(--color-grey-stroke-weak);
-  min-height: 18.75rem;
+  min-height: 30rem;
 }
 
 .errorText {
-  font-size: 1rem;
+  font-size: 1.6rem;
   color: var(--color-status-red-text);
   text-align: center;
   margin: 0;
 }
 
 .loadingText {
-  font-size: 1rem;
+  font-size: 1.6rem;
   color: var(--color-grey-text-weak);
   text-align: center;
 }
@@ -746,7 +743,6 @@
 
 .studentInfoLabel {
   font-size: 1.6rem;
-  font-weight: 700;
   color: var(--color-grey-text-strong);
   font-family: var(--font-heading);
 }
