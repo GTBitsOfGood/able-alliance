@@ -15,12 +15,15 @@ export enum RouteStatus {
   CancelledByStudent = "Cancelled by Student",
   CancelledByAdmin = "Cancelled by Admin",
 }
+type IEmbeddedUser = Omit<IBaseUser, "settings"> & {
+  _id: mongoose.Types.ObjectId;
+};
 
 interface IRouteDocument {
   pickupLocation: mongoose.Types.ObjectId;
   dropoffLocation: mongoose.Types.ObjectId;
-  student: IBaseUser;
-  driver?: IBaseUser;
+  student: IEmbeddedUser;
+  driver?: IEmbeddedUser;
   vehicle?: IVehicle;
   scheduledPickupTime: Date;
   pickupWindowStart: Date;

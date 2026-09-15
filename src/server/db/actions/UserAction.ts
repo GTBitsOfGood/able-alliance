@@ -6,6 +6,9 @@ import {
   UserNotFoundException,
 } from "@/utils/exceptions/user";
 
+type UserSettings = BaseUserInput["settings"];
+type NotificationSettingsUpdate = Partial<UserSettings["notifications"]>;
+
 interface CASUserData {
   email: string;
   name: string;
@@ -141,5 +144,37 @@ export async function updateDriverShifts(id: string, shifts: Shift[]) {
   (driver as unknown as { shifts: Shift[] }).shifts = shifts;
 
   const saved = await driver.save();
+  return saved.toObject();
+}
+
+export async function updateNotificationSettings(
+  id: string,
+  settings: {
+    notifications?: NotificationSettingsUpdate;
+  },
+) {
+  await connectMongoDB();
+
+  const user = await UserModel.findById(id);
+  if (!user) {
+    return null;
+  }
+
+  const theUser = user as unknown as { settings?: UserSettings };
+  theUser.settings = {
+    ...theUser.settings,
+    notifications: {
+      dailySummary: false,
+      driverAssigned: false,
+      driverEnRoute: false,
+      rideCancelled: false,
+      rideAssigned: false,
+      rideCompleted: false,
+      ...theUser.settings?.notifications,
+      ...settings.notifications,
+    },
+  };
+
+  const saved = await user.save();
   return saved.toObject();
 }
