@@ -403,6 +403,8 @@ export async function scheduleRoute(
         time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
       },
     );
+  }
+
   // Upsert (not create) so this is safe even if a chat record already
   // exists for this route; the unique index on routeId means a genuine
   // race between two concurrent schedule calls can still surface as a
