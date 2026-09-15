@@ -17,48 +17,10 @@ export async function getRouteForAuth(routeId) {
   return route;
 }
 
-// This process never loads the Next.js app's Mongoose Chatlog model (see
-// RouteModel.ts comment on the same pattern for routes), so it can't rely on
-// Mongoose's autoIndex to have created this — it must ensure it itself.
-// Without this, a race between two upserts in ensureActiveChatlog can create
-// two chat records for the same route (verified: it does, under load).
-export async function ensureChatlogIndexes() {
-  const chatlogs = mongoose.connection.db.collection("chatlogs");
-  await chatlogs.createIndex({ routeId: 1 }, { unique: true });
-}
-
-// Creates the ride's chat record if it doesn't exist yet, atomically. The
-// upsert (rather than a separate find-then-insert) plus the unique index on
-// routeId (see ensureChatlogIndexes) is what guarantees only one chat record
-// ever exists per route, even if two participants connect at the same
-// instant. Under that exact race, MongoDB can reject the losing upsert with
-// a duplicate-key error (E11000) instead of silently converting it to a
-// match — that's expected and means the record already exists, not a
-// failure, so it's swallowed rather than propagated.
-export async function ensureActiveChatlog(routeId, student, driver) {
-  const chatlogs = mongoose.connection.db.collection("chatlogs");
-  try {
-    await chatlogs.findOneAndUpdate(
-      { routeId: mongoose.Types.ObjectId.createFromHexString(routeId) },
-      {
-        $setOnInsert: {
-          routeId: mongoose.Types.ObjectId.createFromHexString(routeId),
-          student,
-          driver,
-          time: new Date(),
-          status: "active",
-          messages: [],
-        },
-      },
-      { upsert: true },
-    );
-  } catch (error) {
-    if (error.code !== 11000) {
-      throw error;
-    }
-  }
-}
-
+// The chat record itself is created (on schedule) and archived (on
+// completion/cancellation/missing) by RouteAction.ts in the Next.js app —
+// tied to the route's actual status transitions rather than to a client's
+// socket being connected. This process only reads and appends to it.
 export async function getChatHistory(routeId) {
   const chatlogs = mongoose.connection.db.collection("chatlogs");
   const chatlog = await chatlogs.findOne(
@@ -82,15 +44,4 @@ export async function appendMessage(routeId, message) {
     { $push: { messages: message } },
   );
   return result !== null;
-}
-
-export async function archiveChatlog(routeId) {
-  const chatlogs = mongoose.connection.db.collection("chatlogs");
-  await chatlogs.findOneAndUpdate(
-    {
-      routeId: mongoose.Types.ObjectId.createFromHexString(routeId),
-      status: "active",
-    },
-    { $set: { status: "archived", archivedAt: new Date() } },
-  );
 }

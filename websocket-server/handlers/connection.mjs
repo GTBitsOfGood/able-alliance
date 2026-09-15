@@ -1,8 +1,8 @@
 import { debugLog } from "../utils/logger.mjs";
-import { ensureActiveChatlog, getChatHistory } from "../utils/db.mjs";
+import { getChatHistory } from "../utils/db.mjs";
 import { registerChatHandler } from "./chat.mjs";
 import { registerLocationHandler } from "./location.mjs";
-import { registerRouteHandler } from "./route.mjs";
+import { registerCloseRouteRoomHandler } from "./closeRouteRoom.mjs";
 
 export function handleConnection(io, socket) {
   console.log("A user connected", socket.id);
@@ -21,15 +21,11 @@ export function handleConnection(io, socket) {
     return;
   }
 
-  // Handlers are registered immediately (below) so a fast client's events
-  // can't be dropped while this resolves; chat/route handlers await this
-  // promise before touching the chat record.
-  const chatReady = ensureActiveChatlog(
-    room,
-    socket.routeStudent,
-    socket.routeDriver,
-  )
-    .then(() => getChatHistory(room))
+  // Handler is registered immediately (below) so a fast client's events
+  // can't be dropped while this resolves; the chat handler awaits this
+  // promise before touching the chat record. The record itself is created
+  // by RouteAction.ts when the ride is scheduled — this only reads it.
+  const chatReady = getChatHistory(room)
     .then((history) => {
       socket.emit("chatHistory", history);
       debugLog(
@@ -48,5 +44,5 @@ export function handleConnection(io, socket) {
 
   registerChatHandler(io, socket, room, chatReady);
   registerLocationHandler(socket, room);
-  registerRouteHandler(io, socket, room, chatReady);
+  registerCloseRouteRoomHandler(io, socket, room);
 }
