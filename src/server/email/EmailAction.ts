@@ -67,7 +67,24 @@ export async function sendEmail({
 /**
  * Template helper functions for common email types
  */
-export const EmailTemplates = {
+export const EmailNotifications = {
+  driverAssigned: (
+    to: string,
+    toName: string,
+    driverDetails: { name: string; vehicle: string },
+  ) => {
+    return sendEmail({
+      to,
+      toName,
+      subject: "Driver Assigned",
+      html: `
+        <h1>Your Driver Has Been Assigned</h1>
+        <p><strong>Driver:</strong> ${driverDetails.name}</p>
+        <p><strong>Vehicle:</strong> ${driverDetails.vehicle}</p>
+      `,
+    });
+  },
+
   rideCancelled: (
     to: string,
     toName: string,
@@ -86,7 +103,7 @@ export const EmailTemplates = {
     });
   },
 
-  driverArriving: (
+  driverEnRoute: (
     to: string,
     toName: string,
     driverDetails: { name: string; eta: string; vehicle: string },
@@ -94,7 +111,7 @@ export const EmailTemplates = {
     return sendEmail({
       to,
       toName,
-      subject: "Your Driver is Arriving",
+      subject: "Your Driver is En Route",
       html: `
         <h1>Your Driver is On the Way!</h1>
         <p><strong>Driver:</strong> ${driverDetails.name}</p>
@@ -105,10 +122,34 @@ export const EmailTemplates = {
     });
   },
 
+  rideAssigned: (
+    to: string,
+    toName: string,
+    rideDetails: {
+      rideId: string;
+      pickup: string;
+      dropoff: string;
+      time: string;
+    },
+  ) => {
+    return sendEmail({
+      to,
+      toName,
+      subject: "Ride Assigned",
+      html: `
+        <h1>You Have Been Assigned a Ride</h1>
+        <p><strong>Ride ID:</strong> ${rideDetails.rideId}</p>
+        <p><strong>Pickup:</strong> ${rideDetails.pickup}</p>
+        <p><strong>Dropoff:</strong> ${rideDetails.dropoff}</p>
+        <p><strong>Time:</strong> ${rideDetails.time}</p>
+      `,
+    });
+  },
+
   rideCompleted: (
     to: string,
     toName: string,
-    rideDetails: { rideId: string; cost: string; distance: string },
+    rideDetails: { rideId: string },
   ) => {
     return sendEmail({
       to,
@@ -117,9 +158,42 @@ export const EmailTemplates = {
       html: `
         <h1>Thank You for Riding with Able Alliance!</h1>
         <p><strong>Ride ID:</strong> ${rideDetails.rideId}</p>
-        <p><strong>Distance:</strong> ${rideDetails.distance}</p>
-        <p><strong>Cost:</strong> $${rideDetails.cost}</p>
         <p>We hope to see you again soon!</p>
+      `,
+    });
+  },
+
+  dailySummary: (
+    to: string,
+    toName: string,
+    rides: {
+      rideId: string;
+      date: string;
+      time: string;
+      pickup: string;
+      dropoff: string;
+      status: string;
+    }[],
+  ) => {
+    return sendEmail({
+      to,
+      toName,
+      subject: "Your Able Alliance Rides Today",
+      html: `
+        <h1>Today's Able Alliance Rides</h1>
+        <p>Here is a summary of your rides:</p>
+        <ul>
+          ${rides
+            .map(
+              (ride) => `
+                <li>
+                  <strong>${ride.date} at ${ride.time}</strong> - ${ride.pickup} to ${ride.dropoff}<br />
+                  Ride ID: ${ride.rideId}<br />
+                  Status: ${ride.status}
+                </li>`,
+            )
+            .join("")}
+        </ul>
       `,
     });
   },

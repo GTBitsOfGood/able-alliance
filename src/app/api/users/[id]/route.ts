@@ -7,6 +7,7 @@ import {
   updateStudentInfo,
   updateDriverShifts,
   updatePreferredName,
+  updateNotificationSettings,
 } from "@/server/db/actions/UserAction";
 import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -94,6 +95,26 @@ const driverShiftsPatchSchema = z
   })
   .strict();
 
+const notificationSettingsPatchSchema = z
+  .object({
+    settings: z
+      .object({
+        notifications: z
+          .object({
+            dailySummary: z.boolean().optional(),
+            driverAssigned: z.boolean().optional(),
+            driverEnRoute: z.boolean().optional(),
+            rideCancelled: z.boolean().optional(),
+            rideAssigned: z.boolean().optional(),
+            rideCompleted: z.boolean().optional(),
+          })
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -149,9 +170,33 @@ export async function PATCH(
   }
 
   try {
+    const parsedNotif = notificationSettingsPatchSchema.safeParse(body);
+    let notificationUpdated;
+    if (parsedNotif.success && parsedNotif.data.settings?.notifications) {
+      notificationUpdated = await updateNotificationSettings(id, {
+        notifications: parsedNotif.data.settings.notifications,
+      });
+
+      if (!notificationUpdated) {
+        return NextResponse.json(
+          { error: "Update failed" },
+          { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
+        );
+      }
+    }
+
     let updated;
+    const bodyWithoutSettings =
+      typeof body === "object" && body !== null
+        ? Object.fromEntries(
+            Object.entries(body as Record<string, unknown>).filter(
+              ([key]) => key !== "settings",
+            ),
+          )
+        : {};
+
     if (user.type === "Student") {
-      const parsed = studentInfoPatchSchema.safeParse(body);
+      const parsed = studentInfoPatchSchema.safeParse(bodyWithoutSettings);
       if (!parsed.success) {
         return NextResponse.json(parsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
@@ -200,24 +245,26 @@ export async function PATCH(
       }
     } else if (user.type === "Driver") {
       // For drivers, only admins can update shifts
-      if (!isAdmin) {
+      if (!isAdmin && bodyWithoutSettings.shifts !== undefined) {
         return NextResponse.json(
           { error: "Only admins can update driver shifts" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-      const parsed = driverShiftsPatchSchema.safeParse(body);
+      const parsed = driverShiftsPatchSchema.safeParse(bodyWithoutSettings);
       if (!parsed.success) {
         return NextResponse.json(parsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      updated = await updateDriverShifts(id, parsed.data.shifts ?? []);
-      if (!updated) {
-        return NextResponse.json(
-          { error: "User not found or update failed" },
-          { status: HTTP_STATUS_CODE.NOT_FOUND },
-        );
+      if (parsed.data.shifts !== undefined) {
+        updated = await updateDriverShifts(id, parsed.data.shifts ?? []);
+        if (!updated) {
+          return NextResponse.json(
+            { error: "User not found or update failed" },
+            { status: HTTP_STATUS_CODE.NOT_FOUND },
+          );
+        }
       }
     } else {
       return NextResponse.json(
@@ -226,9 +273,18 @@ export async function PATCH(
       );
     }
 
-    const userObj = updated as Record<string, unknown> & {
-      _id: { toString(): string };
-    };
+    const finalUser = (updated ?? notificationUpdated) as
+      | (Record<string, unknown> & { _id: { toString(): string } })
+      | null;
+
+    if (!finalUser) {
+      return NextResponse.json(
+        { error: "User update failed" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+
+    const userObj = finalUser;
     return NextResponse.json(
       { ...userObj, _id: userObj._id.toString() },
       { status: HTTP_STATUS_CODE.OK },
