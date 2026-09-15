@@ -3,6 +3,7 @@ import RouteModel, { RouteStatus } from "../models/RouteModel";
 import LocationModel from "../models/LocationModel";
 import UserModel from "../models/UserModel";
 import VehicleModel from "../models/VehicleModel";
+import Chatlog from "../models/ChatlogModel";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import {
   RouteAlreadyExistsException,
@@ -138,6 +139,13 @@ export async function getRoutes(filters?: {
   return routes;
 }
 
+async function archiveChatlogForRoute(routeId: string) {
+  await Chatlog.findOneAndUpdate(
+    { routeId, status: "active" },
+    { $set: { status: "archived", archivedAt: new Date() } },
+  );
+}
+
 export async function completeRoute(routeId: string) {
   await connectMongoDB();
   const route = await RouteModel.findById(routeId);
@@ -165,6 +173,8 @@ export async function completeRoute(routeId: string) {
     );
   }
 
+  await archiveChatlogForRoute(routeId);
+  
   return route.toObject();
 }
 export async function cancelRoute(routeId: string, status?: string) {
@@ -219,6 +229,8 @@ export async function cancelRoute(routeId: string, status?: string) {
     }
   }
 
+  await archiveChatlogForRoute(routeId);
+  
   return route.toObject();
 }
 
@@ -278,6 +290,7 @@ export async function markRouteMissing(routeId: string) {
   }
   route.status = RouteStatus.Missing;
   await route.save();
+  await archiveChatlogForRoute(routeId);
   return route.toObject();
 }
 
@@ -390,6 +403,29 @@ export async function scheduleRoute(
         time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
       },
     );
+  // Upsert (not create) so this is safe even if a chat record already
+  // exists for this route; the unique index on routeId means a genuine
+  // race between two concurrent schedule calls can still surface as a
+  // duplicate-key error on the losing side, which is expected, not a bug.
+  try {
+    await Chatlog.findOneAndUpdate(
+      { routeId: route._id },
+      {
+        $setOnInsert: {
+          routeId: route._id,
+          student: route.student,
+          driver: driverEmbed,
+          time: new Date(),
+          status: "active",
+          messages: [],
+        },
+      },
+      { upsert: true },
+    );
+  } catch (error) {
+    if ((error as { code?: number }).code !== 11000) {
+      throw error;
+    }
   }
 
   return route.toObject();
