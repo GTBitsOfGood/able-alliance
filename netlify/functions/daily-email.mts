@@ -2,7 +2,7 @@ import type { Config, Handler } from "@netlify/functions";
 import connectMongoDB from "../../src/server/db/mongodb";
 import RouteModel from "../../src/server/db/models/RouteModel";
 import { UserModel } from "../../src/server/db/models/UserModel";
-import { EmailTemplates } from "../../src/server/email/EmailAction";
+import { EmailNotifications } from "../../src/server/email/EmailAction";
 import {
   endOfEstDay,
   formatEstDate,
@@ -88,7 +88,7 @@ const handler: Handler = async () => {
       const user = usersById.get(userId);
       if (!user) return;
 
-      await EmailTemplates.dailySummary(
+      await EmailNotifications.dailySummary(
         user.email,
         user.preferredName ?? `${user.firstName} ${user.lastName}`,
         rides.map((ride) => ({

@@ -67,7 +67,7 @@ export async function sendEmail({
 /**
  * Template helper functions for common email types
  */
-export const EmailTemplates = {
+export const EmailNotifications = {
   driverAssigned: (
     to: string,
     toName: string,

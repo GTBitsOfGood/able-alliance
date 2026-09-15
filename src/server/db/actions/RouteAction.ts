@@ -16,7 +16,7 @@ import {
   formatEstDate,
   formatEstTime,
 } from "@/utils/dateEst";
-import { EmailTemplates } from "@/server/email/EmailAction";
+import { EmailNotifications } from "@/server/email/EmailAction";
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -155,7 +155,7 @@ export async function completeRoute(routeId: string) {
       }
     ).settings?.notifications?.rideCompleted
   ) {
-    await EmailTemplates.rideCompleted(
+    await EmailNotifications.rideCompleted(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -189,7 +189,7 @@ export async function cancelRoute(routeId: string, status?: string) {
       }
     ).settings?.notifications?.rideCancelled
   ) {
-    await EmailTemplates.rideCancelled(
+    await EmailNotifications.rideCancelled(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -207,7 +207,7 @@ export async function cancelRoute(routeId: string, status?: string) {
         }
       ).settings?.notifications?.rideCancelled
     ) {
-      await EmailTemplates.rideCancelled(
+      await EmailNotifications.rideCancelled(
         driverUser.email,
         driverUser.preferredName ??
           `${driverUser.firstName} ${driverUser.lastName}`,
@@ -240,7 +240,7 @@ export async function startRoute(routeId: string) {
       }
     ).settings?.notifications?.driverEnRoute
   ) {
-    await EmailTemplates.driverEnRoute(
+    await EmailNotifications.driverEnRoute(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -364,7 +364,7 @@ export async function scheduleRoute(
       }
     ).settings?.notifications?.driverAssigned
   ) {
-    await EmailTemplates.driverAssigned(
+    await EmailNotifications.driverAssigned(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -380,7 +380,7 @@ export async function scheduleRoute(
     (driver as { settings?: { notifications?: { rideAssigned?: boolean } } })
       .settings?.notifications?.rideAssigned
   ) {
-    await EmailTemplates.rideAssigned(
+    await EmailNotifications.rideAssigned(
       driver.email,
       driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
       {
