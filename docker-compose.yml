@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: ./Dockerfile.dev
     environment:
+      JUNO_API_KEY: "your-juno-api-key"
+      JUNO_BASE_URL: "your-juno-url"
       MONGODB_URI: "mongodb://mongo:27017/able-alliance?replicaSet=rs0"
       NEXTAUTH_SECRET: "dev-secret-change-in-production"
       DEPLOY_PRIME_URL: "http://localhost:3000"
