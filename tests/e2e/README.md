@@ -46,6 +46,7 @@ them to the right project by suffix. Import `test`/`expect` from `./fixtures`,
 log in with `apiAs()` or `pageAs()`, and create whatever rides the flow needs
 inside the test. Add to `seed.ts` only when a new _kind_ of thing must
 pre-exist (another persona, location, vehicle).
+
 ```
 
 
@@ -59,3 +60,4 @@ pre-exist (another persona, location, vehicle).
   hardening step.
 - Adding the real CAS journey later is one more project plus the mock CAS
   server in `webServer`; the minted-session design keeps it optional.
+```

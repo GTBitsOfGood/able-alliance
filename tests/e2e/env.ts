@@ -4,7 +4,7 @@ const env = (key: string, fallback: string) => process.env[key] ?? fallback;
 export const E2E = {
   /** Port 3100 on purpose: never collides with `npm run dev` or docker compose on 3000. */
   baseURL: env("E2E_BASE_URL", "http://localhost:3100"),
-  /** Dedicated database. 
+  /** Dedicated database.
    * The seed refuses to wipe a name without "e2e"/"test" unless E2E_ALLOW_ANY_DB=1. */
   mongodbUri: env(
     "E2E_MONGODB_URI",
