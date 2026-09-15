@@ -174,7 +174,7 @@ export async function completeRoute(routeId: string) {
   }
 
   await archiveChatlogForRoute(routeId);
-  
+
   return route.toObject();
 }
 export async function cancelRoute(routeId: string, status?: string) {
@@ -230,7 +230,7 @@ export async function cancelRoute(routeId: string, status?: string) {
   }
 
   await archiveChatlogForRoute(routeId);
-  
+
   return route.toObject();
 }
 
