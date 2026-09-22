@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const updated = await markRouteMissing(routeId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
-    console.error("[POST /api/routes/complete]", e);
+    console.error("[POST /api/routes/missing]", e);
     if (e instanceof SyntaxError || e instanceof TypeError) {
       return NextResponse.json(
         { error: "Malformed request body" },
