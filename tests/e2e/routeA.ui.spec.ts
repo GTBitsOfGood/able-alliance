@@ -79,13 +79,10 @@ test("route A: student creates, admin schedules (UI)", async ({
     await student.getByText("Next Week", { exact: true }).click();
   }
 
-  const studentCard = student
-    .locator("div")
-    .filter({ hasText: PICKUP.name })
-    .filter({ hasText: DROPOFF.name })
-    .filter({ hasText: PICKUP_TIME })
-    .first();
-  await expect(studentCard).toBeVisible();
+  const studentCard = student.getByTestId("ride-card").filter({
+    hasText: PICKUP_TIME,
+  });
+  await expect(studentCard).toHaveCount(1);
   await expect(
     studentCard.getByText("Requested", { exact: true }),
   ).toBeVisible();
@@ -127,15 +124,12 @@ test("route A: student creates, admin schedules (UI)", async ({
   await driver.goto("/rides");
   await driver.getByText("Tomorrow", { exact: true }).click();
   const driverCard = driver
-    .locator("div")
-    .filter({
-      hasText: `${PERSONAS.student.firstName} ${PERSONAS.student.lastName}`,
-    })
+    .getByTestId("ride-card")
     .filter({ hasText: PICKUP.name })
     .filter({ hasText: DROPOFF.name });
-  await expect(driverCard.first()).toBeVisible();
+  await expect(driverCard).toHaveCount(1);
   await expect(
-    driverCard.getByText("Scheduled", { exact: true }).first(),
+    driverCard.getByText("Scheduled", { exact: true }),
   ).toBeVisible();
 
   // ── Student sees scheduled assignment ──────────────────────────────────

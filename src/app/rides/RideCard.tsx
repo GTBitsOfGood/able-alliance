@@ -133,7 +133,10 @@ export function RideCard({
       !CHAT_DISABLED_STATUSES.has(route.status);
 
     return (
-      <div className={`${styles.rideCard} ${styles.rideCardDriverNew}`}>
+      <div
+        className={`${styles.rideCard} ${styles.rideCardDriverNew}`}
+        data-testid="ride-card"
+      >
         <div className={styles.rideCardDriverBody}>
           {studentName && (
             <p className={styles.rideCardStudentName}>{studentName}</p>
@@ -248,7 +251,10 @@ export function RideCard({
   const canCancel = CANCELLABLE_STATUSES.has(route.status);
 
   return (
-    <div className={`${styles.rideCard} ${styles.rideCardStudent}`}>
+    <div
+      className={`${styles.rideCard} ${styles.rideCardStudent}`}
+      data-testid="ride-card"
+    >
       {/* Left section */}
       <div className={styles.rideCardStudentBody}>
         <div className={styles.rideCardPickupDropoffNew}>
