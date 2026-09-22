@@ -6,6 +6,7 @@ import {
   getRouteById,
   markRouteMissing,
 } from "@/server/db/actions/RouteAction";
+import { internalErrorPayload } from "@/utils/apiError";
 
 export async function POST(request: NextRequest) {
   let user;
@@ -57,10 +58,16 @@ export async function POST(request: NextRequest) {
 
     const updated = await markRouteMissing(routeId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (e) {
+    console.error("[POST /api/routes/missing]", e);
+    if (e instanceof SyntaxError || e instanceof TypeError) {
+      return NextResponse.json(
+        { error: "Malformed request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }

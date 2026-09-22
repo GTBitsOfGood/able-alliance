@@ -7,6 +7,7 @@ import {
   DriverNotAvailableException,
 } from "@/utils/exceptions/route";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { internalErrorPayload } from "@/utils/apiError";
 
 export async function POST(request: NextRequest) {
   let user;
@@ -59,9 +60,16 @@ export async function POST(request: NextRequest) {
     if (e instanceof DriverNotAvailableException) {
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    if (e instanceof SyntaxError || e instanceof TypeError) {
+      console.error("[POST /api/routes/schedule] Malformed request body:", e);
+      return NextResponse.json(
+        { error: "Malformed request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+    console.error("[POST /api/routes/schedule] Unexpected error:", e);
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }
