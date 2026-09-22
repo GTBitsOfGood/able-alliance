@@ -22,6 +22,8 @@ const notificationSchema = z.object({
   rideCancelled: z.boolean().default(false),
   rideAssigned: z.boolean().default(false),
   rideCompleted: z.boolean().default(false),
+  rideDelayed: z.boolean().default(false),
+  newMessageFromDriver: z.boolean().default(false),
 });
 
 const userSettingsSchema = z.object({
