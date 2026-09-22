@@ -32,6 +32,14 @@ export const baseUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   preferredName: z.string().optional(),
+  // GT Account username (the CAS `cas:user` value) — the primary identity for
+  // CAS login. Optional here so the admin create-user flow keeps working until
+  // that form collects it; see the CAS callback for the matching rules.
+  gtUsername: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9]+$/i, "GT username must be alphanumeric")
+    .optional(),
   email: z
     .string()
     .email("Email is required")

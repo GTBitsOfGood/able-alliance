@@ -4,12 +4,16 @@ import UserModel from "../models/UserModel";
 /**
  * Idempotent: creates the SuperAdmin user if none exists yet.
  * Reads SUPERADMIN_EMAIL and SUPERADMIN_NAME from env.
+ * SUPERADMIN_CAS_USERNAME sets the GT Account username used for CAS login;
+ * it falls back to the email local-part, matching mock-cas-server/server.ts.
  * Called once on server startup via src/instrumentation.ts.
  */
 export async function initSuperAdmin() {
   const email = process.env.SUPERADMIN_EMAIL;
   const firstName = process.env.SUPERADMIN_FIRSTNAME;
   const lastName = process.env.SUPERADMIN_LASTNAME;
+  const gtUsername =
+    process.env.SUPERADMIN_CAS_USERNAME ?? email?.split("@")[0];
 
   if (!email || !firstName || !lastName) {
     console.log(
@@ -26,6 +30,12 @@ export async function initSuperAdmin() {
     return;
   }
 
-  await UserModel.create({ firstName, lastName, email, type: "SuperAdmin" });
+  await UserModel.create({
+    firstName,
+    lastName,
+    email,
+    gtUsername,
+    type: "SuperAdmin",
+  });
   console.log(`[Init] SuperAdmin created: ${email}`);
 }
