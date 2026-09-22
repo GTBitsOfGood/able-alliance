@@ -16,6 +16,8 @@ services:
       SUPERADMIN_LASTNAME: "Admin"
       WATCHPACK_POLLING: "true"
       NEXT_PUBLIC_WS_URL: "http://localhost:4000"
+      WEBSOCKET_INTERNAL_URL: "http://websocket:4000"
+      WEBSOCKET_INTERNAL_SECRET: "dev-internal-secret-change-in-production"
     develop:
       watch:
         - action: rebuild
@@ -93,6 +95,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongo:27017/able-alliance?replicaSet=rs0
       - NEXTAUTH_SECRET=dev-secret-change-in-production
+      - WEBSOCKET_INTERNAL_SECRET=dev-internal-secret-change-in-production
     networks:
       - able-alliance-net
 
