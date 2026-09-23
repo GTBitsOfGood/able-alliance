@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
+import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
 type RouteUser = {
@@ -279,7 +280,8 @@ export function RideCard({
           </span>
           {href ? (
             <Link href={href} className={styles.rideDetailsLink}>
-              Ride details
+              View details
+              <BogIcon name="chevron-right" size={20} />
             </Link>
           ) : null}
         </div>
@@ -307,30 +309,32 @@ export function RideCard({
             Chat with driver
           </button>
         )}
-        <button
-          type="button"
-          className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          Edit ride
-        </button>
-        {canCancel && onCancel && (
+        <div className={styles.rideCardStudentSecondaryActions}>
           <button
             type="button"
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnCancel}`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onCancel(route._id);
             }}
-            disabled={cancelling}
           >
-            {cancelling ? "Cancelling…" : "Cancel ride"}
+            Edit ride
           </button>
-        )}
+          {canCancel && onCancel && (
+            <button
+              type="button"
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnCancel}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancel(route._id);
+              }}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelling…" : "Cancel ride"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
