@@ -18,6 +18,16 @@ type Location = {
   longitude: number;
 };
 
+const SERVICE_START_TIME = "07:30";
+const FALL_SPRING_SERVICE_END_TIME = "19:45";
+const SUMMER_SERVICE_END_TIME = "15:45";
+
+//super tentative until we get concrete dates for each service season
+function isSummerDate(date: Date): boolean {
+  const month = date.getMonth();
+  return month >= 4 && month <= 6;
+}
+
 export default function CreateRidePage() {
   const router = useRouter();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -238,6 +248,9 @@ export default function CreateRidePage() {
   }, []);
 
   const locationNames = locations.map((l) => l.name);
+  const serviceEndTime = isSummerDate(selectedDate ?? new Date())
+    ? SUMMER_SERVICE_END_TIME
+    : FALL_SPRING_SERVICE_END_TIME;
   const nameToId = locations.reduce(
     (acc, loc) => {
       acc[loc.name] = loc._id;
@@ -305,6 +318,20 @@ export default function CreateRidePage() {
 
     if (!pickupWindowFromTime || !pickupWindowToTime) {
       setError("Please provide both pickup window start and end times.");
+      return;
+    }
+
+    const requestedTimes = [
+      pickupTime,
+      pickupWindowFromTime,
+      pickupWindowToTime,
+    ];
+    if (
+      requestedTimes.some(
+        (time) => time < SERVICE_START_TIME || time > serviceEndTime,
+      )
+    ) {
+      setError("Pickup time and window must be within service hours.");
       return;
     }
 
@@ -547,6 +574,8 @@ export default function CreateRidePage() {
                     <TimeInput
                       value={pickupTime}
                       onChange={setPickupTime}
+                      min={SERVICE_START_TIME}
+                      max={serviceEndTime}
                       inputClassName={styles.timeInput}
                       className={styles.timeInputWrapper}
                     />
@@ -574,6 +603,8 @@ export default function CreateRidePage() {
                           id="pickup-window-from"
                           value={pickupWindowFromTime}
                           onChange={setPickupWindowFromTime}
+                          min={SERVICE_START_TIME}
+                          max={serviceEndTime}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
@@ -592,6 +623,8 @@ export default function CreateRidePage() {
                           id="pickup-window-to"
                           value={pickupWindowToTime}
                           onChange={setPickupWindowToTime}
+                          min={SERVICE_START_TIME}
+                          max={serviceEndTime}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
