@@ -50,6 +50,11 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     preferredName: { type: String },
+    // GT Account username from CAS (`cas:user`). Required for new users, since
+    // one provisioned without it can never log in. The index stays sparse so
+    // documents predating this field don't collide on it; the CAS callback
+    // treats such a user as not provisioned.
+    gtUsername: { type: String, required: true, unique: true, sparse: true },
     email: { type: String, required: true, unique: true },
     type: {
       type: String,

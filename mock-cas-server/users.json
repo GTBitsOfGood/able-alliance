@@ -8,6 +8,17 @@
     }
   },
   {
+    "username": "jdoe3",
+    "password": "password"
+  },
+  {
+    "username": "mchen3",
+    "password": "password",
+    "attributes": {
+      "displayName": "Michael Chen"
+    }
+  },
+  {
     "username": "adminuser",
     "password": "password",
     "attributes": {

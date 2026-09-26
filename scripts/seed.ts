@@ -62,6 +62,24 @@ async function seed() {
   // ---------- Users ----------
   const usersCol = db.collection("users");
 
+  // GT Account usernames (the CAS `cas:user` value) — the primary login identity.
+  // Where a mock CAS account exists, these MUST match mock-cas-server/users.json.
+  // Note admin@gatech.edu maps to "adminuser", not "admin": the mock CAS server
+  // issues tickets for "adminuser", so deriving the username from the email
+  // local-part would break local login for that account.
+  const GT_USERNAMES: Record<string, string> = {
+    "gburdell3@gatech.edu": "gburdell3",
+    "jdoe3@gatech.edu": "jdoe3",
+    "mchen3@gatech.edu": "mchen3",
+    "spriya3@gatech.edu": "spriya3",
+    "driver1@gatech.edu": "driver1",
+    "driver2@gatech.edu": "driver2",
+    "aevans3@gatech.edu": "aevans3",
+    "admin@gatech.edu": "adminuser",
+    "dnestani3@gatech.edu": "dnestani3",
+    "superadmin@gatech.edu": "superadmin",
+  };
+
   const student1 = await upsertOne(
     usersCol,
     { email: "gburdell3@gatech.edu" },
@@ -69,6 +87,7 @@ async function seed() {
       firstName: "George",
       lastName: "Burdell",
       preferredName: "G",
+      gtUsername: GT_USERNAMES["gburdell3@gatech.edu"],
       email: "gburdell3@gatech.edu",
       type: "Student",
       studentInfo: { accessibilityNeeds: ["Wheelchair", "ExtraTime"] },
@@ -82,6 +101,7 @@ async function seed() {
     {
       firstName: "Jane",
       lastName: "Doe",
+      gtUsername: GT_USERNAMES["jdoe3@gatech.edu"],
       email: "jdoe3@gatech.edu",
       type: "Student",
       studentInfo: { notes: "Please call ahead of arrival." },
@@ -95,6 +115,7 @@ async function seed() {
     {
       firstName: "Michael",
       lastName: "Chen",
+      gtUsername: GT_USERNAMES["mchen3@gatech.edu"],
       email: "mchen3@gatech.edu",
       type: "Student",
       studentInfo: { accessibilityNeeds: ["LowMobility"] },
@@ -108,6 +129,7 @@ async function seed() {
     {
       firstName: "Sara",
       lastName: "Priya",
+      gtUsername: GT_USERNAMES["spriya3@gatech.edu"],
       email: "spriya3@gatech.edu",
       type: "Student",
       studentInfo: {
@@ -125,6 +147,7 @@ async function seed() {
       firstName: "Test",
       lastName: "Driver",
       preferredName: "TD",
+      gtUsername: GT_USERNAMES["driver1@gatech.edu"],
       email: "driver1@gatech.edu",
       type: "Driver",
       shifts: [
@@ -144,6 +167,7 @@ async function seed() {
     {
       firstName: "Alex",
       lastName: "Smith",
+      gtUsername: GT_USERNAMES["driver2@gatech.edu"],
       email: "driver2@gatech.edu",
       type: "Driver",
       shifts: [
@@ -162,6 +186,7 @@ async function seed() {
     {
       firstName: "Austin",
       lastName: "Evans",
+      gtUsername: GT_USERNAMES["aevans3@gatech.edu"],
       email: "aevans3@gatech.edu",
       type: "Driver",
       shifts: [
@@ -179,6 +204,7 @@ async function seed() {
     {
       firstName: "Admin",
       lastName: "User",
+      gtUsername: GT_USERNAMES["admin@gatech.edu"],
       email: "admin@gatech.edu",
       type: "Admin",
     },
@@ -191,6 +217,7 @@ async function seed() {
     {
       firstName: "Daniele",
       lastName: "Nestani",
+      gtUsername: GT_USERNAMES["dnestani3@gatech.edu"],
       email: "dnestani3@gatech.edu",
       type: "Admin",
     },
@@ -203,11 +230,24 @@ async function seed() {
     {
       firstName: "Super",
       lastName: "Admin",
+      gtUsername: GT_USERNAMES["superadmin@gatech.edu"],
       email: "superadmin@gatech.edu",
       type: "SuperAdmin",
     },
     "superadmin: Super Admin",
   );
+
+  // Backfill gtUsername for databases seeded before GT username became the CAS
+  // identity — upsertOne skips existing docs, so they'd otherwise stay without one.
+  for (const [email, gtUsername] of Object.entries(GT_USERNAMES)) {
+    const res = await usersCol.updateOne(
+      { email, gtUsername: { $exists: false } },
+      { $set: { gtUsername } },
+    );
+    if (res.modifiedCount > 0) {
+      console.log(`✓ Backfilled gtUsername "${gtUsername}" for ${email}`);
+    }
+  }
 
   // ---------- Locations ----------
   const locsCol = db.collection("locations");

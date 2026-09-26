@@ -32,6 +32,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.userId = user.userId;
         token.type = user.type;
+        token.gtUsername = user.gtUsername;
         token.email = user.email;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
@@ -40,6 +41,7 @@ export const authConfig: NextAuthConfig = {
         token.accessToken = await new SignJWT({
           userId: user.userId,
           type: user.type,
+          gtUsername: user.gtUsername,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
@@ -54,6 +56,7 @@ export const authConfig: NextAuthConfig = {
         token.accessToken = await new SignJWT({
           userId: token.userId,
           type: token.type,
+          gtUsername: token.gtUsername,
           email: token.email,
           firstName: token.firstName,
           lastName: token.lastName,
@@ -68,6 +71,7 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         session.user.userId = token.userId as string;
         session.user.type = token.type as string;
+        session.user.gtUsername = token.gtUsername as string;
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
         session.user.lastName = token.lastName as string;
