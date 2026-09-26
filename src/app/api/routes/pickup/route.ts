@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { auth } from "@/auth";
 import { getRouteById, pickupStudent } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { internalErrorPayload } from "@/utils/apiError";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,10 +51,16 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (e) {
+    console.error("[POST /api/routes/pickup]", e);
+    if (e instanceof SyntaxError || e instanceof TypeError) {
+      return NextResponse.json(
+        { error: "Malformed request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }
