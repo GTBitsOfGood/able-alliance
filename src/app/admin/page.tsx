@@ -121,12 +121,22 @@ function AdminContent() {
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
+    const gtUsername = (
+      form.elements.namedItem("gtUsername") as HTMLInputElement
+    ).value.trim();
     const additionalComments = (
       form.elements.namedItem("additionalComments") as HTMLInputElement
     ).value.trim();
 
-    if (!firstName || !lastName || !email) {
-      setSubmitError("First name, last name, and email are required.");
+    if (!firstName || !lastName || !email || !gtUsername) {
+      setSubmitError(
+        "First name, last name, email, and GT username are required.",
+      );
+      return;
+    }
+
+    if (!/^[a-z0-9]+$/i.test(gtUsername)) {
+      setSubmitError("GT username must be alphanumeric (e.g. gburdell3).");
       return;
     }
 
@@ -163,6 +173,7 @@ function AdminContent() {
         lastName,
         ...(preferredName && { preferredName }),
         email,
+        gtUsername,
         studentInfo,
       }),
     })
@@ -200,9 +211,19 @@ function AdminContent() {
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
+    const gtUsername = (
+      form.elements.namedItem("gtUsername") as HTMLInputElement
+    ).value.trim();
 
-    if (!firstName || !lastName || !email) {
-      setSubmitError("First name, last name, and email are required.");
+    if (!firstName || !lastName || !email || !gtUsername) {
+      setSubmitError(
+        "First name, last name, email, and GT username are required.",
+      );
+      return;
+    }
+
+    if (!/^[a-z0-9]+$/i.test(gtUsername)) {
+      setSubmitError("GT username must be alphanumeric (e.g. gburdell3).");
       return;
     }
 
@@ -220,6 +241,7 @@ function AdminContent() {
         lastName,
         ...(preferredName && { preferredName }),
         email,
+        gtUsername,
       }),
     })
       .then((res) => {
@@ -256,9 +278,19 @@ function AdminContent() {
     const email = (
       form.elements.namedItem("email") as HTMLInputElement
     ).value.trim();
+    const gtUsername = (
+      form.elements.namedItem("gtUsername") as HTMLInputElement
+    ).value.trim();
 
-    if (!firstName || !lastName || !email) {
-      setSubmitError("First name, last name, and email are required.");
+    if (!firstName || !lastName || !email || !gtUsername) {
+      setSubmitError(
+        "First name, last name, email, and GT username are required.",
+      );
+      return;
+    }
+
+    if (!/^[a-z0-9]+$/i.test(gtUsername)) {
+      setSubmitError("GT username must be alphanumeric (e.g. gburdell3).");
       return;
     }
 
@@ -276,6 +308,7 @@ function AdminContent() {
         lastName,
         ...(preferredName && { preferredName }),
         email,
+        gtUsername,
       }),
     })
       .then((res) => {
@@ -466,6 +499,15 @@ function AdminContent() {
             />
           </div>
           <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="gtUsername"
+              label="GT Username"
+              placeholder="gburdell3"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <div className="flex flex-col flex-1 basis-[20rem] max-w-[35rem] gap-3">
               <span
                 style={{
@@ -645,6 +687,15 @@ function AdminContent() {
           </div>
           <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <BogTextInput
+              name="gtUsername"
+              label="GT Username"
+              placeholder="gburdell3"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
               name="inviteMessage"
               label="Invite message"
               placeholder="Add custom invite message here."
@@ -698,6 +749,15 @@ function AdminContent() {
               type="email"
               label="GT Email"
               placeholder="gburdell01@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogTextInput
+              name="gtUsername"
+              label="GT Username"
+              placeholder="gburdell3"
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
               required
             />

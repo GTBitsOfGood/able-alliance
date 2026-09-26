@@ -1,95 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { encode } from "next-auth/jwt";
-import { XMLParser } from "fast-xml-parser";
 import { getProvisionedUserFromCAS } from "@/server/db/actions/UserAction";
 import { UserNotFoundException } from "@/utils/exceptions/user";
-
-interface CASAttributes {
-  email: string;
-  displayName: string;
-}
-
-interface CASValidationResult {
-  success: boolean;
-  username?: string;
-  attributes?: CASAttributes;
-  error?: string;
-}
-
-const xmlParser = new XMLParser({
-  ignoreAttributes: false,
-  removeNSPrefix: true,
-  trimValues: true,
-});
-
-function extractText(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length > 0 ? extractText(value[0]) : "";
-  }
-
-  if (value && typeof value === "object" && "#text" in value) {
-    const textValue = (value as { "#text"?: unknown })["#text"];
-    return typeof textValue === "string" ? textValue : "";
-  }
-
-  return "";
-}
-
-function parseCASResponse(xml: string): CASValidationResult {
-  const parsed = xmlParser.parse(xml) as {
-    serviceResponse?: {
-      authenticationFailure?: unknown;
-      authenticationSuccess?: {
-        user?: unknown;
-        attributes?: {
-          email?: unknown;
-          displayName?: unknown;
-        };
-      };
-    };
-  };
-
-  const serviceResponse = parsed.serviceResponse;
-  if (!serviceResponse) {
-    return { success: false, error: "Unexpected CAS response format" };
-  }
-
-  if (serviceResponse.authenticationFailure) {
-    return {
-      success: false,
-      error:
-        extractText(serviceResponse.authenticationFailure) ||
-        "CAS authentication failed",
-    };
-  }
-
-  const authSuccess = serviceResponse.authenticationSuccess;
-  if (!authSuccess) {
-    return { success: false, error: "Unexpected CAS response format" };
-  }
-
-  const username = extractText(authSuccess.user);
-  const email = extractText(authSuccess.attributes?.email);
-  const displayName = extractText(authSuccess.attributes?.displayName);
-
-  if (!username) {
-    return { success: false, error: "No user found in CAS response" };
-  }
-
-  return {
-    success: true,
-    username,
-    attributes: {
-      email,
-      displayName,
-    },
-  };
-}
+import {
+  secureCookiesEnabled,
+  sessionCookieName,
+} from "@/server/auth/sessionCookie";
+import {
+  casServiceUrl,
+  casValidateUrl,
+  loginErrorRedirect,
+  readCASConfig,
+} from "@/server/cas/config";
+import { parseCASResponse } from "@/server/cas/parseResponse";
 
 /**
  * GET /api/auth/cas/callback?ticket=ST-xxx
@@ -98,28 +22,21 @@ function parseCASResponse(xml: string): CASValidationResult {
  * This handler validates the ticket server-to-server, then creates a session.
  */
 export async function GET(request: NextRequest) {
+  const configResult = readCASConfig();
+  if (!configResult.ok) {
+    console.error("[CAS Callback] CAS is misconfigured:", configResult.reason);
+    return loginErrorRedirect(request, "cas_misconfigured");
+  }
+  const { appUrl, serverBaseUrl } = configResult.config;
+
   const ticket = request.nextUrl.searchParams.get("ticket");
-  const appUrl = process.env.DEPLOY_PRIME_URL;
-  if (!appUrl) {
-    throw new Error("DEPLOY_PRIME_URL environment variable is required");
-  }
-  const loginUrl = `${appUrl}/login`;
-
   if (!ticket) {
-    return NextResponse.redirect(`${loginUrl}?error=no_ticket`);
+    return loginErrorRedirect(request, "no_ticket", appUrl);
   }
 
-  // The service URL must match what was originally sent to CAS
-  const serviceUrl = `${appUrl}/api/auth/cas/callback`;
-  // Use the internal Docker URL for server-to-server validation
-  const casBaseUrl = process.env.CAS_BASE_URL;
-  if (!casBaseUrl) {
-    throw new Error("CAS_BASE_URL environment variable is required");
-  }
-  const buildValidateUrl = (baseUrl: string) =>
-    `${baseUrl}/p3/serviceValidate?ticket=${encodeURIComponent(ticket)}&service=${encodeURIComponent(serviceUrl)}`;
-
-  const validateUrl = buildValidateUrl(casBaseUrl);
+  // The service URL must match what was originally sent to CAS, byte for byte.
+  const serviceUrl = casServiceUrl(configResult.config);
+  const validateUrl = casValidateUrl(serverBaseUrl, ticket, serviceUrl);
 
   const fetchCASValidation = async () => {
     try {
@@ -128,20 +45,22 @@ export async function GET(request: NextRequest) {
       // In local dev, users often copy Docker env values (cas:8443) into .env.
       // Retry against localhost once so local and Docker workflows both work.
       const shouldRetryLocalhost =
-        casBaseUrl.includes("cas:8443") && !casBaseUrl.includes("localhost");
+        serverBaseUrl.includes("cas:8443") &&
+        !serverBaseUrl.includes("localhost");
 
       if (!shouldRetryLocalhost) {
         throw error;
       }
 
-      const fallbackBaseUrl = casBaseUrl.replace("cas:8443", "localhost:8443");
-      const fallbackValidateUrl = buildValidateUrl(fallbackBaseUrl);
+      const fallbackBaseUrl = serverBaseUrl.replace(
+        "cas:8443",
+        "localhost:8443",
+      );
       console.warn(
-        "[CAS Callback] CAS host unreachable, retrying with localhost:",
-        fallbackValidateUrl,
+        "[CAS Callback] CAS host unreachable, retrying with localhost",
       );
 
-      return fetch(fallbackValidateUrl);
+      return fetch(casValidateUrl(fallbackBaseUrl, ticket, serviceUrl));
     }
   };
 
@@ -153,81 +72,78 @@ export async function GET(request: NextRequest) {
         "[CAS Callback] CAS validation request failed:",
         casResponse.status,
       );
-      return NextResponse.redirect(`${loginUrl}?error=cas_unavailable`);
+      return loginErrorRedirect(request, "cas_unavailable", appUrl);
     }
 
     const xmlBody = await casResponse.text();
     const result = parseCASResponse(xmlBody);
 
-    if (!result.success || !result.attributes) {
+    if (!result.success) {
       console.error("[CAS Callback] CAS validation failed:", result.error);
-      return NextResponse.redirect(`${loginUrl}?error=invalid_ticket`);
+      return loginErrorRedirect(request, "invalid_ticket", appUrl);
     }
-    const attributes = result.attributes;
 
-    // Look up the user in our database (do not auto-provision from CAS).
-    const user = await (async () => {
-      try {
-        return await getProvisionedUserFromCAS({
-          email: attributes.email,
-          name: attributes.displayName,
-        });
-      } catch (error) {
-        if (error instanceof UserNotFoundException) {
-          console.error("[CAS Callback] CAS user not provisioned in app DB");
-          return NextResponse.redirect(`${loginUrl}?error=user_not_found`);
-        }
-        throw error;
+    const { username, attributes } = result;
+
+    // Look up the user by GT username (do not auto-provision from CAS).
+    let user;
+    try {
+      user = await getProvisionedUserFromCAS(username);
+    } catch (error) {
+      if (error instanceof UserNotFoundException) {
+        console.error(
+          `[CAS Callback] CAS user "${username}" is not provisioned in the app database`,
+        );
+        return loginErrorRedirect(request, "user_not_found", appUrl);
       }
-    })();
-
-    if (user instanceof NextResponse) {
-      return user;
+      throw error;
     }
 
     const userId = (user._id as object).toString();
-    const userType = user.type;
+
+    // The database record is authoritative for profile data. CAS attributes are
+    // optional, so displayName only fills in when the app has nothing better.
+    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    const displayName = attributes.displayName ?? (fullName || username);
 
     // Encode a JWT with the user's info
     const secret = process.env.NEXTAUTH_SECRET;
     if (!secret) {
-      throw new Error("NEXTAUTH_SECRET must be set");
+      console.error("[CAS Callback] NEXTAUTH_SECRET is not set");
+      return loginErrorRedirect(request, "server_error", appUrl);
     }
 
     // Auth.js uses __Secure-authjs.session-token in production (HTTPS); salt must match cookie name
-    const useSecureCookies = process.env.NODE_ENV === "production";
-    const sessionCookieName = useSecureCookies
-      ? "__Secure-authjs.session-token"
-      : "authjs.session-token";
+    const cookieName = sessionCookieName();
 
     const token = await encode({
       token: {
         sub: userId,
         userId,
-        type: userType,
-        email: attributes.email,
-        name: attributes.displayName,
+        type: user.type,
+        gtUsername: username,
+        email: user.email,
+        name: displayName,
         firstName: user.firstName,
         lastName: user.lastName,
       },
       secret,
-      salt: sessionCookieName,
+      salt: cookieName,
       maxAge: 24 * 60 * 60, // 24 hours
     });
 
     // Redirect to same origin so cookie domain matches; set cookie via next/headers for better compatibility with Netlify
-    const redirectTo = appUrl;
     const cookieStore = await cookies();
-    cookieStore.set(sessionCookieName, token, {
+    cookieStore.set(cookieName, token, {
       httpOnly: true,
-      secure: useSecureCookies,
+      secure: secureCookiesEnabled(),
       sameSite: "lax",
       path: "/",
       maxAge: 24 * 60 * 60,
     });
-    return NextResponse.redirect(redirectTo, 302);
+    return NextResponse.redirect(appUrl, 302);
   } catch (error) {
     console.error("[CAS Callback] Error during CAS validation:", error);
-    return NextResponse.redirect(`${loginUrl}?error=server_error`);
+    return loginErrorRedirect(request, "server_error", appUrl);
   }
 }

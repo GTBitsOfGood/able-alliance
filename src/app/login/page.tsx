@@ -11,6 +11,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   user_not_found:
     "No account found. If you are a student, contact Office of Disability Services to register an account.",
   cas_unavailable: "The authentication server is unavailable.",
+  cas_misconfigured:
+    "Single sign-on is not configured correctly. Please contact an administrator.",
   server_error: "An unexpected error occurred.",
 };
 

@@ -14,6 +14,9 @@ services:
       SUPERADMIN_EMAIL: "superadmin@gatech.edu"
       SUPERADMIN_FIRSTNAME: "Super"
       SUPERADMIN_LASTNAME: "Admin"
+      # The CAS identity for the SuperAdmin. Set explicitly in both services so
+      # the app and the mock CAS server cannot disagree about who can log in.
+      SUPERADMIN_CAS_USERNAME: "superadmin"
       WATCHPACK_POLLING: "true"
       NEXT_PUBLIC_WS_URL: "http://localhost:4000"
     develop:
@@ -76,6 +79,9 @@ services:
       SUPERADMIN_EMAIL: "superadmin@gatech.edu"
       SUPERADMIN_FIRSTNAME: "Super"
       SUPERADMIN_LASTNAME: "Admin"
+      # The CAS identity for the SuperAdmin. Set explicitly in both services so
+      # the app and the mock CAS server cannot disagree about who can log in.
+      SUPERADMIN_CAS_USERNAME: "superadmin"
     ports:
       - "8443:8443"
     networks:

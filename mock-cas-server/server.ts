@@ -7,15 +7,20 @@ import express, {
 } from "express";
 import { v4 as uuidv4 } from "uuid";
 
+/**
+ * Attributes are optional, matching real CAS: release is configured per
+ * registered service, so a service may receive `cas:user` and nothing else.
+ * GT's own Express example never reads an attribute at all.
+ */
 interface CASUserAttributes {
-  email: string;
-  displayName: string;
+  email?: string;
+  displayName?: string;
 }
 
 interface MockUser {
   username: string;
   password: string;
-  attributes: CASUserAttributes;
+  attributes?: CASUserAttributes;
 }
 
 interface TicketData {
@@ -23,6 +28,16 @@ interface TicketData {
   attributes: CASUserAttributes;
   service: string;
   createdAt: number;
+}
+
+/** Escape text before interpolating it into the XML validation response. */
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 interface LoginBody {
@@ -60,7 +75,7 @@ function loadUsers(): MockUser[] {
     superAdminUsername
   ) {
     const alreadyPresent = base.some(
-      (u) => u.attributes.email === superAdminEmail,
+      (u) => u.attributes?.email === superAdminEmail,
     );
     if (!alreadyPresent) {
       base.push({
@@ -126,10 +141,13 @@ setInterval(() => {
 
 function buildUserHints(): string {
   return users
-    .map(
-      (u) =>
-        `<code>${u.username}</code> / <code>${u.password}</code> — ${u.attributes.displayName} (${u.attributes.email})`,
-    )
+    .map((u) => {
+      const detail =
+        u.attributes?.displayName || u.attributes?.email
+          ? `${u.attributes.displayName ?? "(no displayName)"} (${u.attributes.email ?? "no email"})`
+          : "no attributes released";
+      return `<code>${u.username}</code> / <code>${u.password}</code> — ${detail}`;
+    })
     .join("<br>");
 }
 
@@ -299,7 +317,7 @@ app.post(
     const ticket = `ST-${uuidv4()}`;
     tickets.set(ticket, {
       username: user.username,
-      attributes: user.attributes,
+      attributes: user.attributes ?? {},
       service,
       createdAt: Date.now(),
     });
@@ -347,13 +365,25 @@ app.get("/cas/p3/serviceValidate", (req: Request, res: Response) => {
     `[CAS] Ticket validated: ${ticket} for user: ${ticketData.username}`,
   );
 
+  // Only emit the attributes block for attributes that were actually released,
+  // so a service receiving bare `cas:user` can be exercised locally.
+  const attributeLines = [
+    ticketData.attributes.email
+      ? `      <cas:email>${escapeXml(ticketData.attributes.email)}</cas:email>`
+      : null,
+    ticketData.attributes.displayName
+      ? `      <cas:displayName>${escapeXml(ticketData.attributes.displayName)}</cas:displayName>`
+      : null,
+  ].filter((line): line is string => line !== null);
+
+  const attributesBlock =
+    attributeLines.length > 0
+      ? `\n    <cas:attributes>\n${attributeLines.join("\n")}\n    </cas:attributes>`
+      : "";
+
   return res.send(`<cas:serviceResponse xmlns:cas="http://www.yale.edu/tp/cas">
   <cas:authenticationSuccess>
-    <cas:user>${ticketData.username}</cas:user>
-    <cas:attributes>
-      <cas:email>${ticketData.attributes.email}</cas:email>
-      <cas:displayName>${ticketData.attributes.displayName}</cas:displayName>
-    </cas:attributes>
+    <cas:user>${escapeXml(ticketData.username)}</cas:user>${attributesBlock}
   </cas:authenticationSuccess>
 </cas:serviceResponse>`);
 });
