@@ -33,6 +33,13 @@
   gap: 1.6rem;
 }
 
+/* Title Section */
+.titleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+
 /* Back Button */
 .backButton {
   font-family: var(--font-paragraph);
@@ -153,6 +160,12 @@
   margin: 0;
 }
 
+.calendarIcon {
+  width: 3.2rem;
+  height: 3.2rem;
+  flex-shrink: 0;
+}
+
 .required {
   color: #c73a3a;
   margin-left: 0.1rem;
@@ -165,12 +178,6 @@
   line-height: 2rem;
   color: var(--color-grey-text-weak);
   margin: 0;
-}
-
-.calendarIcon {
-  width: 3.2rem;
-  height: 3.2rem;
-  flex-shrink: 0;
 }
 
 /* Date Picker */
@@ -348,9 +355,28 @@
   cursor: text;
 }
 
-.timeInputWrapper {
+.timeInputWrapper,
+.locationSelectWrapper {
   flex: 1;
   min-width: 0;
+}
+
+.locationTextInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 2rem;
+  color: var(--color-grey-text-strong);
+  outline: none;
+  cursor: text;
+}
+
+.locationTextInput::placeholder {
+  color: rgba(34, 7, 11, 0.5);
 }
 
 .pickupWindowInputWrapper {
@@ -407,6 +433,11 @@
   box-sizing: border-box;
 }
 
+.pickupWindowErrorIcon {
+  display: none;
+  flex-shrink: 0;
+}
+
 .pickupWindowLabel {
   font-family: var(--font-paragraph);
   font-size: 1.2rem;
@@ -444,6 +475,82 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+}
+
+.recurringCheckboxRow {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 2rem;
+  color: var(--color-grey-text-strong);
+  cursor: pointer;
+}
+
+.recurringCheckbox {
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.recurringFrequencyCell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4.4rem;
+  padding: 0.8rem 1.2rem;
+  background: var(--color-grey-fill-weaker);
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.recurringFrequencySelect {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 2rem;
+  color: var(--color-grey-text-strong);
+  outline: none;
+  cursor: pointer;
+}
+
+.recurringFrequencySelect:disabled {
+  color: var(--color-grey-off-state);
+  cursor: not-allowed;
+}
+
+.recurringFrequencyChevron {
+  flex-shrink: 0;
+  color: var(--color-grey-text-weak);
+}
+
+.rideCountText {
+  font-family: var(--font-paragraph);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 2rem;
+  color: var(--color-grey-text-weak);
+  text-align: right;
+  width: 100%;
+  margin: 0;
+}
+
+.submitSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
 }
 
 /* Map — square, matches calendar widget */
@@ -567,9 +674,107 @@
 
 /* Responsive */
 @media (max-width: 900px) {
+  .errorBanner {
+    background: #ffdddd;
+    border-bottom-color: #bb2020;
+    color: #bb2020;
+    padding: 1.4rem 1.8rem;
+    border-radius: 0.4rem;
+    font-weight: 600;
+  }
+
+  .main {
+    padding-left: 1.6rem;
+    padding-right: 1.6rem;
+  }
+
+  .required {
+    display: none;
+  }
+
+  .rideDateGroup {
+    gap: 2.4rem;
+  }
+
+  .formGroupTitle {
+    font-size: 2rem;
+    line-height: 2.8rem;
+  }
+
+  .fieldDescription {
+    font-size: 1.6rem;
+  }
+
+  .pickupWindowLabel {
+    font-size: 1.6rem;
+    line-height: 2rem;
+    color: var(--color-grey-text-strong);
+  }
+
+  .dateSelected {
+    background: #416ebc !important;
+  }
+
+  .timeCell,
+  .locationCell,
+  .pickupWindowCell {
+    background: var(--color-solid-bg-sunken);
+    border: 1px solid var(--color-grey-stroke-weak);
+    border-radius: 0.4rem;
+    padding: 1.2rem 0.8rem;
+    height: 4.4rem;
+  }
+
+  .fieldDescriptionError {
+    color: #c73a3a;
+  }
+
+  .pickupWindowCellError {
+    background: #ffdddd;
+  }
+
+  .pickupWindowErrorIcon {
+    display: inline-flex;
+    color: var(--color-grey-text-strong);
+  }
+
+  .pickupWindowField {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .pickupWindowLabel {
+    white-space: nowrap;
+  }
+
+  .pickupWindowCell {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pickupWindowArrow {
+    display: none;
+  }
+
+  .datePicker {
+    aspect-ratio: auto;
+  }
+
   .rideDetailsOutline {
     flex-direction: column;
-    padding: 3.2rem;
+    padding: 2.4rem 0 3.2rem;
+    gap: 4rem;
+    border: none;
+    border-radius: 0;
+  }
+
+  .leftColumn {
+    gap: 4rem;
+  }
+
+  .rightColumn {
+    gap: 4rem;
   }
 
   .leftColumn,
@@ -580,19 +785,26 @@
   }
 
   .columnDivider {
-    width: 100%;
-    height: 1px;
-    align-self: unset;
+    display: none;
   }
 
   .mapImage {
     height: 24rem;
+    order: 1;
+  }
+
+  .submitSection {
+    order: 2;
   }
 }
 
 @media (max-width: 768px) {
   .main {
-    padding: 2rem 2rem 4rem;
+    padding: 2rem 1.6rem 4rem;
+  }
+
+  .titleSection {
+    gap: 0.8rem;
   }
 
   .pageTitle {
@@ -601,6 +813,6 @@
   }
 
   .rideDetailsOutline {
-    padding: 2rem;
+    padding: 2.4rem 0 2rem;
   }
 }

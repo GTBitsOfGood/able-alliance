@@ -81,9 +81,6 @@
   width: fit-content;
   background-color: #183777;
   border-color: #183777;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
-  font-weight: 600;
 }
 
 .requestRideButton:hover:not(:disabled) {
@@ -198,7 +195,7 @@
 .dateGroup {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.2rem;
   width: 100%;
   min-width: 0;
 }
@@ -206,7 +203,7 @@
 .dateGroupCards {
   display: flex;
   flex-direction: column;
-  gap: 2.4rem;
+  gap: 1.2rem;
   width: 100%;
   min-width: 0;
 }
@@ -249,7 +246,7 @@
   gap: 1rem;
   padding: 1.5rem 1.75rem;
   border-radius: 0.5rem;
-  border: 0.1rem solid var(--color-grey-off-state);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   background-color: var(--color-solid-bg-base);
   box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.06);
   width: 100%;
@@ -382,11 +379,38 @@
 
 .rideCardHorizontalDivider {
   flex: 1;
-  height: 2px;
-  background: var(--color-grey-off-state);
+  height: 1px;
+  background: var(--color-grey-stroke-weak);
   align-self: center;
   margin: 0 1.6rem;
   margin-top: 5.4rem; /* align with midpoint of time text */
+}
+
+/* Mobile pickup/dropoff stack — labels row, times+divider row, locations row */
+.rideCardPickupDropoffStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.rideCardStopLabelsRow,
+.rideCardStopLocationsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.rideCardStopTimesRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.rideCardStopTimesRow .rideCardHorizontalDivider {
+  margin: 0;
 }
 
 .rideCardStatusRow {
@@ -412,8 +436,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.8rem 1.2rem;
+  padding: 0.8rem 1.6rem;
+  border: 1px solid var(--color-checkbox-checked);
   border-radius: 0.4rem;
   font-size: 1.8rem;
   font-family: var(--font-paragraph);
@@ -421,6 +445,7 @@
   color: var(--color-checkbox-checked);
   text-decoration: none;
   white-space: nowrap;
+  min-width: 17.2rem;
   text-align: center;
 
   &:hover {
@@ -428,9 +453,14 @@
   }
 }
 
+.rideDetailsLinkMobileText,
+.rideDetailsLinkIcon {
+  display: none;
+}
+
 .rideCardVerticalDivider {
   width: 1px;
-  background: var(--color-grey-off-state);
+  background: var(--color-grey-stroke-weak);
   align-self: stretch;
   flex-shrink: 0;
 }
@@ -1117,6 +1147,14 @@
     line-height: 4rem;
   }
 
+  .dateGroup {
+    gap: 2rem;
+  }
+
+  .dateGroupCards {
+    gap: 2.4rem;
+  }
+
   .dateHeader {
     font-size: 2.4rem;
     line-height: 3.2rem;
@@ -1147,6 +1185,7 @@
   .rideCardStudent {
     flex-direction: column;
     min-height: auto;
+    border-color: var(--color-grey-off-state);
   }
 
   .rideCardStudentBody {
@@ -1157,6 +1196,7 @@
     width: auto;
     height: 1px;
     margin: 0 1.6rem;
+    background: var(--color-grey-off-state);
   }
 
   .rideCardStudentActions {
@@ -1192,19 +1232,35 @@
     line-height: 3.2rem;
   }
 
-  .rideCardHorizontalDivider {
-    margin-top: 4.4rem;
-  }
-
   .rideCardStatusChip,
   .rideDetailsLink {
     font-size: 1.6rem;
     line-height: 2rem;
   }
 
+  .rideDetailsLink {
+    gap: 0.4rem;
+    padding: 0.8rem 1.2rem;
+    border: none;
+    min-width: 0;
+  }
+
+  .rideDetailsLinkDesktopText {
+    display: none;
+  }
+
+  .rideDetailsLinkMobileText,
+  .rideDetailsLinkIcon {
+    display: inline-flex;
+  }
+
   .tabsRow > [role="tablist"] {
     flex: 1 1 auto;
     width: 100%;
+  }
+
+  .tabsRow [role="tab"][data-state="active"] {
+    border-bottom-color: var(--color-grey-text-strong);
   }
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +11,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import { CancelRideModal } from "../CancelRideModal";
+import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
@@ -124,6 +126,8 @@ export default function RideDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { data: session, status: sessionStatus } = useSession();
+  const { width: windowWidth } = useWindowSize();
+  const isMobileLayout = windowWidth <= 768;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [routeId, setRouteId] = useState<string>("");
@@ -805,23 +809,7 @@ export default function RideDetailPage({
     });
   };
 
-  const statusChipStyle: React.CSSProperties = (() => {
-    switch (route.status) {
-      case "Scheduled":
-        return { background: "#dbeafe", color: "#1e40af" };
-      case "En-route":
-      case "Pickedup":
-        return { background: "#fef3c7", color: "#92400e" };
-      case "Completed":
-        return { background: "#d1fae5", color: "#065f46" };
-      case "Cancelled by Student":
-      case "Cancelled by Admin":
-      case "Missing":
-        return { background: "#fee2e2", color: "#991b1b" };
-      default:
-        return { background: "#1e293b", color: "#fff" };
-    }
-  })();
+  const statusChipStyle = getStudentStatusChipStyle(route.status);
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.type === "Driver") {
@@ -1125,21 +1113,49 @@ export default function RideDetailPage({
           <p className={styles.rideDateLabel}>
             {formatDateLabel(scheduledDate)}
           </p>
-          <div className={styles.pickupDropoffRow}>
-            <div className={styles.stopBlock}>
-              <span className={styles.stopLabel}>Pickup</span>
-              <span className={styles.stopTime}>
-                {formatTime(scheduledDate)}
-              </span>
-              <span className={styles.stopLocation}>{pickupLocationName}</span>
+          {isMobileLayout ? (
+            <div className={styles.pickupDropoffStack}>
+              <div className={styles.stopLabelsRow}>
+                <span className={styles.stopLabel}>Pickup</span>
+                <span className={styles.stopLabel}>Dropoff</span>
+              </div>
+              <div className={styles.stopTimesRow}>
+                <span className={styles.stopTime}>
+                  {formatTime(scheduledDate)}
+                </span>
+                <div className={styles.stopDivider} aria-hidden />
+                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+              </div>
+              <div className={styles.stopLocationsRow}>
+                <span className={styles.stopLocation}>
+                  {pickupLocationName}
+                </span>
+                <span className={styles.stopLocation}>
+                  {dropoffLocationName}
+                </span>
+              </div>
             </div>
-            <div className={styles.stopDivider} />
-            <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
-              <span className={styles.stopLabel}>Dropoff</span>
-              <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
-              <span className={styles.stopLocation}>{dropoffLocationName}</span>
+          ) : (
+            <div className={styles.pickupDropoffRow}>
+              <div className={styles.stopBlock}>
+                <span className={styles.stopLabel}>Pickup</span>
+                <span className={styles.stopTime}>
+                  {formatTime(scheduledDate)}
+                </span>
+                <span className={styles.stopLocation}>
+                  {pickupLocationName}
+                </span>
+              </div>
+              <div className={styles.stopDivider} />
+              <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
+                <span className={styles.stopLabel}>Dropoff</span>
+                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <span className={styles.stopLocation}>
+                  {dropoffLocationName}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Two-column: driver info + map */}

@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useWindowSize } from "react-use";
 import { fromZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
+import { SearchableSelect } from "@/components/SearchableSelect/SearchableSelect";
+import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
@@ -18,8 +21,36 @@ type Location = {
   longitude: number;
 };
 
+function PickupWindowErrorIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={className}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8.257 3.099C9.022 1.739 10.979 1.739 11.743 3.099L17.323 13.019C18.073 14.353 17.11 15.999 15.581 15.999H4.42C2.89 15.999 1.927 14.353 2.677 13.019L8.257 3.099ZM11 13C11 13.2652 10.8946 13.5196 10.7071 13.7071C10.5196 13.8946 10.2652 14 10 14C9.73478 14 9.48043 13.8946 9.29289 13.7071C9.10536 13.5196 9 13.2652 9 13C9 12.7348 9.10536 12.4804 9.29289 12.2929C9.48043 12.1054 9.73478 12 10 12C10.2652 12 10.5196 12.1054 10.7071 12.2929C10.8946 12.4804 11 12.7348 11 13ZM10 5C9.73478 5 9.48043 5.10536 9.29289 5.29289C9.10536 5.48043 9 5.73478 9 6V9C9 9.26522 9.10536 9.51957 9.29289 9.70711C9.48043 9.89464 9.73478 10 10 10C10.2652 10 10.5196 9.89464 10.7071 9.70711C10.8946 9.51957 11 9.26522 11 9V6C11 5.73478 10.8946 5.48043 10.7071 5.29289C10.5196 5.10536 10.2652 5 10 5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export default function CreateRidePage() {
   const router = useRouter();
+  const { width: windowWidth } = useWindowSize();
+  const isMobileLayout = windowWidth <= 900;
+  const isMobileLayoutRef = useRef(isMobileLayout);
+  isMobileLayoutRef.current = isMobileLayout;
+
+  function scrollFieldIntoView(e: React.FocusEvent<HTMLElement>) {
+    if (!isMobileLayout) return;
+    e.target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +64,11 @@ export default function CreateRidePage() {
   const [pickupWindowFromTime, setPickupWindowFromTime] = useState("12:10");
   const [pickupWindowToTime, setPickupWindowToTime] = useState("12:45");
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState("weekly");
+  const [pickupWindowErrorField, setPickupWindowErrorField] = useState<
+    "from" | "to" | null
+  >(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -53,13 +89,15 @@ export default function CreateRidePage() {
         const data = await res.json();
         setLocations(data);
 
-        if (data.length > 0) {
-          setPickupLocationName(data[0].name);
-        }
-        if (data.length > 1) {
-          setDropoffLocationName(data[1].name);
-        } else if (data.length > 0) {
-          setDropoffLocationName(data[0].name);
+        if (!isMobileLayoutRef.current) {
+          if (data.length > 0) {
+            setPickupLocationName(data[0].name);
+          }
+          if (data.length > 1) {
+            setDropoffLocationName(data[1].name);
+          } else if (data.length > 0) {
+            setDropoffLocationName(data[0].name);
+          }
         }
 
         if (data.length === 0) {
@@ -238,6 +276,10 @@ export default function CreateRidePage() {
   }, []);
 
   const locationNames = locations.map((l) => l.name);
+  const locationOptions = locationNames.map((name) => ({
+    value: name,
+    label: name,
+  }));
   const nameToId = locations.reduce(
     (acc, loc) => {
       acc[loc.name] = loc._id;
@@ -284,6 +326,7 @@ export default function CreateRidePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setPickupWindowErrorField(null);
 
     const pickupId = nameToId[pickupLocationName];
     const dropoffId = nameToId[dropoffLocationName];
@@ -348,7 +391,14 @@ export default function CreateRidePage() {
       scheduledPickupDate < pickupWindowStart ||
       scheduledPickupDate > pickupWindowEnd
     ) {
-      setError("Pickup time must fall within the pickup time window.");
+      setPickupWindowErrorField(
+        scheduledPickupDate < pickupWindowStart ? "from" : "to",
+      );
+      setError(
+        isMobileLayout
+          ? "Ensure Pickup Time is within the Pickup Time Window."
+          : "Pickup time must fall within the pickup time window.",
+      );
       return;
     }
 
@@ -429,10 +479,16 @@ export default function CreateRidePage() {
             fill="none"
             className={styles.errorBannerIcon}
           >
-            <circle cx="10" cy="10" r="9" stroke="#c73a3a" strokeWidth="2" />
+            <circle
+              cx="10"
+              cy="10"
+              r="9"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
             <path
               d="M10 6v5M10 13.5h.01"
-              stroke="#c73a3a"
+              stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
             />
@@ -441,38 +497,50 @@ export default function CreateRidePage() {
         </div>
       )}
       <main className={styles.main}>
-        <Link href="/rides" className={styles.backButton}>
-          ← Back to Rides
-        </Link>
+        <div className={styles.titleSection}>
+          <Link href="/rides" className={styles.backButton}>
+            ← Back to {isMobileLayout ? "rides" : "Rides"}
+          </Link>
 
-        <h1 className={styles.pageTitle}>Create Ride</h1>
+          <h1 className={styles.pageTitle}>
+            {isMobileLayout ? "Request Ride" : "Create Ride"}
+          </h1>
+        </div>
 
         <div className={styles.rideDetailsSection}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Ride Details</h2>
-            <p className={styles.sectionDescription}>
-              Please enter your desired ride information accordingly.
-            </p>
-          </div>
+          {isMobileLayout ? null : (
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Ride Details</h2>
+              <p className={styles.sectionDescription}>
+                Please enter your desired ride information accordingly.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className={styles.rideDetailsOutline}>
               {/* Left Column */}
               <div className={styles.leftColumn}>
                 {/* Ride Date */}
-                <div className={styles.formGroup}>
-                  <div className={styles.formGroupHeader}>
+                <div className={`${styles.formGroup} ${styles.rideDateGroup}`}>
+                  {isMobileLayout ? (
                     <h3 className={styles.formGroupTitle}>
                       Ride Date<span className={styles.required}>*</span>
                     </h3>
-                    <Image
-                      src="/calendar.svg"
-                      alt="Calendar"
-                      width={32}
-                      height={32}
-                      className={styles.calendarIcon}
-                    />
-                  </div>
+                  ) : (
+                    <div className={styles.formGroupHeader}>
+                      <h3 className={styles.formGroupTitle}>
+                        Ride Date<span className={styles.required}>*</span>
+                      </h3>
+                      <Image
+                        src="/calendar.svg"
+                        alt="Calendar"
+                        width={32}
+                        height={32}
+                        className={styles.calendarIcon}
+                      />
+                    </div>
+                  )}
                   <div className={styles.datePicker}>
                     <div className={styles.calendarHeader}>
                       <button
@@ -530,7 +598,9 @@ export default function CreateRidePage() {
                       </div>
                       <div className={styles.datesGrid}>{days}</div>
                     </div>
-                    <p className={styles.calendarHint}>Pick a day.</p>
+                    {isMobileLayout ? null : (
+                      <p className={styles.calendarHint}>Pick a day.</p>
+                    )}
                   </div>
                 </div>
 
@@ -540,10 +610,14 @@ export default function CreateRidePage() {
                     Pickup Time<span className={styles.required}>*</span>
                   </h3>
                   <p className={styles.fieldDescription}>
-                    Please enter the exact time that you&apos;d like to be
-                    picked up.
+                    {isMobileLayout
+                      ? "Enter the exact time that you'd like to be picked up."
+                      : "Please enter the exact time that you'd like to be picked up."}
                   </p>
-                  <div className={styles.timeCell}>
+                  <div
+                    className={styles.timeCell}
+                    onFocusCapture={scrollFieldIntoView}
+                  >
                     <TimeInput
                       value={pickupTime}
                       onChange={setPickupTime}
@@ -558,8 +632,12 @@ export default function CreateRidePage() {
                   <h3 className={styles.formGroupTitle}>
                     Pickup Time Window<span className={styles.required}>*</span>
                   </h3>
-                  <p className={styles.fieldDescription}>
-                    (E.g. 12:15 PM - 12:45 PM)
+                  <p
+                    className={`${styles.fieldDescription} ${pickupWindowErrorField ? styles.fieldDescriptionError : ""}`}
+                  >
+                    {isMobileLayout
+                      ? "Ensure that your pickup time is within the pickup time window. This is used to determine ride flexibility."
+                      : "(E.g. 12:15 PM - 12:45 PM)"}
                   </p>
                   <div className={styles.pickupWindowRow}>
                     <div className={styles.pickupWindowField}>
@@ -569,7 +647,10 @@ export default function CreateRidePage() {
                       >
                         From
                       </label>
-                      <div className={styles.pickupWindowCell}>
+                      <div
+                        className={`${styles.pickupWindowCell} ${pickupWindowErrorField === "from" ? styles.pickupWindowCellError : ""}`}
+                        onFocusCapture={scrollFieldIntoView}
+                      >
                         <TimeInput
                           id="pickup-window-from"
                           value={pickupWindowFromTime}
@@ -577,6 +658,11 @@ export default function CreateRidePage() {
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
+                        {pickupWindowErrorField === "from" && (
+                          <PickupWindowErrorIcon
+                            className={styles.pickupWindowErrorIcon}
+                          />
+                        )}
                       </div>
                     </div>
                     <span className={styles.pickupWindowArrow}>→</span>
@@ -587,7 +673,10 @@ export default function CreateRidePage() {
                       >
                         To
                       </label>
-                      <div className={styles.pickupWindowCell}>
+                      <div
+                        className={`${styles.pickupWindowCell} ${pickupWindowErrorField === "to" ? styles.pickupWindowCellError : ""}`}
+                        onFocusCapture={scrollFieldIntoView}
+                      >
                         <TimeInput
                           id="pickup-window-to"
                           value={pickupWindowToTime}
@@ -595,10 +684,45 @@ export default function CreateRidePage() {
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
+                        {pickupWindowErrorField === "to" && (
+                          <PickupWindowErrorIcon
+                            className={styles.pickupWindowErrorIcon}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Recurring Ride */}
+                {isMobileLayout && (
+                  <div className={styles.formGroup}>
+                    <label className={styles.recurringCheckboxRow}>
+                      <input
+                        type="checkbox"
+                        checked={isRecurring}
+                        onChange={(e) => setIsRecurring(e.target.checked)}
+                        className={styles.recurringCheckbox}
+                      />
+                      Recurring ride (optional)
+                    </label>
+                    <div className={styles.recurringFrequencyCell}>
+                      <select
+                        value={recurringFrequency}
+                        onChange={(e) => setRecurringFrequency(e.target.value)}
+                        disabled={!isRecurring}
+                        className={styles.recurringFrequencySelect}
+                      >
+                        <option value="weekly">Every Week</option>
+                      </select>
+                      <BogIcon
+                        name="chevron-down"
+                        size={16}
+                        className={styles.recurringFrequencyChevron}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Column Divider */}
@@ -616,7 +740,7 @@ export default function CreateRidePage() {
                   </h3>
                   <p className={styles.fieldDescription}>
                     Please type or locate on the above map the{" "}
-                    <strong>on campus location</strong> that you&apos;d like to
+                    <strong>on campus location </strong> that you&apos;d like to
                     be picked up at.
                   </p>
                   <div className={styles.locationCell}>
@@ -632,23 +756,36 @@ export default function CreateRidePage() {
                         fill="#325CE8"
                       />
                     </svg>
-                    <select
-                      value={pickupLocationName}
-                      onChange={(e) => setPickupLocationName(e.target.value)}
-                      className={styles.locationSelect}
-                      required
-                    >
-                      {!pickupLocationName && (
-                        <option value="" disabled>
-                          Select pickup location...
-                        </option>
-                      )}
-                      {locationNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
+                    {isMobileLayout ? (
+                      <SearchableSelect
+                        value={pickupLocationName}
+                        onChange={setPickupLocationName}
+                        options={locationOptions}
+                        placeholder="Enter pickup location"
+                        className={styles.locationSelectWrapper}
+                        inputClassName={styles.locationTextInput}
+                        onFocusCapture={scrollFieldIntoView}
+                        required
+                      />
+                    ) : (
+                      <select
+                        value={pickupLocationName}
+                        onChange={(e) => setPickupLocationName(e.target.value)}
+                        className={styles.locationSelect}
+                        required
+                      >
+                        {!pickupLocationName && (
+                          <option value="" disabled>
+                            Select pickup location...
+                          </option>
+                        )}
+                        {locationNames.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
@@ -659,7 +796,7 @@ export default function CreateRidePage() {
                   </h3>
                   <p className={styles.fieldDescription}>
                     Please type or locate on the above map the{" "}
-                    <strong>on campus location</strong> that you&apos;d like to
+                    <strong>on campus location </strong> that you&apos;d like to
                     be dropped off at.
                   </p>
                   <div className={styles.locationCell}>
@@ -675,34 +812,61 @@ export default function CreateRidePage() {
                         fill="#3aaa5c"
                       />
                     </svg>
-                    <select
-                      value={dropoffLocationName}
-                      onChange={(e) => setDropoffLocationName(e.target.value)}
-                      className={styles.locationSelect}
-                      required
-                    >
-                      {!dropoffLocationName && (
-                        <option value="" disabled>
-                          Select drop-off location...
-                        </option>
-                      )}
-                      {locationNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
+                    {isMobileLayout ? (
+                      <SearchableSelect
+                        value={dropoffLocationName}
+                        onChange={setDropoffLocationName}
+                        options={locationOptions}
+                        placeholder="Enter dropoff location"
+                        className={styles.locationSelectWrapper}
+                        inputClassName={styles.locationTextInput}
+                        onFocusCapture={scrollFieldIntoView}
+                        required
+                      />
+                    ) : (
+                      <select
+                        value={dropoffLocationName}
+                        onChange={(e) => setDropoffLocationName(e.target.value)}
+                        className={styles.locationSelect}
+                        required
+                      >
+                        {!dropoffLocationName && (
+                          <option value="" disabled>
+                            Select drop-off location...
+                          </option>
+                        )}
+                        {locationNames.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className={styles.submitButton}
-                >
-                  {submitting ? "Submitting..." : "Submit"}
-                </button>
+                {isMobileLayout ? (
+                  <div className={styles.submitSection}>
+                    <p className={styles.rideCountText}>
+                      You are requesting <strong>1</strong> ride(s).
+                    </p>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className={styles.submitButton}
+                    >
+                      {submitting ? "Submitting..." : "Submit"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className={styles.submitButton}
+                  >
+                    {submitting ? "Submitting..." : "Submit"}
+                  </button>
+                )}
               </div>
             </div>
           </form>
