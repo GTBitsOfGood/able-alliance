@@ -26,6 +26,9 @@ type Props = {
     licensePlate: string;
     description?: string;
   };
+  rideUrl: string;
+  mapImgUrl?: string;
+  chatUrl?: string;
 };
 
 export default function RideConfirmationEmail({
@@ -36,6 +39,9 @@ export default function RideConfirmationEmail({
   pickupLocation,
   destination,
   driverDetails,
+  rideUrl,
+  mapImgUrl,
+  chatUrl,
 }: Props) {
   return (
     <Html lang="en">
@@ -215,6 +221,7 @@ export default function RideConfirmationEmail({
           className="rounded-[8px] my-[16px] mx-auto border border-solid border-[#22070B26]"
           width={300}
           height={300}
+          src={mapImgUrl}
         />
 
         <Row>
@@ -229,7 +236,7 @@ export default function RideConfirmationEmail({
                     padding: "12px 20px",
                     width: "100%",
                   }}
-                  href=""
+                  href={rideUrl}
                 >
                   Edit ride
                 </Button>
@@ -243,7 +250,7 @@ export default function RideConfirmationEmail({
                     padding: "12px 20px",
                     width: "100%",
                   }}
-                  href=""
+                  href={chatUrl}
                 >
                   Chat with driver
                 </Button>

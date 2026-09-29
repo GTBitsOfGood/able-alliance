@@ -19,6 +19,8 @@ type Props = {
   destination: string;
   date: string;
   messages: string[];
+  rideUrl: string;
+  chatUrl: string;
 };
 
 export default function NewMessageFromDriverEmail({
@@ -28,6 +30,8 @@ export default function NewMessageFromDriverEmail({
   pickupLocation,
   destination,
   messages,
+  rideUrl,
+  chatUrl,
 }: Props) {
   return (
     <Html lang="en">
@@ -199,7 +203,7 @@ export default function NewMessageFromDriverEmail({
                     padding: "12px 20px",
                     width: "100%",
                   }}
-                  href=""
+                  href={chatUrl}
                 >
                   Chat with driver
                 </Button>
@@ -213,7 +217,7 @@ export default function NewMessageFromDriverEmail({
                     padding: "12px 20px",
                     width: "100%",
                   }}
-                  href=""
+                  href={rideUrl}
                 >
                   View ride details
                 </Button>

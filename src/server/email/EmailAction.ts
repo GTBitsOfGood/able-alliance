@@ -178,13 +178,16 @@ export const EmailNotifications = {
       destination: string;
       date: string;
       time: string;
+      driverDetails?: {
+        name: string;
+        vehicleId: string;
+        licensePlate: string;
+        description: string;
+      };
     },
-    driverDetails?: {
-      name: string;
-      vehicleId: string;
-      licensePlate: string;
-      description: string;
-    },
+    rideUrl: string,
+    mapImgUrl?: string,
+    chatUrl?: string,
   ) => {
     const { html, text } = await renderRideConfirmationEmail({
       date: rideDetails.date,
@@ -192,8 +195,11 @@ export const EmailNotifications = {
       destination: rideDetails.destination,
       dropoffTime: rideDetails.dropoffTime,
       pickupTime: rideDetails.pickupTime,
-      driverDetails: driverDetails,
+      driverDetails: rideDetails.driverDetails,
       name: toName,
+      rideUrl: rideUrl,
+      mapImgUrl: mapImgUrl,
+      chatUrl: chatUrl,
     });
 
     return sendEmail({
@@ -224,6 +230,9 @@ export const EmailNotifications = {
         description: string;
       };
     },
+    rideUrl: string,
+    mapImgUrl?: string,
+    chatUrl?: string,
   ) => {
     const { html, text } = await renderRideDelayedEmail({
       oldDropoffTime: rideDetails.oldDropoffTime,
@@ -236,6 +245,9 @@ export const EmailNotifications = {
       delay: rideDetails.delay,
       driverDetails: rideDetails.driverDetails,
       name: toName,
+      rideUrl: rideUrl,
+      mapImgUrl: mapImgUrl,
+      chatUrl: chatUrl,
     });
 
     return sendEmail({
@@ -258,6 +270,8 @@ export const EmailNotifications = {
       date: string;
       messages: string[];
     },
+    rideUrl: string,
+    chatUrl: string,
   ) => {
     const { html, text } = await renderNewMessageFromDriverEmail({
       dropoffTime: rideDetails.dropoffTime,
@@ -266,6 +280,8 @@ export const EmailNotifications = {
       destination: rideDetails.destination,
       date: rideDetails.date,
       messages: rideDetails.messages,
+      rideUrl: rideUrl,
+      chatUrl: chatUrl,
     });
 
     return sendEmail({

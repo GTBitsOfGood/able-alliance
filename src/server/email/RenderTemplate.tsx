@@ -10,6 +10,8 @@ export async function renderNewMessageFromDriverEmail(props: {
   destination: string;
   date: string;
   messages: string[];
+  rideUrl: string;
+  chatUrl: string;
 }) {
   const html = await render(<NewMessageFromDriverEmail {...props} />);
   const text = toPlainText(html);
@@ -29,6 +31,9 @@ export async function renderRideConfirmationEmail(props: {
     licensePlate: string;
     description: string;
   };
+  rideUrl: string;
+  chatUrl?: string;
+  mapImgUrl?: string;
 }) {
   const html = await render(<RideConfirmationEmail {...props} />);
   const text = toPlainText(html);
@@ -45,12 +50,15 @@ export async function renderRideDelayedEmail(props: {
   date: string;
   delay: string;
   name: string;
+  rideUrl: string;
   driverDetails?: {
     name: string;
     vehicleId: string;
     licensePlate: string;
     description: string;
   };
+  chatUrl?: string;
+  mapImgUrl?: string;
 }) {
   const html = await render(<RideDelayedEmail {...props} />);
   const text = toPlainText(html);
