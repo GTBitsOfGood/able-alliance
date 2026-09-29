@@ -289,8 +289,14 @@
   justify-self: center;
 }
 
-.dateCell:hover {
+.dateCell:hover:not(:disabled) {
   background: var(--color-brand-fill);
+}
+
+.dateCell:disabled {
+  color: var(--color-grey-text-weak);
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .dateSelected {

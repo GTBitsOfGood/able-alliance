@@ -19,13 +19,11 @@ type Location = {
 };
 
 const SERVICE_START_TIME = "07:30";
-const FALL_SPRING_SERVICE_END_TIME = "19:45";
-const SUMMER_SERVICE_END_TIME = "15:45";
+const SERVICE_END_TIME = "19:45";
 
-//super tentative until we get concrete dates for each service season
-function isSummerDate(date: Date): boolean {
-  const month = date.getMonth();
-  return month >= 4 && month <= 6;
+function isServiceDay(date: Date): boolean {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
 }
 
 export default function CreateRidePage() {
@@ -248,9 +246,6 @@ export default function CreateRidePage() {
   }, []);
 
   const locationNames = locations.map((l) => l.name);
-  const serviceEndTime = isSummerDate(selectedDate ?? new Date())
-    ? SUMMER_SERVICE_END_TIME
-    : FALL_SPRING_SERVICE_END_TIME;
   const nameToId = locations.reduce(
     (acc, loc) => {
       acc[loc.name] = loc._id;
@@ -316,6 +311,11 @@ export default function CreateRidePage() {
       return;
     }
 
+    if (!isServiceDay(selectedDate)) {
+      setError("Ride dates must be Monday through Friday.");
+      return;
+    }
+
     if (!pickupWindowFromTime || !pickupWindowToTime) {
       setError("Please provide both pickup window start and end times.");
       return;
@@ -328,7 +328,7 @@ export default function CreateRidePage() {
     ];
     if (
       requestedTimes.some(
-        (time) => time < SERVICE_START_TIME || time > serviceEndTime,
+        (time) => time < SERVICE_START_TIME || time > SERVICE_END_TIME,
       )
     ) {
       setError("Pickup time and window must be within service hours.");
@@ -432,6 +432,7 @@ export default function CreateRidePage() {
     );
     const isSelected = selectedDate?.toDateString() === date.toDateString();
     const isToday = new Date().toDateString() === date.toDateString();
+    const isAvailable = isServiceDay(date);
 
     days.push(
       <button
@@ -439,6 +440,8 @@ export default function CreateRidePage() {
         type="button"
         className={`${styles.dateCell} ${isSelected ? styles.dateSelected : ""} ${isToday ? styles.dateToday : ""}`}
         onClick={() => setSelectedDate(date)}
+        disabled={!isAvailable}
+        title={isAvailable ? undefined : "Service is available Monday–Friday"}
       >
         {day}
       </button>,
@@ -575,7 +578,7 @@ export default function CreateRidePage() {
                       value={pickupTime}
                       onChange={setPickupTime}
                       min={SERVICE_START_TIME}
-                      max={serviceEndTime}
+                      max={SERVICE_END_TIME}
                       inputClassName={styles.timeInput}
                       className={styles.timeInputWrapper}
                     />
@@ -604,7 +607,7 @@ export default function CreateRidePage() {
                           value={pickupWindowFromTime}
                           onChange={setPickupWindowFromTime}
                           min={SERVICE_START_TIME}
-                          max={serviceEndTime}
+                          max={SERVICE_END_TIME}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
@@ -624,7 +627,7 @@ export default function CreateRidePage() {
                           value={pickupWindowToTime}
                           onChange={setPickupWindowToTime}
                           min={SERVICE_START_TIME}
-                          max={serviceEndTime}
+                          max={SERVICE_END_TIME}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />

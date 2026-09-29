@@ -35,14 +35,17 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
     student.getByRole("heading", { name: "Create Ride" }),
   ).toBeVisible();
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (tomorrow.getMonth() !== new Date().getMonth()) {
+  const rideDate = new Date();
+  rideDate.setDate(rideDate.getDate() + 1);
+  while (rideDate.getDay() === 0 || rideDate.getDay() === 6) {
+    rideDate.setDate(rideDate.getDate() + 1);
+  }
+  if (rideDate.getMonth() !== new Date().getMonth()) {
     // Calendar header: [prev][month/year][next]; the nav buttons are the only icon buttons.
     await student.locator('button[type="button"]:has(svg)').nth(1).click();
   }
   await student
-    .getByRole("button", { name: String(tomorrow.getDate()), exact: true })
+    .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
 
   const times = student.getByPlaceholder("hh:mm");
