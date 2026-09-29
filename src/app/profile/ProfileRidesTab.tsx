@@ -62,20 +62,43 @@ function fmtDate(iso: string): string {
 function statusChipStyle(status: string): React.CSSProperties {
   switch (status) {
     case "Scheduled":
-      return { background: "#ffd17f", color: "#22070b" };
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-status-yellow-text)",
+      };
     case "En-route":
     case "Pickedup":
-      return { background: "#ffd17f", color: "#22070b" };
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-status-yellow-text)",
+      };
     case "Completed":
-      return { background: "#bbf7d0", color: "#14532d" };
+      return {
+        background: "var(--color-status-green)",
+        color: "var(--color-status-green-text)",
+      };
     case "Requested":
-      return { background: "#a7d0ed", color: "#22070b" };
+      return {
+        background: "var(--color-admin-bg)",
+        color: "var(--color-grey-text-strong)",
+      };
     case "Cancelled by Student":
     case "Cancelled by Admin":
+    case "Delayed":
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-status-yellow-text)",
+      };
     case "Missing":
-      return { background: "#f4a0a0", color: "#22070b" };
+      return {
+        background: "var(--color-status-pink)",
+        color: "var(--color-grey-text-strong)",
+      };
     default:
-      return { background: "#efeded", color: "#22070b" };
+      return {
+        background: "var(--color-status-grey)",
+        color: "var(--color-grey-text-strong)",
+      };
   }
 }
 

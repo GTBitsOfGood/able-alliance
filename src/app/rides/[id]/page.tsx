@@ -174,6 +174,7 @@ export default function RideDetailPage({
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
+  const [delayActionBusy, setDelayActionBusy] = useState(false);
 
   // Extract ID from params
   useEffect(() => {
@@ -633,6 +634,10 @@ export default function RideDetailPage({
     }
   };
 
+  const handleDelayRide = useCallback(async () => {
+    // TODO
+  }, []);
+
   const handleCancelRide = useCallback(async () => {
     if (!routeId) return;
     setCancellingRide(true);
@@ -950,7 +955,7 @@ export default function RideDetailPage({
               <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
                 <span className={styles.stopLabel}>Dropoff</span>
                 <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
-                <span className={styles.stopLocation}>
+                <span className={styles.stopLocationRight}>
                   {dropoffLocationName}
                 </span>
               </div>
@@ -1028,31 +1033,49 @@ export default function RideDetailPage({
 
               {/* En-route: Student picked up + Student no-show */}
               {route.status === "En-route" && (
-                <>
+                <div className={styles.enRouteActions}>
                   <button
                     type="button"
-                    className={styles.greenOutlineButton}
-                    onClick={() => void handlePickupStudent()}
-                    disabled={driverActionBusy}
+                    className={
+                      styles.outlineButton + " " + styles.redOutlineButton
+                    }
+                    onClick={() => void handleDelayRide()}
+                    disabled={delayActionBusy}
                   >
-                    {driverActionBusy ? "Updating…" : "Student picked up"}
+                    {delayActionBusy ? "Delaying..." : "Delay Ride"}
                   </button>
-                  <button
-                    type="button"
-                    className={styles.cancelButton}
-                    onClick={() => void handleMarkMissing()}
-                    disabled={markingMissing}
-                  >
-                    {markingMissing ? "Marking…" : "Student no-show"}
-                  </button>
-                </>
+                  <div className={styles.pickupActions}>
+                    <button
+                      type="button"
+                      className={
+                        styles.outlineButton + " " + styles.greenOutlineButton
+                      }
+                      onClick={() => void handlePickupStudent()}
+                      disabled={driverActionBusy}
+                    >
+                      {driverActionBusy ? "Updating…" : "Student picked up"}
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        styles.outlineButton + " " + styles.redOutlineButton
+                      }
+                      onClick={() => void handleMarkMissing()}
+                      disabled={markingMissing}
+                    >
+                      {markingMissing ? "Marking…" : "Student no-show"}
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* Pickedup: Student dropped off */}
               {route.status === "Pickedup" && (
                 <button
                   type="button"
-                  className={styles.greenOutlineButton}
+                  className={
+                    styles.outlineButton + " " + styles.greenOutlineButton
+                  }
                   onClick={() => void handleDropoffStudent()}
                   disabled={driverActionBusy}
                 >
@@ -1137,7 +1160,9 @@ export default function RideDetailPage({
             <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
               <span className={styles.stopLabel}>Dropoff</span>
               <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
-              <span className={styles.stopLocation}>{dropoffLocationName}</span>
+              <span className={styles.stopLocationRight}>
+                {dropoffLocationName}
+              </span>
             </div>
           </div>
         </div>
