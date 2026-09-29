@@ -271,7 +271,7 @@ export const EmailNotifications = {
     return sendEmail({
       to,
       toName,
-      subject: "Your GT Parasit driver just sent you a message",
+      subject: "Your GT Paratransit driver just sent you a message",
       html,
       text,
     });
