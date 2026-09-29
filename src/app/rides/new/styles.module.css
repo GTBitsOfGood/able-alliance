@@ -303,8 +303,8 @@
 
 .locationCell {
   gap: 1.2rem;
-  background: #f9f9f9;
-  border-color: rgba(34, 7, 11, 0.1);
+  background: var(--color-solid-bg-sunken);
+  border-color: var(--color-grey-stroke-weak);
   border-radius: 0.4rem;
 }
 
@@ -354,6 +354,22 @@
   width: 1.6rem;
   height: 2rem;
   flex-shrink: 0;
+}
+
+.locationIcon {
+  color: var(--color-status-red-text);
+}
+
+.locationIconGreen {
+  color: var(--color-status-green-text);
+}
+
+.locationIconFill {
+  fill: currentColor;
+}
+
+.locationIconCenter {
+  fill: var(--color-solid-bg-base);
 }
 
 .locationSelect option {
@@ -505,10 +521,10 @@
 
 .mapPinLabel {
   padding: 0.45rem 1.1rem;
-  border: 2px solid var(--color-grey-text-strong);
+  border: 0.2rem solid var(--color-grey-text-strong);
   border-radius: 1.6rem;
-  background-color: #416ebc;
-  color: white;
+  background-color: var(--color-map-pin);
+  color: var(--color-solid-bg-base);
   font-weight: 700;
   font-size: 1.1rem;
   font-family: var(--font-paragraph);
@@ -520,14 +536,14 @@
 .mapPinStem {
   width: 0.2rem;
   height: 2.2rem;
-  background-color: var(--pin-accent);
+  background-color: var(--color-map-pin);
 }
 
 .mapPinDot {
   width: 1.4rem;
   height: 1.4rem;
   border-radius: 50%;
-  background-color: var(--pin-accent);
+  background-color: var(--color-map-pin);
   border: 0.2rem solid var(--color-grey-text-strong);
   box-shadow: none;
 }
@@ -546,8 +562,8 @@
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 50%;
-  background: #a7d0ed;
-  border: 0.2rem solid #22070b;
+  background: var(--color-map-location-fill);
+  border: 0.2rem solid var(--color-grey-text-strong);
   box-shadow: none;
 }
 
@@ -556,10 +572,10 @@
   bottom: calc(100% + 0.5rem);
   left: 50%;
   transform: translateX(-50%);
-  background: #183777;
-  color: white;
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
   padding: 0.4rem 0.8rem;
-  border: 1px solid var(--color-grey-text-strong);
+  border: 0.1rem solid var(--color-grey-text-strong);
   border-radius: 1.2rem;
   font-size: 1.1rem;
   font-family: var(--font-paragraph);

@@ -53,9 +53,12 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
   await pickTime(student.locator("#pickup-window-from"), "9:30 AM");
   await pickTime(student.locator("#pickup-window-to"), "10:30 AM");
 
-  const selects = student.locator("select");
-  await selects.nth(0).selectOption({ label: LOCATIONS.exhibitionHall.name });
-  await selects.nth(1).selectOption({ label: LOCATIONS.techSquare.name });
+  await student
+    .getByRole("combobox", { name: "Pickup location" })
+    .selectOption({ label: LOCATIONS.exhibitionHall.name });
+  await student
+    .getByRole("combobox", { name: "Dropoff location" })
+    .selectOption({ label: LOCATIONS.techSquare.name });
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",

@@ -43,6 +43,9 @@ export default function CreateRidePage() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const focusSelectedLocationsRef = useRef<
+    (map: mapboxgl.Map, duration: number) => void
+  >(() => {});
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
   const dotMarkerRefs = useRef<mapboxgl.Marker[]>([]);
 
@@ -146,6 +149,7 @@ export default function CreateRidePage() {
           duration,
         });
       };
+      focusSelectedLocationsRef.current = focusSelectedLocations;
 
       mapboxgl.accessToken = token;
       if (!mapRef.current) {
@@ -156,10 +160,11 @@ export default function CreateRidePage() {
           zoom: defaultZoom,
         });
         mapRef.current.on("load", () => {
-          mapRef.current?.resize();
-          if (mapRef.current) focusSelectedLocations(mapRef.current, 0);
+          if (!mapRef.current) return;
+          mapRef.current.resize();
+          focusSelectedLocationsRef.current(mapRef.current, 0);
         });
-      } else {
+      } else if (mapRef.current.loaded()) {
         focusSelectedLocations(mapRef.current, 700);
       }
 
@@ -170,12 +175,10 @@ export default function CreateRidePage() {
 
       const createCustomPin = (
         labelText: string,
-        color: string,
         extraStemPx = 0,
       ): HTMLDivElement => {
         const root = document.createElement("div");
         root.className = styles.mapPinRoot;
-        root.style.setProperty("--pin-accent", color);
 
         const label = document.createElement("div");
         label.textContent = labelText;
@@ -241,7 +244,7 @@ export default function CreateRidePage() {
 
       if (pickup && pickupLngLat) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, "#416ebc"),
+          element: createCustomPin(`Pickup: ${pickup.name}`),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
@@ -254,7 +257,6 @@ export default function CreateRidePage() {
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
             `Dropoff: ${dropoff.name}`,
-            "#416ebc",
             overlap ? 50 : 0,
           ),
           anchor: "bottom",
@@ -602,9 +604,7 @@ export default function CreateRidePage() {
 
                 {/* Pickup Time Window */}
                 <div className={styles.formGroup}>
-                  <h2 className={styles.formGroupTitle}>
-                    Pickup Time Window (optional)
-                  </h2>
+                  <h2 className={styles.formGroupTitle}>Pickup Time Window</h2>
                   <p className={styles.fieldDescription}>
                     (E.g. 12:15 PM - 12:45 PM)
                   </p>
@@ -700,11 +700,18 @@ export default function CreateRidePage() {
                     >
                       <path
                         d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8Z"
-                        fill="#c73a3a"
+                        className={styles.locationIconFill}
                       />
-                      <circle cx="8" cy="8" r="3" fill="white" />
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="3"
+                        className={styles.locationIconCenter}
+                      />
                     </svg>
                     <select
+                      id="pickup-location"
+                      aria-label="Pickup location"
                       value={pickupLocationName}
                       onChange={(e) => setPickupLocationName(e.target.value)}
                       className={styles.locationSelect}
@@ -742,11 +749,18 @@ export default function CreateRidePage() {
                     >
                       <path
                         d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8Z"
-                        fill="#0a7b40"
+                        className={styles.locationIconFill}
                       />
-                      <circle cx="8" cy="8" r="3" fill="white" />
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="3"
+                        className={styles.locationIconCenter}
+                      />
                     </svg>
                     <select
+                      id="dropoff-location"
+                      aria-label="Dropoff location"
                       value={dropoffLocationName}
                       onChange={(e) => setDropoffLocationName(e.target.value)}
                       className={styles.locationSelect}
