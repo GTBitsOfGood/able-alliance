@@ -301,6 +301,13 @@
   height: 3.2rem;
 }
 
+.locationCell {
+  gap: 1.2rem;
+  background: #f9f9f9;
+  border-color: rgba(34, 7, 11, 0.1);
+  border-radius: 0.4rem;
+}
+
 .timeInput,
 .locationSelect {
   flex: 1;
@@ -344,8 +351,8 @@
 
 .locationIcon,
 .locationIconGreen {
-  width: 1.2rem;
-  height: 1.6rem;
+  width: 1.6rem;
+  height: 2rem;
   flex-shrink: 0;
 }
 
@@ -497,31 +504,32 @@
 }
 
 .mapPinLabel {
-  padding: 0.55rem 1.1rem;
-  border-radius: 0.6rem;
-  background-color: var(--pin-color);
+  padding: 0.45rem 1.1rem;
+  border: 2px solid var(--color-grey-text-strong);
+  border-radius: 1.6rem;
+  background-color: #416ebc;
   color: white;
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-family: var(--font-paragraph);
-  line-height: 1.4;
+  line-height: 1.4rem;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 .mapPinStem {
-  width: 0.25rem;
+  width: 0.2rem;
   height: 2.2rem;
-  background-color: var(--pin-color);
+  background-color: var(--pin-accent);
 }
 
 .mapPinDot {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.4rem;
+  height: 1.4rem;
   border-radius: 50%;
-  background-color: var(--pin-color);
-  border: 0.25rem solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background-color: var(--pin-accent);
+  border: 0.2rem solid var(--color-grey-text-strong);
+  box-shadow: none;
 }
 
 /* Location dot markers (all available locations) */
@@ -535,12 +543,12 @@
 }
 
 .mapLocationDot {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: 50%;
-  background: #2563eb;
-  border: 0.2rem solid white;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  background: #a7d0ed;
+  border: 0.2rem solid #22070b;
+  box-shadow: none;
 }
 
 .mapDotTooltip {
@@ -551,7 +559,8 @@
   background: #183777;
   color: white;
   padding: 0.4rem 0.8rem;
-  border-radius: 0.4rem;
+  border: 1px solid var(--color-grey-text-strong);
+  border-radius: 1.2rem;
   font-size: 1.1rem;
   font-family: var(--font-paragraph);
   font-weight: 600;

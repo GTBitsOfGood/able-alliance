@@ -57,7 +57,7 @@ export default function CreateRidePage() {
       try {
         const res = await fetch("/api/locations");
         if (!res.ok) throw new Error("Failed to fetch locations");
-        const data = await res.json();
+        const data = (await res.json()) as Location[];
         setLocations(data);
 
         if (data.length > 0) {
@@ -111,6 +111,42 @@ export default function CreateRidePage() {
         return defaultCenter;
       };
 
+      const focusSelectedLocations = (map: mapboxgl.Map, duration: number) => {
+        if (pickup && dropoff) {
+          const pickupCoordinates: [number, number] = [
+            pickup.longitude,
+            pickup.latitude,
+          ];
+          const dropoffCoordinates: [number, number] = [
+            dropoff.longitude,
+            dropoff.latitude,
+          ];
+          const sameLocation =
+            Math.abs(pickup.longitude - dropoff.longitude) < 0.0003 &&
+            Math.abs(pickup.latitude - dropoff.latitude) < 0.0003;
+
+          if (!sameLocation) {
+            const bounds = new mapboxgl.LngLatBounds(
+              pickupCoordinates,
+              pickupCoordinates,
+            );
+            bounds.extend(dropoffCoordinates);
+            map.fitBounds(bounds, {
+              padding: 64,
+              maxZoom: defaultZoom,
+              duration,
+            });
+            return;
+          }
+        }
+
+        map.flyTo({
+          center: center(),
+          zoom: defaultZoom,
+          duration,
+        });
+      };
+
       mapboxgl.accessToken = token;
       if (!mapRef.current) {
         mapRef.current = new mapboxgl.Map({
@@ -119,9 +155,12 @@ export default function CreateRidePage() {
           center: center(),
           zoom: defaultZoom,
         });
-        mapRef.current.on("load", () => mapRef.current?.resize());
+        mapRef.current.on("load", () => {
+          mapRef.current?.resize();
+          if (mapRef.current) focusSelectedLocations(mapRef.current, 0);
+        });
       } else {
-        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
+        focusSelectedLocations(mapRef.current, 700);
       }
 
       markerRefs.current.forEach((marker) => marker.remove());
@@ -136,7 +175,7 @@ export default function CreateRidePage() {
       ): HTMLDivElement => {
         const root = document.createElement("div");
         root.className = styles.mapPinRoot;
-        root.style.setProperty("--pin-color", color);
+        root.style.setProperty("--pin-accent", color);
 
         const label = document.createElement("div");
         label.textContent = labelText;
@@ -173,7 +212,6 @@ export default function CreateRidePage() {
         return wrapper;
       };
 
-      const pinColor = "#183777";
       const pickupLngLat: [number, number] | null = pickup
         ? [pickup.longitude, pickup.latitude]
         : null;
@@ -186,7 +224,7 @@ export default function CreateRidePage() {
         Math.abs(pickupLngLat[0] - dropoffLngLat[0]) < 0.0003 &&
         Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
 
-      // Add blue dot markers for all non-selected locations
+      // Add a dot for every non-selected campus location.
       for (const loc of locations) {
         const isPickup = loc.name === pickupLocationName;
         const isDropoff = loc.name === dropoffLocationName;
@@ -203,7 +241,7 @@ export default function CreateRidePage() {
 
       if (pickup && pickupLngLat) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
+          element: createCustomPin(`Pickup: ${pickup.name}`, "#416ebc"),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
@@ -216,7 +254,7 @@ export default function CreateRidePage() {
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
             `Dropoff: ${dropoff.name}`,
-            pinColor,
+            "#416ebc",
             overlap ? 50 : 0,
           ),
           anchor: "bottom",
@@ -649,7 +687,7 @@ export default function CreateRidePage() {
                   <h2 className={styles.formGroupTitle}>Pickup Location</h2>
                   <p className={styles.fieldDescription}>
                     Type or locate on the map the{" "}
-                    <strong>on campus location</strong> {" "}that you&apos;d like to
+                    <strong>on campus location</strong> that you&apos;d like to
                     be picked up at.
                   </p>
                   <div className={styles.locationCell}>
@@ -661,9 +699,10 @@ export default function CreateRidePage() {
                       className={styles.locationIcon}
                     >
                       <path
-                        d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
-                        fill="#325CE8"
+                        d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8Z"
+                        fill="#c73a3a"
                       />
+                      <circle cx="8" cy="8" r="3" fill="white" />
                     </svg>
                     <select
                       value={pickupLocationName}
@@ -690,7 +729,7 @@ export default function CreateRidePage() {
                   <h2 className={styles.formGroupTitle}>Dropoff Location</h2>
                   <p className={styles.fieldDescription}>
                     Type or locate on the map the{" "}
-                    <strong>on campus location</strong> {" "}that you&apos;d like to
+                    <strong>on campus location</strong> that you&apos;d like to
                     be dropped off at.
                   </p>
                   <div className={styles.locationCell}>
@@ -702,9 +741,10 @@ export default function CreateRidePage() {
                       className={styles.locationIconGreen}
                     >
                       <path
-                        d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
-                        fill="#3aaa5c"
+                        d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8Z"
+                        fill="#0a7b40"
                       />
+                      <circle cx="8" cy="8" r="3" fill="white" />
                     </svg>
                     <select
                       value={dropoffLocationName}
