@@ -7,7 +7,7 @@
  *   driver   /rides              Tomorrow tab shows it
  *   student  /rides/:id          scheduled driver/vehicle
  *
- * Stops at Scheduled — the full lifecycle lives in ride.ui.spec.ts.
+ * Stops at Scheduled — the full lifecycle lives in routeB.ui.spec.ts.
  */
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";

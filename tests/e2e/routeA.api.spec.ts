@@ -3,7 +3,7 @@
  * student / admin / driver lists agree on status and assignment.
  *
  * Stops at Scheduled — the full lifecycle (start → pickup → dropoff) lives
- * in ride.api.spec.ts.
+ * in routeB.api.spec.ts.
  */
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
@@ -38,7 +38,7 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   const admin = await apiAs("admin");
   const driver = await apiAs("driver");
 
-  // Distinct locations/time from ride.api.spec.ts so parallel runs don't collide.
+  // Distinct locations/time from routeB.api.spec.ts so parallel runs don't collide.
   const pickup = new Date(Date.now() + 30 * HOUR);
   const create = await student.post("/api/routes", {
     data: {

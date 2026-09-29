@@ -1,7 +1,7 @@
 /**
- * The same ride flow, through the pages. Sessions are minted, so CAS is not
- * involved. Red here + green in ride.api.spec.ts = frontend problem; the
- * "diagnostics" attachment on the failed test says which request or error.
+ * Route B through the pages. Sessions are minted, so CAS is not involved.
+ * Red here + green in routeB.api.spec.ts = frontend problem; the "diagnostics"
+ * attachment on the failed test says which request or error.
  *
  *   student  /rides/new          fills the form            Requested
  *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
@@ -21,7 +21,7 @@ async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
   await expect(input).toHaveValue(label);
 }
 
-test("ride: request → schedule → start → pickup → dropoff (UI)", async ({
+test("route B: driver start → pickup → dropoff (UI)", async ({
   pageAs,
   diag,
 }) => {
@@ -103,10 +103,22 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
 
   await driver.getByRole("button", { name: "Start ride" }).click();
   await expect(chip).toHaveText("En-route");
+  await expect(
+    driver.getByRole("button", { name: "Student picked up" }),
+  ).toBeVisible();
+  await expect(
+    driver.getByRole("button", { name: "Student no-show" }),
+  ).toBeVisible();
   await driver.getByRole("button", { name: "Student picked up" }).click();
   await expect(chip).toHaveText("Pickedup");
+  await expect(
+    driver.getByRole("button", { name: "Student dropped off" }),
+  ).toBeVisible();
   await driver.getByRole("button", { name: "Student dropped off" }).click();
   await expect(chip).toHaveText("Completed");
+  await expect(
+    driver.getByRole("button", { name: "Student dropped off" }),
+  ).toBeHidden();
 
   // ── Student sees the result ────────────────────────────────────────────
   await student.goto(`/rides/${routeId}`);
