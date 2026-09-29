@@ -18,7 +18,8 @@
     "test:e2e": "playwright test",
     "test:e2e:api": "playwright test --project=api",
     "test:e2e:ui": "playwright test --project=ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "email:dev": "email dev"
   },
   "dependencies": {
     "@netlify/functions": "^6.0.0",
@@ -41,6 +42,7 @@
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-email": "6.11.0",
     "react-use": "^17.6.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
@@ -49,6 +51,7 @@
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.9",
     "@playwright/test": "^1.63.0",
+    "@react-email/ui": "6.11.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",

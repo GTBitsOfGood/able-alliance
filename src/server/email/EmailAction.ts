@@ -1,5 +1,10 @@
 import { EmailFailedToSendException } from "@/utils/exceptions/email";
 import { junoEmailClient } from "@/server/juno/init";
+import {
+  renderNewMessageFromDriverEmail,
+  renderRideDelayedEmail,
+  renderRideConfirmationEmail,
+} from "./RenderTemplate";
 
 /**
  * Send a transactional email via Juno
@@ -160,6 +165,115 @@ export const EmailNotifications = {
         <p><strong>Ride ID:</strong> ${rideDetails.rideId}</p>
         <p>We hope to see you again soon!</p>
       `,
+    });
+  },
+
+  rideConfirmed: async (
+    to: string,
+    toName: string,
+    rideDetails: {
+      dropoffTime: string;
+      pickupTime: string;
+      pickupLocation: string;
+      destination: string;
+      date: string;
+      time: string;
+    },
+    driverDetails?: {
+      name: string;
+      vehicleId: string;
+      licensePlate: string;
+      description: string;
+    },
+  ) => {
+    const { html, text } = await renderRideConfirmationEmail({
+      date: rideDetails.date,
+      pickupLocation: rideDetails.pickupLocation,
+      destination: rideDetails.destination,
+      dropoffTime: rideDetails.dropoffTime,
+      pickupTime: rideDetails.pickupTime,
+      driverDetails: driverDetails,
+      name: toName,
+    });
+
+    return sendEmail({
+      to,
+      toName,
+      subject: `Ride confirmed for ${rideDetails.date}`,
+      html,
+      text,
+    });
+  },
+
+  rideDelayed: async (
+    to: string,
+    toName: string,
+    rideDetails: {
+      oldDropoffTime: string;
+      newDropoffTime: string;
+      oldPickupTime: string;
+      newPickupTime: string;
+      pickupLocation: string;
+      destination: string;
+      date: string;
+      delay: string;
+      driverDetails?: {
+        name: string;
+        vehicleId: string;
+        licensePlate: string;
+        description: string;
+      };
+    },
+  ) => {
+    const { html, text } = await renderRideDelayedEmail({
+      oldDropoffTime: rideDetails.oldDropoffTime,
+      newDropoffTime: rideDetails.newDropoffTime,
+      oldPickupTime: rideDetails.oldPickupTime,
+      newPickupTime: rideDetails.newPickupTime,
+      pickupLocation: rideDetails.pickupLocation,
+      destination: rideDetails.destination,
+      date: rideDetails.date,
+      delay: rideDetails.delay,
+      driverDetails: rideDetails.driverDetails,
+      name: toName,
+    });
+
+    return sendEmail({
+      to,
+      toName,
+      subject: `Ride delayed for ${rideDetails.date}`,
+      html,
+      text,
+    });
+  },
+
+  newMessageFromDriver: async (
+    to: string,
+    toName: string,
+    rideDetails: {
+      dropoffTime: string;
+      pickupTime: string;
+      pickupLocation: string;
+      destination: string;
+      date: string;
+      messages: string[];
+    },
+  ) => {
+    const { html, text } = await renderNewMessageFromDriverEmail({
+      dropoffTime: rideDetails.dropoffTime,
+      pickupTime: rideDetails.pickupTime,
+      pickupLocation: rideDetails.pickupLocation,
+      destination: rideDetails.destination,
+      date: rideDetails.date,
+      messages: rideDetails.messages,
+    });
+
+    return sendEmail({
+      to,
+      toName,
+      subject: "Your GT Parasit driver just sent you a message",
+      html,
+      text,
     });
   },
 
