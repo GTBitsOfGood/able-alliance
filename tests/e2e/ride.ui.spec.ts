@@ -32,7 +32,7 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
   // ── Student requests a ride ────────────────────────────────────────────
   await student.goto("/rides/new");
   await expect(
-    student.getByRole("heading", { name: "Create Ride" }),
+    student.getByRole("heading", { name: "Request Ride" }),
   ).toBeVisible();
 
   const rideDate = new Date();

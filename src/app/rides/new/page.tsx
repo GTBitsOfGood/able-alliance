@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { fromZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./styles.module.css";
 
@@ -472,37 +471,19 @@ export default function CreateRidePage() {
       )}
       <main className={styles.main}>
         <Link href="/rides" className={styles.backButton}>
-          ← Back to Rides
+          ← Back to rides
         </Link>
 
-        <h1 className={styles.pageTitle}>Create Ride</h1>
+        <h1 className={styles.pageTitle}>Request Ride</h1>
 
         <div className={styles.rideDetailsSection}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Ride Details</h2>
-            <p className={styles.sectionDescription}>
-              Please enter your desired ride information accordingly.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className={styles.rideForm}>
             <div className={styles.rideDetailsOutline}>
               {/* Left Column */}
               <div className={styles.leftColumn}>
                 {/* Ride Date */}
                 <div className={styles.formGroup}>
-                  <div className={styles.formGroupHeader}>
-                    <h3 className={styles.formGroupTitle}>
-                      Ride Date<span className={styles.required}>*</span>
-                    </h3>
-                    <Image
-                      src="/calendar.svg"
-                      alt="Calendar"
-                      width={32}
-                      height={32}
-                      className={styles.calendarIcon}
-                    />
-                  </div>
+                  <h2 className={styles.formGroupTitle}>Ride Date</h2>
                   <div className={styles.datePicker}>
                     <div className={styles.calendarHeader}>
                       <button
@@ -560,18 +541,14 @@ export default function CreateRidePage() {
                       </div>
                       <div className={styles.datesGrid}>{days}</div>
                     </div>
-                    <p className={styles.calendarHint}>Pick a day.</p>
                   </div>
                 </div>
 
                 {/* Pickup Time */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Pickup Time<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Pickup Time</h2>
                   <p className={styles.fieldDescription}>
-                    Please enter the exact time that you&apos;d like to be
-                    picked up.
+                    Enter the exact time that you&apos;d like to be picked up.
                   </p>
                   <div className={styles.timeCell}>
                     <TimeInput
@@ -587,9 +564,9 @@ export default function CreateRidePage() {
 
                 {/* Pickup Time Window */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Pickup Time Window<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>
+                    Pickup Time Window (optional)
+                  </h2>
                   <p className={styles.fieldDescription}>
                     (E.g. 12:15 PM - 12:45 PM)
                   </p>
@@ -613,7 +590,6 @@ export default function CreateRidePage() {
                         />
                       </div>
                     </div>
-                    <span className={styles.pickupWindowArrow}>→</span>
                     <div className={styles.pickupWindowField}>
                       <label
                         className={styles.pickupWindowLabel}
@@ -635,6 +611,29 @@ export default function CreateRidePage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Recurring rides - TBD on implementation */}
+                <div
+                  className={styles.recurringRide}
+                  title="Recurring rides are coming soon"
+                >
+                  <label className={styles.recurringRideLabel}>
+                    <input
+                      type="checkbox"
+                      className={styles.recurringRideCheckbox}
+                      disabled
+                    />
+                    Recurring ride
+                  </label>
+                  <select
+                    className={styles.recurringRideSelect}
+                    defaultValue="weekly"
+                    disabled
+                    aria-label="Recurring ride frequency"
+                  >
+                    <option value="weekly">Every Week</option>
+                  </select>
+                </div>
               </div>
 
               {/* Column Divider */}
@@ -647,12 +646,10 @@ export default function CreateRidePage() {
 
                 {/* Pickup Location */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Pickup Location<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Pickup Location</h2>
                   <p className={styles.fieldDescription}>
-                    Please type or locate on the above map the{" "}
-                    <strong>on campus location</strong> that you&apos;d like to
+                    Type or locate on the map the{" "}
+                    <strong>on campus location</strong> {" "}that you&apos;d like to
                     be picked up at.
                   </p>
                   <div className={styles.locationCell}>
@@ -690,12 +687,10 @@ export default function CreateRidePage() {
 
                 {/* Dropoff Location */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Dropoff Location<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Dropoff Location</h2>
                   <p className={styles.fieldDescription}>
-                    Please type or locate on the above map the{" "}
-                    <strong>on campus location</strong> that you&apos;d like to
+                    Type or locate on the map the{" "}
+                    <strong>on campus location</strong> {" "}that you&apos;d like to
                     be dropped off at.
                   </p>
                   <div className={styles.locationCell}>
@@ -732,13 +727,18 @@ export default function CreateRidePage() {
                 </div>
 
                 {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className={styles.submitButton}
-                >
-                  {submitting ? "Submitting..." : "Submit"}
-                </button>
+                <div className={styles.submitRow}>
+                  {/* On hold until recurring rides functionality <p className={styles.requestSummary}>
+                    You are requesting 1 ride(s).
+                  </p> */}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className={styles.submitButton}
+                  >
+                    {submitting ? "Submitting..." : "Submit"}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
