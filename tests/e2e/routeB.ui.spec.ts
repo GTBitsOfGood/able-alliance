@@ -69,7 +69,8 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   const row = admin
     .getByRole("row")
     .filter({ hasText: PERSONAS.student.lastName })
-    .filter({ hasText: LOCATIONS.exhibitionHall.name });
+    .filter({ hasText: LOCATIONS.exhibitionHall.name })
+    .filter({ hasText: LOCATIONS.techSquare.name });
   await expect(row).toHaveCount(1);
 
   await row.getByText("Select driver").click();
