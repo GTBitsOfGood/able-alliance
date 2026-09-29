@@ -1,7 +1,7 @@
 import { render, toPlainText } from "react-email";
-import NewMessageFromDriverEmail from "../../../emails/NewMessageFromDriver.js";
-import RideConfirmationEmail from "../../../emails/RideConfirmed.js";
-import RideDelayedEmail from "../../../emails/RideDelayed.js";
+import NewMessageFromDriverEmail from "../../../emails/NewMessageFromDriver";
+import RideConfirmationEmail from "../../../emails/RideConfirmed";
+import RideDelayedEmail from "../../../emails/RideDelayed";
 
 export async function renderNewMessageFromDriverEmail(props: {
   dropoffTime: string;
