@@ -230,6 +230,13 @@ export async function POST(request: NextRequest) {
       console.error("[POST /api/routes]", e.message);
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
+    if (e instanceof SyntaxError || e instanceof TypeError) {
+      console.error("[POST /api/routes] Malformed request body:", e);
+      return NextResponse.json(
+        { error: "Malformed request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
     console.error("[POST /api/routes] Unexpected error:", e);
     const payload = internalErrorPayload(e);
     return NextResponse.json(payload, {
