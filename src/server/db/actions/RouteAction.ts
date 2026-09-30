@@ -17,12 +17,9 @@ import {
   formatEstDate,
   formatEstTime,
 } from "@/utils/dateEst";
-<<<<<<< HEAD
-import { EmailNotifications } from "@/server/email/EmailAction";
+import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
 
-// Runs an email send alongside the toast emit rather than before it, so a
-// slow/failing email provider can't delay real-time toast delivery.
 async function sendEmailSafely(label: string, send: () => Promise<void>) {
   try {
     await send();
@@ -31,17 +28,11 @@ async function sendEmailSafely(label: string, send: () => Promise<void>) {
   }
 }
 
-// Fires email + toast without blocking the caller. Both already swallow
-// their own errors (sendEmailSafely, emitToast) — this must never make the
-// route-status API response wait on a slow/broken notification provider.
 function dispatchNotifications(tasks: Promise<void>[]) {
   Promise.all(tasks).catch((error) => {
     console.error("Notification dispatch failed", error);
   });
 }
-=======
-import { EmailClient } from "@/server/email/EmailClient";
->>>>>>> main
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -187,10 +178,9 @@ export async function completeRoute(routeId: string) {
       }
     ).settings?.notifications?.rideCompleted
   ) {
-<<<<<<< HEAD
     dispatchNotifications([
       sendEmailSafely("rideCompleted", () =>
-        EmailNotifications.rideCompleted(
+        EmailClient.rideCompleted(
           studentUser.email,
           studentUser.preferredName ??
             `${studentUser.firstName} ${studentUser.lastName}`,
@@ -204,16 +194,6 @@ export async function completeRoute(routeId: string) {
         message: "Your ride has been completed. Thank you for riding with us!",
       }),
     ]);
-=======
-    await EmailClient.rideCompleted(
-      studentUser.email,
-      studentUser.preferredName ??
-        `${studentUser.firstName} ${studentUser.lastName}`,
-      {
-        rideId: route._id.toString(),
-      },
-    );
->>>>>>> main
   }
 
   await archiveChatlogForRoute(routeId);
@@ -242,10 +222,9 @@ export async function cancelRoute(routeId: string, status?: string) {
       }
     ).settings?.notifications?.rideCancelled
   ) {
-<<<<<<< HEAD
     dispatchNotifications([
       sendEmailSafely("rideCancelled", () =>
-        EmailNotifications.rideCancelled(
+        EmailClient.rideCancelled(
           studentUser.email,
           studentUser.preferredName ??
             `${studentUser.firstName} ${studentUser.lastName}`,
@@ -260,14 +239,6 @@ export async function cancelRoute(routeId: string, status?: string) {
         message: "Your ride has been cancelled.",
       }),
     ]);
-=======
-    await EmailClient.rideCancelled(
-      studentUser.email,
-      studentUser.preferredName ??
-        `${studentUser.firstName} ${studentUser.lastName}`,
-      { rideId: route._id.toString(), reason: `Ride status: ${route.status}` },
-    );
->>>>>>> main
   }
 
   if (route.driver?._id) {
@@ -280,10 +251,9 @@ export async function cancelRoute(routeId: string, status?: string) {
         }
       ).settings?.notifications?.rideCancelled
     ) {
-<<<<<<< HEAD
       dispatchNotifications([
         sendEmailSafely("rideCancelled", () =>
-          EmailNotifications.rideCancelled(
+          EmailClient.rideCancelled(
             driverUser.email,
             driverUser.preferredName ??
               `${driverUser.firstName} ${driverUser.lastName}`,
@@ -298,17 +268,6 @@ export async function cancelRoute(routeId: string, status?: string) {
           message: "Your ride has been cancelled.",
         }),
       ]);
-=======
-      await EmailClient.rideCancelled(
-        driverUser.email,
-        driverUser.preferredName ??
-          `${driverUser.firstName} ${driverUser.lastName}`,
-        {
-          rideId: route._id.toString(),
-          reason: `Ride status: ${route.status}`,
-        },
-      );
->>>>>>> main
     }
   }
 
@@ -335,10 +294,9 @@ export async function startRoute(routeId: string) {
       }
     ).settings?.notifications?.driverEnRoute
   ) {
-<<<<<<< HEAD
     dispatchNotifications([
       sendEmailSafely("driverEnRoute", () =>
-        EmailNotifications.driverEnRoute(
+        EmailClient.driverEnRoute(
           studentUser.email,
           studentUser.preferredName ??
             `${studentUser.firstName} ${studentUser.lastName}`,
@@ -356,20 +314,6 @@ export async function startRoute(routeId: string) {
         message: "Your driver is on the way!",
       }),
     ]);
-=======
-    await EmailClient.driverEnRoute(
-      studentUser.email,
-      studentUser.preferredName ??
-        `${studentUser.firstName} ${studentUser.lastName}`,
-      {
-        name: route.driver
-          ? `${route.driver.firstName} ${route.driver.lastName}`
-          : "Driver",
-        eta: formatEstTime(route.scheduledPickupTime),
-        vehicle: route.vehicle?.licensePlate ?? "Assigned vehicle",
-      },
-    );
->>>>>>> main
   }
 
   return route.toObject();
@@ -474,67 +418,6 @@ export async function scheduleRoute(
   route.status = RouteStatus.Scheduled;
   await route.save();
 
-<<<<<<< HEAD
-  const studentUser = await UserModel.findById(route.student._id).lean();
-  if (
-    studentUser &&
-    (
-      studentUser as {
-        settings?: { notifications?: { driverAssigned?: boolean } };
-      }
-    ).settings?.notifications?.driverAssigned
-  ) {
-    dispatchNotifications([
-      sendEmailSafely("driverAssigned", () =>
-        EmailNotifications.driverAssigned(
-          studentUser.email,
-          studentUser.preferredName ??
-            `${studentUser.firstName} ${studentUser.lastName}`,
-          {
-            name: `${driver.firstName} ${driver.lastName}`,
-            vehicle: vehicle.licensePlate,
-          },
-        ),
-      ),
-      emitToast(studentUser._id.toString(), {
-        type: "success",
-        message: `Your driver ${driver.firstName} ${driver.lastName} has been assigned.`,
-      }),
-    ]);
-  }
-
-  if (
-    driver &&
-    (driver as { settings?: { notifications?: { rideAssigned?: boolean } } })
-      .settings?.notifications?.rideAssigned
-  ) {
-    dispatchNotifications([
-      sendEmailSafely("rideAssigned", () =>
-        EmailNotifications.rideAssigned(
-          driver.email,
-          driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
-          {
-            rideId: route._id.toString(),
-            pickup: route.pickupLocation.toString(),
-            dropoff: route.dropoffLocation.toString(),
-            time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
-          },
-        ),
-      ),
-      emitToast(driver._id.toString(), {
-        type: "info",
-        message: "You have been assigned a new ride.",
-      }),
-    ]);
-  }
-
-  // Upsert (not create) so this is safe even if a chat record already
-  // exists for this route; the unique index on routeId means a genuine
-  // race between two concurrent schedule calls can still surface as a
-  // duplicate-key error on the losing side, which is expected, not a bug.
-=======
-  // upsert in case of race conditions, if already created then no worries
->>>>>>> main
   try {
     await Chatlog.findOneAndUpdate(
       { routeId: route._id },
@@ -556,22 +439,23 @@ export async function scheduleRoute(
     }
   }
 
-  await Promise.all([
-    EmailClient.rideConfirmed(route._id.toString()).catch((error) => {
-      console.error(
-        `Ride confirmation email failed for route ${route._id}:`,
-        error,
-      );
-    }),
-    (async () => {
-      if (
-        (
-          driver as {
-            settings?: { notifications?: { rideAssigned?: boolean } };
-          }
-        ).settings?.notifications?.rideAssigned
-      ) {
-        await EmailClient.rideAssigned(
+  const studentUser = await UserModel.findById(route.student._id).lean();
+  if (studentUser?.settings?.notifications?.driverAssigned) {
+    dispatchNotifications([
+      sendEmailSafely("rideConfirmed", () =>
+        EmailClient.rideConfirmed(route._id.toString()),
+      ),
+      emitToast(studentUser._id.toString(), {
+        type: "success",
+        message: `Your driver ${driver.firstName} ${driver.lastName} has been assigned.`,
+      }),
+    ]);
+  }
+
+  if (driver.settings?.notifications?.rideAssigned) {
+    dispatchNotifications([
+      sendEmailSafely("rideAssigned", () =>
+        EmailClient.rideAssigned(
           driver.email,
           driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
           {
@@ -580,15 +464,14 @@ export async function scheduleRoute(
             dropoff: route.dropoffLocation.toString(),
             time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
           },
-        );
-      }
-    })().catch((error) => {
-      console.error(
-        `Driver assignment email failed for route ${route._id}:`,
-        error,
-      );
-    }),
-  ]);
+        ),
+      ),
+      emitToast(driver._id.toString(), {
+        type: "info",
+        message: "You have been assigned a new ride.",
+      }),
+    ]);
+  }
 
   return route.toObject();
 }
