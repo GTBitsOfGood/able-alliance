@@ -1,19 +1,18 @@
+import mongoose from "mongoose";
+import connectMongoDB from "@/server/db/mongodb";
+import RouteModel from "@/server/db/models/RouteModel";
+import LocationModel from "@/server/db/models/LocationModel";
+import UserModel from "@/server/db/models/UserModel";
+import Chatlog from "@/server/db/models/ChatlogModel";
+import { formatEstDate, formatEstTime } from "@/utils/dateEst";
 import { EmailFailedToSendException } from "@/utils/exceptions/email";
 import { junoEmailClient } from "@/server/juno/init";
-import {
-  renderNewMessageFromDriverEmail,
-  renderRideDelayedEmail,
-  renderRideConfirmationEmail,
-} from "./RenderTemplate";
+import { render, toPlainText } from "react-email";
+import type { ComponentProps } from "react";
+import NewMessageFromDriverEmail from "../../../emails/NewMessageFromDriver";
+import RideConfirmationEmail from "../../../emails/RideConfirmed";
+import RideDelayedEmail from "../../../emails/RideDelayed";
 
-/**
- * Send a transactional email via Juno
- * @param to - Recipient email address
- * @param toName - Recipient name (optional)
- * @param subject - Email subject
- * @param html - HTML email content (optional)
- * @param text - Plain text email content (optional)
- */
 export async function sendEmail({
   to,
   toName,
@@ -69,27 +68,7 @@ export async function sendEmail({
   }
 }
 
-/**
- * Template helper functions for common email types
- */
-export const EmailNotifications = {
-  driverAssigned: (
-    to: string,
-    toName: string,
-    driverDetails: { name: string; vehicle: string },
-  ) => {
-    return sendEmail({
-      to,
-      toName,
-      subject: "Driver Assigned",
-      html: `
-        <h1>Your Driver Has Been Assigned</h1>
-        <p><strong>Driver:</strong> ${driverDetails.name}</p>
-        <p><strong>Vehicle:</strong> ${driverDetails.vehicle}</p>
-      `,
-    });
-  },
-
+export const EmailClient = {
   rideCancelled: (
     to: string,
     toName: string,
@@ -168,128 +147,68 @@ export const EmailNotifications = {
     });
   },
 
-  rideConfirmed: async (
-    to: string,
-    toName: string,
-    rideDetails: {
-      dropoffTime: string;
-      pickupTime: string;
-      pickupLocation: string;
-      destination: string;
-      date: string;
-      time: string;
-      driverDetails?: {
-        name: string;
-        vehicleId: string;
-        licensePlate: string;
-        description: string;
-      };
-    },
-    rideUrl: string,
-    mapImgUrl?: string,
-    chatUrl?: string,
-  ) => {
-    const { html, text } = await renderRideConfirmationEmail({
-      date: rideDetails.date,
-      pickupLocation: rideDetails.pickupLocation,
-      destination: rideDetails.destination,
-      dropoffTime: rideDetails.dropoffTime,
-      pickupTime: rideDetails.pickupTime,
-      driverDetails: rideDetails.driverDetails,
-      name: toName,
-      rideUrl: rideUrl,
-      mapImgUrl: mapImgUrl,
-      chatUrl: chatUrl,
-    });
-
+  rideConfirmed: async (routeId: string) => {
+    const context = await getRideEmailContext(routeId, "driverAssigned");
+    if (!context) return;
+    const { to, props } = context;
+    const html = await render(<RideConfirmationEmail {...props} />);
     return sendEmail({
       to,
-      toName,
-      subject: `Ride confirmed for ${rideDetails.date}`,
+      toName: props.name,
+      subject: `Ride confirmed for ${props.date}`,
       html,
-      text,
+      text: toPlainText(html),
     });
   },
 
   rideDelayed: async (
-    to: string,
-    toName: string,
-    rideDetails: {
-      oldDropoffTime: string;
-      newDropoffTime: string;
-      oldPickupTime: string;
-      newPickupTime: string;
-      pickupLocation: string;
-      destination: string;
-      date: string;
-      delay: string;
-      driverDetails?: {
-        name: string;
-        vehicleId: string;
-        licensePlate: string;
-        description: string;
-      };
-    },
-    rideUrl: string,
-    mapImgUrl?: string,
-    chatUrl?: string,
+    routeId: string,
+    delay: Pick<
+      ComponentProps<typeof RideDelayedEmail>,
+      | "oldDropoffTime"
+      | "newDropoffTime"
+      | "oldPickupTime"
+      | "newPickupTime"
+      | "delay"
+    >,
   ) => {
-    const { html, text } = await renderRideDelayedEmail({
-      oldDropoffTime: rideDetails.oldDropoffTime,
-      newDropoffTime: rideDetails.newDropoffTime,
-      oldPickupTime: rideDetails.oldPickupTime,
-      newPickupTime: rideDetails.newPickupTime,
-      pickupLocation: rideDetails.pickupLocation,
-      destination: rideDetails.destination,
-      date: rideDetails.date,
-      delay: rideDetails.delay,
-      driverDetails: rideDetails.driverDetails,
-      name: toName,
-      rideUrl: rideUrl,
-      mapImgUrl: mapImgUrl,
-      chatUrl: chatUrl,
-    });
-
+    const context = await getRideEmailContext(routeId, "rideDelayed");
+    if (!context) return;
+    const { to, props } = context;
+    const html = await render(<RideDelayedEmail {...props} {...delay} />);
     return sendEmail({
       to,
-      toName,
-      subject: `Ride delayed for ${rideDetails.date}`,
+      toName: props.name,
+      subject: `Ride delayed for ${props.date}`,
       html,
-      text,
+      text: toPlainText(html),
     });
   },
 
-  newMessageFromDriver: async (
-    to: string,
-    toName: string,
-    rideDetails: {
-      dropoffTime: string;
-      pickupTime: string;
-      pickupLocation: string;
-      destination: string;
-      date: string;
-      messages: string[];
-    },
-    rideUrl: string,
-    chatUrl: string,
-  ) => {
-    const { html, text } = await renderNewMessageFromDriverEmail({
-      dropoffTime: rideDetails.dropoffTime,
-      pickupTime: rideDetails.pickupTime,
-      pickupLocation: rideDetails.pickupLocation,
-      destination: rideDetails.destination,
-      date: rideDetails.date,
-      messages: rideDetails.messages,
-      rideUrl: rideUrl,
-      chatUrl: chatUrl,
-    });
+  newMessageFromDriver: async (routeId: string, messageId: string) => {
+    const context = await getRideEmailContext(routeId, "newMessageFromDriver");
+    if (!context) return;
+    const chat = await Chatlog.findOne(
+      { routeId, "messages._id": new mongoose.Types.ObjectId(messageId) },
+      {
+        messages: {
+          $elemMatch: { _id: new mongoose.Types.ObjectId(messageId) },
+        },
+      },
+    ).lean();
+    const message = chat?.messages[0];
+    if (!message || message.senderType !== "driver") return;
 
+    const { to, props } = context;
+    const html = await render(
+      <NewMessageFromDriverEmail {...props} messages={[message.text]} />,
+    );
     return sendEmail({
       to,
-      toName,
+      toName: props.name,
       subject: "Your GT Paratransit driver just sent you a message",
       html,
-      text,
+      text: toPlainText(html),
     });
   },
 
@@ -328,3 +247,49 @@ export const EmailNotifications = {
     });
   },
 };
+
+async function getRideEmailContext(
+  routeId: string,
+  preference: "driverAssigned" | "newMessageFromDriver" | "rideDelayed",
+) {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId).lean();
+  if (!route) return null;
+  const student = await UserModel.findById(route.student._id).lean();
+  if (!student?.settings?.notifications?.[preference]) return null;
+
+  const [pickup, dropoff] = await Promise.all([
+    LocationModel.findById(route.pickupLocation).lean(),
+    LocationModel.findById(route.dropoffLocation).lean(),
+  ]);
+  const rideUrl = new URL(`/rides/${route._id}`, process.env.DEPLOY_PRIME_URL!)
+    .href;
+  return {
+    to: student.email,
+    props: {
+      name: student.preferredName ?? `${student.firstName} ${student.lastName}`,
+      date: formatEstDate(route.scheduledPickupTime, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }),
+      pickupTime: formatEstTime(route.scheduledPickupTime),
+      dropoffTime: route.estimatedDropoffTime
+        ? formatEstTime(route.estimatedDropoffTime)
+        : "Not yet estimated",
+      pickupLocation: pickup?.name ?? "Pickup location unavailable",
+      destination: dropoff?.name ?? "Destination unavailable",
+      driverDetails:
+        route.driver && route.vehicle
+          ? {
+              name: `${route.driver.firstName} ${route.driver.lastName}`,
+              vehicleId: route.vehicle.vehicleId ?? route.vehicle.name,
+              licensePlate: route.vehicle.licensePlate,
+              description: route.vehicle.description ?? "",
+            }
+          : undefined,
+      rideUrl,
+      chatUrl: `${rideUrl}?chat=1`,
+    },
+  };
+}

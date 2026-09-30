@@ -29,6 +29,8 @@ export type ProfileUser = {
       rideCancelled?: boolean;
       rideAssigned?: boolean;
       rideCompleted?: boolean;
+      rideDelayed?: boolean;
+      newMessageFromDriver?: boolean;
     };
   };
   studentInfo?: {
@@ -112,6 +114,9 @@ export function ProfileView({
     rideCancelled: user.settings?.notifications?.rideCancelled ?? false,
     rideAssigned: user.settings?.notifications?.rideAssigned ?? false,
     rideCompleted: user.settings?.notifications?.rideCompleted ?? false,
+    rideDelayed: user.settings?.notifications?.rideDelayed ?? false,
+    newMessageFromDriver:
+      user.settings?.notifications?.newMessageFromDriver ?? false,
   });
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
@@ -612,7 +617,7 @@ export function ProfileView({
                           onCheckedChange={(e) =>
                             handleNotificationToggle("driverAssigned", e)
                           }
-                          label="Driver Assigned"
+                          label="Ride Confirmed / Driver Assigned"
                         />
                         <BogSwitch
                           checked={draftNotifications.driverEnRoute}
@@ -634,6 +639,20 @@ export function ProfileView({
                             handleNotificationToggle("rideCompleted", e)
                           }
                           label="Ride Completed"
+                        />
+                        <BogSwitch
+                          checked={draftNotifications.rideDelayed}
+                          onCheckedChange={(e) =>
+                            handleNotificationToggle("rideDelayed", e)
+                          }
+                          label="Ride Delayed"
+                        />
+                        <BogSwitch
+                          checked={draftNotifications.newMessageFromDriver}
+                          onCheckedChange={(e) =>
+                            handleNotificationToggle("newMessageFromDriver", e)
+                          }
+                          label="New Message from Driver"
                         />
                       </>
                     )}
