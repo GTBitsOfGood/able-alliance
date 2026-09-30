@@ -142,7 +142,10 @@ export const test = base.extend<Fixtures>({
   pageAs: async ({ browser, diag }, provide) => {
     const open: BrowserContext[] = [];
     await provide(async (key) => {
-      const context = await browser.newContext({ baseURL: E2E.baseURL });
+      const context = await browser.newContext({
+        baseURL: E2E.baseURL,
+        timezoneId: "America/New_York",
+      });
       await context.addCookies([
         {
           name: E2E.sessionCookieName,

@@ -73,3 +73,35 @@ export async function authenticateSocket(socket, next) {
     return next(new Error("Authentication failed"));
   }
 }
+
+// Socket.IO middleware for the /notifications namespace: verifies the
+// client's JWT and admits any authenticated user to their own room —
+// unlike authenticateSocket, there's no route/day scoping here since
+// notifications are a personal inbox, not tied to a single route.
+export async function authenticateNotificationSocket(socket, next) {
+  const { token } = socket.handshake.auth;
+  try {
+    if (!token) {
+      return next(new Error("Token missing"));
+    }
+
+    let decoded;
+    try {
+      const secret = process.env.NEXTAUTH_SECRET;
+      decoded = jwt.verify(token, secret);
+    } catch (error) {
+      console.error("JWT verify failed:", error.message);
+      return next(new Error("Invalid JWT token"));
+    }
+
+    if (!decoded.userId) {
+      return next(new Error("Token missing userId"));
+    }
+
+    socket.user = decoded.userId;
+    next();
+  } catch (error) {
+    console.error("Notification auth error:", error);
+    return next(new Error("Authentication failed"));
+  }
+}

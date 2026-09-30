@@ -1,6 +1,6 @@
 /**
- * The ride flow, UI-agnostic. Every step is an HTTP call; if this is red the
- * backend is broken regardless of what the pages do.
+ * Route B, UI-agnostic. Every step is an HTTP call; if this is red the backend
+ * is broken regardless of what the pages do.
  *
  *   student  POST /api/routes           Requested
  *   admin    POST /api/routes/schedule  Scheduled
@@ -14,9 +14,7 @@ import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
-test("ride: request → schedule → start → pickup → dropoff", async ({
-  apiAs,
-}) => {
+test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
   const student = await apiAs("student");
   const admin = await apiAs("admin");
   const driver = await apiAs("driver");
@@ -60,10 +58,15 @@ test("ride: request → schedule → start → pickup → dropoff", async ({
   await step(driver, "/api/routes/pickup", { routeId }, "Pickedup");
   await step(driver, "/api/routes/complete", { routeId }, "Completed");
 
-  // The student sees the finished ride.
-  const readBack = await student.get(`/api/routes?id=${routeId}`);
-  expect(readBack.status()).toBe(200);
-  expect(((await readBack.json()) as { status: string }).status).toBe(
-    "Completed",
-  );
+  // Student, driver, and admin all see the completed final state.
+  for (const [label, who] of [
+    ["student", student],
+    ["driver", driver],
+    ["admin", admin],
+  ] as const) {
+    const readBack = await who.get(`/api/routes?id=${routeId}`);
+    const body = await readBack.text();
+    expect(readBack.status(), `${label}: ${body}`).toBe(200);
+    expect((JSON.parse(body) as { status: string }).status).toBe("Completed");
+  }
 });

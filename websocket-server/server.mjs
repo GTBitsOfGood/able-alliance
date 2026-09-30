@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import { registerHttpRoutes } from "./httpRoutes.mjs";
-import { authenticateSocket } from "./auth.mjs";
+import { authenticateSocket, authenticateNotificationSocket } from "./auth.mjs";
 import { handleConnection } from "./handlers/connection.mjs";
 
 export async function startServer() {
@@ -11,7 +11,6 @@ export async function startServer() {
 
   const app = express();
   app.use(express.json());
-  registerHttpRoutes(app);
 
   const server = createServer(app);
   const io = new Server(server, {
@@ -32,6 +31,14 @@ export async function startServer() {
 
     io.use(authenticateSocket);
     io.on("connection", (socket) => handleConnection(io, socket));
+
+    const notificationsNsp = io.of("/notifications");
+    notificationsNsp.use(authenticateNotificationSocket);
+    notificationsNsp.on("connection", (socket) => {
+      socket.join(`user:${socket.user}`);
+    });
+
+    registerHttpRoutes(app, notificationsNsp);
 
     server.listen(PORT, () => {
       console.log(`Websocket server listening on port ${PORT}`);
