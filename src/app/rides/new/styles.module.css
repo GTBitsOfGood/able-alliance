@@ -72,7 +72,7 @@
 /* Ride Details Outline */
 .rideDetailsOutline {
   display: grid;
-  grid-template-columns: minmax(0, 30.9rem) 1px minmax(0, 30.9rem);
+  grid-template-columns: minmax(0, 30.9rem) 0.1rem minmax(0, 30.9rem);
   column-gap: 7.25rem;
   align-items: start;
   padding: 0;
