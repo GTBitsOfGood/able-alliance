@@ -1,6 +1,13 @@
 # E2E: the ride flow, two ways
 
-One user journey, request → schedule → start → pickup → dropoff, run twice:
+Ride journeys, each run twice (`api` HTTP / `ui` Chromium):
+
+| Spec     | Journey                                                            |
+| -------- | ------------------------------------------------------------------ |
+| `routeA` | student creates, admin schedules, lists agree (stops at Scheduled) |
+| `routeB` | scheduled ride → driver start → pickup → dropoff                   |
+| `routeC` | student cancellation requires confirmation and propagates state    |
+| `routeE` | driver marks an en-route ride as no-show                           |
 
 | Project | How                        | Tells you                                 |
 | ------- | -------------------------- | ----------------------------------------- |
