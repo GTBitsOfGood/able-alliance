@@ -34,6 +34,8 @@ const NotificationSchema: Schema = new Schema(
     rideCancelled: { type: Boolean, default: false },
     rideAssigned: { type: Boolean, default: false },
     rideCompleted: { type: Boolean, default: false },
+    rideDelayed: { type: Boolean, default: false },
+    newMessageFromDriver: { type: Boolean, default: false },
   },
   { _id: false },
 );

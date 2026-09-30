@@ -107,6 +107,8 @@ const notificationSettingsPatchSchema = z
             rideCancelled: z.boolean().optional(),
             rideAssigned: z.boolean().optional(),
             rideCompleted: z.boolean().optional(),
+            rideDelayed: z.boolean().optional(),
+            newMessageFromDriver: z.boolean().optional(),
           })
           .optional(),
       })

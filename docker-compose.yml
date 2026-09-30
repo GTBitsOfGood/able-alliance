@@ -28,6 +28,7 @@ services:
           path: Dockerfile.dev
     volumes:
       - ./src:/app/src
+      - ./emails:/app/emails
       - ./scripts:/app/scripts
       - ./public:/app/public
       - ./.env:/app/.env
@@ -95,6 +96,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongo:27017/able-alliance?replicaSet=rs0
       - NEXTAUTH_SECRET=dev-secret-change-in-production
+      - DEPLOY_PRIME_URL=http://app:3000
       - WEBSOCKET_INTERNAL_SECRET=dev-internal-secret-change-in-production
     networks:
       - able-alliance-net

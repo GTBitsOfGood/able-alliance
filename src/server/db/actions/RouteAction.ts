@@ -17,6 +17,7 @@ import {
   formatEstDate,
   formatEstTime,
 } from "@/utils/dateEst";
+<<<<<<< HEAD
 import { EmailNotifications } from "@/server/email/EmailAction";
 import { emitToast } from "@/server/notifications/emitToast";
 
@@ -38,6 +39,9 @@ function dispatchNotifications(tasks: Promise<void>[]) {
     console.error("Notification dispatch failed", error);
   });
 }
+=======
+import { EmailClient } from "@/server/email/EmailClient";
+>>>>>>> main
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -183,6 +187,7 @@ export async function completeRoute(routeId: string) {
       }
     ).settings?.notifications?.rideCompleted
   ) {
+<<<<<<< HEAD
     dispatchNotifications([
       sendEmailSafely("rideCompleted", () =>
         EmailNotifications.rideCompleted(
@@ -199,6 +204,16 @@ export async function completeRoute(routeId: string) {
         message: "Your ride has been completed. Thank you for riding with us!",
       }),
     ]);
+=======
+    await EmailClient.rideCompleted(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      {
+        rideId: route._id.toString(),
+      },
+    );
+>>>>>>> main
   }
 
   await archiveChatlogForRoute(routeId);
@@ -227,6 +242,7 @@ export async function cancelRoute(routeId: string, status?: string) {
       }
     ).settings?.notifications?.rideCancelled
   ) {
+<<<<<<< HEAD
     dispatchNotifications([
       sendEmailSafely("rideCancelled", () =>
         EmailNotifications.rideCancelled(
@@ -244,6 +260,14 @@ export async function cancelRoute(routeId: string, status?: string) {
         message: "Your ride has been cancelled.",
       }),
     ]);
+=======
+    await EmailClient.rideCancelled(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      { rideId: route._id.toString(), reason: `Ride status: ${route.status}` },
+    );
+>>>>>>> main
   }
 
   if (route.driver?._id) {
@@ -256,6 +280,7 @@ export async function cancelRoute(routeId: string, status?: string) {
         }
       ).settings?.notifications?.rideCancelled
     ) {
+<<<<<<< HEAD
       dispatchNotifications([
         sendEmailSafely("rideCancelled", () =>
           EmailNotifications.rideCancelled(
@@ -273,6 +298,17 @@ export async function cancelRoute(routeId: string, status?: string) {
           message: "Your ride has been cancelled.",
         }),
       ]);
+=======
+      await EmailClient.rideCancelled(
+        driverUser.email,
+        driverUser.preferredName ??
+          `${driverUser.firstName} ${driverUser.lastName}`,
+        {
+          rideId: route._id.toString(),
+          reason: `Ride status: ${route.status}`,
+        },
+      );
+>>>>>>> main
     }
   }
 
@@ -299,6 +335,7 @@ export async function startRoute(routeId: string) {
       }
     ).settings?.notifications?.driverEnRoute
   ) {
+<<<<<<< HEAD
     dispatchNotifications([
       sendEmailSafely("driverEnRoute", () =>
         EmailNotifications.driverEnRoute(
@@ -319,6 +356,20 @@ export async function startRoute(routeId: string) {
         message: "Your driver is on the way!",
       }),
     ]);
+=======
+    await EmailClient.driverEnRoute(
+      studentUser.email,
+      studentUser.preferredName ??
+        `${studentUser.firstName} ${studentUser.lastName}`,
+      {
+        name: route.driver
+          ? `${route.driver.firstName} ${route.driver.lastName}`
+          : "Driver",
+        eta: formatEstTime(route.scheduledPickupTime),
+        vehicle: route.vehicle?.licensePlate ?? "Assigned vehicle",
+      },
+    );
+>>>>>>> main
   }
 
   return route.toObject();
@@ -423,6 +474,7 @@ export async function scheduleRoute(
   route.status = RouteStatus.Scheduled;
   await route.save();
 
+<<<<<<< HEAD
   const studentUser = await UserModel.findById(route.student._id).lean();
   if (
     studentUser &&
@@ -480,6 +532,9 @@ export async function scheduleRoute(
   // exists for this route; the unique index on routeId means a genuine
   // race between two concurrent schedule calls can still surface as a
   // duplicate-key error on the losing side, which is expected, not a bug.
+=======
+  // upsert in case of race conditions, if already created then no worries
+>>>>>>> main
   try {
     await Chatlog.findOneAndUpdate(
       { routeId: route._id },
@@ -500,6 +555,40 @@ export async function scheduleRoute(
       throw error;
     }
   }
+
+  await Promise.all([
+    EmailClient.rideConfirmed(route._id.toString()).catch((error) => {
+      console.error(
+        `Ride confirmation email failed for route ${route._id}:`,
+        error,
+      );
+    }),
+    (async () => {
+      if (
+        (
+          driver as {
+            settings?: { notifications?: { rideAssigned?: boolean } };
+          }
+        ).settings?.notifications?.rideAssigned
+      ) {
+        await EmailClient.rideAssigned(
+          driver.email,
+          driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
+          {
+            rideId: route._id.toString(),
+            pickup: route.pickupLocation.toString(),
+            dropoff: route.dropoffLocation.toString(),
+            time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
+          },
+        );
+      }
+    })().catch((error) => {
+      console.error(
+        `Driver assignment email failed for route ${route._id}:`,
+        error,
+      );
+    }),
+  ]);
 
   return route.toObject();
 }

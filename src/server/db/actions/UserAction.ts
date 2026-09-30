@@ -170,6 +170,8 @@ export async function updateNotificationSettings(
       rideCancelled: false,
       rideAssigned: false,
       rideCompleted: false,
+      rideDelayed: false,
+      newMessageFromDriver: false,
       ...theUser.settings?.notifications,
       ...settings.notifications,
     },

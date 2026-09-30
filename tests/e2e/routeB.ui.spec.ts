@@ -1,7 +1,7 @@
 /**
- * The same ride flow, through the pages. Sessions are minted, so CAS is not
- * involved. Red here + green in ride.api.spec.ts = frontend problem; the
- * "diagnostics" attachment on the failed test says which request or error.
+ * Route B through the pages. Sessions are minted, so CAS is not involved.
+ * Red here + green in routeB.api.spec.ts = frontend problem; the "diagnostics"
+ * attachment on the failed test says which request or error.
  *
  *   student  /rides/new          fills the form            Requested
  *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
@@ -13,6 +13,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
+import { estDateDaysFromNow } from "./routeTestHelpers";
 
 /** TimeInput is a text box with a listbox; typing then Enter commits the first match. */
 async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
@@ -21,7 +22,7 @@ async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
   await expect(input).toHaveValue(label);
 }
 
-test("ride: request → schedule → start → pickup → dropoff (UI)", async ({
+test("route B: driver start → pickup → dropoff (UI)", async ({
   pageAs,
   diag,
 }) => {
@@ -35,9 +36,9 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
     student.getByRole("heading", { name: "Create Ride" }),
   ).toBeVisible();
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (tomorrow.getMonth() !== new Date().getMonth()) {
+  const today = estDateDaysFromNow(0);
+  const tomorrow = estDateDaysFromNow(1);
+  if (tomorrow.getMonth() !== today.getMonth()) {
     // Calendar header: [prev][month/year][next]; the nav buttons are the only icon buttons.
     await student.locator('button[type="button"]:has(svg)').nth(1).click();
   }
@@ -69,7 +70,8 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
   const row = admin
     .getByRole("row")
     .filter({ hasText: PERSONAS.student.lastName })
-    .filter({ hasText: LOCATIONS.exhibitionHall.name });
+    .filter({ hasText: LOCATIONS.exhibitionHall.name })
+    .filter({ hasText: LOCATIONS.techSquare.name });
   await expect(row).toHaveCount(1);
 
   await row.getByText("Select driver").click();
@@ -103,10 +105,22 @@ test("ride: request → schedule → start → pickup → dropoff (UI)", async (
 
   await driver.getByRole("button", { name: "Start ride" }).click();
   await expect(chip).toHaveText("En-route");
+  await expect(
+    driver.getByRole("button", { name: "Student picked up" }),
+  ).toBeVisible();
+  await expect(
+    driver.getByRole("button", { name: "Student no-show" }),
+  ).toBeVisible();
   await driver.getByRole("button", { name: "Student picked up" }).click();
   await expect(chip).toHaveText("Pickedup");
+  await expect(
+    driver.getByRole("button", { name: "Student dropped off" }),
+  ).toBeVisible();
   await driver.getByRole("button", { name: "Student dropped off" }).click();
   await expect(chip).toHaveText("Completed");
+  await expect(
+    driver.getByRole("button", { name: "Student dropped off" }),
+  ).toBeHidden();
 
   // ── Student sees the result ────────────────────────────────────────────
   await student.goto(`/rides/${routeId}`);
