@@ -13,6 +13,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
+import { estDateDaysFromNow } from "./routeTestHelpers";
 
 /** TimeInput is a text box with a listbox; typing then Enter commits the first match. */
 async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
@@ -35,9 +36,9 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     student.getByRole("heading", { name: "Create Ride" }),
   ).toBeVisible();
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (tomorrow.getMonth() !== new Date().getMonth()) {
+  const today = estDateDaysFromNow(0);
+  const tomorrow = estDateDaysFromNow(1);
+  if (tomorrow.getMonth() !== today.getMonth()) {
     // Calendar header: [prev][month/year][next]; the nav buttons are the only icon buttons.
     await student.locator('button[type="button"]:has(svg)').nth(1).click();
   }

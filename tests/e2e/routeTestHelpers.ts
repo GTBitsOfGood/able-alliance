@@ -1,4 +1,6 @@
 import type { APIRequestContext } from "@playwright/test";
+import { addDays } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { expect } from "./fixtures";
 import { PERSONAS, VEHICLE } from "./seed";
 
@@ -10,7 +12,21 @@ export type RouteJson = {
   status: string;
   pickupLocation: string;
   dropoffLocation: string;
+  scheduledPickupTime: string;
 };
+
+export function estDateDaysFromNow(days: number): Date {
+  return addDays(toZonedTime(new Date(), "America/New_York"), days);
+}
+
+export function formatEstTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 export async function createRequestedRide(
   student: APIRequestContext,

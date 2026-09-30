@@ -4,7 +4,11 @@
  */
 import { test, expect } from "./fixtures";
 import { LOCATIONS } from "./seed";
-import { createRequestedRide, expectRouteStatus } from "./routeTestHelpers";
+import {
+  createRequestedRide,
+  expectRouteStatus,
+  formatEstTime,
+} from "./routeTestHelpers";
 
 test("route C: student cancellation requires confirmation (UI)", async ({
   apiAs,
@@ -21,13 +25,15 @@ test("route C: student cancellation requires confirmation (UI)", async ({
     hoursFromNow: 55,
   });
   const routeId = created._id;
+  const pickupTime = formatEstTime(created.scheduledPickupTime);
 
   const admin = await pageAs("admin");
   await admin.goto("/admin?tab=Rides");
   const adminRow = admin
     .getByRole("row")
     .filter({ hasText: LOCATIONS.studentCenter.name })
-    .filter({ hasText: LOCATIONS.exhibitionHall.name });
+    .filter({ hasText: LOCATIONS.exhibitionHall.name })
+    .filter({ hasText: pickupTime });
   await expect(adminRow).toHaveCount(1);
 
   const student = await pageAs("student");

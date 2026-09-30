@@ -12,6 +12,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
+import { estDateDaysFromNow } from "./routeTestHelpers";
 
 const PICKUP = LOCATIONS.techSquare;
 const DROPOFF = LOCATIONS.studentCenter;
@@ -47,9 +48,9 @@ test("route A: student creates, admin schedules (UI)", async ({
     student.getByRole("heading", { name: "Create Ride" }),
   ).toBeVisible();
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (tomorrow.getMonth() !== new Date().getMonth()) {
+  const today = estDateDaysFromNow(0);
+  const tomorrow = estDateDaysFromNow(1);
+  if (tomorrow.getMonth() !== today.getMonth()) {
     await student.locator('button[type="button"]:has(svg)').nth(1).click();
   }
   await student
