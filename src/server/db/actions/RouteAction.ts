@@ -17,7 +17,7 @@ import {
   formatEstDate,
   formatEstTime,
 } from "@/utils/dateEst";
-import { EmailNotifications } from "@/server/email/EmailAction";
+import { EmailClient } from "@/server/email/EmailClient";
 
 export async function createRoute(data: CreateRouteInput) {
   await connectMongoDB();
@@ -163,7 +163,7 @@ export async function completeRoute(routeId: string) {
       }
     ).settings?.notifications?.rideCompleted
   ) {
-    await EmailNotifications.rideCompleted(
+    await EmailClient.rideCompleted(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -199,7 +199,7 @@ export async function cancelRoute(routeId: string, status?: string) {
       }
     ).settings?.notifications?.rideCancelled
   ) {
-    await EmailNotifications.rideCancelled(
+    await EmailClient.rideCancelled(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -217,7 +217,7 @@ export async function cancelRoute(routeId: string, status?: string) {
         }
       ).settings?.notifications?.rideCancelled
     ) {
-      await EmailNotifications.rideCancelled(
+      await EmailClient.rideCancelled(
         driverUser.email,
         driverUser.preferredName ??
           `${driverUser.firstName} ${driverUser.lastName}`,
@@ -252,7 +252,7 @@ export async function startRoute(routeId: string) {
       }
     ).settings?.notifications?.driverEnRoute
   ) {
-    await EmailNotifications.driverEnRoute(
+    await EmailClient.driverEnRoute(
       studentUser.email,
       studentUser.preferredName ??
         `${studentUser.firstName} ${studentUser.lastName}`,
@@ -368,47 +368,7 @@ export async function scheduleRoute(
   route.status = RouteStatus.Scheduled;
   await route.save();
 
-  const studentUser = await UserModel.findById(route.student._id).lean();
-  if (
-    studentUser &&
-    (
-      studentUser as {
-        settings?: { notifications?: { driverAssigned?: boolean } };
-      }
-    ).settings?.notifications?.driverAssigned
-  ) {
-    await EmailNotifications.driverAssigned(
-      studentUser.email,
-      studentUser.preferredName ??
-        `${studentUser.firstName} ${studentUser.lastName}`,
-      {
-        name: `${driver.firstName} ${driver.lastName}`,
-        vehicle: vehicle.licensePlate,
-      },
-    );
-  }
-
-  if (
-    driver &&
-    (driver as { settings?: { notifications?: { rideAssigned?: boolean } } })
-      .settings?.notifications?.rideAssigned
-  ) {
-    await EmailNotifications.rideAssigned(
-      driver.email,
-      driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
-      {
-        rideId: route._id.toString(),
-        pickup: route.pickupLocation.toString(),
-        dropoff: route.dropoffLocation.toString(),
-        time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
-      },
-    );
-  }
-
-  // Upsert (not create) so this is safe even if a chat record already
-  // exists for this route; the unique index on routeId means a genuine
-  // race between two concurrent schedule calls can still surface as a
-  // duplicate-key error on the losing side, which is expected, not a bug.
+  // upsert in case of race conditions, if already created then no worries
   try {
     await Chatlog.findOneAndUpdate(
       { routeId: route._id },
@@ -429,6 +389,40 @@ export async function scheduleRoute(
       throw error;
     }
   }
+
+  await Promise.all([
+    EmailClient.rideConfirmed(route._id.toString()).catch((error) => {
+      console.error(
+        `Ride confirmation email failed for route ${route._id}:`,
+        error,
+      );
+    }),
+    (async () => {
+      if (
+        (
+          driver as {
+            settings?: { notifications?: { rideAssigned?: boolean } };
+          }
+        ).settings?.notifications?.rideAssigned
+      ) {
+        await EmailClient.rideAssigned(
+          driver.email,
+          driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
+          {
+            rideId: route._id.toString(),
+            pickup: route.pickupLocation.toString(),
+            dropoff: route.dropoffLocation.toString(),
+            time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
+          },
+        );
+      }
+    })().catch((error) => {
+      console.error(
+        `Driver assignment email failed for route ${route._id}:`,
+        error,
+      );
+    }),
+  ]);
 
   return route.toObject();
 }
