@@ -1,6 +1,11 @@
-import { debugLog } from "./utils/logger.mjs";
+import type { Express } from "express";
+import type { AppNamespace } from "./types.js";
+import { debugLog } from "./utils/logger.js";
 
-export function registerHttpRoutes(app, notificationsNsp) {
+export function registerHttpRoutes(
+  app: Express,
+  notificationsNsp: AppNamespace,
+) {
   app.get("/", (req, res) => {
     res.json({ message: "Express server running", ok: true });
   });

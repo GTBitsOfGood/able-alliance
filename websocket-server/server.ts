@@ -1,19 +1,33 @@
+import type {
+  ClientEvents,
+  ServerEvents,
+  InterServerEvents,
+  SocketData,
+} from "./types.js";
 import express from "express";
+import dotenv from "dotenv";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
-import { registerHttpRoutes } from "./httpRoutes.mjs";
-import { authenticateSocket, authenticateNotificationSocket } from "./auth.mjs";
-import { handleConnection } from "./handlers/connection.mjs";
+import { registerHttpRoutes } from "./httpRoutes.js";
+import { authenticateSocket, authenticateNotificationSocket } from "./auth.js";
+import { handleConnection } from "./handlers/connection.js";
+
+dotenv.config();
 
 export async function startServer() {
-  const PORT = process.env.PORT ?? 4000;
+  const PORT = Number(process.env.PORT ?? 4000);
 
   const app = express();
   app.use(express.json());
 
   const server = createServer(app);
-  const io = new Server(server, {
+  const io = new Server<
+    ClientEvents,
+    ServerEvents,
+    InterServerEvents,
+    SocketData
+  >(server, {
     cors: {
       origin: [
         "http://localhost:3000",
@@ -26,7 +40,9 @@ export async function startServer() {
   });
 
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    const uri = process.env.MONGODB_URI;
+    if (!uri) throw new Error("MONGODB_URI is required");
+    await mongoose.connect(uri);
     console.log("Websocket server connected to MongoDB");
 
     io.use(authenticateSocket);
@@ -35,7 +51,7 @@ export async function startServer() {
     const notificationsNsp = io.of("/notifications");
     notificationsNsp.use(authenticateNotificationSocket);
     notificationsNsp.on("connection", (socket) => {
-      socket.join(`user:${socket.user}`);
+      socket.join(`user:${socket.data.user}`);
     });
 
     registerHttpRoutes(app, notificationsNsp);
@@ -44,7 +60,12 @@ export async function startServer() {
       console.log(`Websocket server listening on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Failed to connect to MongoDB", error.message);
+    console.error(
+      "Failed to connect to MongoDB",
+      error instanceof Error ? error.message : error,
+    );
     process.exit(1);
   }
 }
+
+void startServer();

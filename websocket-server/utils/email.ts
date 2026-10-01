@@ -1,4 +1,8 @@
-export async function notifyDriverMessage(routeId, messageId, token) {
+export async function notifyDriverMessage(
+  routeId: string,
+  messageId: string,
+  token: string,
+) {
   const response = await fetch(
     new URL("/api/email/chat", process.env.DEPLOY_PRIME_URL),
     {

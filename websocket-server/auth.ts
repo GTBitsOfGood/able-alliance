@@ -1,22 +1,24 @@
+import type { AppSocket, AuthNext } from "./types.js";
 import jwt from "jsonwebtoken";
-import { debugLog } from "./utils/logger.mjs";
-import { getRouteForAuth } from "./utils/db.mjs";
+import { debugLog } from "./utils/logger.js";
+import { getRouteForAuth } from "./utils/db.js";
 
 // Compare dates in America/New_York using Intl (works reliably in Node).
-function estDateStr(date) {
+function estDateStr(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(date);
-  const get = (type) => parts.find((p) => p.type === type)?.value;
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 // Socket.IO middleware: verifies the client's JWT, loads the route, and
 // authorizes the connecting user (student/driver/super admin, same-day only).
-export async function authenticateSocket(socket, next) {
+export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
   const { routeId, token } = socket.handshake.auth;
   try {
     debugLog(
@@ -29,10 +31,22 @@ export async function authenticateSocket(socket, next) {
     let decoded;
     try {
       const secret = process.env.NEXTAUTH_SECRET;
-      decoded = jwt.verify(token, secret);
+      if (!secret) throw new Error("NEXTAUTH_SECRET is required");
+      const payload = jwt.verify(token, secret);
+      if (
+        typeof payload === "string" ||
+        typeof payload.userId !== "string" ||
+        typeof payload.type !== "string"
+      ) {
+        throw new Error("Invalid JWT payload");
+      }
+      decoded = payload;
       debugLog("JWT decoded successfully:", decoded);
     } catch (error) {
-      console.error("JWT verify failed:", error.message);
+      console.error(
+        "JWT verify failed:",
+        error instanceof Error ? error.message : error,
+      );
       return next(new Error("Invalid JWT token"));
     }
 
@@ -62,11 +76,11 @@ export async function authenticateSocket(socket, next) {
       return next(new Error("User not authorized for this route"));
     }
 
-    socket.routeId = routeId;
-    socket.user = userId;
-    socket.userType = decoded.type;
-    socket.routeStudent = route.student;
-    socket.routeDriver = route.driver;
+    socket.data.routeId = routeId;
+    socket.data.user = userId;
+    socket.data.userType = decoded.type;
+    socket.data.routeStudent = route.student;
+    socket.data.routeDriver = route.driver;
     next();
   } catch (error) {
     console.error(`Auth error for routeId ${routeId}:`, error);
@@ -78,7 +92,10 @@ export async function authenticateSocket(socket, next) {
 // client's JWT and admits any authenticated user to their own room —
 // unlike authenticateSocket, there's no route/day scoping here since
 // notifications are a personal inbox, not tied to a single route.
-export async function authenticateNotificationSocket(socket, next) {
+export async function authenticateNotificationSocket(
+  socket: AppSocket,
+  next: AuthNext,
+) {
   const { token } = socket.handshake.auth;
   try {
     if (!token) {
@@ -88,9 +105,21 @@ export async function authenticateNotificationSocket(socket, next) {
     let decoded;
     try {
       const secret = process.env.NEXTAUTH_SECRET;
-      decoded = jwt.verify(token, secret);
+      if (!secret) throw new Error("NEXTAUTH_SECRET is required");
+      const payload = jwt.verify(token, secret);
+      if (
+        typeof payload === "string" ||
+        typeof payload.userId !== "string" ||
+        typeof payload.type !== "string"
+      ) {
+        throw new Error("Invalid JWT payload");
+      }
+      decoded = payload;
     } catch (error) {
-      console.error("JWT verify failed:", error.message);
+      console.error(
+        "JWT verify failed:",
+        error instanceof Error ? error.message : error,
+      );
       return next(new Error("Invalid JWT token"));
     }
 
@@ -98,7 +127,7 @@ export async function authenticateNotificationSocket(socket, next) {
       return next(new Error("Token missing userId"));
     }
 
-    socket.user = decoded.userId;
+    socket.data.user = decoded.userId;
     next();
   } catch (error) {
     console.error("Notification auth error:", error);

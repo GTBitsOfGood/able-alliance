@@ -1,19 +1,20 @@
-import { debugLog } from "../utils/logger.mjs";
-import { getChatHistory } from "../utils/db.mjs";
-import { registerChatHandler } from "./chat.mjs";
-import { registerLocationHandler } from "./location.mjs";
-import { registerCloseRouteRoomHandler } from "./closeRouteRoom.mjs";
+import type { AppServer, AppSocket } from "../types.js";
+import { debugLog } from "../utils/logger.js";
+import { getChatHistory } from "../utils/db.js";
+import { registerChatHandler } from "./chat.js";
+import { registerLocationHandler } from "./location.js";
+import { registerCloseRouteRoomHandler } from "./closeRouteRoom.js";
 
-export function handleConnection(io, socket) {
+export function handleConnection(io: AppServer, socket: AppSocket) {
   console.log("A user connected", socket.id);
 
-  const room = socket.routeId;
+  const room = socket.data.routeId;
   try {
     socket.join(room);
-    debugLog(`User ${socket.user} joined room ${room}`);
+    debugLog(`User ${socket.data.user} joined room ${room}`);
   } catch (error) {
     console.error(
-      `Failed to set up connection for user ${socket.user} in room ${room}:`,
+      `Failed to set up connection for user ${socket.data.user} in room ${room}:`,
       error,
     );
     socket.emit("connectionError", "Failed to join route");
@@ -29,12 +30,12 @@ export function handleConnection(io, socket) {
     .then((history) => {
       socket.emit("chatHistory", history);
       debugLog(
-        `Sent chat history to user ${socket.user} for room ${room} with ${history.length} messages`,
+        `Sent chat history to user ${socket.data.user} for room ${room} with ${history.length} messages`,
       );
     })
     .catch((error) => {
       console.error(
-        `Failed to load chat history for user ${socket.user} in room ${room}:`,
+        `Failed to load chat history for user ${socket.data.user} in room ${room}:`,
         error,
       );
       socket.emit("connectionError", "Failed to join route");

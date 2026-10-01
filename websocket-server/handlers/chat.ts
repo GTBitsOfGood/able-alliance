@@ -1,9 +1,15 @@
-import { appendMessage } from "../utils/db.mjs";
-import { debugLog } from "../utils/logger.mjs";
-import { notifyDriverMessage } from "../utils/email.mjs";
+import type { AppServer, AppSocket, ChatMessage } from "../types.js";
+import { appendMessage } from "../utils/db.js";
+import { debugLog } from "../utils/logger.js";
+import { notifyDriverMessage } from "../utils/email.js";
 import mongoose from "mongoose";
 
-export function registerChatHandler(io, socket, room, chatReady) {
+export function registerChatHandler(
+  io: AppServer,
+  socket: AppSocket,
+  room: string,
+  chatReady: Promise<void>,
+) {
   socket.on("sendChatMessage", async (text) => {
     try {
       await chatReady;
@@ -12,15 +18,15 @@ export function registerChatHandler(io, socket, room, chatReady) {
         throw new Error("Message text is required");
       }
 
-      const routeId = socket.routeId;
+      const routeId = socket.data.routeId;
       const senderType =
-        socket.routeDriver?._id?.toString() === socket.user
+        socket.data.routeDriver?._id?.toString() === socket.data.user
           ? "driver"
-          : socket.routeStudent?._id?.toString() === socket.user
+          : socket.data.routeStudent?._id?.toString() === socket.data.user
             ? "student"
             : "admin";
 
-      const message = {
+      const message: ChatMessage = {
         _id: new mongoose.Types.ObjectId(),
         senderType,
         text,
@@ -33,7 +39,7 @@ export function registerChatHandler(io, socket, room, chatReady) {
       }
 
       io.to(room).emit("receiveChatMessage", message);
-      debugLog(`User ${socket.user} sent a message to room ${room}`);
+      debugLog(`User ${socket.data.user} sent a message to room ${room}`);
       if (senderType === "driver") {
         void notifyDriverMessage(
           routeId,
@@ -48,7 +54,7 @@ export function registerChatHandler(io, socket, room, chatReady) {
       }
     } catch (error) {
       console.error(
-        `sendChatMessage failed for user ${socket.user} in room ${room}:`,
+        `sendChatMessage failed for user ${socket.data.user} in room ${room}:`,
         error,
       );
       socket.emit("chatError", "Invalid message format");
