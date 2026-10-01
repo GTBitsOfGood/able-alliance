@@ -27,7 +27,7 @@ const notificationSchema = z.object({
 });
 
 const userSettingsSchema = z.object({
-  notifications: notificationSchema.default({}),
+  notifications: notificationSchema.prefault({}),
 });
 
 export const baseUserSchema = z.object({
@@ -50,7 +50,7 @@ export const baseUserSchema = z.object({
       "Email must be a valid Georgia Tech email ending with @gatech.edu",
     ),
   type: z.enum(["Student", "Driver", "Admin", "SuperAdmin"]),
-  settings: userSettingsSchema.default({}),
+  settings: userSettingsSchema.prefault({}),
 });
 
 export const studentSchema = baseUserSchema.extend({

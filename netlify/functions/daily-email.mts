@@ -1,4 +1,5 @@
 import type { Config, Handler } from "@netlify/functions";
+import type { Types } from "mongoose";
 import connectMongoDB from "../../src/server/db/mongodb";
 import RouteModel from "../../src/server/db/models/RouteModel";
 import { UserModel } from "../../src/server/db/models/UserModel";
@@ -16,7 +17,7 @@ export const config: Config = {
 };
 
 type UserForSummary = {
-  _id: { toString(): string };
+  _id: Types.ObjectId;
   firstName: string;
   lastName: string;
   preferredName?: string;

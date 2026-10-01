@@ -1,8 +1,7 @@
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 
 export type CASValidationResult =
-  | { success: true; username: string }
-  | { success: false; error: string };
+  { success: true; username: string } | { success: false; error: string };
 
 const xmlParser = new XMLParser({
   removeNSPrefix: true,

@@ -26,11 +26,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     //so you can filter by the type of user
     const type = searchParams.get("type") as
-      | "Student"
-      | "Driver"
-      | "Admin"
-      | "SuperAdmin"
-      | null;
+      "Student" | "Driver" | "Admin" | "SuperAdmin" | null;
 
     const users = await getUsers(type || undefined);
     return NextResponse.json(users, { status: HTTP_STATUS_CODE.OK });

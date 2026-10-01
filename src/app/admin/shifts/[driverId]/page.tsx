@@ -143,7 +143,7 @@ export default function ShiftDetailPage({
     if (!driverId || !date) return;
     setLoadingShift(true);
     setFetchError(null);
-    Promise.all([
+    return Promise.all([
       fetch(`/api/shifts/${driverId}?date=${date}`).then((r) => {
         if (!r.ok) throw new Error("Failed to fetch shift details");
         return r.json() as Promise<ShiftDetail>;
@@ -164,7 +164,9 @@ export default function ShiftDetailPage({
   useEffect(() => {
     if (sessionStatus === "loading") return;
     if (userType !== "Admin" && userType !== "SuperAdmin") return;
-    fetchShiftDetail();
+    // This effect loads data when the driver or shift date changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchShiftDetail();
   }, [fetchShiftDetail, sessionStatus, userType]);
 
   // ── Derived validation ──
@@ -245,7 +247,7 @@ export default function ShiftDetailPage({
       setShowAddPanel(false);
       setSelectedRideIds(new Set());
       setVehicleAssignments({});
-      fetchShiftDetail();
+      void fetchShiftDetail();
     } catch (e: unknown) {
       setSubmitError(e instanceof Error ? e.message : "Something went wrong");
     } finally {

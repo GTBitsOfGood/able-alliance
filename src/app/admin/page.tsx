@@ -19,10 +19,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Form } from "radix-ui";
 
 function AdminContent() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const table = (searchParams.get("tab") as AdminTableType) || "Students";
+  return <AdminTableContent key={table} table={table} />;
+}
+
+function AdminTableContent({ table }: { table: AdminTableType }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(
     null,
@@ -65,17 +69,6 @@ function AdminContent() {
       router.replace("/");
     }
   }, [status, userType, router]);
-
-  // Reset selection and form when tab changes
-  useEffect(() => {
-    setSelectedRows(new Set());
-    setShowForm(false);
-    setShowDeleteConfirm(false);
-    setSelectedVehicleId(null);
-    setSubmitError(null);
-    setStudentAccessibilityNeeds([]);
-    setVehicleAccessibility("None");
-  }, [table]);
 
   if (
     status === "loading" ||
@@ -138,19 +131,13 @@ function AdminContent() {
     const studentInfo: {
       notes?: string;
       accessibilityNeeds?: (
-        | "Wheelchair"
-        | "LowMobility"
-        | "VisualImpairment"
-        | "ExtraTime"
+        "Wheelchair" | "LowMobility" | "VisualImpairment" | "ExtraTime"
       )[];
     } = {
       ...(additionalComments && { notes: additionalComments }),
       ...(studentAccessibilityNeeds.length > 0 && {
         accessibilityNeeds: studentAccessibilityNeeds as (
-          | "Wheelchair"
-          | "LowMobility"
-          | "VisualImpairment"
-          | "ExtraTime"
+          "Wheelchair" | "LowMobility" | "VisualImpairment" | "ExtraTime"
         )[],
       }),
     };
@@ -815,6 +802,7 @@ function AdminContent() {
     <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 w-full">
       {selectedVehicleId ? (
         <VehicleDetailsPanel
+          key={selectedVehicleId}
           vehicleId={selectedVehicleId}
           onBack={() => setSelectedVehicleId(null)}
           onDeleted={() => {

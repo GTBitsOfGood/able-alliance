@@ -76,16 +76,12 @@ export function TimeInput({
   min,
   max,
 }: TimeInputProps) {
-  const [draft, setDraft] = useState(valueToLabel(value));
+  const selectedLabel = valueToLabel(value);
+  const [draft, setDraft] = useState(selectedLabel);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-
-  // Sync when external value changes
-  useEffect(() => {
-    setDraft(valueToLabel(value));
-  }, [value]);
 
   const slots = filterSlots(draft, min, max);
 
@@ -154,7 +150,7 @@ export function TimeInput({
         type="text"
         autoComplete="off"
         placeholder={placeholder}
-        value={draft}
+        value={open ? draft : selectedLabel}
         className={`${styles.input} ${inputClassName ?? ""}`}
         onFocus={handleFocus}
         onChange={handleChange}

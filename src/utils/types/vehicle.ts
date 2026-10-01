@@ -9,7 +9,7 @@ export const vehicleSchema = z.object({
   description: z.string().optional(),
   accessibility: accessibilityEnum,
   seatCount: z
-    .number({ invalid_type_error: "Seat count must be a number" })
+    .number({ error: "Seat count must be a number" })
     .int("Seat count must be an integer")
     .min(1, "Seat count must be greater than 0"),
 });

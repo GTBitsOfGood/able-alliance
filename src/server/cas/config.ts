@@ -18,8 +18,7 @@ export interface CASConfig {
 }
 
 export type CASConfigResult =
-  | { ok: true; config: CASConfig }
-  | { ok: false; reason: string };
+  { ok: true; config: CASConfig } | { ok: false; reason: string };
 
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 

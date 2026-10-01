@@ -52,8 +52,6 @@ export default function VehicleDetailsPanel({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    setLoadingVehicle(true);
-    setVehicleError(null);
     fetch(`/api/vehicles/${vehicleId}`)
       .then((r) => r.json())
       .then((v: Vehicle) => {

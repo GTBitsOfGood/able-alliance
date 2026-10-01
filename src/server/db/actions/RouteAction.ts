@@ -101,7 +101,7 @@ export async function createRoute(data: CreateRouteInput) {
     pickupWindowStart: validatedData.pickupWindowStart,
     pickupWindowEnd: validatedData.pickupWindowEnd,
     estimatedDropoffTime,
-    status: "Requested",
+    status: RouteStatus.Requested,
   });
   return route.toObject();
 }

@@ -86,10 +86,6 @@ export default function DriverRidesView({ userId }: { userId: string }) {
   const [busyRoutes, setBusyRoutes] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"today" | "tomorrow">("today");
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const todayRange = useMemo(
     () =>
       mounted ? estDayRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
@@ -100,6 +96,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
       mounted ? estDayRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
     [mounted],
   );
+
+  useEffect(() => {
+    // Date-dependent UI must wait until hydration finishes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   const fetchRoutes = useCallback(async () => {
     try {
@@ -130,9 +132,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
   }, [userId, activeTab, todayRange, tomorrowRange]);
 
   useEffect(() => {
+    if (!mounted) return;
+    // Clear the previous day while loading routes for the selected day.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
-    fetchRoutes();
-  }, [fetchRoutes]);
+    void fetchRoutes();
+  }, [mounted, fetchRoutes]);
 
   const locationIdToName = useMemo(
     () =>

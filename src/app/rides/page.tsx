@@ -90,6 +90,8 @@ export default function RidesPage() {
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Date-dependent UI must wait until hydration finishes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -118,7 +120,9 @@ export default function RidesPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    fetchRides();
+    // This effect starts an asynchronous API request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchRides();
   }, [mounted, fetchRides]);
 
   const handleCancel = useCallback(async (routeId: string) => {

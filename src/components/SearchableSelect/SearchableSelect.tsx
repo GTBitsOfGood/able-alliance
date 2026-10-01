@@ -49,14 +49,11 @@ export function SearchableSelect({
     [options],
   );
 
-  const [draft, setDraft] = useState(valueToLabel(value));
+  const selectedLabel = valueToLabel(value);
+  const [draft, setDraft] = useState(selectedLabel);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
-
-  useEffect(() => {
-    setDraft(valueToLabel(value));
-  }, [value, valueToLabel]);
 
   const filtered = filterOptions(options, draft);
 
@@ -124,7 +121,7 @@ export function SearchableSelect({
         type="text"
         autoComplete="off"
         placeholder={placeholder}
-        value={draft}
+        value={open ? draft : selectedLabel}
         required={required}
         className={`${styles.input} ${inputClassName ?? ""}`}
         onFocus={handleFocus}

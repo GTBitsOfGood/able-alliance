@@ -1,5 +1,5 @@
 [build]
-  command = "next build --turbopack"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]

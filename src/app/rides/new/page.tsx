@@ -52,7 +52,9 @@ export default function CreateRidePage() {
   const { width: windowWidth } = useWindowSize();
   const isMobileLayout = windowWidth <= 900;
   const isMobileLayoutRef = useRef(isMobileLayout);
-  isMobileLayoutRef.current = isMobileLayout;
+  useEffect(() => {
+    isMobileLayoutRef.current = isMobileLayout;
+  }, [isMobileLayout]);
 
   function scrollFieldIntoView(e: React.FocusEvent<HTMLElement>) {
     if (!isMobileLayout) return;
@@ -302,6 +304,8 @@ export default function CreateRidePage() {
         markerRefs.current.push(dropoffMarker);
       }
     } catch (e) {
+      // Surface failures from the external map API to the user.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(
         "Unable to load map. " +
           (e instanceof Error ? e.message : "Unknown error"),

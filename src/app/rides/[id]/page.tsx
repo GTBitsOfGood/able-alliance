@@ -159,14 +159,16 @@ export default function RideDetailPage({
   } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [isChatEligible, setIsChatEligible] = useState(false);
 
-  // Auto-open chat if ?chat=1
+  // Open the chat deep link once route eligibility is known.
   useEffect(() => {
     if (searchParams.get("chat") === "1" && isChatEligible && route) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowChatModal(true);
     }
   }, [searchParams, isChatEligible, route]);
@@ -178,7 +180,7 @@ export default function RideDetailPage({
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
-  const [delayActionBusy, setDelayActionBusy] = useState(false);
+  const delayActionBusy = false;
 
   // Extract ID from params
   useEffect(() => {
@@ -433,11 +435,7 @@ export default function RideDetailPage({
 
     if (!shouldConnect || socketRef.current) return;
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-    if (!wsUrl) {
-      setChatError("WebSocket server URL not configured");
-      return;
-    }
+    if (!wsUrl) return;
 
     const newSocket = io(wsUrl, {
       auth: { routeId, token: session.user.accessToken },
@@ -448,11 +446,12 @@ export default function RideDetailPage({
       reconnectionAttempts: 20,
     });
 
-    // Single source of truth: ref is set immediately, state follows
     socketRef.current = newSocket;
-    setSocket(newSocket);
 
-    newSocket.on("connect", () => setChatError(null));
+    newSocket.on("connect", () => {
+      setSocket(newSocket);
+      setChatError(null);
+    });
 
     newSocket.on("disconnect", (reason) => {
       // "io server disconnect" = server explicitly closed the connection.
@@ -516,7 +515,7 @@ export default function RideDetailPage({
     );
 
     newSocket.on("chatError", (msg: string) => setChatError(msg));
-  }, [isChatEligible, route?.status, routeId, session, showChatModal]);
+  }, [isChatEligible, route?.status, routeId, session, showChatModal, wsUrl]);
 
   // Disconnect only on unmount — not on dep changes
   useEffect(() => {

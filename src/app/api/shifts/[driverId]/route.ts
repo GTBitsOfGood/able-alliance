@@ -3,7 +3,7 @@ import { getUserFromRequest } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import connectMongoDB from "@/server/db/mongodb";
 import UserModel from "@/server/db/models/UserModel";
-import RouteModel from "@/server/db/models/RouteModel";
+import RouteModel, { RouteStatus } from "@/server/db/models/RouteModel";
 import LocationModel from "@/server/db/models/LocationModel";
 import mongoose from "mongoose";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
@@ -114,7 +114,7 @@ export async function GET(
 
     // Requested routes (no driver) that fall within the shift time window
     const requestedRoutes = await RouteModel.find({
-      status: "Requested",
+      status: RouteStatus.Requested,
       scheduledPickupTime: { $gte: shiftStart, $lte: shiftEnd },
     }).lean();
 

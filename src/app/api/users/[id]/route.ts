@@ -276,8 +276,7 @@ export async function PATCH(
     }
 
     const finalUser = (updated ?? notificationUpdated) as
-      | (Record<string, unknown> & { _id: { toString(): string } })
-      | null;
+      (Record<string, unknown> & { _id: { toString(): string } }) | null;
 
     if (!finalUser) {
       return NextResponse.json(
