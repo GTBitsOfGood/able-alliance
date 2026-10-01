@@ -47,11 +47,11 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 1.2rem var(--layout-content-pad-x) 2.5rem;
+  padding: var(--layout-content-pad-y) var(--layout-content-pad-x);
   max-width: var(--layout-content-max);
   margin-inline: auto;
   width: 100%;
-  gap: 1rem;
+  gap: 2rem;
   overflow: hidden;
 }
 
@@ -97,11 +97,12 @@
 }
 
 .rideDateLabel {
-  font-size: 2rem;
+  font-size: var(--text-desktop-heading-4);
   color: var(--color-grey-text-strong);
-  margin: 0 0 0.8rem 0;
+  font-style: normal;
+  font-weight: 500;
   font-family: var(--font-heading);
-  line-height: 2.8rem;
+  line-height: var(--text-desktop-heading-4--line-height);
 }
 
 .pickupDropoffRow {
@@ -114,29 +115,55 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  position: relative;
+  margin-bottom: calc(
+    0.8rem + 1.6rem
+  ); /* to allow space for location text below the line */
 }
 
 .stopBlockRight {
   text-align: right;
+  position: relative;
+  margin-bottom: calc(
+    0.8rem + 1.6rem
+  ); /* to allow space for location text below the line */
 }
 
 .stopLabel {
   font-size: 1.8rem;
-  color: rgba(34, 7, 11, 0.5);
   font-family: var(--font-paragraph);
+  font-weight: 400;
+  color: var(--color-grey-stroke-strong);
+  white-space: nowrap;
 }
 
 .stopTime {
-  font-size: 3.2rem;
+  white-space: nowrap;
+  font-size: var(--text-desktop-heading-2);
+  line-height: var(--text-desktop-heading-2--line-height);
   color: var(--color-grey-text-strong);
   font-family: var(--font-heading);
-  line-height: 4rem;
 }
 
 .stopLocation {
-  font-size: 1.8rem;
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
   color: var(--color-grey-text-strong);
   font-family: var(--font-paragraph);
+  position: absolute;
+  bottom: calc(-0.8rem + -1.6rem); /* 1.6 rem for text, 0.8 rem for gap on top*/
+  white-space: nowrap;
+}
+
+.stopLocationRight {
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  position: absolute;
+  bottom: calc(-0.8rem + -1.6rem); /* 1.6 rem for text, 0.8 rem for gap on top*/
+  white-space: nowrap;
+  right: 0;
 }
 
 .stopDivider {
@@ -356,8 +383,8 @@
   color: var(--color-status-red-text);
   border: 1px solid var(--color-status-red-text);
   border-radius: 0.4rem;
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: var(--text-desktop-paragraph-1);
+  font-weight: 400;
   font-family: var(--font-paragraph);
   cursor: pointer;
   transition: background 0.15s;
@@ -675,8 +702,20 @@
   }
 }
 
+.enRouteActions {
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+
+  .pickupActions {
+    display: flex;
+    flex-direction: row;
+    gap: 1.6rem;
+  }
+}
+
 /* Green outline button — pickup / dropoff */
-.greenOutlineButton {
+.outlineButton {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -685,14 +724,22 @@
   padding: 1.2rem;
   box-sizing: border-box;
   background-color: transparent;
-  color: #16a34a;
-  border: 1px solid #16a34a;
   border-radius: 0.4rem;
   font-size: 1.8rem;
-  font-weight: 600;
+  font-weight: 400;
   font-family: var(--font-paragraph);
   cursor: pointer;
   transition: background 0.15s;
+
+  &.greenOutlineButton {
+    color: #16a34a;
+    border: 1px solid #16a34a;
+  }
+
+  &.redOutlineButton {
+    color: #dc2626;
+    border: 1px solid #dc2626;
+  }
 
   &:hover:not(:disabled) {
     background-color: rgba(22, 163, 74, 0.06);
@@ -742,16 +789,19 @@
 }
 
 .studentInfoLabel {
-  font-size: 1.6rem;
-  color: var(--color-grey-text-strong);
-  font-family: var(--font-heading);
+  font-size: var(--text-desktop-paragraph-1);
+  font-weight: 700;
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  line-height: var(--text-desktop-paragraph-1--line-height);
 }
 
 .studentInfoValue {
-  font-size: 1.6rem;
+  font-size: var(--text-desktop-paragraph-1);
   font-weight: 400;
   color: var(--color-grey-text-strong);
   font-family: var(--font-paragraph);
+  line-height: var(--text-desktop-paragraph-1--line-height);
 }
 
 /* Responsive Design */

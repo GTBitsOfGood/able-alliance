@@ -40,6 +40,13 @@
   --color-checkbox-border: #416ebc;
   --color-admin-bg: #a7d0ed66;
 
+  /* Ride status chips */
+  --color-status-yellow: #ffd17f;
+  --color-status-green: #bbf7d0;
+  --color-status-green-text: #14532d;
+  --color-status-pink: #f4a0a0;
+  --color-status-grey: #efeded;
+
   --text-desktop-display: 48px;
   --text-desktop-heading-1: 40px;
   --text-desktop-heading-2: 32px;

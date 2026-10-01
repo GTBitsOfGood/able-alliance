@@ -28,12 +28,12 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
-  margin-bottom: 1rem;
 }
 
 .tabsLayout {
   display: flex;
   flex-direction: column;
+  gap: 2rem;
   width: 100%;
   min-width: 0;
   margin-bottom: 1.5rem;
@@ -72,8 +72,11 @@
 .pageTitle {
   color: var(--color-grey-text-strong);
   font-size: 4rem;
+  font-weight: 500;
   line-height: 4.8rem;
-  font-family: var(--font-heading);
+  font-family: var(
+    --font-heading-display
+  ); /* This translates to Style: ExtraBold in Figma */
   margin: 0;
 }
 
@@ -264,7 +267,10 @@
   flex-direction: column;
   gap: 0.25rem;
   min-width: 0;
-  flex: 0 0 14rem;
+  position: relative;
+  margin-bottom: calc(
+    0.8rem + 1.6rem
+  ); /* to allow space for location text below the line */
 }
 
 .rideCardDivider {
@@ -296,8 +302,8 @@
 
 .rideCardStopTime {
   white-space: nowrap;
-  font-size: 3.2rem;
-  line-height: 4rem;
+  font-size: var(--text-desktop-heading-2);
+  line-height: var(--text-desktop-heading-2--line-height);
   color: var(--color-grey-text-strong);
   font-family: var(--font-heading);
 }
@@ -309,6 +315,8 @@
   font-family: var(--font-paragraph);
   white-space: nowrap;
   text-overflow: ellipsis;
+  position: absolute; /* absolute positioning to allow line to stretch past location text horizontally even for long location names */
+  bottom: calc(-0.8rem + -1.6rem); /* 1.6 rem for text, 0.8 rem for gap on top*/
 }
 
 /* Student card — new Figma design */
@@ -342,24 +350,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  /* Matches the student card's basis; keeps the divider from squeezing the time */
-  min-width: 14rem;
+  position: relative;
+  margin-bottom: calc(
+    0.8rem + 1.6rem
+  ); /* to allow space for location text below the line */
 }
 
 .rideCardStopLabelNew {
   font-size: 1.8rem;
   font-family: var(--font-paragraph);
   font-weight: 400;
-  color: rgba(34, 7, 11, 0.5);
+  color: var(--color-grey-stroke-strong);
   white-space: nowrap;
-}
-
-.rideCardStopTimeNew {
-  white-space: nowrap;
-  font-size: 3.2rem;
-  font-family: var(--font-heading);
-  color: var(--color-grey-text-strong);
-  line-height: 4rem;
 }
 
 .rideCardStopLocationNew {
@@ -367,6 +369,8 @@
   font-family: var(--font-paragraph);
   font-weight: 400;
   color: var(--color-grey-text-strong);
+  position: absolute;
+  bottom: calc(-0.8rem + -1.6rem); /* 1.6 rem for text, 0.8 rem for gap on top*/
 }
 
 .rideCardHorizontalDivider {
@@ -504,11 +508,17 @@
   margin: 0;
 }
 
+.rideCardBottomRow {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
 .rideCardDriverChipsRow {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
   width: 100%;
@@ -523,7 +533,7 @@
   border-radius: 9999px;
   font-size: var(--text-desktop-paragraph-2);
   line-height: var(--text-desktop-paragraph-2--line-height);
-  font-weight: 500;
+  font-weight: 400;
   font-family: var(--font-paragraph);
   white-space: nowrap;
 }
@@ -552,7 +562,7 @@
 /* Vehicle ID chip */
 .rideCardDriverChip--vehicle {
   background-color: #a8cce4;
-  color: #183777;
+  color: var(--color-grey-text-strong);
 }
 
 .rideCardDriverDivider {
@@ -580,6 +590,26 @@
 .rideCardDriverButton {
   width: 15rem;
   white-space: nowrap;
+}
+
+.rideCardDetailsLink {
+  font-family: var(--font-paragraph);
+  font-weight: 600;
+  font-size: var(--text-mobile-paragraph-1);
+  line-height: var(--text-mobile-paragraph-1--line-height);
+  letter-spacing: 0;
+  color: var(--color-brand-text);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+@media (width >= 768px) {
+  .rideCardDetailsLink {
+    font-size: var(--text-desktop-paragraph-1);
+    line-height: var(--text-desktop-paragraph-1--line-height);
+  }
 }
 
 /* Legacy driver card layout (kept for reference) */
@@ -841,6 +871,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: 2rem;
   overflow: auto;
   width: 100%;
   max-width: var(--layout-content-max);
@@ -886,7 +917,7 @@
 }
 
 .driverWeekToggleRow [role="tablist"] [role="tab"] {
-  width: auto;
+  width: 192.5px;
   white-space: nowrap;
 }
 
@@ -896,12 +927,13 @@
   line-height: var(--text-desktop-heading-2--line-height);
   color: var(--color-grey-text-strong);
   font-family: var(--font-heading);
+  font-weight: 500;
 }
 
 .driverDayGroup {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 2rem;
 }
 
 .driverDayCards {
@@ -912,6 +944,7 @@
 
 .driverDayHeading {
   margin: 0;
+  font-weight: 500;
   font-size: var(--text-desktop-heading-3);
   line-height: var(--text-desktop-heading-3--line-height);
   color: var(--color-grey-text-strong);

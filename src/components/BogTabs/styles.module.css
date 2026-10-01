@@ -31,9 +31,9 @@
     border: none;
     border-bottom: 0.2rem solid transparent;
     color: var(--color-grey-text-weak);
+    font-weight: 400;
     cursor: pointer;
     position: relative;
-    width: 100%;
     display: flex;
     justify-content: center;
   }
@@ -51,6 +51,7 @@
   .bog-tabs-trigger[data-state="active"] {
     color: var(--color-grey-text-strong);
     border-bottom: 0.2rem solid var(--color-grey-stroke-strong);
+    font-weight: 600;
   }
 
   .bog-tabs-label {
