@@ -44,6 +44,9 @@ dist
 
 # genai
 CLAUDE.md
+AGENTS.md
+./codex
+./claude
 
 # playwright
 /test-results/
