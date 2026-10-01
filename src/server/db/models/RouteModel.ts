@@ -15,10 +15,10 @@ export enum RouteStatus {
   CancelledByStudent = "Cancelled by Student",
   CancelledByAdmin = "Cancelled by Admin",
 }
-// A display snapshot of a user taken when the route was created. gtUsername is
+// A display snapshot of a user taken when the route was created. username is
 // omitted alongside settings: it is a login identity, not something a route
 // needs to render, and snapshots predate the field.
-type IEmbeddedUser = Omit<IBaseUser, "settings" | "gtUsername"> & {
+type IEmbeddedUser = Omit<IBaseUser, "settings" | "username"> & {
   _id: mongoose.Types.ObjectId;
 };
 

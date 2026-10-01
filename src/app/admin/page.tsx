@@ -118,30 +118,20 @@ function AdminContent() {
     const preferredName = (
       form.elements.namedItem("preferredName") as HTMLInputElement
     ).value.trim();
-    const email = (
-      form.elements.namedItem("email") as HTMLInputElement
-    ).value.trim();
-    const gtUsername = (
-      form.elements.namedItem("gtUsername") as HTMLInputElement
+    const username = (
+      form.elements.namedItem("username") as HTMLInputElement
     ).value.trim();
     const additionalComments = (
       form.elements.namedItem("additionalComments") as HTMLInputElement
     ).value.trim();
 
-    if (!firstName || !lastName || !email || !gtUsername) {
-      setSubmitError(
-        "First name, last name, email, and GT username are required.",
-      );
+    if (!firstName || !lastName || !username) {
+      setSubmitError("First name, last name, and username are required.");
       return;
     }
 
-    if (!/^[a-z0-9]+$/i.test(gtUsername)) {
-      setSubmitError("GT username must be alphanumeric (e.g. gburdell3).");
-      return;
-    }
-
-    if (!email.toLowerCase().endsWith("@gatech.edu")) {
-      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+    if (!/^[a-z0-9]+$/i.test(username)) {
+      setSubmitError("username must be alphanumeric (e.g. gburdell3).");
       return;
     }
 
@@ -172,8 +162,7 @@ function AdminContent() {
         firstName,
         lastName,
         ...(preferredName && { preferredName }),
-        email,
-        gtUsername,
+        username,
         studentInfo,
       }),
     })
@@ -208,27 +197,17 @@ function AdminContent() {
     const preferredName = (
       form.elements.namedItem("preferredName") as HTMLInputElement
     ).value.trim();
-    const email = (
-      form.elements.namedItem("email") as HTMLInputElement
-    ).value.trim();
-    const gtUsername = (
-      form.elements.namedItem("gtUsername") as HTMLInputElement
+    const username = (
+      form.elements.namedItem("username") as HTMLInputElement
     ).value.trim();
 
-    if (!firstName || !lastName || !email || !gtUsername) {
-      setSubmitError(
-        "First name, last name, email, and GT username are required.",
-      );
+    if (!firstName || !lastName || !username) {
+      setSubmitError("First name, last name, and username are required.");
       return;
     }
 
-    if (!/^[a-z0-9]+$/i.test(gtUsername)) {
-      setSubmitError("GT username must be alphanumeric (e.g. gburdell3).");
-      return;
-    }
-
-    if (!email.toLowerCase().endsWith("@gatech.edu")) {
-      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+    if (!/^[a-z0-9]+$/i.test(username)) {
+      setSubmitError("username must be alphanumeric (e.g. gburdell3).");
       return;
     }
 
@@ -240,8 +219,7 @@ function AdminContent() {
         firstName,
         lastName,
         ...(preferredName && { preferredName }),
-        email,
-        gtUsername,
+        username,
       }),
     })
       .then((res) => {
@@ -275,27 +253,17 @@ function AdminContent() {
     const preferredName = (
       form.elements.namedItem("preferredName") as HTMLInputElement
     ).value.trim();
-    const email = (
-      form.elements.namedItem("email") as HTMLInputElement
-    ).value.trim();
-    const gtUsername = (
-      form.elements.namedItem("gtUsername") as HTMLInputElement
+    const username = (
+      form.elements.namedItem("username") as HTMLInputElement
     ).value.trim();
 
-    if (!firstName || !lastName || !email || !gtUsername) {
-      setSubmitError(
-        "First name, last name, email, and GT username are required.",
-      );
+    if (!firstName || !lastName || !username) {
+      setSubmitError("First name, last name, and username are required.");
       return;
     }
 
-    if (!/^[a-z0-9]+$/i.test(gtUsername)) {
-      setSubmitError("GT username must be alphanumeric (e.g. gburdell3).");
-      return;
-    }
-
-    if (!email.toLowerCase().endsWith("@gatech.edu")) {
-      setSubmitError("Email must be a valid GT email address (@gatech.edu).");
+    if (!/^[a-z0-9]+$/i.test(username)) {
+      setSubmitError("username must be alphanumeric (e.g. gburdell3).");
       return;
     }
 
@@ -307,8 +275,7 @@ function AdminContent() {
         firstName,
         lastName,
         ...(preferredName && { preferredName }),
-        email,
-        gtUsername,
+        username,
       }),
     })
       .then((res) => {
@@ -490,18 +457,8 @@ function AdminContent() {
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
             />
             <BogTextInput
-              name="email"
-              type="email"
-              label="GT Email"
-              placeholder="gburdell01@gatech.edu"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="gtUsername"
-              label="GT Username"
+              name="username"
+              label="Username"
               placeholder="gburdell3"
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
               required
@@ -677,17 +634,7 @@ function AdminContent() {
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
             />
             <BogTextInput
-              name="email"
-              type="email"
-              label="GT Email"
-              placeholder="gburdell01@gatech.edu"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="gtUsername"
+              name="username"
               label="GT Username"
               placeholder="gburdell3"
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
@@ -745,18 +692,8 @@ function AdminContent() {
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
             />
             <BogTextInput
-              name="email"
-              type="email"
-              label="GT Email"
-              placeholder="gburdell01@gatech.edu"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="gtUsername"
-              label="GT Username"
+              name="username"
+              label="Username"
               placeholder="gburdell3"
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
               required

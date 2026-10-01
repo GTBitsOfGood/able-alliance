@@ -12,16 +12,14 @@ type NotificationSettingsUpdate = Partial<UserSettings["notifications"]>;
 export async function createUser(data: BaseUserInput | StudentInput) {
   await connectMongoDB();
 
-  // Both email and GT username are unique identities; check each so a clash
-  // surfaces as a 400 rather than a Mongo duplicate-key error.
   const existing = await UserModel.findOne({
-    $or: [{ email: data.email }, { gtUsername: data.gtUsername }],
+    $or: [{ username: data.username }, { email: data.email }],
   });
   if (existing) {
     throw new UserAlreadyExistsException(
       existing.email === data.email
         ? "User with this email already exists"
-        : "User with this GT username already exists",
+        : "User with this username already exists",
     );
   }
 
@@ -48,16 +46,16 @@ export async function getUserByEmail(email: string) {
  * Users are never auto-provisioned from CAS: a successful CAS login for
  * someone with no record here is a failed login.
  */
-export async function getProvisionedUserFromCAS(gtUsername: string) {
+export async function getProvisionedUserFromCAS(username: string) {
   await connectMongoDB();
 
-  const existing = await UserModel.findOne({ gtUsername }).lean();
+  const existing = await UserModel.findOne({ username }).lean();
   if (existing) {
     return existing;
   }
 
   throw new UserNotFoundException(
-    `No provisioned user found for GT username: ${gtUsername}`,
+    `No provisioned user found for username: ${username}`,
   );
 }
 

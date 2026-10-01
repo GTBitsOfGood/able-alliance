@@ -3,10 +3,7 @@ import { cookies } from "next/headers";
 import { encode } from "next-auth/jwt";
 import { getProvisionedUserFromCAS } from "@/server/db/actions/UserAction";
 import { UserNotFoundException } from "@/utils/exceptions/user";
-import {
-  secureCookiesEnabled,
-  sessionCookieName,
-} from "@/server/auth/sessionCookie";
+import { authConfig } from "@/auth";
 import {
   casServiceUrl,
   casValidateUrl,
@@ -83,9 +80,9 @@ export async function GET(request: NextRequest) {
       return loginErrorRedirect(request, "invalid_ticket", appUrl);
     }
 
-    const { username, attributes } = result;
+    const { username } = result;
 
-    // Look up the user by GT username (do not auto-provision from CAS).
+    // Look up the user by username (do not auto-provision from CAS).
     let user;
     try {
       user = await getProvisionedUserFromCAS(username);
@@ -101,10 +98,8 @@ export async function GET(request: NextRequest) {
 
     const userId = (user._id as object).toString();
 
-    // The database record is authoritative for profile data. CAS attributes are
-    // optional, so displayName only fills in when the app has nothing better.
-    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-    const displayName = attributes.displayName ?? (fullName || username);
+    const displayName =
+      user.preferredName || `${user.firstName} ${user.lastName}`;
 
     // Encode a JWT with the user's info
     const secret = process.env.NEXTAUTH_SECRET;
@@ -113,15 +108,15 @@ export async function GET(request: NextRequest) {
       return loginErrorRedirect(request, "server_error", appUrl);
     }
 
-    // Auth.js uses __Secure-authjs.session-token in production (HTTPS); salt must match cookie name
-    const cookieName = sessionCookieName();
+    const { name: cookieName, options: cookieOptions } =
+      authConfig.cookies.sessionToken;
 
     const token = await encode({
       token: {
         sub: userId,
         userId,
         type: user.type,
-        gtUsername: username,
+        username,
         email: user.email,
         name: displayName,
         firstName: user.firstName,
@@ -135,10 +130,7 @@ export async function GET(request: NextRequest) {
     // Redirect to same origin so cookie domain matches; set cookie via next/headers for better compatibility with Netlify
     const cookieStore = await cookies();
     cookieStore.set(cookieName, token, {
-      httpOnly: true,
-      secure: secureCookiesEnabled(),
-      sameSite: "lax",
-      path: "/",
+      ...cookieOptions,
       maxAge: 24 * 60 * 60,
     });
     return NextResponse.redirect(appUrl, 302);

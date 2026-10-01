@@ -13,7 +13,7 @@ export type UserType = "Student" | "Driver" | "Admin";
 export interface Persona {
   id: string;
   /** GT Account username — how the CAS callback matches a provisioned user. */
-  gtUsername: string;
+  username: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -26,7 +26,7 @@ const oid = (suffix: string) => "e2e" + "0".repeat(21 - suffix.length) + suffix;
 export const PERSONAS = {
   student: {
     id: oid("a001"),
-    gtUsername: "gburdell3",
+    username: "gburdell3",
     email: "gburdell3@gatech.edu",
     firstName: "George",
     lastName: "Burdell",
@@ -34,7 +34,7 @@ export const PERSONAS = {
   },
   driver: {
     id: oid("a002"),
-    gtUsername: "driver1",
+    username: "driver1",
     email: "driver1@gatech.edu",
     firstName: "Test",
     lastName: "Driver",
@@ -42,8 +42,8 @@ export const PERSONAS = {
   },
   admin: {
     id: oid("a003"),
-    gtUsername: "adminuser",
-    email: "admin@gatech.edu",
+    username: "adminuser",
+    email: "adminuser@gatech.edu",
     firstName: "Admin",
     lastName: "User",
     type: "Admin",
@@ -90,7 +90,7 @@ function buildSeed() {
     _id: toObjectId(p.id),
     firstName: p.firstName,
     lastName: p.lastName,
-    gtUsername: p.gtUsername,
+    username: p.username,
     email: p.email,
     type: p.type,
   });

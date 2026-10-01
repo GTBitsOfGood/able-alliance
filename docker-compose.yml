@@ -11,7 +11,6 @@ services:
       DEPLOY_PRIME_URL: "http://localhost:3000"
       CAS_BASE_URL: "http://cas:8443/cas"
       CAS_BASE_URL_BROWSER: "http://localhost:8443/cas"
-      SUPERADMIN_EMAIL: "superadmin@gatech.edu"
       SUPERADMIN_FIRSTNAME: "Super"
       SUPERADMIN_LASTNAME: "Admin"
       # The CAS identity for the SuperAdmin. Set explicitly in both services so
@@ -79,7 +78,6 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: "8443"
-      SUPERADMIN_EMAIL: "superadmin@gatech.edu"
       SUPERADMIN_FIRSTNAME: "Super"
       SUPERADMIN_LASTNAME: "Admin"
       # The CAS identity for the SuperAdmin. Set explicitly in both services so

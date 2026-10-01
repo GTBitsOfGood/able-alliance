@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  sessionCookieName,
-  secureCookiesEnabled,
-} from "@/server/auth/sessionCookie";
+import { authConfig } from "@/auth";
 import { casLogoutUrl, readCASConfig } from "@/server/cas/config";
 
 /**
@@ -26,11 +23,9 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(target);
 
-  response.cookies.set(sessionCookieName(), "", {
-    httpOnly: true,
-    secure: secureCookiesEnabled(),
-    sameSite: "lax",
-    path: "/",
+  const { name, options } = authConfig.cookies.sessionToken;
+  response.cookies.set(name, "", {
+    ...options,
     maxAge: 0,
   });
 

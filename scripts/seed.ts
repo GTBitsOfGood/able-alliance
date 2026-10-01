@@ -62,32 +62,14 @@ async function seed() {
   // ---------- Users ----------
   const usersCol = db.collection("users");
 
-  // GT Account usernames (the CAS `cas:user` value) — the primary login identity.
-  // Where a mock CAS account exists, these MUST match mock-cas-server/users.json.
-  // Note admin@gatech.edu maps to "adminuser", not "admin": the mock CAS server
-  // issues tickets for "adminuser", so deriving the username from the email
-  // local-part would break local login for that account.
-  const GT_USERNAMES: Record<string, string> = {
-    "gburdell3@gatech.edu": "gburdell3",
-    "jdoe3@gatech.edu": "jdoe3",
-    "mchen3@gatech.edu": "mchen3",
-    "spriya3@gatech.edu": "spriya3",
-    "driver1@gatech.edu": "driver1",
-    "driver2@gatech.edu": "driver2",
-    "aevans3@gatech.edu": "aevans3",
-    "admin@gatech.edu": "adminuser",
-    "dnestani3@gatech.edu": "dnestani3",
-    "superadmin@gatech.edu": "superadmin",
-  };
-
   const student1 = await upsertOne(
     usersCol,
-    { email: "gburdell3@gatech.edu" },
+    { username: "gburdell3" },
     {
       firstName: "George",
       lastName: "Burdell",
       preferredName: "G",
-      gtUsername: GT_USERNAMES["gburdell3@gatech.edu"],
+      username: "gburdell3",
       email: "gburdell3@gatech.edu",
       type: "Student",
       studentInfo: { accessibilityNeeds: ["Wheelchair", "ExtraTime"] },
@@ -97,11 +79,11 @@ async function seed() {
 
   const student2 = await upsertOne(
     usersCol,
-    { email: "jdoe3@gatech.edu" },
+    { username: "jdoe3" },
     {
       firstName: "Jane",
       lastName: "Doe",
-      gtUsername: GT_USERNAMES["jdoe3@gatech.edu"],
+      username: "jdoe3",
       email: "jdoe3@gatech.edu",
       type: "Student",
       studentInfo: { notes: "Please call ahead of arrival." },
@@ -111,11 +93,11 @@ async function seed() {
 
   const student3 = await upsertOne(
     usersCol,
-    { email: "mchen3@gatech.edu" },
+    { username: "mchen3" },
     {
       firstName: "Michael",
       lastName: "Chen",
-      gtUsername: GT_USERNAMES["mchen3@gatech.edu"],
+      username: "mchen3",
       email: "mchen3@gatech.edu",
       type: "Student",
       studentInfo: { accessibilityNeeds: ["LowMobility"] },
@@ -125,11 +107,11 @@ async function seed() {
 
   const student4 = await upsertOne(
     usersCol,
-    { email: "spriya3@gatech.edu" },
+    { username: "spriya3" },
     {
       firstName: "Sara",
       lastName: "Priya",
-      gtUsername: GT_USERNAMES["spriya3@gatech.edu"],
+      username: "spriya3",
       email: "spriya3@gatech.edu",
       type: "Student",
       studentInfo: {
@@ -142,12 +124,12 @@ async function seed() {
 
   const driver1 = await upsertOne(
     usersCol,
-    { email: "driver1@gatech.edu" },
+    { username: "driver1" },
     {
       firstName: "Test",
       lastName: "Driver",
       preferredName: "TD",
-      gtUsername: GT_USERNAMES["driver1@gatech.edu"],
+      username: "driver1",
       email: "driver1@gatech.edu",
       type: "Driver",
       shifts: [
@@ -163,11 +145,11 @@ async function seed() {
 
   const driver2 = await upsertOne(
     usersCol,
-    { email: "driver2@gatech.edu" },
+    { username: "driver2" },
     {
       firstName: "Alex",
       lastName: "Smith",
-      gtUsername: GT_USERNAMES["driver2@gatech.edu"],
+      username: "driver2",
       email: "driver2@gatech.edu",
       type: "Driver",
       shifts: [
@@ -182,11 +164,11 @@ async function seed() {
 
   const driver3 = await upsertOne(
     usersCol,
-    { email: "aevans3@gatech.edu" },
+    { username: "aevans3" },
     {
       firstName: "Austin",
       lastName: "Evans",
-      gtUsername: GT_USERNAMES["aevans3@gatech.edu"],
+      username: "aevans3",
       email: "aevans3@gatech.edu",
       type: "Driver",
       shifts: [
@@ -200,12 +182,12 @@ async function seed() {
 
   await upsertOne(
     usersCol,
-    { email: "admin@gatech.edu" },
+    { username: "adminuser" },
     {
       firstName: "Admin",
       lastName: "User",
-      gtUsername: GT_USERNAMES["admin@gatech.edu"],
-      email: "admin@gatech.edu",
+      username: "adminuser",
+      email: "adminuser@gatech.edu",
       type: "Admin",
     },
     "admin: Admin User",
@@ -213,41 +195,29 @@ async function seed() {
 
   await upsertOne(
     usersCol,
-    { email: "dnestani3@gatech.edu" },
+    { username: "dnestani3" },
     {
       firstName: "Daniele",
       lastName: "Nestani",
-      gtUsername: GT_USERNAMES["dnestani3@gatech.edu"],
+      username: "dnestani3",
       email: "dnestani3@gatech.edu",
       type: "Admin",
     },
     "admin: Daniele Nestani",
   );
 
-  const superAdmin = await upsertOne(
+  await upsertOne(
     usersCol,
-    { email: "superadmin@gatech.edu" },
+    { username: "superadmin" },
     {
       firstName: "Super",
       lastName: "Admin",
-      gtUsername: GT_USERNAMES["superadmin@gatech.edu"],
+      username: "superadmin",
       email: "superadmin@gatech.edu",
       type: "SuperAdmin",
     },
     "superadmin: Super Admin",
   );
-
-  // Backfill gtUsername for databases seeded before GT username became the CAS
-  // identity — upsertOne skips existing docs, so they'd otherwise stay without one.
-  for (const [email, gtUsername] of Object.entries(GT_USERNAMES)) {
-    const res = await usersCol.updateOne(
-      { email, gtUsername: { $exists: false } },
-      { $set: { gtUsername } },
-    );
-    if (res.modifiedCount > 0) {
-      console.log(`✓ Backfilled gtUsername "${gtUsername}" for ${email}`);
-    }
-  }
 
   // ---------- Locations ----------
   const locsCol = db.collection("locations");

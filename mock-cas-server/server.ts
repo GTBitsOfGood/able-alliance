@@ -7,25 +7,13 @@ import express, {
 } from "express";
 import { v4 as uuidv4 } from "uuid";
 
-/**
- * Attributes are optional, matching real CAS: release is configured per
- * registered service, so a service may receive `cas:user` and nothing else.
- * GT's own Express example never reads an attribute at all.
- */
-interface CASUserAttributes {
-  email?: string;
-  displayName?: string;
-}
-
 interface MockUser {
   username: string;
   password: string;
-  attributes?: CASUserAttributes;
 }
 
 interface TicketData {
   username: string;
-  attributes: CASUserAttributes;
   service: string;
   createdAt: number;
 }
@@ -61,32 +49,13 @@ function loadUsers(): MockUser[] {
   const base = parsed as MockUser[];
 
   // Inject SuperAdmin from env vars if configured
-  const superAdminEmail = process.env.SUPERADMIN_EMAIL;
-  const superAdminFirstName = process.env.SUPERADMIN_FIRSTNAME;
-  const superAdminLastName = process.env.SUPERADMIN_LASTNAME;
   const superAdminUsername =
-    process.env.SUPERADMIN_CAS_USERNAME ??
-    (superAdminEmail ? superAdminEmail.split("@")[0] : null);
-
+    process.env.SUPERADMIN_CAS_USERNAME?.trim().toLowerCase();
   if (
-    superAdminEmail &&
-    superAdminFirstName &&
-    superAdminLastName &&
-    superAdminUsername
+    superAdminUsername &&
+    !base.some((user) => user.username === superAdminUsername)
   ) {
-    const alreadyPresent = base.some(
-      (u) => u.attributes?.email === superAdminEmail,
-    );
-    if (!alreadyPresent) {
-      base.push({
-        username: superAdminUsername,
-        password: "password",
-        attributes: {
-          email: superAdminEmail,
-          displayName: superAdminFirstName + " " + superAdminLastName,
-        },
-      });
-    }
+    base.push({ username: superAdminUsername, password: "password" });
   }
 
   return base;
@@ -123,7 +92,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// In-memory ticket store: ticket -> { username, attributes, service, createdAt }
+// In-memory ticket store: ticket -> { username, service, createdAt }
 const tickets = new Map<string, TicketData>();
 
 // Ticket expiration: 30 seconds
@@ -141,13 +110,10 @@ setInterval(() => {
 
 function buildUserHints(): string {
   return users
-    .map((u) => {
-      const detail =
-        u.attributes?.displayName || u.attributes?.email
-          ? `${u.attributes.displayName ?? "(no displayName)"} (${u.attributes.email ?? "no email"})`
-          : "no attributes released";
-      return `<code>${u.username}</code> / <code>${u.password}</code> — ${detail}`;
-    })
+    .map(
+      (u) =>
+        `<code>${escapeXml(u.username)}</code> / <code>${escapeXml(u.password)}</code>`,
+    )
     .join("<br>");
 }
 
@@ -317,7 +283,6 @@ app.post(
     const ticket = `ST-${uuidv4()}`;
     tickets.set(ticket, {
       username: user.username,
-      attributes: user.attributes ?? {},
       service,
       createdAt: Date.now(),
     });
@@ -365,25 +330,10 @@ app.get("/cas/p3/serviceValidate", (req: Request, res: Response) => {
     `[CAS] Ticket validated: ${ticket} for user: ${ticketData.username}`,
   );
 
-  // Only emit the attributes block for attributes that were actually released,
-  // so a service receiving bare `cas:user` can be exercised locally.
-  const attributeLines = [
-    ticketData.attributes.email
-      ? `      <cas:email>${escapeXml(ticketData.attributes.email)}</cas:email>`
-      : null,
-    ticketData.attributes.displayName
-      ? `      <cas:displayName>${escapeXml(ticketData.attributes.displayName)}</cas:displayName>`
-      : null,
-  ].filter((line): line is string => line !== null);
-
-  const attributesBlock =
-    attributeLines.length > 0
-      ? `\n    <cas:attributes>\n${attributeLines.join("\n")}\n    </cas:attributes>`
-      : "";
-
+  // This is the standard CAS XML namespace, not the authentication server URL.
   return res.send(`<cas:serviceResponse xmlns:cas="http://www.yale.edu/tp/cas">
   <cas:authenticationSuccess>
-    <cas:user>${escapeXml(ticketData.username)}</cas:user>${attributesBlock}
+    <cas:user>${escapeXml(ticketData.username)}</cas:user>
   </cas:authenticationSuccess>
 </cas:serviceResponse>`);
 });

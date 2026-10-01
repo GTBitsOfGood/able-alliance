@@ -36,10 +36,12 @@ export const baseUserSchema = z.object({
   preferredName: z.string().optional(),
   // GT Account username (the CAS `cas:user` value) — the primary identity for
   // CAS login. Required: a user provisioned without one can never log in.
-  gtUsername: z
+  username: z
     .string()
-    .min(1, "GT username is required")
-    .regex(/^[a-z0-9]+$/i, "GT username must be alphanumeric"),
+    .trim()
+    .toLowerCase()
+    .min(1, "username is required")
+    .regex(/^[a-z0-9]+$/i, "username must be alphanumeric"),
   email: z
     .string()
     .email("Email is required")
