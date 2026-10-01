@@ -586,6 +586,7 @@ export default function CreateRidePage() {
                     <div className={styles.calendarHeader}>
                       <button
                         type="button"
+                        aria-label="Previous month"
                         onClick={prevMonth}
                         className={styles.calendarNav}
                       >
@@ -612,6 +613,7 @@ export default function CreateRidePage() {
                       </div>
                       <button
                         type="button"
+                        aria-label="Next month"
                         onClick={nextMonth}
                         className={styles.calendarNav}
                       >

@@ -19,6 +19,15 @@ export function estDateDaysFromNow(days: number): Date {
   return addDays(toZonedTime(new Date(), "America/New_York"), days);
 }
 
+export function nextServiceDate(): Date {
+  let offset = 1;
+  let date = estDateDaysFromNow(offset);
+  while (date.getDay() === 0 || date.getDay() === 6) {
+    date = estDateDaysFromNow(++offset);
+  }
+  return date;
+}
+
 export function formatEstTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", {
     timeZone: "America/New_York",

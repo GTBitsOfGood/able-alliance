@@ -4,7 +4,7 @@
  *   student  /rides/new          fills the form            Requested
  *   student  /rides              ride is in this/next week
  *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
- *   driver   /rides              Tomorrow tab shows it
+ *   driver   /rides/:id          scheduled ride is visible
  *   student  /rides/:id          scheduled driver/vehicle
  *
  * Stops at Scheduled — the full lifecycle lives in routeB.ui.spec.ts.
@@ -12,7 +12,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-import { estDateDaysFromNow } from "./routeTestHelpers";
+import { estDateDaysFromNow, nextServiceDate } from "./routeTestHelpers";
 
 const PICKUP = LOCATIONS.techSquare;
 const DROPOFF = LOCATIONS.studentCenter;
@@ -23,15 +23,6 @@ async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
   await input.fill(label);
   await input.press("Enter");
   await expect(input).toHaveValue(label);
-}
-
-function isEstSaturday(): boolean {
-  return (
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      weekday: "short",
-    }).format(new Date()) === "Sat"
-  );
 }
 
 test("route A: student creates, admin schedules (UI)", async ({
@@ -45,16 +36,16 @@ test("route A: student creates, admin schedules (UI)", async ({
   // ── Student requests a ride ────────────────────────────────────────────
   await student.goto("/rides/new");
   await expect(
-    student.getByRole("heading", { name: "Create Ride" }),
+    student.getByRole("heading", { name: "Request Ride" }),
   ).toBeVisible();
 
   const today = estDateDaysFromNow(0);
-  const tomorrow = estDateDaysFromNow(1);
-  if (tomorrow.getMonth() !== today.getMonth()) {
-    await student.locator('button[type="button"]:has(svg)').nth(1).click();
+  const rideDate = nextServiceDate();
+  if (rideDate.getMonth() !== today.getMonth()) {
+    await student.getByRole("button", { name: "Next month" }).click();
   }
   await student
-    .getByRole("button", { name: String(tomorrow.getDate()), exact: true })
+    .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
 
   const times = student.getByPlaceholder("hh:mm");
@@ -62,9 +53,12 @@ test("route A: student creates, admin schedules (UI)", async ({
   await pickTime(student.locator("#pickup-window-from"), "1:30 PM");
   await pickTime(student.locator("#pickup-window-to"), "2:30 PM");
 
-  const selects = student.locator("select");
-  await selects.nth(0).selectOption({ label: PICKUP.name });
-  await selects.nth(1).selectOption({ label: DROPOFF.name });
+  await student
+    .getByRole("combobox", { name: "Pickup location" })
+    .selectOption({ label: PICKUP.name });
+  await student
+    .getByRole("combobox", { name: "Dropoff location" })
+    .selectOption({ label: DROPOFF.name });
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",
@@ -75,8 +69,8 @@ test("route A: student creates, admin schedules (UI)", async ({
   const { _id: routeId } = (await createRes.json()) as { _id: string };
   await expect(student).toHaveURL(/\/rides$/);
 
-  // Tomorrow is next week when today is Saturday (weeks start Sunday EST).
-  if (isEstSaturday()) {
+  // Weeks start Sunday; a lower weekday means the ride is in next week.
+  if (rideDate.getDay() <= today.getDay()) {
     await student.getByText("Next Week", { exact: true }).click();
   }
 
@@ -120,18 +114,27 @@ test("route A: student creates, admin schedules (UI)", async ({
   expect(scheduleRes.status(), await scheduleRes.text()).toBe(200);
   await expect(row).toHaveCount(0);
 
-  // ── Driver sees it on Tomorrow ─────────────────────────────────────────
+  // ── Driver sees the scheduled ride ─────────────────────────────────────
   const driver = await pageAs("driver");
-  await driver.goto("/rides");
-  await driver.getByText("Tomorrow", { exact: true }).click();
-  const driverCard = driver
-    .getByTestId("ride-card")
-    .filter({ hasText: PICKUP.name })
-    .filter({ hasText: DROPOFF.name });
-  await expect(driverCard).toHaveCount(1);
+  // The driver list only covers today and tomorrow, not Monday after a weekend.
+  if (rideDate.toDateString() === estDateDaysFromNow(1).toDateString()) {
+    await driver.goto("/rides");
+    await driver.getByText("Tomorrow", { exact: true }).click();
+    const driverCard = driver
+      .getByTestId("ride-card")
+      .filter({ hasText: PICKUP.name })
+      .filter({ hasText: DROPOFF.name });
+    await expect(driverCard).toHaveCount(1);
+    await expect(
+      driverCard.getByText("Scheduled", { exact: true }),
+    ).toBeVisible();
+  }
+  await driver.goto(`/rides/${routeId}`);
   await expect(
-    driverCard.getByText("Scheduled", { exact: true }),
-  ).toBeVisible();
+    driver
+      .getByRole("heading", { name: "Ride Details" })
+      .locator("xpath=following-sibling::span[1]"),
+  ).toHaveText("Scheduled");
 
   // ── Student sees scheduled assignment ──────────────────────────────────
   await student.goto(`/rides/${routeId}`);
