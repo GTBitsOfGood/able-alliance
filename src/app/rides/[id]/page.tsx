@@ -469,9 +469,10 @@ export default function RideDetailPage({
       setChatError("Connection issue — retrying…");
     });
 
-    newSocket.on("reconnect", () => setChatError(null));
+    // Reconnection events come from the Socket.IO Manager (.io), not the socket.
+    newSocket.io.on("reconnect", () => setChatError(null));
 
-    newSocket.on("reconnect_failed", () => {
+    newSocket.io.on("reconnect_failed", () => {
       setChatError("Could not connect to chat. Please refresh the page.");
       socketRef.current = null;
       setSocket(null);
