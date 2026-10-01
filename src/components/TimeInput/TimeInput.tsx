@@ -33,10 +33,16 @@ function valueToLabel(value: string): string {
   return `${displayH}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
-function filterSlots(query: string): { value: string; label: string }[] {
+function filterSlots(
+  query: string,
+  min?: string,
+  max?: string,
+): { value: string; label: string }[] {
   const q = query.trim().toLowerCase();
-  if (!q) return QUARTER_SLOTS;
-  const source = MINUTE_SLOTS;
+  const source = (q ? MINUTE_SLOTS : QUARTER_SLOTS).filter(
+    (slot) => (!min || slot.value >= min) && (!max || slot.value <= max),
+  );
+  if (!q) return source;
   const startsWith = source.filter((s) => s.label.toLowerCase().startsWith(q));
   const contains = source.filter(
     (s) =>
@@ -54,6 +60,10 @@ type TimeInputProps = {
   /** className applied to the text input itself */
   inputClassName?: string;
   id?: string;
+  /** Earliest selectable time, inclusive, in HH:MM format. */
+  min?: string;
+  /** Latest selectable time, inclusive, in HH:MM format. */
+  max?: string;
 };
 
 export function TimeInput({
@@ -63,6 +73,8 @@ export function TimeInput({
   className,
   inputClassName,
   id,
+  min,
+  max,
 }: TimeInputProps) {
   const [draft, setDraft] = useState(valueToLabel(value));
   const [open, setOpen] = useState(false);
@@ -75,7 +87,7 @@ export function TimeInput({
     setDraft(valueToLabel(value));
   }, [value]);
 
-  const slots = filterSlots(draft);
+  const slots = filterSlots(draft, min, max);
 
   const commit = useCallback(
     (slot: { value: string; label: string }) => {

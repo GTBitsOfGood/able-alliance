@@ -33,17 +33,22 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   // ── Student requests a ride ────────────────────────────────────────────
   await student.goto("/rides/new");
   await expect(
-    student.getByRole("heading", { name: "Create Ride" }),
+    student.getByRole("heading", { name: "Request Ride" }),
   ).toBeVisible();
 
   const today = estDateDaysFromNow(0);
-  const tomorrow = estDateDaysFromNow(1);
-  if (tomorrow.getMonth() !== today.getMonth()) {
+  let offset = 1;
+  let rideDate = estDateDaysFromNow(offset);
+  while (rideDate.getDay() === 0 || rideDate.getDay() === 6) {
+    offset += 1;
+    rideDate = estDateDaysFromNow(offset);
+  }
+  if (rideDate.getMonth() !== today.getMonth()) {
     // Calendar header: [prev][month/year][next]; the nav buttons are the only icon buttons.
     await student.locator('button[type="button"]:has(svg)').nth(1).click();
   }
   await student
-    .getByRole("button", { name: String(tomorrow.getDate()), exact: true })
+    .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
 
   const times = student.getByPlaceholder("hh:mm");
@@ -51,9 +56,12 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   await pickTime(student.locator("#pickup-window-from"), "9:30 AM");
   await pickTime(student.locator("#pickup-window-to"), "10:30 AM");
 
-  const selects = student.locator("select");
-  await selects.nth(0).selectOption({ label: LOCATIONS.exhibitionHall.name });
-  await selects.nth(1).selectOption({ label: LOCATIONS.techSquare.name });
+  await student
+    .getByRole("combobox", { name: "Pickup location" })
+    .selectOption({ label: LOCATIONS.exhibitionHall.name });
+  await student
+    .getByRole("combobox", { name: "Dropoff location" })
+    .selectOption({ label: LOCATIONS.techSquare.name });
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",

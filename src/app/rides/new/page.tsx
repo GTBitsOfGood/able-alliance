@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { fromZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./styles.module.css";
 
@@ -17,6 +16,14 @@ type Location = {
   latitude: number;
   longitude: number;
 };
+
+const SERVICE_START_TIME = "07:30";
+const SERVICE_END_TIME = "19:45";
+
+function isServiceDay(date: Date): boolean {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
+}
 
 export default function CreateRidePage() {
   const router = useRouter();
@@ -36,6 +43,9 @@ export default function CreateRidePage() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const focusSelectedLocationsRef = useRef<
+    (map: mapboxgl.Map, duration: number) => void
+  >(() => {});
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
   const dotMarkerRefs = useRef<mapboxgl.Marker[]>([]);
 
@@ -50,7 +60,7 @@ export default function CreateRidePage() {
       try {
         const res = await fetch("/api/locations");
         if (!res.ok) throw new Error("Failed to fetch locations");
-        const data = await res.json();
+        const data = (await res.json()) as Location[];
         setLocations(data);
 
         if (data.length > 0) {
@@ -104,6 +114,43 @@ export default function CreateRidePage() {
         return defaultCenter;
       };
 
+      const focusSelectedLocations = (map: mapboxgl.Map, duration: number) => {
+        if (pickup && dropoff) {
+          const pickupCoordinates: [number, number] = [
+            pickup.longitude,
+            pickup.latitude,
+          ];
+          const dropoffCoordinates: [number, number] = [
+            dropoff.longitude,
+            dropoff.latitude,
+          ];
+          const sameLocation =
+            Math.abs(pickup.longitude - dropoff.longitude) < 0.0003 &&
+            Math.abs(pickup.latitude - dropoff.latitude) < 0.0003;
+
+          if (!sameLocation) {
+            const bounds = new mapboxgl.LngLatBounds(
+              pickupCoordinates,
+              pickupCoordinates,
+            );
+            bounds.extend(dropoffCoordinates);
+            map.fitBounds(bounds, {
+              padding: 64,
+              maxZoom: defaultZoom,
+              duration,
+            });
+            return;
+          }
+        }
+
+        map.flyTo({
+          center: center(),
+          zoom: defaultZoom,
+          duration,
+        });
+      };
+      focusSelectedLocationsRef.current = focusSelectedLocations;
+
       mapboxgl.accessToken = token;
       if (!mapRef.current) {
         mapRef.current = new mapboxgl.Map({
@@ -112,9 +159,13 @@ export default function CreateRidePage() {
           center: center(),
           zoom: defaultZoom,
         });
-        mapRef.current.on("load", () => mapRef.current?.resize());
-      } else {
-        mapRef.current.flyTo({ center: center(), zoom: defaultZoom });
+        mapRef.current.on("load", () => {
+          if (!mapRef.current) return;
+          mapRef.current.resize();
+          focusSelectedLocationsRef.current(mapRef.current, 0);
+        });
+      } else if (mapRef.current.loaded()) {
+        focusSelectedLocations(mapRef.current, 700);
       }
 
       markerRefs.current.forEach((marker) => marker.remove());
@@ -124,12 +175,10 @@ export default function CreateRidePage() {
 
       const createCustomPin = (
         labelText: string,
-        color: string,
         extraStemPx = 0,
       ): HTMLDivElement => {
         const root = document.createElement("div");
         root.className = styles.mapPinRoot;
-        root.style.setProperty("--pin-color", color);
 
         const label = document.createElement("div");
         label.textContent = labelText;
@@ -166,7 +215,6 @@ export default function CreateRidePage() {
         return wrapper;
       };
 
-      const pinColor = "#183777";
       const pickupLngLat: [number, number] | null = pickup
         ? [pickup.longitude, pickup.latitude]
         : null;
@@ -179,7 +227,7 @@ export default function CreateRidePage() {
         Math.abs(pickupLngLat[0] - dropoffLngLat[0]) < 0.0003 &&
         Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
 
-      // Add blue dot markers for all non-selected locations
+      // Add a dot for every non-selected campus location.
       for (const loc of locations) {
         const isPickup = loc.name === pickupLocationName;
         const isDropoff = loc.name === dropoffLocationName;
@@ -196,7 +244,7 @@ export default function CreateRidePage() {
 
       if (pickup && pickupLngLat) {
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
+          element: createCustomPin(`Pickup: ${pickup.name}`),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
@@ -209,7 +257,6 @@ export default function CreateRidePage() {
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
             `Dropoff: ${dropoff.name}`,
-            pinColor,
             overlap ? 50 : 0,
           ),
           anchor: "bottom",
@@ -303,8 +350,27 @@ export default function CreateRidePage() {
       return;
     }
 
+    if (!isServiceDay(selectedDate)) {
+      setError("Ride dates must be Monday through Friday.");
+      return;
+    }
+
     if (!pickupWindowFromTime || !pickupWindowToTime) {
       setError("Please provide both pickup window start and end times.");
+      return;
+    }
+
+    const requestedTimes = [
+      pickupTime,
+      pickupWindowFromTime,
+      pickupWindowToTime,
+    ];
+    if (
+      requestedTimes.some(
+        (time) => time < SERVICE_START_TIME || time > SERVICE_END_TIME,
+      )
+    ) {
+      setError("Pickup time and window must be within service hours.");
       return;
     }
 
@@ -405,6 +471,7 @@ export default function CreateRidePage() {
     );
     const isSelected = selectedDate?.toDateString() === date.toDateString();
     const isToday = new Date().toDateString() === date.toDateString();
+    const isAvailable = isServiceDay(date);
 
     days.push(
       <button
@@ -412,6 +479,8 @@ export default function CreateRidePage() {
         type="button"
         className={`${styles.dateCell} ${isSelected ? styles.dateSelected : ""} ${isToday ? styles.dateToday : ""}`}
         onClick={() => setSelectedDate(date)}
+        disabled={!isAvailable}
+        title={isAvailable ? undefined : "Service is available Monday–Friday"}
       >
         {day}
       </button>,
@@ -442,37 +511,19 @@ export default function CreateRidePage() {
       )}
       <main className={styles.main}>
         <Link href="/rides" className={styles.backButton}>
-          ← Back to Rides
+          ← Back to rides
         </Link>
 
-        <h1 className={styles.pageTitle}>Create Ride</h1>
+        <h1 className={styles.pageTitle}>Request Ride</h1>
 
         <div className={styles.rideDetailsSection}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Ride Details</h2>
-            <p className={styles.sectionDescription}>
-              Please enter your desired ride information accordingly.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className={styles.rideForm}>
             <div className={styles.rideDetailsOutline}>
               {/* Left Column */}
               <div className={styles.leftColumn}>
                 {/* Ride Date */}
                 <div className={styles.formGroup}>
-                  <div className={styles.formGroupHeader}>
-                    <h3 className={styles.formGroupTitle}>
-                      Ride Date<span className={styles.required}>*</span>
-                    </h3>
-                    <Image
-                      src="/calendar.svg"
-                      alt="Calendar"
-                      width={32}
-                      height={32}
-                      className={styles.calendarIcon}
-                    />
-                  </div>
+                  <h2 className={styles.formGroupTitle}>Ride Date</h2>
                   <div className={styles.datePicker}>
                     <div className={styles.calendarHeader}>
                       <button
@@ -530,23 +581,21 @@ export default function CreateRidePage() {
                       </div>
                       <div className={styles.datesGrid}>{days}</div>
                     </div>
-                    <p className={styles.calendarHint}>Pick a day.</p>
                   </div>
                 </div>
 
                 {/* Pickup Time */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Pickup Time<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Pickup Time</h2>
                   <p className={styles.fieldDescription}>
-                    Please enter the exact time that you&apos;d like to be
-                    picked up.
+                    Enter the exact time that you&apos;d like to be picked up.
                   </p>
                   <div className={styles.timeCell}>
                     <TimeInput
                       value={pickupTime}
                       onChange={setPickupTime}
+                      min={SERVICE_START_TIME}
+                      max={SERVICE_END_TIME}
                       inputClassName={styles.timeInput}
                       className={styles.timeInputWrapper}
                     />
@@ -555,9 +604,7 @@ export default function CreateRidePage() {
 
                 {/* Pickup Time Window */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Pickup Time Window<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Pickup Time Window</h2>
                   <p className={styles.fieldDescription}>
                     (E.g. 12:15 PM - 12:45 PM)
                   </p>
@@ -574,12 +621,13 @@ export default function CreateRidePage() {
                           id="pickup-window-from"
                           value={pickupWindowFromTime}
                           onChange={setPickupWindowFromTime}
+                          min={SERVICE_START_TIME}
+                          max={SERVICE_END_TIME}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
                       </div>
                     </div>
-                    <span className={styles.pickupWindowArrow}>→</span>
                     <div className={styles.pickupWindowField}>
                       <label
                         className={styles.pickupWindowLabel}
@@ -592,12 +640,37 @@ export default function CreateRidePage() {
                           id="pickup-window-to"
                           value={pickupWindowToTime}
                           onChange={setPickupWindowToTime}
+                          min={SERVICE_START_TIME}
+                          max={SERVICE_END_TIME}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Recurring rides - TBD on implementation */}
+                <div
+                  className={styles.recurringRide}
+                  title="Recurring rides are coming soon"
+                >
+                  <label className={styles.recurringRideLabel}>
+                    <input
+                      type="checkbox"
+                      className={styles.recurringRideCheckbox}
+                      disabled
+                    />
+                    Recurring ride
+                  </label>
+                  <select
+                    className={styles.recurringRideSelect}
+                    defaultValue="weekly"
+                    disabled
+                    aria-label="Recurring ride frequency"
+                  >
+                    <option value="weekly">Every Week</option>
+                  </select>
                 </div>
               </div>
 
@@ -611,11 +684,9 @@ export default function CreateRidePage() {
 
                 {/* Pickup Location */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Pickup Location<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Pickup Location</h2>
                   <p className={styles.fieldDescription}>
-                    Please type or locate on the above map the{" "}
+                    Type or locate on the map the{" "}
                     <strong>on campus location</strong> that you&apos;d like to
                     be picked up at.
                   </p>
@@ -628,11 +699,19 @@ export default function CreateRidePage() {
                       className={styles.locationIcon}
                     >
                       <path
-                        d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
-                        fill="#325CE8"
+                        d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8Z"
+                        className={styles.locationIconFill}
+                      />
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="3"
+                        className={styles.locationIconCenter}
                       />
                     </svg>
                     <select
+                      id="pickup-location"
+                      aria-label="Pickup location"
                       value={pickupLocationName}
                       onChange={(e) => setPickupLocationName(e.target.value)}
                       className={styles.locationSelect}
@@ -654,11 +733,9 @@ export default function CreateRidePage() {
 
                 {/* Dropoff Location */}
                 <div className={styles.formGroup}>
-                  <h3 className={styles.formGroupTitle}>
-                    Dropoff Location<span className={styles.required}>*</span>
-                  </h3>
+                  <h2 className={styles.formGroupTitle}>Dropoff Location</h2>
                   <p className={styles.fieldDescription}>
-                    Please type or locate on the above map the{" "}
+                    Type or locate on the map the{" "}
                     <strong>on campus location</strong> that you&apos;d like to
                     be dropped off at.
                   </p>
@@ -671,11 +748,19 @@ export default function CreateRidePage() {
                       className={styles.locationIconGreen}
                     >
                       <path
-                        d="M8 10C9.1 10 10 9.1 10 8C10 6.9 9.1 6 8 6C6.9 6 6 6.9 6 8C6 9.1 6.9 10 8 10ZM8 0C3.6 0 0 3.6 0 8C0 12.9 8 20 8 20C8 20 16 12.9 16 8C16 3.6 12.4 0 8 0Z"
-                        fill="#3aaa5c"
+                        d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8Z"
+                        className={styles.locationIconFill}
+                      />
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="3"
+                        className={styles.locationIconCenter}
                       />
                     </svg>
                     <select
+                      id="dropoff-location"
+                      aria-label="Dropoff location"
                       value={dropoffLocationName}
                       onChange={(e) => setDropoffLocationName(e.target.value)}
                       className={styles.locationSelect}
@@ -696,13 +781,18 @@ export default function CreateRidePage() {
                 </div>
 
                 {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className={styles.submitButton}
-                >
-                  {submitting ? "Submitting..." : "Submit"}
-                </button>
+                <div className={styles.submitRow}>
+                  {/* On hold until recurring rides functionality <p className={styles.requestSummary}>
+                    You are requesting 1 ride(s).
+                  </p> */}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className={styles.submitButton}
+                  >
+                    {submitting ? "Submitting..." : "Submit"}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
