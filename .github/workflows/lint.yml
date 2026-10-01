@@ -19,6 +19,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Install WebSocket Server Dependencies
+        run: npm ci --prefix websocket-server
+
       - name: Run Prettier (Check)
         run: npm run format:check
 
@@ -26,4 +29,4 @@ jobs:
         run: npm run lint
 
       - name: Run Type Checking
-        run: npx tsc --noEmit
+        run: npm run typecheck
