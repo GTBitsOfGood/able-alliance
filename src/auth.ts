@@ -11,7 +11,23 @@ if (!process.env.NEXTAUTH_SECRET) {
   throw new Error("NEXTAUTH_SECRET environment variable is required");
 }
 
-export const authConfig: NextAuthConfig = {
+// Keep the custom CAS routes and Auth.js on the same cookie settings.
+const secureCookies =
+  process.env.DEPLOY_PRIME_URL?.startsWith("https://") ?? false;
+
+export const authConfig = {
+  useSecureCookies: secureCookies,
+  cookies: {
+    sessionToken: {
+      name: `${secureCookies ? "__Secure-" : ""}authjs.session-token`,
+      options: {
+        httpOnly: true,
+        secure: secureCookies,
+        sameSite: "lax",
+        path: "/",
+      },
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
 
   // We don't use built-in providers — CAS is handled via custom route handlers
@@ -32,6 +48,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.userId = user.userId;
         token.type = user.type;
+        token.username = user.username;
         token.email = user.email;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
@@ -40,6 +57,7 @@ export const authConfig: NextAuthConfig = {
         token.accessToken = await new SignJWT({
           userId: user.userId,
           type: user.type,
+          username: user.username,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
@@ -54,6 +72,7 @@ export const authConfig: NextAuthConfig = {
         token.accessToken = await new SignJWT({
           userId: token.userId,
           type: token.type,
+          username: token.username,
           email: token.email,
           firstName: token.firstName,
           lastName: token.lastName,
@@ -68,6 +87,7 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         session.user.userId = token.userId as string;
         session.user.type = token.type as string;
+        session.user.username = token.username as string;
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;
         session.user.lastName = token.lastName as string;
@@ -76,6 +96,6 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
   },
-};
+} satisfies NextAuthConfig;
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);

@@ -52,6 +52,7 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     preferredName: { type: String },
+    username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     type: {
       type: String,

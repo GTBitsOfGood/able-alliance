@@ -9,17 +9,18 @@ import {
 type UserSettings = BaseUserInput["settings"];
 type NotificationSettingsUpdate = Partial<UserSettings["notifications"]>;
 
-interface CASUserData {
-  email: string;
-  name: string;
-}
-
 export async function createUser(data: BaseUserInput | StudentInput) {
   await connectMongoDB();
 
-  const existing = await UserModel.findOne({ email: data.email });
+  const existing = await UserModel.findOne({
+    $or: [{ username: data.username }, { email: data.email }],
+  });
   if (existing) {
-    throw new UserAlreadyExistsException();
+    throw new UserAlreadyExistsException(
+      existing.email === data.email
+        ? "User with this email already exists"
+        : "User with this username already exists",
+    );
   }
 
   if (data.type === "Student") {
@@ -39,22 +40,22 @@ export async function getUserByEmail(email: string) {
 }
 
 /**
- * Look up an existing user by their CAS email.
- * Throws UserNotFoundException if the user has not been pre-provisioned.
+ * Look up an existing user by their GT Account username — the CAS `cas:user`
+ * value, and the only identity CAS guarantees on every successful validation.
+ *
+ * Users are never auto-provisioned from CAS: a successful CAS login for
+ * someone with no record here is a failed login.
  */
-export async function getProvisionedUserFromCAS(data: CASUserData) {
+export async function getProvisionedUserFromCAS(username: string) {
   await connectMongoDB();
 
-  console.log(`[UserAction] getUserByEmail: ${data.email}`);
-  const existing = await UserModel.findOne({ email: data.email }).lean();
+  const existing = await UserModel.findOne({ username }).lean();
   if (existing) {
-    console.log(`[UserAction] User found: ${existing._id}`);
     return existing;
   }
 
-  console.log(`[UserAction] User not found: ${data.email}`);
   throw new UserNotFoundException(
-    `No provisioned user found for CAS email: ${data.email}`,
+    `No provisioned user found for username: ${username}`,
   );
 }
 
