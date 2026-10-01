@@ -59,12 +59,22 @@ export async function POST(request: NextRequest) {
   }
   try {
     const body = await request.json();
+    const username =
+      typeof body.username === "string"
+        ? body.username.trim().toLowerCase()
+        : body.username;
+    const userData = {
+      ...body,
+      username,
+      email:
+        typeof username === "string" ? `${username}@gatech.edu` : undefined,
+    };
     let parsed;
 
     if (body.type === "Student") {
-      parsed = studentSchema.safeParse(body);
+      parsed = studentSchema.safeParse(userData);
     } else {
-      parsed = baseUserSchema.safeParse(body);
+      parsed = baseUserSchema.safeParse(userData);
     }
 
     if (!parsed.success) {

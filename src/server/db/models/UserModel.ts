@@ -34,6 +34,8 @@ const NotificationSchema: Schema = new Schema(
     rideCancelled: { type: Boolean, default: false },
     rideAssigned: { type: Boolean, default: false },
     rideCompleted: { type: Boolean, default: false },
+    rideDelayed: { type: Boolean, default: false },
+    newMessageFromDriver: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -50,6 +52,7 @@ const BaseUserSchema: Schema<IBaseUser> = new Schema(
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     preferredName: { type: String },
+    username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     type: {
       type: String,

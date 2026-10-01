@@ -1,22 +1,19 @@
 import connectMongoDB from "../mongodb";
 import UserModel from "../models/UserModel";
 
-/**
- * Idempotent: creates the SuperAdmin user if none exists yet.
- * Reads SUPERADMIN_EMAIL and SUPERADMIN_NAME from env.
- * Called once on server startup via src/instrumentation.ts.
- */
+/** Creates the initial SuperAdmin on server startup, if none exists. */
 export async function initSuperAdmin() {
-  const email = process.env.SUPERADMIN_EMAIL;
+  const username = process.env.SUPERADMIN_CAS_USERNAME?.trim().toLowerCase();
   const firstName = process.env.SUPERADMIN_FIRSTNAME;
   const lastName = process.env.SUPERADMIN_LASTNAME;
 
-  if (!email || !firstName || !lastName) {
+  if (!username || !firstName || !lastName || !/^[a-z0-9]+$/.test(username)) {
     console.log(
-      "[Init] SUPERADMIN_EMAIL / SUPERADMIN_FIRSTNAME / SUPERADMIN_LASTNAME not set — skipping SuperAdmin seed",
+      "[Init] Valid SUPERADMIN_CAS_USERNAME / SUPERADMIN_FIRSTNAME / SUPERADMIN_LASTNAME required — skipping SuperAdmin seed",
     );
     return;
   }
+  const email = `${username}@gatech.edu`;
 
   await connectMongoDB();
 
@@ -26,6 +23,12 @@ export async function initSuperAdmin() {
     return;
   }
 
-  await UserModel.create({ firstName, lastName, email, type: "SuperAdmin" });
+  await UserModel.create({
+    firstName,
+    lastName,
+    email,
+    username,
+    type: "SuperAdmin",
+  });
   console.log(`[Init] SuperAdmin created: ${email}`);
 }

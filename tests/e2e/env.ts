@@ -35,7 +35,7 @@ export function appServerEnv(): Record<string, string> {
     // CAS is never hit (sessions are minted), but the login route reads these lazily.
     CAS_BASE_URL: "http://localhost:8443/cas",
     CAS_BASE_URL_BROWSER: "http://localhost:8443/cas",
-    SUPERADMIN_EMAIL: "superadmin@gatech.edu",
+    SUPERADMIN_CAS_USERNAME: "superadmin",
     SUPERADMIN_FIRSTNAME: "Super",
     SUPERADMIN_LASTNAME: "Admin",
     // Empty tokens make src/server/mapbox.ts and the map components no-op: no outbound calls.

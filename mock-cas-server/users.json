@@ -1,34 +1,26 @@
 [
   {
     "username": "gburdell3",
-    "password": "password",
-    "attributes": {
-      "email": "gburdell3@gatech.edu",
-      "displayName": "George P. Burdell"
-    }
+    "password": "password"
+  },
+  {
+    "username": "jdoe3",
+    "password": "password"
+  },
+  {
+    "username": "mchen3",
+    "password": "password"
   },
   {
     "username": "adminuser",
-    "password": "password",
-    "attributes": {
-      "email": "admin@gatech.edu",
-      "displayName": "Admin User"
-    }
+    "password": "password"
   },
   {
     "username": "driver1",
-    "password": "password",
-    "attributes": {
-      "email": "driver1@gatech.edu",
-      "displayName": "Test Driver"
-    }
+    "password": "password"
   },
   {
     "username": "nodbuser",
-    "password": "password",
-    "attributes": {
-      "email": "nodbuser@gatech.edu",
-      "displayName": "No DB User"
-    }
+    "password": "password"
   }
 ]

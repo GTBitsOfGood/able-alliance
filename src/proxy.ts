@@ -14,6 +14,7 @@ export default auth((request) => {
   // Allow public paths and static assets
   if (
     isPublicPath(pathname) ||
+    pathname === "/api/email/chat" || // this route has its own authentication b/c its called from websocket server
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.includes(".")

@@ -3,6 +3,7 @@ import { getUserFromRequest } from "@/utils/authUser";
 import mongoose from "mongoose";
 import { getRouteById, deleteRouteById } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { internalErrorPayload } from "@/utils/apiError";
 
 export async function GET(
   req: NextRequest,
@@ -48,11 +49,11 @@ export async function GET(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (e) {
+    console.error("[GET /api/routes/:id]", e);
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }
 
@@ -94,10 +95,10 @@ export async function DELETE(
       { message: "Route deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (e) {
+    console.error("[DELETE /api/routes/:id]", e);
+    return NextResponse.json(internalErrorPayload(e), {
+      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    });
   }
 }

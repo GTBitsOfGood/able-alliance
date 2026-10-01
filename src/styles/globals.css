@@ -10,6 +10,8 @@
   --color-brand-stroke-weak: #416ebc33;
   --color-brand-hover: #416ebc80;
   --color-brand-fill: #416ebc0d;
+  --color-map-pin: #416ebc;
+  --color-map-location-fill: #a7d0ed;
   --color-grey-text-strong: #22070b;
   --color-grey-text-weak: #22070bb2;
   --color-grey-stroke-strong: #22070b80;
@@ -39,6 +41,13 @@
   --color-checkbox-checked: #183777;
   --color-checkbox-border: #416ebc;
   --color-admin-bg: #a7d0ed66;
+
+  /* Ride status chips */
+  --color-status-yellow: #ffd17f;
+  --color-status-green: #bbf7d0;
+  --color-status-green-text: #14532d;
+  --color-status-pink: #f4a0a0;
+  --color-status-grey: #efeded;
 
   --text-desktop-display: 48px;
   --text-desktop-heading-1: 40px;

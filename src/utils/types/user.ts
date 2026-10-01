@@ -22,6 +22,8 @@ const notificationSchema = z.object({
   rideCancelled: z.boolean().default(false),
   rideAssigned: z.boolean().default(false),
   rideCompleted: z.boolean().default(false),
+  rideDelayed: z.boolean().default(false),
+  newMessageFromDriver: z.boolean().default(false),
 });
 
 const userSettingsSchema = z.object({
@@ -32,6 +34,14 @@ export const baseUserSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   preferredName: z.string().optional(),
+  // GT Account username (the CAS `cas:user` value) — the primary identity for
+  // CAS login. Required: a user provisioned without one can never log in.
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "username is required")
+    .regex(/^[a-z0-9]+$/i, "username must be alphanumeric"),
   email: z
     .string()
     .email("Email is required")

@@ -7,22 +7,25 @@ import express, {
 } from "express";
 import { v4 as uuidv4 } from "uuid";
 
-interface CASUserAttributes {
-  email: string;
-  displayName: string;
-}
-
 interface MockUser {
   username: string;
   password: string;
-  attributes: CASUserAttributes;
 }
 
 interface TicketData {
   username: string;
-  attributes: CASUserAttributes;
   service: string;
   createdAt: number;
+}
+
+/** Escape text before interpolating it into the XML validation response. */
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 interface LoginBody {
@@ -46,32 +49,13 @@ function loadUsers(): MockUser[] {
   const base = parsed as MockUser[];
 
   // Inject SuperAdmin from env vars if configured
-  const superAdminEmail = process.env.SUPERADMIN_EMAIL;
-  const superAdminFirstName = process.env.SUPERADMIN_FIRSTNAME;
-  const superAdminLastName = process.env.SUPERADMIN_LASTNAME;
   const superAdminUsername =
-    process.env.SUPERADMIN_CAS_USERNAME ??
-    (superAdminEmail ? superAdminEmail.split("@")[0] : null);
-
+    process.env.SUPERADMIN_CAS_USERNAME?.trim().toLowerCase();
   if (
-    superAdminEmail &&
-    superAdminFirstName &&
-    superAdminLastName &&
-    superAdminUsername
+    superAdminUsername &&
+    !base.some((user) => user.username === superAdminUsername)
   ) {
-    const alreadyPresent = base.some(
-      (u) => u.attributes.email === superAdminEmail,
-    );
-    if (!alreadyPresent) {
-      base.push({
-        username: superAdminUsername,
-        password: "password",
-        attributes: {
-          email: superAdminEmail,
-          displayName: superAdminFirstName + " " + superAdminLastName,
-        },
-      });
-    }
+    base.push({ username: superAdminUsername, password: "password" });
   }
 
   return base;
@@ -108,7 +92,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// In-memory ticket store: ticket -> { username, attributes, service, createdAt }
+// In-memory ticket store: ticket -> { username, service, createdAt }
 const tickets = new Map<string, TicketData>();
 
 // Ticket expiration: 30 seconds
@@ -128,7 +112,7 @@ function buildUserHints(): string {
   return users
     .map(
       (u) =>
-        `<code>${u.username}</code> / <code>${u.password}</code> — ${u.attributes.displayName} (${u.attributes.email})`,
+        `<code>${escapeXml(u.username)}</code> / <code>${escapeXml(u.password)}</code>`,
     )
     .join("<br>");
 }
@@ -299,7 +283,6 @@ app.post(
     const ticket = `ST-${uuidv4()}`;
     tickets.set(ticket, {
       username: user.username,
-      attributes: user.attributes,
       service,
       createdAt: Date.now(),
     });
@@ -347,13 +330,10 @@ app.get("/cas/p3/serviceValidate", (req: Request, res: Response) => {
     `[CAS] Ticket validated: ${ticket} for user: ${ticketData.username}`,
   );
 
+  // This is the standard CAS XML namespace, not the authentication server URL.
   return res.send(`<cas:serviceResponse xmlns:cas="http://www.yale.edu/tp/cas">
   <cas:authenticationSuccess>
-    <cas:user>${ticketData.username}</cas:user>
-    <cas:attributes>
-      <cas:email>${ticketData.attributes.email}</cas:email>
-      <cas:displayName>${ticketData.attributes.displayName}</cas:displayName>
-    </cas:attributes>
+    <cas:user>${escapeXml(ticketData.username)}</cas:user>
   </cas:authenticationSuccess>
 </cas:serviceResponse>`);
 });

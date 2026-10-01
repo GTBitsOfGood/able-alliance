@@ -64,11 +64,12 @@ async function seed() {
 
   const student1 = await upsertOne(
     usersCol,
-    { email: "gburdell3@gatech.edu" },
+    { username: "gburdell3" },
     {
       firstName: "George",
       lastName: "Burdell",
       preferredName: "G",
+      username: "gburdell3",
       email: "gburdell3@gatech.edu",
       type: "Student",
       studentInfo: { accessibilityNeeds: ["Wheelchair", "ExtraTime"] },
@@ -78,10 +79,11 @@ async function seed() {
 
   const student2 = await upsertOne(
     usersCol,
-    { email: "jdoe3@gatech.edu" },
+    { username: "jdoe3" },
     {
       firstName: "Jane",
       lastName: "Doe",
+      username: "jdoe3",
       email: "jdoe3@gatech.edu",
       type: "Student",
       studentInfo: { notes: "Please call ahead of arrival." },
@@ -91,10 +93,11 @@ async function seed() {
 
   const student3 = await upsertOne(
     usersCol,
-    { email: "mchen3@gatech.edu" },
+    { username: "mchen3" },
     {
       firstName: "Michael",
       lastName: "Chen",
+      username: "mchen3",
       email: "mchen3@gatech.edu",
       type: "Student",
       studentInfo: { accessibilityNeeds: ["LowMobility"] },
@@ -104,10 +107,11 @@ async function seed() {
 
   const student4 = await upsertOne(
     usersCol,
-    { email: "spriya3@gatech.edu" },
+    { username: "spriya3" },
     {
       firstName: "Sara",
       lastName: "Priya",
+      username: "spriya3",
       email: "spriya3@gatech.edu",
       type: "Student",
       studentInfo: {
@@ -120,11 +124,12 @@ async function seed() {
 
   const driver1 = await upsertOne(
     usersCol,
-    { email: "driver1@gatech.edu" },
+    { username: "driver1" },
     {
       firstName: "Test",
       lastName: "Driver",
       preferredName: "TD",
+      username: "driver1",
       email: "driver1@gatech.edu",
       type: "Driver",
       shifts: [
@@ -140,10 +145,11 @@ async function seed() {
 
   const driver2 = await upsertOne(
     usersCol,
-    { email: "driver2@gatech.edu" },
+    { username: "driver2" },
     {
       firstName: "Alex",
       lastName: "Smith",
+      username: "driver2",
       email: "driver2@gatech.edu",
       type: "Driver",
       shifts: [
@@ -158,10 +164,11 @@ async function seed() {
 
   const driver3 = await upsertOne(
     usersCol,
-    { email: "aevans3@gatech.edu" },
+    { username: "aevans3" },
     {
       firstName: "Austin",
       lastName: "Evans",
+      username: "aevans3",
       email: "aevans3@gatech.edu",
       type: "Driver",
       shifts: [
@@ -175,11 +182,12 @@ async function seed() {
 
   await upsertOne(
     usersCol,
-    { email: "admin@gatech.edu" },
+    { username: "adminuser" },
     {
       firstName: "Admin",
       lastName: "User",
-      email: "admin@gatech.edu",
+      username: "adminuser",
+      email: "adminuser@gatech.edu",
       type: "Admin",
     },
     "admin: Admin User",
@@ -187,22 +195,24 @@ async function seed() {
 
   await upsertOne(
     usersCol,
-    { email: "dnestani3@gatech.edu" },
+    { username: "dnestani3" },
     {
       firstName: "Daniele",
       lastName: "Nestani",
+      username: "dnestani3",
       email: "dnestani3@gatech.edu",
       type: "Admin",
     },
     "admin: Daniele Nestani",
   );
 
-  const superAdmin = await upsertOne(
+  await upsertOne(
     usersCol,
-    { email: "superadmin@gatech.edu" },
+    { username: "superadmin" },
     {
       firstName: "Super",
       lastName: "Admin",
+      username: "superadmin",
       email: "superadmin@gatech.edu",
       type: "SuperAdmin",
     },
@@ -400,16 +410,6 @@ async function seed() {
   };
 
   const routeTemplates: RouteTemplate[] = [
-    // SuperAdmin + driver1 + vehicle 1001 (TESTING)
-    {
-      student: superAdmin,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(0, 10, 0),
-      status: "Scheduled",
-    },
     // George + driver1 + vehicle 1001
     {
       student: student1,

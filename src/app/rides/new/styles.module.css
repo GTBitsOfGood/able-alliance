@@ -25,33 +25,26 @@
 }
 
 .main {
-  max-width: var(--layout-content-max);
+  max-width: 76.4rem;
   margin-inline: auto;
-  padding: 2.4rem 5rem 4rem;
+  padding: 4rem 0 8rem;
   display: flex;
   flex-direction: column;
-  gap: 1.6rem;
-}
-
-/* Title Section */
-.titleSection {
-  display: flex;
-  flex-direction: column;
-  gap: 1.6rem;
 }
 
 /* Back Button */
 .backButton {
   font-family: var(--font-paragraph);
   font-weight: 400;
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   line-height: 2rem;
   color: var(--color-grey-text-strong);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.4rem 0;
+  padding: 0;
+  align-self: flex-start;
 }
 
 .backButton:hover {
@@ -61,121 +54,87 @@
 /* Page Title */
 .pageTitle {
   font-family: var(--font-heading);
-  font-size: 4.8rem;
-  line-height: 5.6rem;
+  font-size: 3.2rem;
+  line-height: 4rem;
   color: var(--color-grey-text-strong);
-  margin: 0;
+  margin: 0.2rem 0 1rem;
 }
 
 /* Ride Details Section */
 .rideDetailsSection {
-  display: flex;
-  flex-direction: column;
-  gap: 2.4rem;
+  width: 100%;
 }
 
-.sectionHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.sectionTitle {
-  font-family: var(--font-heading);
-  font-size: 4rem;
-  line-height: 4.8rem;
-  color: var(--color-grey-text-strong);
-  margin: 0;
-}
-
-.sectionDescription {
-  font-family: var(--font-paragraph);
-  font-weight: 400;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
-  color: var(--color-grey-text-weak);
-  margin: 0;
+.rideForm {
+  width: 100%;
 }
 
 /* Ride Details Outline */
 .rideDetailsOutline {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  padding: 3.2rem 0;
-  border: 1px solid var(--color-grey-stroke-weak);
-  border-radius: 2rem;
+  display: grid;
+  grid-template-columns: minmax(0, 30.9rem) 0.1rem minmax(0, 30.9rem);
+  column-gap: 7.25rem;
+  align-items: start;
+  padding: 0;
+  border: 0;
   box-sizing: border-box;
   width: 100%;
-  max-width: 96rem;
 }
 
 /* Left Column */
 .leftColumn {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3.2rem;
-  padding: 0 3.2rem;
+  gap: 4.4rem;
+  padding: 0;
+}
+
+.leftColumn > .formGroup:first-child {
+  gap: 1.6rem;
 }
 
 /* Column Divider */
 .columnDivider {
   width: 1px;
+  height: 100%;
   background: var(--color-grey-stroke-weak);
-  flex-shrink: 0;
   align-self: stretch;
 }
 
 /* Right Column */
 .rightColumn {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2.4rem;
-  padding: 0 3.2rem;
+  gap: 0;
+  padding: 0;
+}
+
+.rightColumn > .formGroup + .formGroup {
+  margin-top: 3.2rem;
 }
 
 /* Form Groups */
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.formGroupHeader {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+  gap: 0.4rem;
 }
 
 .formGroupTitle {
   font-family: var(--font-heading);
-  font-size: 2.4rem;
-  line-height: 3.2rem;
+  font-size: 1.8rem;
+  line-height: 2.4rem;
   color: var(--color-grey-text-strong);
   margin: 0;
-}
-
-.calendarIcon {
-  width: 3.2rem;
-  height: 3.2rem;
-  flex-shrink: 0;
-}
-
-.required {
-  color: #c73a3a;
-  margin-left: 0.1rem;
 }
 
 .fieldDescription {
   font-family: var(--font-paragraph);
   font-weight: 400;
-  font-size: 1.4rem;
-  line-height: 2rem;
+  font-size: 1.2rem;
+  line-height: 1.6rem;
   color: var(--color-grey-text-weak);
   margin: 0;
 }
@@ -185,17 +144,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2.4rem 1.2rem;
-  gap: 0.8rem;
+  padding: 2.4rem 2rem 1.8rem;
+  gap: 0.4rem;
   background: var(--color-solid-bg-base);
-  border: 1px solid var(--color-grey-stroke-weak);
-  box-shadow:
-    0 0.8rem 0.8rem -0.4rem rgba(0, 0, 0, 0.04),
-    0 2rem 2.4rem -0.4rem rgba(0, 0, 0, 0.08);
-  border-radius: 1.6rem;
-  width: 100%;
-  max-width: 38rem;
-  aspect-ratio: 1 / 1;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  box-shadow: none;
+  border-radius: 1.2rem;
+  width: 29rem;
+  max-width: 100%;
+  height: 24rem;
+  align-self: center;
   justify-content: center;
   box-sizing: border-box;
 }
@@ -231,8 +189,8 @@
 .yearName {
   font-family: var(--font-paragraph);
   font-weight: 700;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
+  font-size: 1.4rem;
+  line-height: 2rem;
   color: var(--color-grey-text-strong);
 }
 
@@ -255,12 +213,12 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 2.4rem;
+  height: 2.4rem;
   font-family: var(--font-paragraph);
   font-weight: 600;
-  font-size: 1.2rem;
-  line-height: 1.6rem;
+  font-size: 1rem;
+  line-height: 1.4rem;
   text-align: center;
   color: var(--color-grey-text-weak);
 }
@@ -273,31 +231,37 @@
 }
 
 .dateEmpty {
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 2.4rem;
+  height: 2.4rem;
 }
 
 .dateCell {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 3.2rem;
-  height: 3.2rem;
+  width: 2.4rem;
+  height: 2.4rem;
   background: none;
   border: none;
   cursor: pointer;
   font-family: var(--font-paragraph);
   font-weight: 600;
-  font-size: 1.2rem;
-  line-height: 1.6rem;
+  font-size: 1rem;
+  line-height: 1.4rem;
   text-align: center;
   color: var(--color-grey-text-strong);
   border-radius: 50%;
   justify-self: center;
 }
 
-.dateCell:hover {
+.dateCell:hover:not(:disabled) {
   background: var(--color-brand-fill);
+}
+
+.dateCell:disabled {
+  color: var(--color-grey-text-weak);
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .dateSelected {
@@ -327,13 +291,21 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 1.4rem 1.6rem;
+  padding: 0.6rem 0.8rem;
   gap: 0.8rem;
   background: var(--color-grey-fill-weaker);
-  border-bottom: 1px solid var(--color-grey-fill-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.2rem;
   box-sizing: border-box;
   width: 100%;
-  height: 5.6rem;
+  height: 3.2rem;
+}
+
+.locationCell {
+  gap: 1.2rem;
+  background: var(--color-solid-bg-sunken);
+  border-color: var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
 }
 
 .timeInput,
@@ -344,8 +316,8 @@
   background: transparent;
   font-family: var(--font-paragraph);
   font-weight: 400;
-  font-size: 1.6rem;
-  line-height: 2rem;
+  font-size: 1.2rem;
+  line-height: 1.6rem;
   color: var(--color-grey-text-strong);
   outline: none;
   cursor: pointer;
@@ -403,6 +375,22 @@
   flex-shrink: 0;
 }
 
+.locationIcon {
+  color: var(--color-status-red-text);
+}
+
+.locationIconGreen {
+  color: var(--color-status-green-text);
+}
+
+.locationIconFill {
+  fill: currentColor;
+}
+
+.locationIconCenter {
+  fill: var(--color-solid-bg-base);
+}
+
 .locationSelect option {
   background: var(--color-solid-bg-base);
   color: var(--color-grey-text-strong);
@@ -412,24 +400,29 @@
 .pickupWindowRow {
   width: 100%;
   display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 .pickupWindowField {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
 }
 
 .pickupWindowCell {
   display: flex;
   align-items: center;
-  height: 5.6rem;
-  padding: 1.4rem 1.6rem;
+  flex: 1;
+  min-width: 0;
+  height: 3.2rem;
+  padding: 0.6rem 0.8rem;
   background: var(--color-grey-fill-weaker);
-  border-bottom: 1px solid var(--color-grey-fill-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.2rem;
   box-sizing: border-box;
 }
 
@@ -442,8 +435,8 @@
   font-family: var(--font-paragraph);
   font-size: 1.2rem;
   line-height: 1.6rem;
-  font-weight: 600;
-  color: var(--color-grey-text-weak);
+  font-weight: 400;
+  color: var(--color-grey-text-strong);
   margin: 0;
 }
 
@@ -453,8 +446,8 @@
   width: 100%;
   min-width: 0;
   font-family: var(--font-paragraph);
-  font-size: 1.6rem;
-  line-height: 2rem;
+  font-size: 1.2rem;
+  line-height: 1.6rem;
   color: var(--color-grey-text-strong);
   outline: none;
 }
@@ -464,17 +457,11 @@
   -webkit-appearance: none;
 }
 
-.pickupWindowArrow {
-  color: var(--color-grey-text-weak);
-  font-size: 1.6rem;
-  line-height: 1;
-  font-weight: 400;
-  /* align with the input cell, which is below the label */
-  margin-top: calc(1.6rem + 0.4rem); /* label height + gap */
-  height: 5.6rem;
+/* Non-functional preview for the planned recurring-ride feature. */
+.recurringRide {
   display: flex;
-  align-items: center;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.8rem;
 }
 
 .recurringCheckboxRow {
@@ -486,14 +473,14 @@
   font-size: 1.6rem;
   line-height: 2rem;
   color: var(--color-grey-text-strong);
-  cursor: pointer;
+  cursor: not-allowed;
 }
 
 .recurringCheckbox {
   width: 1.6rem;
   height: 1.6rem;
   margin: 0;
-  cursor: pointer;
+  cursor: not-allowed;
 }
 
 .recurringFrequencyCell {
@@ -553,16 +540,75 @@
   width: 100%;
 }
 
-/* Map — square, matches calendar widget */
+.recurringRideLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  line-height: 1.6rem;
+}
+
+.recurringRideCheckbox {
+  appearance: none;
+  position: relative;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0;
+  border: 0.1rem solid var(--color-grey-stroke-strong);
+  border-radius: 0.2rem;
+  background: var(--color-solid-bg-base);
+  opacity: 1;
+  cursor: pointer;
+}
+
+.recurringRideCheckbox:checked {
+  border-color: var(--color-brand-text);
+  background: var(--color-brand-text);
+}
+
+.recurringRideCheckbox:checked::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-solid-bg-base);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.recurringRideSelect {
+  width: 100%;
+  height: 3.2rem;
+  padding: 0.6rem 0.8rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.2rem;
+  background: var(--color-grey-fill-weaker);
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  line-height: 1.6rem;
+  cursor: pointer;
+}
+
+.recurringRideSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Map */
 .mapImage {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 27.9rem;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  border: 1px solid var(--color-grey-stroke-weak);
-  border-radius: 1.6rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0;
   overflow: hidden;
+  margin-bottom: 4.4rem;
 }
 
 /* Map Pin */
@@ -574,31 +620,32 @@
 }
 
 .mapPinLabel {
-  padding: 0.55rem 1.1rem;
-  border-radius: 0.6rem;
-  background-color: var(--pin-color);
-  color: white;
+  padding: 0.45rem 1.1rem;
+  border: 0.2rem solid var(--color-grey-text-strong);
+  border-radius: 1.6rem;
+  background-color: var(--color-map-pin);
+  color: var(--color-solid-bg-base);
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-family: var(--font-paragraph);
-  line-height: 1.4;
+  line-height: 1.4rem;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 .mapPinStem {
-  width: 0.25rem;
+  width: 0.2rem;
   height: 2.2rem;
-  background-color: var(--pin-color);
+  background-color: var(--color-map-pin);
 }
 
 .mapPinDot {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.4rem;
+  height: 1.4rem;
   border-radius: 50%;
-  background-color: var(--pin-color);
-  border: 0.25rem solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background-color: var(--color-map-pin);
+  border: 0.2rem solid var(--color-grey-text-strong);
+  box-shadow: none;
 }
 
 /* Location dot markers (all available locations) */
@@ -612,12 +659,12 @@
 }
 
 .mapLocationDot {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: 50%;
-  background: #2563eb;
-  border: 0.2rem solid white;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  background: var(--color-map-location-fill);
+  border: 0.2rem solid var(--color-grey-text-strong);
+  box-shadow: none;
 }
 
 .mapDotTooltip {
@@ -625,10 +672,11 @@
   bottom: calc(100% + 0.5rem);
   left: 50%;
   transform: translateX(-50%);
-  background: #183777;
-  color: white;
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
   padding: 0.4rem 0.8rem;
-  border-radius: 0.4rem;
+  border: 0.1rem solid var(--color-grey-text-strong);
+  border-radius: 1.2rem;
   font-size: 1.1rem;
   font-family: var(--font-paragraph);
   font-weight: 600;
@@ -644,23 +692,40 @@
 }
 
 /* Submit Button */
+.submitRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6rem;
+  width: calc(100% + 2.2rem);
+  margin: 5rem 0 0 -2.2rem;
+}
+
+.requestSummary {
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  line-height: 1.6rem;
+  white-space: nowrap;
+}
+
 .submitButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 5rem;
+  width: 16rem;
+  height: 3.4rem;
   background: var(--color-brand-text);
   border-radius: 0.4rem;
   border: none;
   cursor: pointer;
   font-family: var(--font-paragraph);
   font-weight: 600;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
+  font-size: 1.4rem;
+  line-height: 2rem;
   color: white;
   transition: background-color 0.2s;
-  margin-top: auto;
 }
 
 .submitButton:hover:not(:disabled) {
@@ -684,12 +749,8 @@
   }
 
   .main {
-    padding-left: 1.6rem;
-    padding-right: 1.6rem;
-  }
-
-  .required {
-    display: none;
+    max-width: 64rem;
+    padding: 2rem 1.6rem 4rem;
   }
 
   .rideDateGroup {
@@ -703,6 +764,7 @@
 
   .fieldDescription {
     font-size: 1.6rem;
+    line-height: 2rem;
   }
 
   .pickupWindowLabel {
@@ -753,12 +815,13 @@
     min-width: 0;
   }
 
-  .pickupWindowArrow {
-    display: none;
-  }
-
   .datePicker {
     aspect-ratio: auto;
+    width: 100%;
+    max-width: 38rem;
+    height: auto;
+    padding: 2.4rem 1.2rem;
+    gap: 0.8rem;
   }
 
   .rideDetailsOutline {
@@ -777,6 +840,48 @@
     gap: 4rem;
   }
 
+  .rightColumn > .formGroup + .formGroup {
+    margin-top: 0;
+  }
+
+  .desktopRecurringRide {
+    display: none;
+  }
+
+  .submitButton {
+    width: 100%;
+    height: 5rem;
+    font-size: 1.8rem;
+    line-height: 2.4rem;
+  }
+
+  .timeInput,
+  .pickupWindowInput {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .monthName,
+  .yearName {
+    font-size: 1.8rem;
+    line-height: 2.4rem;
+  }
+
+  .weekDay,
+  .dateCell,
+  .dateEmpty {
+    width: 3.2rem;
+    height: 3.2rem;
+    font-size: 1.2rem;
+    line-height: 1.6rem;
+  }
+
+  .rideDetailsOutline {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+  }
+
   .leftColumn,
   .rightColumn {
     flex: none;
@@ -791,6 +896,8 @@
   .mapImage {
     height: 24rem;
     order: 1;
+    margin-bottom: 0;
+    border-radius: 1.6rem;
   }
 
   .submitSection {
@@ -801,10 +908,6 @@
 @media (max-width: 768px) {
   .main {
     padding: 2rem 1.6rem 4rem;
-  }
-
-  .titleSection {
-    gap: 0.8rem;
   }
 
   .pageTitle {

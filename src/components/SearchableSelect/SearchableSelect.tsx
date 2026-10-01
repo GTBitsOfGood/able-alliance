@@ -27,6 +27,7 @@ type SearchableSelectProps = {
   className?: string;
   inputClassName?: string;
   id?: string;
+  "aria-label"?: string;
   required?: boolean;
   onFocusCapture?: (e: React.FocusEvent<HTMLInputElement>) => void;
 };
@@ -39,6 +40,7 @@ export function SearchableSelect({
   className,
   inputClassName,
   id,
+  "aria-label": ariaLabel,
   required,
   onFocusCapture,
 }: SearchableSelectProps) {
@@ -118,6 +120,7 @@ export function SearchableSelect({
     <div className={`${styles.wrapper} ${className ?? ""}`}>
       <input
         id={id}
+        aria-label={ariaLabel}
         type="text"
         autoComplete="off"
         placeholder={placeholder}

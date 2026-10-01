@@ -138,7 +138,10 @@ export function RideCard({
       !CHAT_DISABLED_STATUSES.has(route.status);
 
     return (
-      <div className={`${styles.rideCard} ${styles.rideCardDriverNew}`}>
+      <div
+        className={`${styles.rideCard} ${styles.rideCardDriverNew}`}
+        data-testid="ride-card"
+      >
         <div className={styles.rideCardDriverBody}>
           {studentName && (
             <p className={styles.rideCardStudentName}>{studentName}</p>
@@ -162,21 +165,29 @@ export function RideCard({
               <span className={styles.rideCardStopLocation}>{dropoffName}</span>
             </div>
           </div>
-          <div className={styles.rideCardDriverChipsRow}>
-            <span
-              className={`${styles.rideCardDriverChip} ${styles[`rideCardDriverChip--${getDriverStatusChipColor(route.status)}`]}`}
-            >
-              {route.status}
-            </span>
-            {route.vehicle &&
-              typeof route.vehicle === "object" &&
-              route.vehicle.licensePlate && (
-                <span
-                  className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
-                >
-                  Assigned vehicle ID {route.vehicle.licensePlate}
-                </span>
-              )}
+          <div className={styles.rideCardBottomRow}>
+            <div className={styles.rideCardDriverChipsRow}>
+              <span
+                className={`${styles.rideCardDriverChip} ${styles[`rideCardDriverChip--${getDriverStatusChipColor(route.status)}`]}`}
+              >
+                {route.status}
+              </span>
+              {route.vehicle &&
+                typeof route.vehicle === "object" &&
+                route.vehicle.licensePlate && (
+                  <span
+                    className={`${styles.rideCardDriverChip} ${styles["rideCardDriverChip--vehicle"]}`}
+                  >
+                    Assigned vehicle ID {route.vehicle.licensePlate}
+                  </span>
+                )}
+            </div>
+            {href ? (
+              <Link href={href} className={styles.rideCardDetailsLink}>
+                Ride Details
+                <BogIcon name="arrow-right" size={20} />
+              </Link>
+            ) : null}
           </div>
         </div>
 
@@ -192,26 +203,6 @@ export function RideCard({
           >
             {startBusy ? "Starting…" : "Start ride"}
           </BogButton>
-          {href ? (
-            <Link href={href} className={styles.rideCardDriverButton}>
-              <BogButton
-                variant="secondary"
-                size="medium"
-                className={styles.rideCardDriverButton}
-                style={{ width: "100%" }}
-              >
-                Ride details
-              </BogButton>
-            </Link>
-          ) : (
-            <BogButton
-              variant="secondary"
-              size="medium"
-              className={styles.rideCardDriverButton}
-            >
-              Ride details
-            </BogButton>
-          )}
           {canChat && href ? (
             <Link href={`${href}?chat=1`}>
               <BogButton
@@ -233,6 +224,18 @@ export function RideCard({
               Chat with student
             </BogButton>
           )}
+          <BogButton
+            variant="secondary"
+            size="medium"
+            style={{
+              color: "var(--color-status-red-text)",
+              border: "1px solid var(--color-status-red-text)",
+              width: "100%",
+            }}
+            className={styles.rideCardDelayButton}
+          >
+            Delay ride
+          </BogButton>
         </div>
       </div>
     );
@@ -253,7 +256,10 @@ export function RideCard({
   const canCancel = CANCELLABLE_STATUSES.has(route.status);
 
   return (
-    <div className={`${styles.rideCard} ${styles.rideCardStudent}`}>
+    <div
+      className={`${styles.rideCard} ${styles.rideCardStudent}`}
+      data-testid="ride-card"
+    >
       {/* Left section */}
       <div className={styles.rideCardStudentBody}>
         {isMobileLayout ? (
@@ -263,11 +269,11 @@ export function RideCard({
               <span className={styles.rideCardStopLabelNew}>Dropoff</span>
             </div>
             <div className={styles.rideCardStopTimesRow}>
-              <span className={styles.rideCardStopTimeNew}>
+              <span className={styles.rideCardStopTime}>
                 {formatTime(route.scheduledPickupTime)}
               </span>
               <div className={styles.rideCardHorizontalDivider} aria-hidden />
-              <span className={styles.rideCardStopTimeNew}>
+              <span className={styles.rideCardStopTime}>
                 {dropoffTimeDisplay}
               </span>
             </div>
@@ -284,7 +290,7 @@ export function RideCard({
           <div className={styles.rideCardPickupDropoffNew}>
             <div className={styles.rideCardStopBlockNew}>
               <span className={styles.rideCardStopLabelNew}>Pickup</span>
-              <span className={styles.rideCardStopTimeNew}>
+              <span className={styles.rideCardStopTime}>
                 {formatTime(route.scheduledPickupTime)}
               </span>
               <span className={styles.rideCardStopLocationNew}>
@@ -296,7 +302,7 @@ export function RideCard({
               className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
             >
               <span className={styles.rideCardStopLabelNew}>Dropoff</span>
-              <span className={styles.rideCardStopTimeNew}>
+              <span className={styles.rideCardStopTime}>
                 {dropoffTimeDisplay}
               </span>
               <span className={styles.rideCardStopLocationNew}>
