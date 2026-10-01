@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useWindowSize } from "react-use";
 import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
@@ -55,7 +56,7 @@ function isToday(iso: string): boolean {
   return fmt(new Date(iso)) === fmt(new Date());
 }
 
-function getStudentStatusChipStyle(status: string): React.CSSProperties {
+export function getStudentStatusChipStyle(status: string): React.CSSProperties {
   switch (status) {
     case "Scheduled":
       return { background: "#ffd17f", color: "#22070b" };
@@ -106,6 +107,9 @@ export function RideCard({
   onStart,
   startBusy = false,
 }: RideCardProps) {
+  const { width: windowWidth } = useWindowSize();
+  const isMobileLayout = windowWidth <= 768;
+
   const pickupName =
     locationIdToName[route.pickupLocation] ?? route.pickupLocation;
   const dropoffName =
@@ -258,27 +262,55 @@ export function RideCard({
     >
       {/* Left section */}
       <div className={styles.rideCardStudentBody}>
-        <div className={styles.rideCardPickupDropoffNew}>
-          <div className={styles.rideCardStopBlockNew}>
-            <span className={styles.rideCardStopLabelNew}>Pickup</span>
-            <span className={styles.rideCardStopTime}>
-              {formatTime(route.scheduledPickupTime)}
-            </span>
-            <span className={styles.rideCardStopLocationNew}>{pickupName}</span>
+        {isMobileLayout ? (
+          <div className={styles.rideCardPickupDropoffStack}>
+            <div className={styles.rideCardStopLabelsRow}>
+              <span className={styles.rideCardStopLabelNew}>Pickup</span>
+              <span className={styles.rideCardStopLabelNew}>Dropoff</span>
+            </div>
+            <div className={styles.rideCardStopTimesRow}>
+              <span className={styles.rideCardStopTime}>
+                {formatTime(route.scheduledPickupTime)}
+              </span>
+              <div className={styles.rideCardHorizontalDivider} aria-hidden />
+              <span className={styles.rideCardStopTime}>
+                {dropoffTimeDisplay}
+              </span>
+            </div>
+            <div className={styles.rideCardStopLocationsRow}>
+              <span className={styles.rideCardStopLocationNew}>
+                {pickupName}
+              </span>
+              <span className={styles.rideCardStopLocationNew}>
+                {dropoffName}
+              </span>
+            </div>
           </div>
-          <div className={styles.rideCardHorizontalDivider} aria-hidden />
-          <div
-            className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
-          >
-            <span className={styles.rideCardStopLabelNew}>Dropoff</span>
-            <span className={styles.rideCardStopTime}>
-              {dropoffTimeDisplay}
-            </span>
-            <span className={styles.rideCardStopLocationNew}>
-              {dropoffName}
-            </span>
+        ) : (
+          <div className={styles.rideCardPickupDropoffNew}>
+            <div className={styles.rideCardStopBlockNew}>
+              <span className={styles.rideCardStopLabelNew}>Pickup</span>
+              <span className={styles.rideCardStopTime}>
+                {formatTime(route.scheduledPickupTime)}
+              </span>
+              <span className={styles.rideCardStopLocationNew}>
+                {pickupName}
+              </span>
+            </div>
+            <div className={styles.rideCardHorizontalDivider} aria-hidden />
+            <div
+              className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
+            >
+              <span className={styles.rideCardStopLabelNew}>Dropoff</span>
+              <span className={styles.rideCardStopTime}>
+                {dropoffTimeDisplay}
+              </span>
+              <span className={styles.rideCardStopLocationNew}>
+                {dropoffName}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className={styles.rideCardStatusRow}>
           <span className={styles.rideCardStatusChip} style={chipStyle}>
@@ -286,7 +318,17 @@ export function RideCard({
           </span>
           {href ? (
             <Link href={href} className={styles.rideDetailsLink}>
-              Ride details
+              <span className={styles.rideDetailsLinkDesktopText}>
+                Ride details
+              </span>
+              <span className={styles.rideDetailsLinkMobileText}>
+                View details
+              </span>
+              <BogIcon
+                name="chevron-right"
+                size={20}
+                className={styles.rideDetailsLinkIcon}
+              />
             </Link>
           ) : null}
         </div>
@@ -314,30 +356,32 @@ export function RideCard({
             Chat with driver
           </button>
         )}
-        <button
-          type="button"
-          className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          Edit ride
-        </button>
-        {canCancel && onCancel && (
+        <div className={styles.rideCardStudentSecondaryActions}>
           <button
             type="button"
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnCancel}`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onCancel(route._id);
             }}
-            disabled={cancelling}
           >
-            {cancelling ? "Cancelling…" : "Cancel ride"}
+            Edit ride
           </button>
-        )}
+          {canCancel && onCancel && (
+            <button
+              type="button"
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnCancel}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancel(route._id);
+              }}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelling…" : "Cancel ride"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

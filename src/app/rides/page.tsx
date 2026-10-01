@@ -229,16 +229,18 @@ export default function RidesPage() {
               </h4>
               {index === 0 ? requestButton : null}
             </div>
-            {routesByDate[dateKey].map((route) => (
-              <RideCard
-                key={route._id}
-                route={route}
-                locationIdToName={locationIdToName}
-                href={`/rides/${route._id}`}
-                onCancel={(id) => setCancelTargetId(id)}
-                cancelling={cancellingId === route._id}
-              />
-            ))}
+            <div className={styles.dateGroupCards}>
+              {routesByDate[dateKey].map((route) => (
+                <RideCard
+                  key={route._id}
+                  route={route}
+                  locationIdToName={locationIdToName}
+                  href={`/rides/${route._id}`}
+                  onCancel={(id) => setCancelTargetId(id)}
+                  cancelling={cancellingId === route._id}
+                />
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -255,7 +257,7 @@ export default function RidesPage() {
   );
 
   const requestRideButton = (
-    <Link href="/rides/new">
+    <Link href="/rides/new" className={styles.requestRideButtonLink}>
       <BogButton
         variant="primary"
         size="medium"
@@ -306,13 +308,13 @@ export default function RidesPage() {
                 value="this-week"
                 className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
               >
-                <div className={tabStyles["bog-tabs-label"]}>This Week</div>
+                <div className={tabStyles["bog-tabs-label"]}>This week</div>
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="next-week"
                 className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
               >
-                <div className={tabStyles["bog-tabs-label"]}>Next Week</div>
+                <div className={tabStyles["bog-tabs-label"]}>Next week</div>
               </Tabs.Trigger>
             </Tabs.List>
           </div>

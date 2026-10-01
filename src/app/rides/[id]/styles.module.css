@@ -173,6 +173,45 @@
   align-self: center;
 }
 
+.pickupDropoffStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.stopLabelsRow,
+.stopLocationsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.pickupDropoffStack .stopLocation,
+.pickupDropoffStack .stopLocationRight {
+  position: static;
+  white-space: normal;
+  flex: 1;
+  min-width: 0;
+}
+
+.stopLocationsRow {
+  align-items: flex-start;
+  gap: 1.6rem;
+}
+
+.stopLocationsRow > :last-child {
+  text-align: right;
+}
+
+.stopTimesRow {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+}
+
 /* Driver section header */
 .driverSectionHeader {
   display: flex;
@@ -813,12 +852,154 @@
 }
 
 @media (max-width: 768px) {
+  .rideDetailPage {
+    height: auto;
+    overflow: visible;
+  }
+
   .main {
     padding: 1.5rem;
     max-width: 100%;
+    overflow: visible;
+    gap: 1.2rem;
+  }
+
+  .backLink {
+    gap: 0.4rem;
+  }
+
+  .rideDateLabel {
+    margin-bottom: 1.2rem;
+  }
+
+  .pageTitle {
+    font-size: 3.2rem;
+    line-height: 4rem;
+  }
+
+  .statusChip {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .stopLabel,
+  .stopLocation {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .stopTime {
+    font-size: 2.4rem;
+    line-height: 3.2rem;
+  }
+
+  .pendingChip {
+    padding: 0.4rem 0.8rem;
+    font-size: 1.6rem;
+    line-height: 2rem;
+    font-weight: 400;
+    background: #e4e4e4;
+    color: var(--color-grey-text-strong);
+    border: none;
   }
 
   .contentContainer {
-    gap: 1.5rem;
+    gap: 1.2rem;
+    overflow-y: visible;
+  }
+
+  .leftColumn {
+    overflow-y: visible;
+    order: 2;
+    gap: 1.2rem;
+  }
+
+  .rightColumn {
+    order: 1;
+  }
+
+  .mapContainer {
+    flex: none;
+    height: 24rem;
+  }
+
+  .rideSummaryCard {
+    padding: 2.4rem 1.6rem;
+    border-color: var(--color-grey-off-state);
+  }
+
+  .rideDateLabel {
+    font-family: var(--font-paragraph);
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .stopLabel {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .stopTime {
+    font-size: 2.4rem;
+    line-height: 3.2rem;
+  }
+
+  .stopLocation {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .driverSection {
+    border-color: var(--color-grey-off-state);
+    gap: 2.2rem;
+  }
+
+  .driverSectionHeader {
+    justify-content: space-between;
+  }
+
+  .driverInfoGrid {
+    gap: 2.2rem;
+  }
+
+  .sectionTitle {
+    font-family: var(--font-paragraph);
+    font-weight: 700;
+    font-size: 1.8rem;
+    line-height: 2.4rem;
+  }
+
+  .infoLabel {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .infoValue {
+    font-size: 1.6rem;
+    line-height: 2rem;
+    font-weight: 400;
+  }
+
+  .backLink {
+    font-size: 1.6rem;
+    line-height: 2rem;
+    font-weight: 400;
+  }
+
+  .chatButton {
+    font-size: 1.6rem;
+    line-height: 2rem;
+  }
+
+  .editButton {
+    font-size: 1.6rem;
+    line-height: 2rem;
+    border-color: var(--color-checkbox-border);
+  }
+
+  .cancelButton {
+    font-size: 1.6rem;
+    line-height: 2rem;
   }
 }

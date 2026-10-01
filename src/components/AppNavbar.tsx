@@ -1,13 +1,43 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { MenuHamburgerIcon, MenuCloseIcon } from "./AppNavbar.icons";
 import styles from "./AppNavbar.module.css";
 
 export default function AppNavbar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
+
+  const [menuOpenedForPathname, setMenuOpenedForPathname] = useState(pathname);
+  if (pathname !== menuOpenedForPathname) {
+    setMenuOpenedForPathname(pathname);
+    if (menuOpen) setMenuOpen(false);
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handlePointerDown(e: PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
 
   if (pathname === "/login") return null;
   if (status !== "authenticated") return null;
@@ -41,7 +71,7 @@ export default function AppNavbar() {
         : styles.avatarStudent;
 
   return (
-    <header className={styles.navbar}>
+    <header className={styles.navbar} ref={menuRef}>
       <div className={styles.inner}>
         <div className={styles.left}>
           <h3 className={styles.brand}>GT Paratransit</h3>
@@ -86,8 +116,47 @@ export default function AppNavbar() {
               {fullName}
             </span>
           </Link>
+
+          <div className={styles.menuWrap}>
+            <button
+              type="button"
+              className={styles.menuButton}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? (
+                <MenuCloseIcon className={styles.menuIcon} />
+              ) : (
+                <MenuHamburgerIcon className={styles.menuIcon} />
+              )}
+            </button>
+          </div>
         </div>
       </div>
+
+      {menuOpen && (
+        <nav className={styles.mobileMenu} aria-label="Mobile navigation">
+          {showRides && (
+            <Link
+              href="/rides"
+              className={linkClass("/rides")}
+              aria-current={isActive("/rides") ? "page" : undefined}
+            >
+              Your Rides
+            </Link>
+          )}
+          {showAdmin && (
+            <Link
+              href="/admin"
+              className={linkClass("/admin")}
+              aria-current={isActive("/admin") ? "page" : undefined}
+            >
+              Admin Dashboard
+            </Link>
+          )}
+        </nav>
+      )}
     </header>
   );
 }
