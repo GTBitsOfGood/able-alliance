@@ -10,7 +10,13 @@ import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import { CancelRideModal } from "./CancelRideModal";
-import { estDateKey, estWeekRange, formatEstDate } from "@/utils/dateEst";
+import {
+  estDateKey,
+  estDayRange,
+  estWeekRange,
+  formatEstDate,
+  isEstToday,
+} from "@/utils/dateEst";
 
 export type Location = {
   _id: string;
@@ -42,7 +48,13 @@ function formatWeekRangeHeader(start: Date, end: Date): string {
 }
 
 function formatDayGroupHeader(iso: string): string {
-  return formatEstDate(new Date(iso), {
+  const date = new Date(iso);
+  const monthAndDay = formatEstDate(date, { month: "long", day: "numeric" });
+  if (isEstToday(date)) return `Today, ${monthAndDay}`;
+  if (estDateKey(date) === estDateKey(estDayRange(1)[0])) {
+    return `Tomorrow, ${monthAndDay}`;
+  }
+  return formatEstDate(date, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -268,7 +280,7 @@ export default function RidesPage() {
         className={styles.requestRideButton}
         iconProps={{
           position: "left",
-          iconProps: { name: "plus", size: 18 },
+          iconProps: { name: "plus", size: 20 },
         }}
       >
         Request new ride
@@ -290,11 +302,7 @@ export default function RidesPage() {
       />
       <main className={styles.main}>
         <div className={styles.mainHeader}>
-          <h1 className={styles.pageTitle}>
-            {session?.user?.firstName
-              ? `${session.user.firstName}'s Rides`
-              : "Your Rides"}
-          </h1>
+          <h1 className={styles.pageTitle}>Your Rides</h1>
         </div>
 
         {error && (
@@ -306,7 +314,8 @@ export default function RidesPage() {
         <Tabs.Root defaultValue="this-week" className={styles.tabsLayout}>
           <div className={styles.tabsRow}>
             <Tabs.List
-              className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]}`}
+              className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]} ${styles.rideTabs}`}
+              aria-label="Ride week"
             >
               <Tabs.Trigger
                 value="this-week"

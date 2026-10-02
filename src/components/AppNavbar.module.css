@@ -210,3 +210,21 @@
 .avatarAdmin {
   --avatar-bg: var(--color-status-red-text);
 }
+
+.driverRidesNavbar .inner {
+  padding-inline: 4rem;
+}
+
+.ridesNavbar .inner {
+  padding-block: 2.35rem;
+}
+
+@media (width < 1024px) {
+  .ridesNavbar .right {
+    gap: 1.2rem;
+  }
+
+  .driverRidesNavbar .inner {
+    padding-inline: 3.2rem;
+  }
+}

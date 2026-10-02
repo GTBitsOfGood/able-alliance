@@ -6,11 +6,12 @@ import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import styles from "./styles.module.css";
 import {
-  estDateKey,
+  estDayOfWeek,
   estDayRange,
+  estTimeStr,
   formatEstDate,
-  isEstToday,
 } from "@/utils/dateEst";
+import type { Shift } from "@/utils/types/user";
 
 type Location = {
   _id: string;
@@ -19,6 +20,7 @@ type Location = {
 
 type EmbeddedVehicle = {
   _id: string;
+  vehicleId?: string;
   name: string;
   licensePlate: string;
   description?: string;
@@ -31,6 +33,7 @@ type DriverRoute = {
   pickupLocation: string;
   dropoffLocation: string;
   scheduledPickupTime: string;
+  estimatedDropoffTime?: string;
   status: string;
   vehicle?: EmbeddedVehicle;
   driver?: { _id: string };
@@ -45,42 +48,50 @@ function formatDayRangeHeading(range: [Date, Date]) {
   });
 }
 
-function formatDayHeading(date: Date) {
-  const monthAndDay = formatEstDate(date, { month: "long", day: "numeric" });
-  if (isEstToday(date)) return `Today, ${monthAndDay}`;
-  return `${formatEstDate(date, { weekday: "long" })}, ${monthAndDay}`;
+function formatShiftTime(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
 }
 
-function groupRidesByDay(rides: DriverRoute[]) {
-  const dayMap = new Map<string, { date: Date; rides: DriverRoute[] }>();
-
-  for (const route of rides) {
-    const routeDate = new Date(route.scheduledPickupTime);
-    const key = estDateKey(routeDate);
-
-    if (!dayMap.has(key)) {
-      dayMap.set(key, { date: routeDate, rides: [] });
-    }
-    dayMap.get(key)!.rides.push(route);
+function groupRidesByShift(rides: DriverRoute[], shifts: Shift[], day: Date) {
+  const remaining = new Set(rides);
+  const groups = shifts
+    .filter((shift) => shift.dayOfWeek === estDayOfWeek(day))
+    .toSorted((a, b) => a.startTime.localeCompare(b.startTime))
+    .map((shift) => {
+      const shiftRides = rides.filter((route) => {
+        const time = estTimeStr(new Date(route.scheduledPickupTime));
+        if (
+          !remaining.has(route) ||
+          time < shift.startTime ||
+          time >= shift.endTime
+        ) {
+          return false;
+        }
+        remaining.delete(route);
+        return true;
+      });
+      return {
+        key: `${shift.startTime}-${shift.endTime}`,
+        heading: `${formatShiftTime(shift.startTime)} - ${formatShiftTime(shift.endTime)}`,
+        rides: shiftRides,
+      };
+    });
+  if (remaining.size) {
+    groups.push({
+      key: "other",
+      heading: groups.length ? "Other rides" : "",
+      rides: [...remaining],
+    });
   }
-
-  return Array.from(dayMap.entries())
-    .sort((a, b) => a[1].date.getTime() - b[1].date.getTime())
-    .map(([key, group]) => ({
-      key,
-      date: group.date,
-      rides: group.rides.sort(
-        (a, b) =>
-          new Date(a.scheduledPickupTime).getTime() -
-          new Date(b.scheduledPickupTime).getTime(),
-      ),
-    }));
+  return groups;
 }
 
 export default function DriverRidesView({ userId }: { userId: string }) {
   const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyRoutes, setBusyRoutes] = useState<Set<string>>(new Set());
@@ -112,17 +123,24 @@ export default function DriverRidesView({ userId }: { userId: string }) {
         end_time: range[1].toISOString(),
       });
 
-      const [routesRes, locationsRes] = await Promise.all([
+      const [routesRes, locationsRes, driverRes] = await Promise.all([
         fetch(`/api/routes?${params}`),
         fetch("/api/locations"),
+        fetch(`/api/users/${userId}`).catch(() => null),
       ]);
       if (!routesRes.ok) throw new Error("Failed to fetch routes");
       if (!locationsRes.ok) throw new Error("Failed to fetch locations");
 
       const routesData: DriverRoute[] = await routesRes.json();
       const locationsData: Location[] = await locationsRes.json();
-      setRoutes(routesData);
+      setRoutes(
+        routesData.toSorted((a, b) =>
+          a.scheduledPickupTime.localeCompare(b.scheduledPickupTime),
+        ),
+      );
       setLocations(locationsData);
+      // Missing shift information must not hide assigned rides.
+      setShifts(driverRes?.ok ? ((await driverRes.json()).shifts ?? []) : []);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -164,7 +182,8 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     return (
       <div className={styles.driverWeekToggleRow}>
         <Tabs.List
-          className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]}`}
+          className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]} ${styles.rideTabs}`}
+          aria-label="Ride day"
         >
           <Tabs.Trigger
             value="today"
@@ -209,17 +228,20 @@ export default function DriverRidesView({ userId }: { userId: string }) {
   }
 
   function renderRides() {
-    const dayGroups = groupRidesByDay(routes);
-    if (dayGroups.length === 0) {
+    const shiftGroups = groupRidesByShift(routes, shifts, activeDayRange[0]);
+    if (shiftGroups.length === 0) {
       return <p className={styles.rideListEmpty}>No rides yet.</p>;
     }
-    return dayGroups.map((dayGroup) => (
-      <div key={dayGroup.key} className={styles.driverDayGroup}>
-        <h3 className={styles.driverDayHeading}>
-          {mounted ? formatDayHeading(dayGroup.date) : "—"}
-        </h3>
+    return shiftGroups.map((shiftGroup) => (
+      <div key={shiftGroup.key} className={styles.driverDayGroup}>
+        {shiftGroup.heading && (
+          <h3 className={styles.driverDayHeading}>{shiftGroup.heading}</h3>
+        )}
         <div className={styles.driverDayCards}>
-          {dayGroup.rides.map((route) => (
+          {shiftGroup.rides.length === 0 && (
+            <p className={styles.rideListEmpty}>No rides yet.</p>
+          )}
+          {shiftGroup.rides.map((route) => (
             <RideCard
               key={route._id}
               route={{

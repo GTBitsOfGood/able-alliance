@@ -71,7 +71,10 @@ export default function AppNavbar() {
         : styles.avatarStudent;
 
   return (
-    <header className={styles.navbar} ref={menuRef}>
+    <header
+      className={`${styles.navbar} ${pathname === "/rides" ? styles.ridesNavbar : ""} ${pathname === "/rides" && userType === "Driver" ? styles.driverRidesNavbar : ""}`}
+      ref={menuRef}
+    >
       <div className={styles.inner}>
         <div className={styles.left}>
           <h3 className={styles.brand}>GT Paratransit</h3>
