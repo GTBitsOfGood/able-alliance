@@ -3,7 +3,7 @@
   position: relative;
   width: 100vw;
   min-height: 100vh;
-  background: var(--color-solid-bg-sunken);
+  background: #e8e8e8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -24,6 +24,7 @@
   background-image: url("/gt-campus-street.jpeg");
   background-size: cover;
   background-position: left center;
+  opacity: 0.5;
   z-index: 0;
 }
 
@@ -89,7 +90,7 @@
   font-style: normal;
   font-size: 2rem;
   line-height: 2.8rem;
-  color: var(--color-grey-text-strong);
+  color: #000;
   max-width: 24rem;
 }
 
@@ -100,7 +101,7 @@
   font-size: 4rem;
   line-height: 4.8rem;
   text-align: center;
-  color: var(--color-grey-text-strong);
+  color: #000;
   margin: 0;
   width: 100%;
 }
