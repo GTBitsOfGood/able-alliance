@@ -70,9 +70,9 @@ test("route A: student creates, admin schedules (UI)", async ({
   await expect(student).toHaveURL(/\/rides$/);
 
   // Weeks start Sunday; a lower weekday means the ride is in next week.
-  if (rideDate.getDay() <= today.getDay()) {
-    await student.getByText("Next Week", { exact: true }).click();
-  }
+  const weekTab =
+    rideDate.getDay() <= today.getDay() ? "Next week" : "This week";
+  await student.getByRole("tab", { name: weekTab, exact: true }).click();
 
   const studentCard = student.getByTestId("ride-card").filter({
     hasText: PICKUP_TIME,
