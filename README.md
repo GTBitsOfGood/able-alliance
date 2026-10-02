@@ -6,12 +6,19 @@ Able Alliance is a GT student organization that is dedicated to improving on-cam
 
 ## Deployment Preview
 
-A deployment preview of the main branch from netlify is available [here](https://able-alliance.netlify.app/). The
-websocket express js server is hosted seperately [here](https://able-alliance.onrender.com).
-
-The mock cas express js server is hosted seperately [here](https://able-alliance-mock-cas.onrender.com)
+A deployment preview of the main branch from netlify is available [here](https://able-alliance.netlify.app/).
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/85fa2c6e-6dac-463a-8467-1d6d02d37cb3/deploy-status)](https://app.netlify.com/projects/able-alliance/deploys)
+
+## Environment Setup
+
+Copy `.env.example` to `.env` and fill in your API keys:
+
+```sh
+cp .env.example .env
+```
+
+For host development, use `localhost` instead of Docker service names.
 
 ## Development Setup
 
@@ -26,11 +33,6 @@ The mock cas express js server is hosted seperately [here](https://able-alliance
   ```sh
   npm ci
   ```
-- Create a `.env` file in the project root with `MONGODB_URI`. Copy from `.env.example`:
-  ```sh
-  cp .env.example .env
-  ```
-  Then set `MONGODB_URI=mongodb://localhost:27017/able-alliance` (or your MongoDB connection string).
 - Start the Next.js dev server:
   ```sh
   npm run dev
@@ -39,25 +41,22 @@ The mock cas express js server is hosted seperately [here](https://able-alliance
 
 ## Run With Docker
 
-1. Install [Docker](https://docs.docker.com/engine/install/).
-2. From the project root, start the app and MongoDB with Docker Compose:
-   ```sh
-   docker compose up
-   ```
-   The app service receives `MONGODB_URI` from the Compose file (`mongodb://mongo:27017/able-alliance?replicaSet=rs0`). No extra env file is required for Docker.
-3. To rebuild after changing dependencies, run:
-   `docker compose down -v`
-   to delete the old containers and volumes and then rebuild with
-   ` docker compose up --build`
-
-Note: If you run Mongo via Docker Compose, avoid starting another MongoDB on `localhost:27017`; Compose will start Mongo inside the stack and expose it.
+- Install [Docker](https://docs.docker.com/engine/install/).
+- Development:
+  ```sh
+  docker compose up --build --watch
+  ```
+- Production:
+  ```sh
+  docker compose -f docker-compose-prod.yml up --build
+  ```
 
 ### Seeding the Database
 
 To seed the database with sample users, locations, vehicles, and routes, run:
 
 ```sh
-npm run seed -- "mongodb://localhost:27017/able-alliance?replicaSet=rs0&directConnection=true"
+npm run seed -- "mongodb://localhost:27017/able-alliance"
 ```
 
 ## Major Technologies

@@ -9,6 +9,6 @@ coverage
 dist
 build
 *.log
-.env.local
-.env.*.local
+.env*
+!.env.example
 .turbo

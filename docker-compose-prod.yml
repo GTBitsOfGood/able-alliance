@@ -2,25 +2,10 @@ services:
   app:
     build:
       context: .
-      dockerfile: ./Dockerfile.dev
+      dockerfile: ./Dockerfile.prod
+      secrets:
+        - app_env
     env_file: .env
-    develop:
-      watch:
-        - action: rebuild
-          path: package.json
-        - action: rebuild
-          path: package-lock.json
-        - action: rebuild
-          path: Dockerfile.dev
-    volumes:
-      - ./src:/app/src
-      - ./emails:/app/emails
-      - ./scripts:/app/scripts
-      - ./public:/app/public
-      - ./next.config.ts:/app/next.config.ts
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./postcss.config.mjs:/app/postcss.config.mjs
-      - next_cache:/app/.next
     ports:
       - "3000:3000"
     networks:
@@ -30,10 +15,7 @@ services:
         condition: service_healthy
       cas:
         condition: service_started
-    command:
-      - /bin/bash
-      - -c
-      - npm run dev
+    command: npm run start
 
   mongo:
     image: mongo:7.0
@@ -86,4 +68,7 @@ networks:
 
 volumes:
   mongodb-data:
-  next_cache:
+
+secrets:
+  app_env:
+    file: .env

@@ -11,19 +11,10 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import { getMapboxTravelDuration } from "@/server/mapbox";
 
-let MONGODB_URI =
+const MONGODB_URI =
   process.argv[2] ??
   process.env.MONGODB_URI ??
   "mongodb://localhost:27017/able-alliance";
-
-if (
-  MONGODB_URI.includes("localhost") &&
-  MONGODB_URI.includes("replicaSet=") &&
-  !MONGODB_URI.includes("directConnection=")
-) {
-  MONGODB_URI +=
-    (MONGODB_URI.includes("?") ? "&" : "?") + "directConnection=true";
-}
 
 async function upsertOne<T extends Record<string, unknown>>(
   col: mongoose.mongo.Collection,

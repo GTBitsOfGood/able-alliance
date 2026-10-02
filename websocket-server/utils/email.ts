@@ -4,7 +4,10 @@ export async function notifyDriverMessage(
   token: string,
 ) {
   const response = await fetch(
-    new URL("/api/email/chat", process.env.DEPLOY_PRIME_URL),
+    new URL(
+      "/api/email/chat",
+      process.env.APP_INTERNAL_URL ?? process.env.DEPLOY_PRIME_URL,
+    ),
     {
       method: "POST",
       headers: {
