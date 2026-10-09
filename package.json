@@ -8,6 +8,7 @@
     "dev:server": "tsx watch websocket-server/server.ts",
     "build": "next build",
     "start": "next start",
+    "start:upsun": "tsx scripts/start-upsun.ts",
     "seed": "tsx scripts/seed.ts",
     "upsun:env": "tsx scripts/upsun-env.ts",
     "typecheck": "tsc --noEmit && npm --prefix websocket-server run typecheck",
