@@ -3,6 +3,9 @@ app:
     root: /
   type: nodejs:24
   size: M
+  resources:
+    base_memory: 512
+    memory_ratio: 512
   build:
     flavor: none
   relationships:
