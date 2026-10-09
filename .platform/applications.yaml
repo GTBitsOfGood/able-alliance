@@ -2,7 +2,7 @@ app:
   source:
     root: /
   type: nodejs:24
-  size: S
+  size: M
   build:
     flavor: none
   relationships:
