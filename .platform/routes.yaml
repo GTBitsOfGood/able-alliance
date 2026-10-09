@@ -1,8 +1,5 @@
-https://www.{default}/:
+https://{default}/:
   type: upstream
   upstream: app:http
   cache:
     enabled: false
-https://{default}/:
-  type: redirect
-  to: https://www.{default}/
