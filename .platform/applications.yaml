@@ -2,7 +2,7 @@ app:
   source:
     root: /
   type: nodejs:24
-  size: M
+  size: S
   resources:
     base_memory: 512
     memory_ratio: 512
