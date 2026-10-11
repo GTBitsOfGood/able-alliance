@@ -13,6 +13,7 @@ import BogButton from "@/components/BogButton/BogButton";
 import { CancelRideModal } from "../CancelRideModal";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
 
@@ -190,56 +191,66 @@ export default function RideDetailPage({
   }, [params]);
 
   // Fetch route data
-  useEffect(() => {
+  const fetchRoute = useCallback(async () => {
     if (!routeId || sessionStatus !== "authenticated" || !session?.user?.userId)
       return;
 
-    const fetchRoute = async () => {
-      try {
-        const res = await fetch(`/api/routes/${routeId}`);
+    try {
+      const res = await fetch(`/api/routes/${routeId}`);
 
-        if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error("Route not found");
-          } else if (res.status === 403) {
-            throw new Error("You do not have access to this route");
-          }
-          throw new Error("Failed to fetch route");
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Route not found");
+        } else if (res.status === 403) {
+          throw new Error("You do not have access to this route");
         }
-
-        const routeData: RouteData = await res.json();
-
-        if (session.user.type === "Student") {
-          const studentId = getStudentId(routeData.student);
-          if (studentId !== session.user.userId) {
-            throw new Error("You are not the student for this route");
-          }
-        } else if (session.user.type === "Driver") {
-          const driverId = getDriverId(routeData.driver);
-          if (driverId !== session.user.userId) {
-            router.push("/rides");
-            return;
-          }
-        } else {
-          throw new Error("Unauthorized");
-        }
-
-        setRoute(routeData);
-        setError(null);
-
-        // Determine if chat is eligible (ride is today)
-        const chatEligible = isToday(routeData.scheduledPickupTime);
-        setIsChatEligible(chatEligible);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to fetch route");
-        setRoute(null);
-      } finally {
-        setLoading(false);
+        throw new Error("Failed to fetch route");
       }
-    };
 
-    fetchRoute();
+      const routeData: RouteData = await res.json();
+
+      if (session.user.type === "Student") {
+        const studentId = getStudentId(routeData.student);
+        if (studentId !== session.user.userId) {
+          throw new Error("You are not the student for this route");
+        }
+      } else if (session.user.type === "Driver") {
+        const driverId = getDriverId(routeData.driver);
+        if (driverId !== session.user.userId) {
+          router.push("/rides");
+          return;
+        }
+      } else {
+        throw new Error("Unauthorized");
+      }
+
+      setRoute(routeData);
+      setError(null);
+
+      // Determine if chat is eligible (ride is today)
+      const chatEligible = isToday(routeData.scheduledPickupTime);
+      setIsChatEligible(chatEligible);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch route");
+      setRoute(null);
+    } finally {
+      setLoading(false);
+    }
   }, [routeId, session, sessionStatus, router]);
+
+  useEffect(() => {
+    // This effect starts an asynchronous API request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchRoute();
+  }, [fetchRoute]);
+
+  // Refetch when this route changes elsewhere (status, driver, cancellation).
+  useRouteUpdates(
+    () => {
+      void fetchRoute();
+    },
+    { routeId },
+  );
 
   // Fetch locations
   useEffect(() => {

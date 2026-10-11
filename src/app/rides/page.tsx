@@ -10,6 +10,7 @@ import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import { CancelRideModal } from "./CancelRideModal";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 import {
   estDateKey,
   estDayRange,
@@ -136,6 +137,11 @@ export default function RidesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchRides();
   }, [mounted, fetchRides]);
+
+  // Drivers get their own subscription inside DriverRidesView.
+  useRouteUpdates(() => {
+    if (mounted && session?.user?.type === "Student") void fetchRides();
+  });
 
   const handleCancel = useCallback(async (routeId: string) => {
     setCancellingId(routeId);

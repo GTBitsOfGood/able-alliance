@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./profileRides.module.css";
 import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 
 type RouteUser = {
   _id: string;
@@ -117,14 +118,14 @@ export function ProfileRidesTab({
     userType === "Vehicle" ? "this-week" : "all",
   );
 
-  useEffect(() => {
+  const fetchRides = useCallback(() => {
     const param =
       userType === "Driver"
         ? `driver=${userId}`
         : userType === "Vehicle"
           ? `vehicle=${userId}`
           : `student=${userId}`;
-    Promise.all([
+    return Promise.all([
       fetch(`/api/routes?${param}`).then((r) => r.json()),
       fetch("/api/locations").then((r) => r.json()),
     ])
@@ -135,10 +136,19 @@ export function ProfileRidesTab({
           for (const l of locData) map[l._id] = l.name;
         }
         setLocations(map);
+        setError(null);
       })
       .catch(() => setError("Failed to load rides."))
       .finally(() => setLoading(false));
   }, [userId, userType]);
+
+  useEffect(() => {
+    void fetchRides();
+  }, [fetchRides]);
+
+  useRouteUpdates(() => {
+    void fetchRides();
+  });
 
   const filtered = useMemo(() => {
     if (filter === "all") return routes;

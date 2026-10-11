@@ -12,6 +12,7 @@ import {
   formatEstDate,
 } from "@/utils/dateEst";
 import type { Shift } from "@/utils/types/user";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 
 type Location = {
   _id: string;
@@ -156,6 +157,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     setLoading(true);
     void fetchRoutes();
   }, [mounted, fetchRoutes]);
+
+  useRouteUpdates(() => {
+    if (mounted) void fetchRoutes();
+  });
 
   const locationIdToName = useMemo(
     () =>

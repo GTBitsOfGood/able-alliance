@@ -52,6 +52,12 @@ export async function startServer() {
     notificationsNsp.use(authenticateNotificationSocket);
     notificationsNsp.on("connection", (socket) => {
       socket.join(`user:${socket.data.user}`);
+      if (
+        socket.data.userType === "Admin" ||
+        socket.data.userType === "SuperAdmin"
+      ) {
+        socket.join("role:admin");
+      }
     });
 
     registerHttpRoutes(app, notificationsNsp);

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import BogTable from "@/components/BogTable/BogTable";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import BogButton from "@/components/BogButton/BogButton";
 import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
 import ConfirmActionModal from "./ConfirmActionModal";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 
 type RouteEntry = {
   _id: string;
@@ -48,11 +49,14 @@ export default function RidesTable() {
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+  // `silent` refetches (real-time updates) keep the table on screen instead
+  // of swapping in the loading state.
+  const loadRides = useCallback(
+    async (options?: { silent?: boolean; isCancelled?: () => boolean }) => {
+      if (!options?.silent) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const [routesRes, locationsRes, driversRes, vehiclesRes] =
           await Promise.all([
@@ -87,8 +91,9 @@ export default function RidesTable() {
             locMap[String(loc._id)] = String(loc.name);
           }
         }
-        if (cancelled) return;
+        if (options?.isCancelled?.()) return;
         setRoutes(requested);
+        setError(null);
         setLocationMap(locMap);
         setDrivers(Array.isArray(driversData) ? driversData : []);
         setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
@@ -97,12 +102,21 @@ export default function RidesTable() {
       } finally {
         setLoading(false);
       }
-    };
-    load();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadRides({ isCancelled: () => cancelled });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadRides]);
+
+  useRouteUpdates(() => {
+    void loadRides({ silent: true });
+  });
 
   const handleAssign = async (routeId: string) => {
     const driverLabel = driverLabels[routeId];

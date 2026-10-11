@@ -6,6 +6,7 @@ import RouteModel, { RouteStatus } from "@/server/db/models/RouteModel";
 import UserModel from "@/server/db/models/UserModel";
 import VehicleModel from "@/server/db/models/VehicleModel";
 import mongoose from "mongoose";
+import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 
 export async function POST(
   req: NextRequest,
@@ -126,6 +127,7 @@ export async function POST(
       route.vehicle = vehicleEmbed;
       route.status = RouteStatus.Scheduled;
       await route.save();
+      emitRouteUpdate(route);
       results.push({ rideId, success: true });
     }
 

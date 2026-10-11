@@ -128,6 +128,7 @@ export async function authenticateNotificationSocket(
     }
 
     socket.data.user = decoded.userId;
+    socket.data.userType = decoded.type;
     next();
   } catch (error) {
     console.error("Notification auth error:", error);
