@@ -19,6 +19,7 @@ import {
 } from "@/utils/dateEst";
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
+import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 
 async function sendEmailSafely(label: string, send: () => Promise<void>) {
   try {
@@ -103,6 +104,7 @@ export async function createRoute(data: CreateRouteInput) {
     estimatedDropoffTime,
     status: RouteStatus.Requested,
   });
+  emitRouteUpdate(route);
   return route.toObject();
 }
 
@@ -115,6 +117,7 @@ export async function getRouteById(id: string) {
 export async function deleteRouteById(id: string) {
   await connectMongoDB();
   const deleted = await RouteModel.findByIdAndDelete(id).lean();
+  if (deleted) emitRouteUpdate(deleted);
   return deleted;
 }
 
@@ -168,6 +171,7 @@ export async function completeRoute(routeId: string) {
   if (route.status !== RouteStatus.Pickedup) return null;
   route.status = RouteStatus.Completed;
   await route.save();
+  emitRouteUpdate(route);
 
   const studentUser = await UserModel.findById(route.student._id).lean();
   if (
@@ -212,6 +216,7 @@ export async function cancelRoute(routeId: string, status?: string) {
     route.status = RouteStatus.CancelledByStudent;
   }
   await route.save();
+  emitRouteUpdate(route);
 
   const studentUser = await UserModel.findById(route.student._id).lean();
   if (
@@ -284,6 +289,7 @@ export async function startRoute(routeId: string) {
   }
   route.status = RouteStatus.EnRoute;
   await route.save();
+  emitRouteUpdate(route);
 
   const studentUser = await UserModel.findById(route.student._id).lean();
   if (
@@ -325,6 +331,7 @@ export async function pickupStudent(routeId: string) {
   if (!route || route.status !== RouteStatus.EnRoute) return null;
   route.status = RouteStatus.Pickedup;
   await route.save();
+  emitRouteUpdate(route);
   return route.toObject();
 }
 
@@ -340,6 +347,7 @@ export async function markRouteMissing(routeId: string) {
   }
   route.status = RouteStatus.Missing;
   await route.save();
+  emitRouteUpdate(route);
   await archiveChatlogForRoute(routeId);
   return route.toObject();
 }
@@ -417,6 +425,7 @@ export async function scheduleRoute(
   route.vehicle = vehicleEmbed;
   route.status = RouteStatus.Scheduled;
   await route.save();
+  emitRouteUpdate(route);
 
   try {
     await Chatlog.findOneAndUpdate(

@@ -10,6 +10,8 @@ import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import { CancelRideModal } from "./CancelRideModal";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 import {
   estDateKey,
   estDayRange,
@@ -107,8 +109,11 @@ export default function RidesPage() {
     setMounted(true);
   }, []);
 
+  const beginRequest = useLatestRequest();
+
   const fetchRides = useCallback(async () => {
     if (!session?.user?.userId) return;
+    const isLatest = beginRequest();
     try {
       const [routesRes, locationsRes] = await Promise.all([
         fetch(`/api/routes?student=${session.user.userId}`),
@@ -118,17 +123,19 @@ export default function RidesPage() {
       if (!locationsRes.ok) throw new Error("Failed to fetch locations");
       const routesData = await routesRes.json();
       const locationsData = await locationsRes.json();
+      if (!isLatest()) return;
       setRoutes(
         routesData.filter((r: Route) => r.status !== "Cancelled by Student"),
       );
       setLocations(locationsData);
       setError(null);
     } catch (e) {
+      if (!isLatest()) return;
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [session]);
+  }, [session, beginRequest]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -136,6 +143,11 @@ export default function RidesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchRides();
   }, [mounted, fetchRides]);
+
+  // Drivers get their own subscription inside DriverRidesView.
+  useRouteUpdates(() => {
+    if (mounted && session?.user?.type === "Student") void fetchRides();
+  });
 
   const handleCancel = useCallback(async (routeId: string) => {
     setCancellingId(routeId);

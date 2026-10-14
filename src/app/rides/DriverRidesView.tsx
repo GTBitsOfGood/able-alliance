@@ -12,6 +12,8 @@ import {
   formatEstDate,
 } from "@/utils/dateEst";
 import type { Shift } from "@/utils/types/user";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
 type Location = {
   _id: string;
@@ -114,7 +116,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     setMounted(true);
   }, []);
 
+  const beginRequest = useLatestRequest();
+
   const fetchRoutes = useCallback(async () => {
+    const isLatest = beginRequest();
     try {
       const range = activeTab === "today" ? todayRange : tomorrowRange;
       const params = new URLSearchParams({
@@ -133,6 +138,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
 
       const routesData: DriverRoute[] = await routesRes.json();
       const locationsData: Location[] = await locationsRes.json();
+      const shiftsData: Shift[] = driverRes?.ok
+        ? ((await driverRes.json()).shifts ?? [])
+        : [];
+      if (!isLatest()) return;
       setRoutes(
         routesData.toSorted((a, b) =>
           a.scheduledPickupTime.localeCompare(b.scheduledPickupTime),
@@ -140,14 +149,15 @@ export default function DriverRidesView({ userId }: { userId: string }) {
       );
       setLocations(locationsData);
       // Missing shift information must not hide assigned rides.
-      setShifts(driverRes?.ok ? ((await driverRes.json()).shifts ?? []) : []);
+      setShifts(shiftsData);
       setError(null);
     } catch (e) {
+      if (!isLatest()) return;
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [userId, activeTab, todayRange, tomorrowRange]);
+  }, [userId, activeTab, todayRange, tomorrowRange, beginRequest]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -156,6 +166,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     setLoading(true);
     void fetchRoutes();
   }, [mounted, fetchRoutes]);
+
+  useRouteUpdates(() => {
+    if (mounted) void fetchRoutes();
+  });
 
   const locationIdToName = useMemo(
     () =>
