@@ -8,6 +8,7 @@ import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
 import ConfirmActionModal from "./ConfirmActionModal";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
 type RouteEntry = {
   _id: string;
@@ -49,10 +50,13 @@ export default function RidesTable() {
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
+  const beginRequest = useLatestRequest();
+
   // `silent` refetches (real-time updates) keep the table on screen instead
   // of swapping in the loading state.
   const loadRides = useCallback(
-    async (options?: { silent?: boolean; isCancelled?: () => boolean }) => {
+    async (options?: { silent?: boolean }) => {
+      const isLatest = beginRequest();
       if (!options?.silent) {
         setLoading(true);
         setError(null);
@@ -91,27 +95,24 @@ export default function RidesTable() {
             locMap[String(loc._id)] = String(loc.name);
           }
         }
-        if (options?.isCancelled?.()) return;
+        if (!isLatest()) return;
         setRoutes(requested);
         setError(null);
         setLocationMap(locMap);
         setDrivers(Array.isArray(driversData) ? driversData : []);
         setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
       } catch (e) {
+        if (!isLatest()) return;
         setError(e instanceof Error ? e.message : "Failed to load rides.");
       } finally {
-        setLoading(false);
+        if (isLatest()) setLoading(false);
       }
     },
-    [],
+    [beginRequest],
   );
 
   useEffect(() => {
-    let cancelled = false;
-    void loadRides({ isCancelled: () => cancelled });
-    return () => {
-      cancelled = true;
-    };
+    void loadRides();
   }, [loadRides]);
 
   useRouteUpdates(() => {

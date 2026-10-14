@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./profileRides.module.css";
 import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
 type RouteUser = {
   _id: string;
@@ -118,7 +119,10 @@ export function ProfileRidesTab({
     userType === "Vehicle" ? "this-week" : "all",
   );
 
+  const beginRequest = useLatestRequest();
+
   const fetchRides = useCallback(() => {
+    const isLatest = beginRequest();
     const param =
       userType === "Driver"
         ? `driver=${userId}`
@@ -130,6 +134,7 @@ export function ProfileRidesTab({
       fetch("/api/locations").then((r) => r.json()),
     ])
       .then(([routesData, locData]) => {
+        if (!isLatest()) return;
         setRoutes(Array.isArray(routesData) ? routesData : []);
         const map: LocationMap = {};
         if (Array.isArray(locData)) {
@@ -138,9 +143,13 @@ export function ProfileRidesTab({
         setLocations(map);
         setError(null);
       })
-      .catch(() => setError("Failed to load rides."))
-      .finally(() => setLoading(false));
-  }, [userId, userType]);
+      .catch(() => {
+        if (isLatest()) setError("Failed to load rides.");
+      })
+      .finally(() => {
+        if (isLatest()) setLoading(false);
+      });
+  }, [userId, userType, beginRequest]);
 
   useEffect(() => {
     void fetchRides();

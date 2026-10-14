@@ -36,31 +36,32 @@ export function emitRouteUpdate(
   ];
   const routeId = route._id.toString();
 
-  fetch(`${url}/events`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-internal-secret": secret,
-    },
-    body: JSON.stringify({
-      event: "routeUpdated",
-      userIds,
-      toAdmins: true,
-      payload: { routeId, status: route.status },
-    }),
-  })
-    .then((res) => {
-      if (!res.ok) {
-        console.error(
-          `emitRouteUpdate: events failed with status ${res.status}`,
-        );
-        return;
-      }
-      console.log(
-        `emitRouteUpdate: route ${routeId} (status=${route.status}) -> users=[${userIds.join(",")}] + admins`,
-      );
-    })
-    .catch((error) => {
-      console.error("emitRouteUpdate: failed to reach websocket server", error);
+  void postRouteUpdate(url, secret, {
+    event: "routeUpdated",
+    userIds,
+    toAdmins: true,
+    payload: { routeId, status: route.status },
+  });
+}
+
+async function postRouteUpdate(
+  url: string,
+  secret: string,
+  body: Record<string, unknown>,
+): Promise<void> {
+  try {
+    const res = await fetch(`${url}/events`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-secret": secret,
+      },
+      body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      console.error(`emitRouteUpdate: events failed with status ${res.status}`);
+    }
+  } catch (error) {
+    console.error("emitRouteUpdate: failed to reach websocket server", error);
+  }
 }

@@ -10,8 +10,8 @@ const DEBOUNCE_MS = 300;
 /**
  * Calls `onUpdate` when the server reports that a route changed, so the page
  * can refetch. Bursts of events are coalesced into one call, and the callback
- * also fires after the socket reconnects, since events sent while
- * disconnected are lost. Pass `routeId` to only react to one route.
+ * also fires whenever the socket (re)connects, since events sent while
+ * not connected are lost. Pass `routeId` to only react to one route.
  *
  * `onUpdate` doesn't need to be memoized — the latest one is always used.
  */
@@ -45,13 +45,14 @@ export function useRouteUpdates(
     };
 
     socket.on("routeUpdated", handleRouteUpdated);
-    // Reconnection events come from the Socket.IO Manager (.io).
-    socket.io.on("reconnect", schedule);
+    // The socket-level "connect" fires on the first connection and on every
+    // reconnect, covering updates missed before the server joined our rooms.
+    socket.on("connect", schedule);
 
     return () => {
       clearTimeout(timer);
       socket.off("routeUpdated", handleRouteUpdated);
-      socket.io.off("reconnect", schedule);
+      socket.off("connect", schedule);
     };
   }, [socket, routeId, scoped]);
 }

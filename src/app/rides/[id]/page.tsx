@@ -14,6 +14,7 @@ import { CancelRideModal } from "../CancelRideModal";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
 
@@ -190,10 +191,13 @@ export default function RideDetailPage({
     });
   }, [params]);
 
+  const beginRequest = useLatestRequest();
+
   // Fetch route data
   const fetchRoute = useCallback(async () => {
     if (!routeId || sessionStatus !== "authenticated" || !session?.user?.userId)
       return;
+    const isLatest = beginRequest();
 
     try {
       const res = await fetch(`/api/routes/${routeId}`);
@@ -208,6 +212,7 @@ export default function RideDetailPage({
       }
 
       const routeData: RouteData = await res.json();
+      if (!isLatest()) return;
 
       if (session.user.type === "Student") {
         const studentId = getStudentId(routeData.student);
@@ -231,12 +236,13 @@ export default function RideDetailPage({
       const chatEligible = isToday(routeData.scheduledPickupTime);
       setIsChatEligible(chatEligible);
     } catch (e) {
+      if (!isLatest()) return;
       setError(e instanceof Error ? e.message : "Failed to fetch route");
       setRoute(null);
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [routeId, session, sessionStatus, router]);
+  }, [routeId, session, sessionStatus, router, beginRequest]);
 
   useEffect(() => {
     // This effect starts an asynchronous API request.
