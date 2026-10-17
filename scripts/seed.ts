@@ -9,7 +9,11 @@
 
 import "dotenv/config";
 import mongoose from "mongoose";
+import { addDays } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { getMapboxTravelDuration } from "@/server/mapbox";
+
+const TZ = "America/New_York";
 
 const MONGODB_URI =
   process.argv[2] ??
@@ -372,11 +376,17 @@ async function seed() {
   const now = new Date();
 
   // Build a list of dates: today + 6 more days, plus next 7 days
+  // Hours are Eastern wall-clock times, independent of the machine's timezone.
   const makeDate = (daysOffset: number, hour: number, minute: number): Date => {
-    const d = new Date(now);
-    d.setDate(now.getDate() + daysOffset);
-    d.setHours(hour, minute, 0, 0);
-    return d;
+    const day = addDays(toZonedTime(now, TZ), daysOffset);
+    day.setHours(hour, minute, 0, 0);
+    return fromZonedTime(day, TZ);
+  };
+
+  // The next occurrence (1–7 days out) of a weekday, 0 = Sunday … 6 = Saturday.
+  const onWeekday = (dayOfWeek: number, hour: number, minute: number): Date => {
+    const today = toZonedTime(now, TZ).getDay();
+    return makeDate((dayOfWeek - today + 7) % 7 || 7, hour, minute);
   };
 
   type AnyUser = {
@@ -577,7 +587,7 @@ async function seed() {
   //   driver1 (Test):  Mon–Fri 08:00–14:00
   //   driver2 (Alex):  Mon/Wed/Fri 13:00–19:00, Sat 10:00–16:00
   //   driver3 (Austin):Tue/Thu 09:00–15:00
-  // Today is treated as day 0; Mon=+2, Tue=+3, Wed=+4, Thu=+5, Fri=+6
+  // Each template lands on the next occurrence of its weekday.
   type RequestedTemplate = {
     student: AnyUser;
     pickupLocation: keyof typeof locations;
@@ -591,37 +601,37 @@ async function seed() {
       student: student1,
       pickupLocation: "West Village Dining",
       dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(2, 8, 30),
+      pickupTime: onWeekday(1, 8, 30),
     },
     {
       student: student2,
       pickupLocation: "North Avenue Apartments",
       dropoffLocation: "Student Center",
-      pickupTime: makeDate(2, 9, 15),
+      pickupTime: onWeekday(1, 9, 15),
     },
     {
       student: student3,
       pickupLocation: "Exhibition Hall",
       dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(2, 10, 0),
+      pickupTime: onWeekday(1, 10, 0),
     },
     {
       student: student4,
       pickupLocation: "Campus Recreation Center",
       dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(2, 11, 30),
+      pickupTime: onWeekday(1, 11, 30),
     },
     {
       student: student2,
       pickupLocation: "Student Center",
       dropoffLocation: "Eighth Street Apartments",
-      pickupTime: makeDate(2, 14, 30),
+      pickupTime: onWeekday(1, 14, 30),
     },
     {
       student: student3,
       pickupLocation: "Ferst Center for the Arts",
       dropoffLocation: "West Village Dining",
-      pickupTime: makeDate(2, 16, 0),
+      pickupTime: onWeekday(1, 16, 0),
     },
 
     // ── Tuesday (driver1 08–14, driver3 09–15) ────────────────────────────
@@ -629,31 +639,31 @@ async function seed() {
       student: student4,
       pickupLocation: "Exhibition Hall",
       dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(3, 8, 30),
+      pickupTime: onWeekday(2, 8, 30),
     },
     {
       student: student1,
       pickupLocation: "West Village Dining",
       dropoffLocation: "Student Center",
-      pickupTime: makeDate(3, 9, 0),
+      pickupTime: onWeekday(2, 9, 0),
     },
     {
       student: student2,
       pickupLocation: "North Avenue Apartments",
       dropoffLocation: "Campus Recreation Center",
-      pickupTime: makeDate(3, 10, 30),
+      pickupTime: onWeekday(2, 10, 30),
     },
     {
       student: student3,
       pickupLocation: "Eighth Street Apartments",
       dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(3, 12, 0),
+      pickupTime: onWeekday(2, 12, 0),
     },
     {
       student: student4,
       pickupLocation: "Clough Undergraduate Learning Commons",
       dropoffLocation: "Ferst Center for the Arts",
-      pickupTime: makeDate(3, 13, 30),
+      pickupTime: onWeekday(2, 13, 30),
     },
 
     // ── Wednesday (driver1 08–14, driver2 13–19, driver3 09–15) ──────────
@@ -661,25 +671,25 @@ async function seed() {
       student: student1,
       pickupLocation: "Exhibition Hall",
       dropoffLocation: "Eighth Street Apartments",
-      pickupTime: makeDate(4, 9, 0),
+      pickupTime: onWeekday(3, 9, 0),
     },
     {
       student: student2,
       pickupLocation: "Student Center",
       dropoffLocation: "Ferst Center for the Arts",
-      pickupTime: makeDate(4, 11, 0),
+      pickupTime: onWeekday(3, 11, 0),
     },
     {
       student: student3,
       pickupLocation: "West Village Dining",
       dropoffLocation: "North Avenue Apartments",
-      pickupTime: makeDate(4, 14, 0),
+      pickupTime: onWeekday(3, 14, 0),
     },
     {
       student: student4,
       pickupLocation: "Tech Square Eastbound",
       dropoffLocation: "Campus Recreation Center",
-      pickupTime: makeDate(4, 15, 30),
+      pickupTime: onWeekday(3, 15, 30),
     },
 
     // ── Thursday (driver1 08–14, driver3 09–15) ───────────────────────────
@@ -687,19 +697,19 @@ async function seed() {
       student: student1,
       pickupLocation: "Campus Recreation Center",
       dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(5, 9, 30),
+      pickupTime: onWeekday(4, 9, 30),
     },
     {
       student: student2,
       pickupLocation: "North Avenue Apartments",
       dropoffLocation: "Exhibition Hall",
-      pickupTime: makeDate(5, 11, 0),
+      pickupTime: onWeekday(4, 11, 0),
     },
     {
       student: student3,
       pickupLocation: "West Village Dining",
       dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(5, 13, 0),
+      pickupTime: onWeekday(4, 13, 0),
     },
 
     // ── Friday (driver1 08–14, driver2 13–19) ────────────────────────────
@@ -707,19 +717,19 @@ async function seed() {
       student: student4,
       pickupLocation: "Eighth Street Apartments",
       dropoffLocation: "Student Center",
-      pickupTime: makeDate(6, 8, 30),
+      pickupTime: onWeekday(5, 8, 30),
     },
     {
       student: student1,
       pickupLocation: "Ferst Center for the Arts",
       dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(6, 10, 0),
+      pickupTime: onWeekday(5, 10, 0),
     },
     {
       student: student2,
       pickupLocation: "Student Center",
       dropoffLocation: "West Village Dining",
-      pickupTime: makeDate(6, 13, 30),
+      pickupTime: onWeekday(5, 13, 30),
     },
   ];
 
@@ -778,6 +788,34 @@ async function seed() {
 
   let created = 0;
   let skipped = 0;
+  let demoted = 0;
+
+  // A Scheduled template is only booked if some driver's shift covers it and
+  // neither that driver nor the vehicle has another ride within the window;
+  // otherwise it is seeded as Requested so the data never contradicts shifts.
+  const SEED_RIDE_MIN = 45;
+  const allDrivers: AnyUser[] = [driver1, driver2, driver3];
+  const bookings = new Map<string, number[]>();
+  const toMin = (hhmm: string) => +hhmm.slice(0, 2) * 60 + +hhmm.slice(3);
+  const fitsShift = (d: AnyUser, at: Date) => {
+    const zoned = toZonedTime(at, TZ);
+    const start = zoned.getHours() * 60 + zoned.getMinutes();
+    return (d.shifts ?? []).some(
+      (s) =>
+        s.dayOfWeek === zoned.getDay() &&
+        toMin(s.startTime) <= start &&
+        start + SEED_RIDE_MIN <= toMin(s.endTime),
+    );
+  };
+  const isFree = (id: mongoose.Types.ObjectId, at: Date) =>
+    (bookings.get(id.toString()) ?? []).every(
+      (ms) => Math.abs(ms - at.getTime()) >= SEED_RIDE_MIN * 60_000,
+    );
+  const book = (id: mongoose.Types.ObjectId, at: Date) =>
+    bookings.set(id.toString(), [
+      ...(bookings.get(id.toString()) ?? []),
+      at.getTime(),
+    ]);
 
   for (const t of routeTemplates) {
     const pickupLoc = locations[t.pickupLocation];
@@ -793,6 +831,26 @@ async function seed() {
     if (existing) {
       skipped++;
       continue;
+    }
+
+    let driver: AnyUser | undefined = t.driver;
+    let status = t.status;
+    if (status === "Scheduled") {
+      driver = isFree(t.vehicle._id, t.pickupTime)
+        ? [
+            t.driver,
+            ...allDrivers.filter((d) => !d._id.equals(t.driver._id)),
+          ].find(
+            (d) => fitsShift(d, t.pickupTime) && isFree(d._id, t.pickupTime),
+          )
+        : undefined;
+      if (driver) {
+        book(driver._id, t.pickupTime);
+        book(t.vehicle._id, t.pickupTime);
+      } else {
+        status = "Requested";
+        demoted++;
+      }
     }
 
     const windowStart = addMinutes(t.pickupTime, -30);
@@ -818,18 +876,24 @@ async function seed() {
       pickupLocation: pickupLoc._id,
       dropoffLocation: dropoffLoc._id,
       student: makeEmbed(t.student as unknown as Record<string, unknown>),
-      driver: makeEmbed(t.driver as unknown as Record<string, unknown>),
-      vehicle: makeVehicleEmbed(t.vehicle),
+      ...(driver && status !== "Requested"
+        ? {
+            driver: makeEmbed(driver as unknown as Record<string, unknown>),
+            vehicle: makeVehicleEmbed(t.vehicle),
+          }
+        : {}),
       scheduledPickupTime: t.pickupTime,
       pickupWindowStart: windowStart,
       pickupWindowEnd: windowEnd,
       estimatedDropoffTime,
-      status: t.status,
+      status,
     });
     created++;
   }
 
-  console.log(`\n– Routes: created ${created}, skipped ${skipped}`);
+  console.log(
+    `\n– Routes: created ${created} (${demoted} left Requested: no driver on shift or a conflict), skipped ${skipped}`,
+  );
   console.log("\nSeed complete!");
   await mongoose.disconnect();
 }

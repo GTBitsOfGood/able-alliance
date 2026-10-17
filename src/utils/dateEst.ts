@@ -11,13 +11,13 @@ import {
   addWeeks,
   getDay,
 } from "date-fns";
-import { toZonedTime, fromZonedTime, format as tzFormat } from "date-fns-tz";
+import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 
 const TZ = "America/New_York";
 
 /** "YYYY-MM-DD" key for a UTC Date in America/New_York. */
 export function estDateKey(date: Date): string {
-  return tzFormat(date, "yyyy-MM-dd", { timeZone: TZ });
+  return formatInTimeZone(date, TZ, "yyyy-MM-dd");
 }
 
 /** Day of week in America/New_York (0 = Sunday … 6 = Saturday). */
@@ -27,7 +27,7 @@ export function estDayOfWeek(date: Date): number {
 
 /** "HH:MM" (24-hour) string in America/New_York — for shift-time comparison. */
 export function estTimeStr(date: Date): string {
-  return tzFormat(date, "HH:mm", { timeZone: TZ });
+  return formatInTimeZone(date, TZ, "HH:mm");
 }
 
 /** Start of the America/New_York calendar day (midnight) as a UTC Date. */
@@ -70,7 +70,7 @@ export function startOfEstWeek(date: Date): Date {
 
 /** Format a UTC Date as a time string in America/New_York (e.g. "3:45 PM"). */
 export function formatEstTime(date: Date): string {
-  return tzFormat(date, "h:mm a", { timeZone: TZ });
+  return formatInTimeZone(date, TZ, "h:mm a");
 }
 
 /**
