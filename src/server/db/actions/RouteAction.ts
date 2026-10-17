@@ -34,7 +34,10 @@ function dispatchNotifications(tasks: Promise<void>[]) {
   });
 }
 
-export async function createRoute(data: CreateRouteInput) {
+export async function createRoute(
+  data: CreateRouteInput,
+  options?: { seriesId?: string },
+) {
   await connectMongoDB();
   const validatedData = createRouteSchema.parse(data);
 
@@ -102,6 +105,9 @@ export async function createRoute(data: CreateRouteInput) {
     pickupWindowEnd: validatedData.pickupWindowEnd,
     estimatedDropoffTime,
     status: RouteStatus.Requested,
+    // Only set for rides generated from a recurring series. Not accepted from
+    // client input — see POST /api/routes.
+    ...(options?.seriesId ? { seriesId: options.seriesId } : {}),
   });
   return route.toObject();
 }
