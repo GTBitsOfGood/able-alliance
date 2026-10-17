@@ -84,19 +84,6 @@
   cursor: not-allowed;
 }
 
-.banner {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 1.4rem;
-  font-family: var(--font-paragraph);
-  color: var(--color-grey-text-strong);
-}
-
-.bannerError {
-  color: var(--color-status-red-text);
-}
-
 /* ── Section card ── */
 .sectionCard {
   display: flex;
@@ -274,41 +261,78 @@
   box-shadow: inset 0 0 0 2px var(--color-status-red-text, #b42318);
 }
 
-.conflictCard {
-  border-color: var(--color-status-red-text, #b42318);
+/* ── Compact alert cards ── */
+.alertCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--color-status-red-text, #b42318);
+  border-radius: 0.6rem;
   background: var(--color-status-red-fill, #fde8e8);
+  font-family: var(--font-paragraph);
 }
 
-.conflictCard .sectionTitle {
+.alertHeader {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-shrink: 0;
-  color: var(--color-status-red-text, #b42318);
-}
-
-.conflictHeader {
-  display: flex;
-  align-items: center;
-  gap: 1.6rem;
+  align-items: baseline;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
-.conflictHint {
-  flex: 1;
-  min-width: 24rem;
+.alertTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin: 0;
-  font-family: var(--font-paragraph);
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--color-status-red-text, #b42318);
+}
+
+.alertHint {
+  font-size: 1.2rem;
+  color: var(--color-grey-text-weak);
+}
+
+.alertList {
+  margin: 0;
+  padding-left: 1.8rem;
   font-size: 1.3rem;
+  line-height: 1.6;
   color: var(--color-grey-text-strong);
 }
 
-.conflictList {
-  margin: 0;
-  padding-left: 2rem;
-  font-family: var(--font-paragraph);
-  font-size: 1.4rem;
+.alertDismiss {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 0.2rem;
+  border: none;
+  background: transparent;
+  color: var(--color-grey-text-weak);
+  cursor: pointer;
+}
+
+.alertDismiss:hover {
   color: var(--color-grey-text-strong);
+}
+
+.alert_success {
+  border-color: #2e7d32;
+  background: #edf7ee;
+}
+
+.alert_success .alertTitle {
+  color: #2e7d32;
+}
+
+.alert_warning {
+  border-color: var(--color-status-amber-stroke-weak, #e0b252);
+  background: var(--color-status-amber-fill, #fff6e0);
+}
+
+.alert_warning .alertTitle {
+  color: var(--color-status-amber-text, #8a5a00);
 }
 
 .unassignedName {
@@ -427,4 +451,11 @@
   text-align: center;
   color: var(--color-grey-text-weak);
   font-size: 1.4rem;
+}
+
+.cellSub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.2rem;
+  color: var(--color-grey-text-weak);
 }

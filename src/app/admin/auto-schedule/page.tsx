@@ -39,6 +39,38 @@ const LABEL_CHAR_PX = 6.6;
 const LABEL_PADDING_PX = 14;
 const FALLBACK_BAR_PX = 800;
 
+type Alert = {
+  tone: "success" | "warning" | "error";
+  title: string;
+  details?: string[];
+};
+
+type ApplyResult = {
+  rideId: string;
+  studentName: string;
+  pickup: string;
+  driverName: string;
+  vehicleLabel: string;
+  success: boolean;
+  error?: string;
+};
+
+const NETWORK_ALERT: Alert = {
+  tone: "error",
+  title: "Couldn't reach the server. Check your connection and try again.",
+};
+
+/** Parses a JSON response, tolerating non-JSON error pages. */
+async function readJson(
+  r: Response,
+): Promise<{ error?: string; details?: string[]; [key: string]: unknown }> {
+  try {
+    return await r.json();
+  } catch {
+    return { error: `server responded ${r.status} ${r.statusText}`.trim() };
+  }
+}
+
 function todayEst(): string {
   return new Date().toLocaleDateString("en-CA", {
     timeZone: "America/New_York",
@@ -49,6 +81,20 @@ function minLabel(min: number): string {
   const h = Math.floor(min / 60);
   const m = String(min % 60).padStart(2, "0");
   return `${h % 12 || 12}:${m} ${h >= 12 ? "PM" : "AM"}`;
+}
+
+function rangeLabel(from: number, to: number): string {
+  const [fromTime, fromPeriod] = minLabel(from).split(" ");
+  const toLabel = minLabel(to);
+  return toLabel.endsWith(fromPeriod)
+    ? `${fromTime}–${toLabel}`
+    : `${minLabel(from)}–${toLabel}`;
+}
+
+function dropoffLabel(r: RideInfo): string {
+  return r.estimatedDropoff != null
+    ? `Dropoff ~${minLabel(r.estimatedDropoff)}`
+    : "No dropoff estimate";
 }
 
 function hourLabel(min: number): string {
@@ -72,7 +118,8 @@ function toBlock(r: RideInfo, kind: BlockKind, extra?: string): Block {
     label: `${minLabel(r.start).replace(/ [AP]M$/, "")} ${shortName(r.studentName)}`,
     title: [
       `${r.studentName} (${KIND_LABEL[kind]})`,
-      `${minLabel(r.start)} – ${minLabel(r.end)}`,
+      `Pickup ${minLabel(r.start)} (window ${rangeLabel(r.pickupWindowStart, r.pickupWindowEnd)})`,
+      dropoffLabel(r),
       `${r.pickupName} → ${r.dropoffName}`,
       r.vehicleLabel && `Vehicle: ${r.vehicleLabel}`,
       r.accommodations.length > 0 && `Needs: ${r.accommodations.join(", ")}`,
@@ -81,6 +128,29 @@ function toBlock(r: RideInfo, kind: BlockKind, extra?: string): Block {
       .filter(Boolean)
       .join("\n"),
   };
+}
+
+function PickupCell({ ride }: { ride: RideInfo }) {
+  return (
+    <>
+      {minLabel(ride.start)} @ {ride.pickupName}
+      <span className={styles.cellSub}>
+        Window {rangeLabel(ride.pickupWindowStart, ride.pickupWindowEnd)}
+      </span>
+    </>
+  );
+}
+
+function DropoffCell({ ride }: { ride: RideInfo }) {
+  return (
+    <>
+      {ride.estimatedDropoff != null && `${minLabel(ride.estimatedDropoff)} @ `}
+      {ride.dropoffName}
+      <span className={styles.cellSub}>
+        {ride.estimatedDropoff != null ? "Estimated" : "No dropoff estimate"}
+      </span>
+    </>
+  );
 }
 
 /** Greedily stacks blocks into lanes so no two labels overlap horizontally. */
@@ -115,25 +185,31 @@ export default function AutoSchedulePage() {
   const [plan, setPlan] = useState<AutoSchedulePlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [alert, setAlert] = useState<Alert | null>(null);
   const [axisRef, { width: axisWidth }] = useMeasure<HTMLDivElement>();
 
   useEffect(() => {
     if (sessionStatus !== "loading" && !isAdmin) router.replace("/");
   }, [sessionStatus, isAdmin, router]);
 
-  async function generate() {
+  async function generate(keepAlert = false) {
     setLoading(true);
-    setError(null);
-    setNotice(null);
+    if (!keepAlert) setAlert(null);
     try {
       const r = await fetch(`/api/routes/auto-schedule?date=${date}`);
-      const body = await r.json();
-      if (!r.ok) throw new Error(body.error ?? "Failed to generate schedule");
-      setPlan(body);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate schedule");
+      const body = await readJson(r);
+      if (!r.ok) {
+        setPlan(null);
+        setAlert({
+          tone: "error",
+          title: `Couldn't generate a schedule: ${body.error ?? `server responded ${r.status}`}`,
+          details: body.details,
+        });
+        return;
+      }
+      setPlan(body as AutoSchedulePlan);
+    } catch {
+      setAlert(NETWORK_ALERT);
     } finally {
       setLoading(false);
     }
@@ -142,27 +218,44 @@ export default function AutoSchedulePage() {
   async function apply() {
     if (!plan?.assignments.length) return;
     setApplying(true);
-    setError(null);
+    setAlert(null);
     try {
       const r = await fetch("/api/routes/auto-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, assignments: plan.assignments }),
       });
-      const body = await r.json();
-      if (!r.ok && r.status !== 207)
-        throw new Error(body.error ?? "Failed to apply schedule");
-      const failed = (body.results as { success: boolean }[]).filter(
-        (x) => !x.success,
-      ).length;
-      setPlan(null);
-      setNotice(
-        failed
-          ? `${plan.assignments.length - failed} rides scheduled, ${failed} failed.`
-          : `${plan.assignments.length} rides scheduled.`,
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to apply schedule");
+      const body = await readJson(r);
+      if (!r.ok && r.status !== 207) {
+        setAlert({
+          tone: "error",
+          title: `Nothing was booked: ${body.error ?? `server responded ${r.status}`}`,
+          details: body.details,
+        });
+        return;
+      }
+      const results = (body.results ?? []) as ApplyResult[];
+      const ok = results.filter((x) => x.success);
+      const failed = results.filter((x) => !x.success);
+      const describe = (x: ApplyResult) =>
+        `${x.studentName}${x.pickup ? ` · ${x.pickup}` : ""}`;
+      setAlert({
+        tone: failed.length === 0 ? "success" : ok.length ? "warning" : "error",
+        title:
+          failed.length === 0
+            ? `${ok.length} ${ok.length === 1 ? "ride" : "rides"} scheduled. Students and drivers are notified per their settings.`
+            : `${ok.length} of ${results.length} rides scheduled; ${failed.length} failed.`,
+        details: [
+          ...failed.map((x) => `Failed: ${describe(x)}: ${x.error}`),
+          ...ok.map(
+            (x) =>
+              `Booked: ${describe(x)} → ${x.driverName}${x.vehicleLabel ? `, vehicle ${x.vehicleLabel}` : ""}`,
+          ),
+        ],
+      });
+      await generate(true);
+    } catch {
+      setAlert(NETWORK_ALERT);
     } finally {
       setApplying(false);
     }
@@ -192,6 +285,17 @@ export default function AutoSchedulePage() {
       ]);
     }
   }
+  const offShiftBookings = plan?.offShiftBookings ?? [];
+  for (const { ride, driverName } of offShiftBookings) {
+    conflictNotes.set(ride.id, [
+      ...(conflictNotes.get(ride.id) ?? []),
+      `Outside ${driverName}'s shift`,
+    ]);
+  }
+  const shiftLabel = (shifts: { start: number; end: number }[]) =>
+    shifts.length
+      ? `shift ${shifts.map((s) => `${minLabel(s.start)}–${minLabel(s.end)}`).join(", ")}`
+      : "no shift today";
 
   const driverRows: Row[] = (plan?.drivers ?? [])
     .map((d) => {
@@ -270,7 +374,7 @@ export default function AutoSchedulePage() {
         <button
           type="button"
           className={styles.btnSecondary}
-          onClick={generate}
+          onClick={() => generate()}
           disabled={!date || loading || applying}
         >
           {loading ? "Generating…" : "Generate schedule"}
@@ -279,7 +383,7 @@ export default function AutoSchedulePage() {
           type="button"
           className={styles.btnPrimary}
           onClick={apply}
-          disabled={!plan?.assignments.length || applying}
+          disabled={!plan?.assignments.length || applying || loading}
         >
           {applying
             ? "Applying…"
@@ -287,13 +391,34 @@ export default function AutoSchedulePage() {
         </button>
       </div>
 
-      {error && (
-        <span className={`${styles.banner} ${styles.bannerError}`}>
-          <BogIcon name="warning" size={16} />
-          {error}
-        </span>
+      {alert && (
+        <div
+          role={alert.tone === "success" ? "status" : "alert"}
+          className={`${styles.alertCard} ${styles[`alert_${alert.tone}`]}`}
+        >
+          <div className={styles.alertHeader}>
+            <h2 className={styles.alertTitle}>
+              <BogIcon name={alert.tone} size={16} />
+              {alert.title}
+            </h2>
+            <button
+              type="button"
+              className={styles.alertDismiss}
+              onClick={() => setAlert(null)}
+              aria-label="Dismiss"
+            >
+              <BogIcon name="x" size={14} />
+            </button>
+          </div>
+          {alert.details && alert.details.length > 0 && (
+            <ul className={styles.alertList}>
+              {alert.details.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
-      {notice && <span className={styles.banner}>{notice}</span>}
 
       {plan && (
         <>
@@ -317,28 +442,51 @@ export default function AutoSchedulePage() {
           </p>
 
           {doubleBookings.length > 0 && (
-            <div className={`${styles.sectionCard} ${styles.conflictCard}`}>
-              <div className={styles.conflictHeader}>
-                <h2 className={styles.sectionTitle}>
-                  <BogIcon name="warning" size={18} /> Existing double-bookings
-                  ({doubleBookings.length})
+            <div className={styles.alertCard}>
+              <div className={styles.alertHeader}>
+                <h2 className={styles.alertTitle}>
+                  <BogIcon name="warning" size={14} /> Double-bookings (
+                  {doubleBookings.length})
                 </h2>
-                <p className={styles.conflictHint}>
-                  These rides were booked outside auto-schedule and overlap once
-                  travel and turnaround time are included. New proposals avoid
-                  them, but they need to be reassigned by hand.
-                </p>
+                <span className={styles.alertHint}>
+                  Overlapping existing bookings. Reassign manually.
+                </span>
               </div>
-
-              <ul className={styles.conflictList}>
+              <ul className={styles.alertList}>
                 {doubleBookings.map((db) => (
                   <li
                     key={`${db.resource}-${db.rides[0].id}-${db.rides[1].id}`}
                   >
                     <strong>{db.name}</strong> ({db.resource}):{" "}
-                    {db.rides[0].studentName} {minLabel(db.rides[0].start)}–
-                    {minLabel(db.rides[0].end)} overlaps{" "}
-                    {db.rides[1].studentName} at {minLabel(db.rides[1].start)}
+                    {db.rides[0].studentName} (pickup{" "}
+                    {minLabel(db.rides[0].start)},{" "}
+                    {dropoffLabel(db.rides[0]).toLowerCase()}) overlaps{" "}
+                    {db.rides[1].studentName} (pickup{" "}
+                    {minLabel(db.rides[1].start)})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {offShiftBookings.length > 0 && (
+            <div className={styles.alertCard}>
+              <div className={styles.alertHeader}>
+                <h2 className={styles.alertTitle}>
+                  <BogIcon name="warning" size={14} /> Outside shift (
+                  {offShiftBookings.length})
+                </h2>
+                <span className={styles.alertHint}>
+                  Existing bookings outside the driver&apos;s shift. Reassign
+                  manually.
+                </span>
+              </div>
+              <ul className={styles.alertList}>
+                {offShiftBookings.map(({ ride, driverName, shifts }) => (
+                  <li key={ride.id}>
+                    <strong>{driverName}</strong>: {ride.studentName} pickup{" "}
+                    {minLabel(ride.start)}, {dropoffLabel(ride).toLowerCase()} (
+                    {shiftLabel(shifts)})
                   </li>
                 ))}
               </ul>
@@ -361,9 +509,9 @@ export default function AutoSchedulePage() {
                   <i className={styles.swatchUnassigned} /> Unassigned
                 </span>
               )}
-              {doubleBookings.length > 0 && (
+              {conflictNotes.size > 0 && (
                 <span>
-                  <i className={styles.swatchConflict} /> Double-booked
+                  <i className={styles.swatchConflict} /> Needs attention
                 </span>
               )}
             </div>
@@ -479,9 +627,11 @@ export default function AutoSchedulePage() {
                     <tr key={r.id}>
                       <td>{r.studentName}</td>
                       <td>
-                        {minLabel(r.start)} @ {r.pickupName}
+                        <PickupCell ride={r} />
                       </td>
-                      <td>{r.dropoffName}</td>
+                      <td>
+                        <DropoffCell ride={r} />
+                      </td>
                       <td>{r.driverName}</td>
                       <td>{r.vehicleLabel}</td>
                     </tr>
@@ -512,9 +662,11 @@ export default function AutoSchedulePage() {
                     <tr key={r.id}>
                       <td>{r.studentName}</td>
                       <td>
-                        {minLabel(r.start)} @ {r.pickupName}
+                        <PickupCell ride={r} />
                       </td>
-                      <td>{r.dropoffName}</td>
+                      <td>
+                        <DropoffCell ride={r} />
+                      </td>
                       <td>{r.accommodations.join(", ") || "—"}</td>
                       <td>{r.reason}</td>
                     </tr>

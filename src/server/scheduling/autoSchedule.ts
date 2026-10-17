@@ -8,8 +8,6 @@ import LocationModel from "../db/models/LocationModel";
 
 const TZ = "America/New_York";
 
-// Used when Mapbox could not estimate a dropoff time at ride creation.
-const DEFAULT_RIDE_MIN = 20;
 // Minimum slack between rides for parking, unloading, and check-in.
 const BASE_TURNAROUND_MIN = 5;
 const WHEELCHAIR_BOARDING_MIN = 10;
@@ -36,8 +34,13 @@ type Ride = {
   studentName: string;
   accommodations: string[];
   needsWheelchair: boolean;
-  start: number; // minutes from EST midnight
-  end: number; // dropoff + boarding time, minutes from EST midnight
+  start: number; // pickup, minutes from EST midnight
+  // Busy-until time used for conflict checks only: dropoff + boarding. Without
+  // a stored estimate the dropoff comes from the locations' distance.
+  end: number;
+  pickupWindowStart: number;
+  pickupWindowEnd: number;
+  estimatedDropoff: number | null; // stored estimate only, never derived
   pickup: Point | null;
   dropoff: Point | null;
   pickupName: string;
@@ -68,9 +71,27 @@ export type AutoSchedulePlan = {
     name: string;
     rides: [Ride, Ride];
   }[];
+  // Pre-existing bookings not fully inside any of their driver's shifts.
+  offShiftBookings: {
+    driverName: string;
+    shifts: { start: number; end: number }[];
+    ride: Ride;
+  }[];
 };
 
-export class AutoScheduleConflictError extends Error {}
+export class AutoScheduleConflictError extends Error {
+  constructor(
+    message: string,
+    public details: string[] = [],
+  ) {
+    super(message);
+  }
+}
+
+export function formatMinutes(min: number): string {
+  const h = Math.floor(min / 60);
+  return `${h % 12 || 12}:${String(min % 60).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
 
 let highsPromise: ReturnType<typeof loadHighs> | null = null;
 function getHighs() {
@@ -155,18 +176,24 @@ async function loadDay(date: string) {
         : OTHER_ACCOMMODATION_BOARDING_MIN
       : 0;
     const start = minutesOfDay(r.scheduledPickupTime);
-    const dropoff = r.estimatedDropoffTime
-      ? minutesOfDay(r.estimatedDropoffTime)
-      : start + DEFAULT_RIDE_MIN;
     const pickupLoc = locations.get(r.pickupLocation.toString());
     const dropoffLoc = locations.get(r.dropoffLocation.toString());
+    const estimatedDropoff = r.estimatedDropoffTime
+      ? minutesOfDay(r.estimatedDropoffTime)
+      : null;
+    const busyUntil =
+      estimatedDropoff ??
+      start + travelMinutes(pickupLoc ?? null, dropoffLoc ?? null);
     return {
       id: r._id.toString(),
       studentName: `${r.student.firstName} ${r.student.lastName}`,
       accommodations,
       needsWheelchair,
       start,
-      end: Math.max(dropoff, start) + boarding,
+      end: Math.max(busyUntil, start) + boarding,
+      pickupWindowStart: minutesOfDay(r.pickupWindowStart),
+      pickupWindowEnd: minutesOfDay(r.pickupWindowEnd),
+      estimatedDropoff,
       pickup: pickupLoc ?? null,
       dropoff: dropoffLoc ?? null,
       pickupName: pickupLoc?.name ?? "",
@@ -204,6 +231,73 @@ async function loadDay(date: string) {
     requested,
     busy,
   };
+}
+
+type DayData = Awaited<ReturnType<typeof loadDay>>;
+
+/** Explains, in admin-facing terms, why a submitted assignment is not allowed. */
+function diagnoseAssignment(
+  a: { rideId: string; driverId: string; vehicleId: string },
+  ctx: Pick<DayData, "requested" | "busy" | "drivers" | "vehicles"> & {
+    vars: { ride: number; driver: number; vehicle: number }[];
+    busyByDriver: Map<string, Ride[]>;
+    busyByVehicle: Map<string, Ride[]>;
+  },
+): string[] {
+  const ri = ctx.requested.findIndex((r) => r.id === a.rideId);
+  if (ri === -1) {
+    const booked = ctx.busy.find((r) => r.id === a.rideId);
+    const bookedWith = ctx.drivers.find((d) => d.id === booked?.driverId)?.name;
+    return [
+      booked
+        ? `${booked.studentName} (${formatMinutes(booked.start)}) is already booked${bookedWith ? ` with ${bookedWith}` : ""}.`
+        : `Ride ${a.rideId} is no longer requested on this day; it may have been cancelled or moved.`,
+    ];
+  }
+  const ride = ctx.requested[ri];
+  const di = ctx.drivers.findIndex((d) => d.id === a.driverId);
+  const vi = ctx.vehicles.findIndex((v) => v.id === a.vehicleId);
+  if (
+    ctx.vars.some((x) => x.ride === ri && x.driver === di && x.vehicle === vi)
+  )
+    return [];
+
+  const who = `${ride.studentName} (${formatMinutes(ride.start)})`;
+  if (di === -1)
+    return [`${who}: the driver no longer exists or has no shift today.`];
+  if (vi === -1) return [`${who}: the vehicle no longer exists.`];
+  const d = ctx.drivers[di];
+  const v = ctx.vehicles[vi];
+  const problems: string[] = [];
+  if (!d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end))
+    problems.push(
+      `${who}: ${d.name} is not on shift for the whole ride (${
+        d.shifts.length
+          ? d.shifts
+              .map((s) => `${formatMinutes(s.start)}–${formatMinutes(s.end)}`)
+              .join(", ")
+          : "no shift today"
+      }).`,
+    );
+  const driverClash = (ctx.busyByDriver.get(d.id) ?? []).find(
+    (b) => !compatible(b, ride),
+  );
+  if (driverClash)
+    problems.push(
+      `${who}: ${d.name} is already driving ${driverClash.studentName} at ${formatMinutes(driverClash.start)}.`,
+    );
+  if (ride.needsWheelchair && !v.wheelchair)
+    problems.push(`${who}: vehicle ${v.label} is not wheelchair-accessible.`);
+  const vehicleClash = (ctx.busyByVehicle.get(v.id) ?? []).find(
+    (b) => !compatible(b, ride),
+  );
+  if (vehicleClash)
+    problems.push(
+      `${who}: vehicle ${v.label} is already in use for ${vehicleClash.studentName} at ${formatMinutes(vehicleClash.start)}.`,
+    );
+  return problems.length
+    ? problems
+    : [`${who}: assignment is no longer valid.`];
 }
 
 /**
@@ -285,10 +379,46 @@ export async function planDay(
     }
   });
 
-  if (fixed && vars.length !== fixed.length) {
-    throw new AutoScheduleConflictError(
-      "Some proposed assignments are no longer valid. Regenerate the schedule.",
+  if (fixed) {
+    const problems = fixed.flatMap((f) =>
+      diagnoseAssignment(f, {
+        requested,
+        busy,
+        drivers,
+        vehicles,
+        vars,
+        busyByDriver,
+        busyByVehicle,
+      }),
     );
+    if (problems.length) {
+      throw new AutoScheduleConflictError(
+        `${problems.length} proposed ${problems.length === 1 ? "assignment is" : "assignments are"} no longer valid. Regenerate the schedule.`,
+        problems,
+      );
+    }
+    const clashes: string[] = [];
+    for (let i = 0; i < vars.length; i++) {
+      for (let j = i + 1; j < vars.length; j++) {
+        const [a, b] = [vars[i], vars[j]];
+        const [ra, rb] = [requested[a.ride], requested[b.ride]];
+        if (compatible(ra, rb)) continue;
+        if (a.driver === b.driver)
+          clashes.push(
+            `${ra.studentName} (${formatMinutes(ra.start)}) and ${rb.studentName} (${formatMinutes(rb.start)}) would both be driven by ${drivers[a.driver].name}`,
+          );
+        if (a.vehicle === b.vehicle)
+          clashes.push(
+            `${ra.studentName} (${formatMinutes(ra.start)}) and ${rb.studentName} (${formatMinutes(rb.start)}) would both use vehicle ${vehicles[a.vehicle].label}`,
+          );
+      }
+    }
+    if (clashes.length) {
+      throw new AutoScheduleConflictError(
+        "Proposed assignments overlap each other. Regenerate the schedule.",
+        clashes,
+      );
+    }
   }
 
   const objective: string[] = [];
@@ -375,7 +505,7 @@ export async function planDay(
     solverStatus = result.Status;
     if (fixed && result.Status !== "Optimal") {
       throw new AutoScheduleConflictError(
-        "Proposed assignments now conflict with existing rides. Regenerate the schedule.",
+        `The solver could not confirm these assignments (status: ${result.Status}). Regenerate the schedule.`,
       );
     }
     for (const x of vars) {
@@ -430,8 +560,16 @@ export async function planDay(
       "Unknown vehicle",
   );
 
+  const offShiftBookings = busy.flatMap((ride) => {
+    const d = drivers.find((dd) => dd.id === ride.driverId);
+    if (!d || d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end))
+      return [];
+    return [{ driverName: d.name, shifts: d.shifts, ride }];
+  });
+
   return {
     doubleBookings,
+    offShiftBookings,
     date,
     solverStatus,
     drivers: drivers.map((d) => ({
