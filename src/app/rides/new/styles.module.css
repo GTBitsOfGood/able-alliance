@@ -457,7 +457,6 @@
   -webkit-appearance: none;
 }
 
-/* Non-functional preview for the planned recurring-ride feature. */
 .recurringRide {
   display: flex;
   flex-direction: column;

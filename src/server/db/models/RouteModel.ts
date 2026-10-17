@@ -33,6 +33,8 @@ interface IRouteDocument {
   pickupWindowEnd: Date;
   estimatedDropoffTime?: Date;
   status: RouteStatus;
+  /** Set when the ride was generated from a RideSeries; absent for one-off rides. */
+  seriesId?: mongoose.Types.ObjectId;
 }
 
 // Embedded user/student schemas WITHOUT unique indexes (same structure as UserModel
@@ -108,6 +110,11 @@ const RouteSchema = new Schema<IRouteDocument>(
       default: RouteStatus.Requested,
       required: true,
     },
+    seriesId: {
+      type: Schema.Types.ObjectId,
+      ref: "RideSeries",
+      required: false,
+    },
   },
   { versionKey: false },
 );
@@ -117,6 +124,14 @@ RouteSchema.index({ status: 1 });
 RouteSchema.index({ "student._id": 1 });
 RouteSchema.index({ "driver._id": 1 });
 RouteSchema.index({ "vehicle._id": 1 });
+
+// Backstop against double-generation: even if the job runs twice concurrently or
+// restarts mid-pass, the database refuses a second ride for the same occurrence.
+// Partial so the millions of one-off rides (no seriesId) aren't forced unique.
+RouteSchema.index(
+  { seriesId: 1, scheduledPickupTime: 1 },
+  { unique: true, partialFilterExpression: { seriesId: { $exists: true } } },
+);
 
 const RouteModel =
   (mongoose.models.Route as mongoose.Model<IRouteDocument>) ??

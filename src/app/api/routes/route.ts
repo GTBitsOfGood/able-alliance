@@ -7,7 +7,10 @@ import {
   getRouteById,
   getRoutes,
 } from "@/server/db/actions/RouteAction";
+import { createRideSeries } from "@/server/db/actions/RideSeriesAction";
 import { createRouteSchema } from "@/utils/types";
+import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
+import { RideSeriesInvalidException } from "@/utils/exceptions/rideSeries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import {
   RouteAlreadyExistsException,
@@ -184,9 +187,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // `recurring` is a sibling of the route fields, not part of them —
+    // createRouteSchema is strict, so split it off before parsing.
+    const { recurring, ...routeFields } = body ?? {};
+
     // Add the student ID from the session
     const routeData = {
-      ...body,
+      ...routeFields,
       student: session.user.userId,
     };
 
@@ -203,6 +210,13 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
+    // seriesId is assigned by the recurring-ride job, never by a client.
+    if (body.seriesId != null) {
+      return NextResponse.json(
+        { error: "seriesId cannot be set when creating a route" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
     // Driver and vehicle must not be set on create; use POST /api/routes/schedule instead.
     if (body.driver != null || body.vehicle != null) {
       return NextResponse.json(
@@ -214,18 +228,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = await createRoute(parsed.data);
+    let created;
+    let seriesId: string | undefined;
+
+    if (recurring != null) {
+      const recurrence = recurrenceRequestSchema.safeParse(recurring);
+      if (!recurrence.success) {
+        return NextResponse.json(recurrence.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      // Creates the series, its first ride, and fills forward to the horizon.
+      const result = await createRideSeries(parsed.data, recurrence.data);
+      created = result.firstRoute;
+      seriesId = String(
+        (result.series as unknown as { _id: { toString(): string } })._id,
+      );
+    } else {
+      created = await createRoute(parsed.data);
+    }
+
     const createdObj = created as unknown as Record<string, unknown> & {
       _id: { toString(): string };
     };
     return NextResponse.json(
-      { ...createdObj, _id: createdObj._id.toString() },
+      {
+        ...createdObj,
+        _id: createdObj._id.toString(),
+        ...(seriesId ? { seriesId } : {}),
+      },
       { status: HTTP_STATUS_CODE.CREATED },
     );
   } catch (e) {
     if (
       e instanceof RouteAlreadyExistsException ||
-      e instanceof RouteReferenceNotFoundException
+      e instanceof RouteReferenceNotFoundException ||
+      e instanceof RideSeriesInvalidException
     ) {
       console.error("[POST /api/routes]", e.message);
       return NextResponse.json({ error: e.message }, { status: e.code });

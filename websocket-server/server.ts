@@ -14,6 +14,7 @@ import mongoose from "mongoose";
 import { registerHttpRoutes } from "./httpRoutes.js";
 import { authenticateSocket, authenticateNotificationSocket } from "./auth.js";
 import { handleConnection } from "./handlers/connection.js";
+import { startRideSeriesCron } from "./jobs/rideSeriesCron.js";
 
 dotenv.config();
 
@@ -57,6 +58,10 @@ export async function startServer(requestHandler?: RequestListener) {
     });
 
     registerHttpRoutes(app, notificationsNsp);
+
+    // Recurring rides are generated on a schedule from this process.
+    const stopRideSeriesCron = startRideSeriesCron();
+    server.once("close", stopRideSeriesCron);
 
     if (requestHandler) {
       // Keep notification HTTP routes on a private loopback listener. Socket.IO
