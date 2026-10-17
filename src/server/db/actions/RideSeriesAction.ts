@@ -20,18 +20,18 @@
  */
 
 import mongoose from "mongoose";
-import { addDays, addWeeks } from "date-fns";
+import { addDays, addWeeks, endOfDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import connectMongoDB from "../mongodb";
 import RideSeriesModel from "../models/RideSeriesModel";
 import RouteModel from "../models/RouteModel";
 import JobLockModel from "../models/JobLockModel";
 import { createRoute } from "./RouteAction";
-import { endOfEstDay } from "@/utils/dateEst";
 import type { MaterializeResult } from "@/utils/types/rideSeries";
 import type { RecurrenceRequest } from "@/utils/types/rideSeries";
 import type { CreateRouteInput } from "@/utils/types";
 import { RideSeriesInvalidException } from "@/utils/exceptions/rideSeries";
+import { RouteAlreadyExistsException } from "@/utils/exceptions/route";
 
 const TZ = "America/New_York";
 
@@ -56,9 +56,15 @@ export function occurrenceAt(firstPickupTime: Date, weeks: number): Date {
 /**
  * Last instant that may be scheduled right now: the end of the Eastern day
  * `SCHEDULING_HORIZON_DAYS` out, so a ride exactly 28 days away is included.
+ *
+ * The day arithmetic happens in Eastern wall-clock time, not the server's local
+ * time. Adding days to a UTC instant shifts by 28x24h, which is an hour off
+ * across a DST boundary — enough to land on the previous Eastern day and leave
+ * the horizon a day short for anyone booking between midnight and 1 AM Eastern.
  */
 export function schedulingHorizon(now = new Date()): Date {
-  return endOfEstDay(addDays(now, SCHEDULING_HORIZON_DAYS));
+  const zonedTarget = addDays(toZonedTime(now, TZ), SCHEDULING_HORIZON_DAYS);
+  return fromZonedTime(endOfDay(zonedTarget), TZ);
 }
 
 /** True when the student already has a ride at exactly this pickup instant. */
@@ -131,9 +137,14 @@ async function materializeSeries(
         );
         created++;
       } catch (e) {
-        if (isDuplicateKeyError(e)) {
-          // A concurrent pass already created this occurrence. Fall through and
-          // advance the watermark so we don't spin on it.
+        if (
+          isDuplicateKeyError(e) ||
+          e instanceof RouteAlreadyExistsException
+        ) {
+          // Lost a race: either a concurrent pass created this occurrence, or the
+          // student booked that slot between our conflict check and the insert.
+          // Either way the desired end state holds, so fall through and advance
+          // the watermark rather than retrying this occurrence forever.
           skipped++;
         } else {
           throw e;
@@ -165,7 +176,9 @@ async function materializeSeries(
  * The upsert either matches an expired/absent lock and takes it, or fails the
  * unique _id constraint because a live lock exists — which is the signal to bow out.
  */
-async function acquireLock(now: Date): Promise<boolean> {
+async function acquireLock(now: Date): Promise<string | null> {
+  // Identifies this run so release can verify it still owns the lease.
+  const token = new mongoose.Types.ObjectId().toHexString();
   try {
     await JobLockModel.findOneAndUpdate(
       { _id: LOCK_NAME, lockedUntil: { $lte: now } },
@@ -173,22 +186,30 @@ async function acquireLock(now: Date): Promise<boolean> {
         $set: {
           lockedUntil: new Date(now.getTime() + LOCK_TTL_MS),
           lockedAt: now,
+          token,
         },
       },
       { upsert: true },
     );
-    return true;
+    return token;
   } catch (e) {
     if (isDuplicateKeyError(e)) {
-      return false;
+      return null;
     }
     throw e;
   }
 }
 
-async function releaseLock(): Promise<void> {
+/**
+ * Release only if we still hold the lease.
+ *
+ * A run that overran its TTL has already lost the lock to someone else; clearing
+ * it unconditionally would hand a second run's lease away mid-pass and let a
+ * third run in alongside it.
+ */
+async function releaseLock(token: string): Promise<void> {
   await JobLockModel.updateOne(
-    { _id: LOCK_NAME },
+    { _id: LOCK_NAME, token },
     { $set: { lockedUntil: new Date(0) } },
   );
 }
@@ -208,7 +229,8 @@ export async function materializeDueSeries(
     ridesSkipped: 0,
   };
 
-  if (!(await acquireLock(now))) {
+  const lockToken = await acquireLock(now);
+  if (!lockToken) {
     console.log("[RideSeries] another run holds the lock; skipping this pass");
     return empty;
   }
@@ -238,7 +260,7 @@ export async function materializeDueSeries(
 
     return { seriesProcessed: due.length, ridesCreated, ridesSkipped };
   } finally {
-    await releaseLock();
+    await releaseLock(lockToken);
   }
 }
 
@@ -266,6 +288,9 @@ export async function createRideSeries(
     );
   }
 
+  // Created inactive so the hourly job can't pick it up and generate future
+  // rides while the first ride is still in flight — if that first ride then
+  // fails and we delete the series, those rides would be orphaned.
   const series = await RideSeriesModel.create({
     student: data.student,
     pickupLocation: data.pickupLocation,
@@ -276,17 +301,22 @@ export async function createRideSeries(
     pickupWindowEndOffsetMs: windowEndOffset,
     // The first ride is created below, so the watermark starts there.
     materializedThrough: data.scheduledPickupTime,
-    active: true,
+    active: false,
   });
 
   let firstRoute;
   try {
     firstRoute = await createRoute(data, { seriesId: String(series._id) });
   } catch (e) {
-    // Don't leave a series behind that never produced its first ride.
+    // Nothing else can have referenced it yet: it was never active.
     await RideSeriesModel.findByIdAndDelete(series._id);
     throw e;
   }
+
+  // Safe to publish now that the first ride exists.
+  await RideSeriesModel.findByIdAndUpdate(series._id, {
+    $set: { active: true },
+  });
 
   // Fill out the rest of the horizon now rather than on the next tick.
   const horizon = schedulingHorizon();

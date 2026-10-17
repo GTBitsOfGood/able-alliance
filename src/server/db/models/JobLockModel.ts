@@ -4,6 +4,8 @@ export interface IJobLock {
   _id: string;
   lockedUntil: Date;
   lockedAt: Date;
+  /** Identifies the run holding the lease, so only that run can release it. */
+  token?: string;
 }
 
 /**
@@ -19,6 +21,7 @@ const JobLockSchema = new Schema<IJobLock>(
     _id: { type: String, required: true },
     lockedUntil: { type: Date, required: true },
     lockedAt: { type: Date, required: true },
+    token: { type: String, required: false },
   },
   { versionKey: false, _id: false },
 );
