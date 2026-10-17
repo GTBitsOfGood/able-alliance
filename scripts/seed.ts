@@ -9,7 +9,11 @@
 
 import "dotenv/config";
 import mongoose from "mongoose";
+import { addDays } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { getMapboxTravelDuration } from "@/server/mapbox";
+
+const TZ = "America/New_York";
 
 const MONGODB_URI =
   process.argv[2] ??
@@ -372,11 +376,11 @@ async function seed() {
   const now = new Date();
 
   // Build a list of dates: today + 6 more days, plus next 7 days
+  // Hours are Eastern wall-clock times, independent of the machine's timezone.
   const makeDate = (daysOffset: number, hour: number, minute: number): Date => {
-    const d = new Date(now);
-    d.setDate(now.getDate() + daysOffset);
-    d.setHours(hour, minute, 0, 0);
-    return d;
+    const day = addDays(toZonedTime(now, TZ), daysOffset);
+    day.setHours(hour, minute, 0, 0);
+    return fromZonedTime(day, TZ);
   };
 
   type AnyUser = {

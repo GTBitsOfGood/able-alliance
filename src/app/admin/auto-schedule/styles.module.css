@@ -1,0 +1,430 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  padding: var(--layout-content-pad-y) var(--layout-admin-pad-x);
+  gap: 2.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-desktop-display);
+  line-height: var(--text-desktop-display--line-height);
+  color: var(--color-grey-text-strong);
+}
+
+.experimental {
+  padding: 0.3rem 0.9rem;
+  border-radius: 9999px;
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: var(--color-status-amber-fill);
+  color: var(--color-status-amber-text);
+  border: 1px solid var(--color-status-amber-stroke-weak);
+}
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dateInput {
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.5rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  color: var(--color-grey-text-strong);
+}
+
+.btnSecondary {
+  padding: 0.8rem 1.8rem;
+  border: 1px solid var(--color-brand-text);
+  border-radius: 0.4rem;
+  background: transparent;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-brand-text);
+  cursor: pointer;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: rgba(24, 55, 119, 0.06);
+}
+
+.btnPrimary {
+  padding: 0.8rem 1.8rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--color-brand-text);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #152d55;
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.4rem;
+  font-family: var(--font-paragraph);
+  color: var(--color-grey-text-strong);
+}
+
+.bannerError {
+  color: var(--color-status-red-text);
+}
+
+/* ── Section card ── */
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+  padding: 1.6rem 2rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+}
+
+.legend {
+  display: flex;
+  gap: 2rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.3rem;
+  color: var(--color-grey-text-weak);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.legend i {
+  display: inline-block;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.3rem;
+}
+
+/* ── Timeline ── */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.driverName {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowDetail {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--color-grey-text-weak);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hourLabels {
+  position: relative;
+  height: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.1rem;
+  color: var(--color-grey-text-weak);
+}
+
+.hourLabels span {
+  position: absolute;
+  white-space: nowrap;
+}
+
+.bar {
+  position: relative;
+  background: #f1f1f1;
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+.shift,
+.swatchShift {
+  background: #9beba0;
+}
+
+.shift {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+/* Drawn after shifts so hour lines stay visible over the green. */
+.hourMark {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  width: 1px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.halfHourMark {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  height: 100%;
+  border-left: 1px dashed rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.ride {
+  position: absolute;
+  z-index: 2;
+  height: 2.4rem;
+  padding: 0 0.6rem;
+  box-sizing: border-box;
+  /* Square left edge marks the exact start time on the grid. */
+  border-radius: 0 0.4rem 0.4rem 0;
+  box-shadow: 1px 0 0 0 #fff;
+  font-family: var(--font-paragraph);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 2.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ride:hover {
+  z-index: 3;
+  filter: brightness(0.92);
+}
+
+.ride_existing,
+.swatchExisting {
+  background: #8e8e8e;
+  color: #fff;
+}
+
+.ride_proposed,
+.swatchProposed {
+  background: #2e7d32;
+  color: #fff;
+}
+
+.ride_unassigned,
+.swatchUnassigned {
+  background: var(--color-status-red-fill, #fde8e8);
+  color: var(--color-status-red-text, #b42318);
+  box-shadow: inset 0 0 0 1px var(--color-status-red-text, #b42318);
+}
+
+.rideConflict {
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 0 3px var(--color-status-red-text, #b42318);
+}
+
+.swatchConflict {
+  background: #8e8e8e;
+  box-shadow: inset 0 0 0 2px var(--color-status-red-text, #b42318);
+}
+
+.conflictCard {
+  border-color: var(--color-status-red-text, #b42318);
+  background: var(--color-status-red-fill, #fde8e8);
+}
+
+.conflictCard .sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  color: var(--color-status-red-text, #b42318);
+}
+
+.conflictHeader {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  flex-wrap: wrap;
+}
+
+.conflictHint {
+  flex: 1;
+  min-width: 24rem;
+  margin: 0;
+  font-family: var(--font-paragraph);
+  font-size: 1.3rem;
+  color: var(--color-grey-text-strong);
+}
+
+.conflictList {
+  margin: 0;
+  padding-left: 2rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  color: var(--color-grey-text-strong);
+}
+
+.unassignedName {
+  color: var(--color-status-red-text, #b42318);
+  font-weight: 600;
+}
+
+.summary {
+  margin: 0;
+  font-family: var(--font-paragraph);
+  font-size: 1.5rem;
+  color: var(--color-grey-text-strong);
+}
+
+/* ── Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+}
+
+.table thead tr {
+  background: #dcecf8;
+}
+
+.table th {
+  padding: 1rem 1.2rem;
+  text-align: left;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 1rem 1.2rem;
+  color: var(--color-grey-text-strong);
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Tables themed to match their timeline blocks ── */
+.proposedCard .sectionTitle,
+.unassignedCard .sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.proposedCard .sectionTitle i,
+.unassignedCard .sectionTitle i {
+  display: inline-block;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.3rem;
+}
+
+.proposedCard {
+  border-color: #2e7d32;
+}
+
+.proposedCard .sectionTitle {
+  color: #2e7d32;
+}
+
+.proposedTable thead tr {
+  background: #2e7d32;
+}
+
+.proposedTable th {
+  color: #fff;
+  border-bottom-color: #2e7d32;
+}
+
+.proposedTable td {
+  border-bottom-color: #c8e6c9;
+}
+
+.proposedTable tbody tr:nth-child(even) {
+  background: #f1f8f1;
+}
+
+.unassignedCard {
+  border-color: var(--color-status-red-text, #b42318);
+}
+
+.unassignedCard .sectionTitle {
+  color: var(--color-status-red-text, #b42318);
+}
+
+.unassignedTable thead tr {
+  background: var(--color-status-red-fill, #fde8e8);
+}
+
+.unassignedTable th {
+  color: var(--color-status-red-text, #b42318);
+  border-bottom: 1px solid var(--color-status-red-text, #b42318);
+}
+
+.unassignedTable td {
+  border-bottom-color: var(--color-status-red-fill, #fde8e8);
+}
+
+.unassignedTable td:last-child {
+  color: var(--color-status-red-text, #b42318);
+  font-weight: 600;
+}
+
+.empty {
+  padding: 2.4rem 0;
+  text-align: center;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}

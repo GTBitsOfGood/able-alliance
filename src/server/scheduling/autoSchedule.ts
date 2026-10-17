@@ -1,0 +1,466 @@
+import loadHighs from "highs";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import connectMongoDB from "../db/mongodb";
+import RouteModel, { RouteStatus } from "../db/models/RouteModel";
+import { DriverModel } from "../db/models/UserModel";
+import VehicleModel from "../db/models/VehicleModel";
+import LocationModel from "../db/models/LocationModel";
+
+const TZ = "America/New_York";
+
+// Used when Mapbox could not estimate a dropoff time at ride creation.
+const DEFAULT_RIDE_MIN = 20;
+// Minimum slack between rides for parking, unloading, and check-in.
+const BASE_TURNAROUND_MIN = 5;
+const WHEELCHAIR_BOARDING_MIN = 10;
+const OTHER_ACCOMMODATION_BOARDING_MIN = 5;
+// Straight-line distance to driving time between dropoff and next pickup.
+const ROAD_FACTOR = 1.4;
+const AVG_SPEED_KMH = 30;
+
+// Assigning a ride dominates everything; the smaller weights only break ties.
+const RIDE_WEIGHT = 1000;
+const NEW_DRIVER_VEHICLE_PAIR_COST = 1;
+const ACCESSIBLE_VEHICLE_MISUSE_COST = 0.1;
+
+const BUSY_STATUSES = [
+  RouteStatus.Scheduled,
+  RouteStatus.EnRoute,
+  RouteStatus.Pickedup,
+];
+
+type Point = { latitude: number; longitude: number };
+
+type Ride = {
+  id: string;
+  studentName: string;
+  accommodations: string[];
+  needsWheelchair: boolean;
+  start: number; // minutes from EST midnight
+  end: number; // dropoff + boarding time, minutes from EST midnight
+  pickup: Point | null;
+  dropoff: Point | null;
+  pickupName: string;
+  dropoffName: string;
+  driverId?: string;
+  vehicleId?: string;
+  vehicleLabel?: string;
+};
+
+export type TimelineRide = Ride & {
+  kind: "existing" | "proposed";
+};
+
+export type AutoSchedulePlan = {
+  date: string;
+  solverStatus: string;
+  drivers: {
+    _id: string;
+    name: string;
+    shifts: { start: number; end: number }[];
+    rides: TimelineRide[];
+  }[];
+  assignments: { rideId: string; driverId: string; vehicleId: string }[];
+  unassigned: (Ride & { reason: string })[];
+  // Pre-existing bookings that already overlap; the solver never creates these.
+  doubleBookings: {
+    resource: "driver" | "vehicle";
+    name: string;
+    rides: [Ride, Ride];
+  }[];
+};
+
+export class AutoScheduleConflictError extends Error {}
+
+let highsPromise: ReturnType<typeof loadHighs> | null = null;
+function getHighs() {
+  highsPromise ??= loadHighs();
+  return highsPromise;
+}
+
+function minutesOfDay(date: Date): number {
+  const zoned = toZonedTime(date, TZ);
+  return zoned.getHours() * 60 + zoned.getMinutes();
+}
+
+function hhmmToMin(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function travelMinutes(from: Point | null, to: Point | null): number {
+  if (!from || !to) return 15;
+  const rad = Math.PI / 180;
+  const dLat = (to.latitude - from.latitude) * rad;
+  const dLng = (to.longitude - from.longitude) * rad;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(from.latitude * rad) *
+      Math.cos(to.latitude * rad) *
+      Math.sin(dLng / 2) ** 2;
+  const km = 6371 * 2 * Math.asin(Math.sqrt(a));
+  return Math.ceil(((km * ROAD_FACTOR) / AVG_SPEED_KMH) * 60);
+}
+
+function canFollow(a: Ride, b: Ride): boolean {
+  return (
+    a.end + BASE_TURNAROUND_MIN + travelMinutes(a.dropoff, b.pickup) <= b.start
+  );
+}
+
+function compatible(a: Ride, b: Ride): boolean {
+  return canFollow(a, b) || canFollow(b, a);
+}
+
+async function loadDay(date: string) {
+  await connectMongoDB();
+  const dayStart = fromZonedTime(`${date}T00:00:00`, TZ);
+  const dayEnd = fromZonedTime(`${date}T23:59:59.999`, TZ);
+  const dayOfWeek = toZonedTime(dayStart, TZ).getDay();
+
+  const [vehicles, routes] = await Promise.all([
+    VehicleModel.find().lean(),
+    RouteModel.find({
+      scheduledPickupTime: { $gte: dayStart, $lte: dayEnd },
+      status: { $in: [RouteStatus.Requested, ...BUSY_STATUSES] },
+    }).lean(),
+  ]);
+  const bookedDriverIds = routes.flatMap((r) => r.driver?._id ?? []);
+  const drivers = await DriverModel.find({
+    $or: [{ "shifts.dayOfWeek": dayOfWeek }, { _id: { $in: bookedDriverIds } }],
+  }).lean();
+
+  const locationIds = new Set(
+    routes.flatMap((r) => [
+      r.pickupLocation.toString(),
+      r.dropoffLocation.toString(),
+    ]),
+  );
+  const locations = new Map(
+    (await LocationModel.find({ _id: { $in: [...locationIds] } }).lean()).map(
+      (l) => [l._id.toString(), l],
+    ),
+  );
+
+  const toRide = (r: (typeof routes)[number]): Ride => {
+    const accommodations =
+      (r.student as { studentInfo?: { accessibilityNeeds?: string[] } })
+        .studentInfo?.accessibilityNeeds ?? [];
+    const needsWheelchair = accommodations.some((a) =>
+      a.toLowerCase().includes("wheelchair"),
+    );
+    const boarding = accommodations.length
+      ? needsWheelchair
+        ? WHEELCHAIR_BOARDING_MIN
+        : OTHER_ACCOMMODATION_BOARDING_MIN
+      : 0;
+    const start = minutesOfDay(r.scheduledPickupTime);
+    const dropoff = r.estimatedDropoffTime
+      ? minutesOfDay(r.estimatedDropoffTime)
+      : start + DEFAULT_RIDE_MIN;
+    const pickupLoc = locations.get(r.pickupLocation.toString());
+    const dropoffLoc = locations.get(r.dropoffLocation.toString());
+    return {
+      id: r._id.toString(),
+      studentName: `${r.student.firstName} ${r.student.lastName}`,
+      accommodations,
+      needsWheelchair,
+      start,
+      end: Math.max(dropoff, start) + boarding,
+      pickup: pickupLoc ?? null,
+      dropoff: dropoffLoc ?? null,
+      pickupName: pickupLoc?.name ?? "",
+      dropoffName: dropoffLoc?.name ?? "",
+      driverId: r.driver?._id.toString(),
+      vehicleId: (r.vehicle as { _id?: unknown } | undefined)?._id?.toString(),
+      vehicleLabel: r.vehicle?.vehicleId || r.vehicle?.name,
+    };
+  };
+
+  const requested = routes
+    .filter((r) => r.status === RouteStatus.Requested)
+    .map(toRide)
+    .sort((a, b) => a.start - b.start);
+  const busy = routes
+    .filter((r) => r.status !== RouteStatus.Requested)
+    .map(toRide);
+
+  return {
+    drivers: drivers.map((d) => ({
+      id: d._id.toString(),
+      name: `${d.firstName} ${d.lastName}`,
+      shifts: (d.shifts ?? [])
+        .filter((s) => s.dayOfWeek === dayOfWeek)
+        .map((s) => ({
+          start: hhmmToMin(s.startTime),
+          end: hhmmToMin(s.endTime),
+        })),
+    })),
+    vehicles: vehicles.map((v) => ({
+      id: v._id.toString(),
+      label: v.vehicleId || v.name,
+      wheelchair: v.accessibility === "Wheelchair",
+    })),
+    requested,
+    busy,
+  };
+}
+
+/**
+ * Builds and solves the assignment MIP for one day. One binary x per feasible
+ * ride/driver/vehicle triple; `fixed` restricts the model to exactly those
+ * assignments so it doubles as a feasibility check before applying.
+ */
+export async function planDay(
+  date: string,
+  fixed?: { rideId: string; driverId: string; vehicleId: string }[],
+): Promise<AutoSchedulePlan> {
+  const { drivers, vehicles, requested, busy } = await loadDay(date);
+  const fixedKeys = fixed
+    ? new Set(fixed.map((f) => `${f.rideId}|${f.driverId}|${f.vehicleId}`))
+    : null;
+
+  const busyByDriver = new Map<string, Ride[]>();
+  const busyByVehicle = new Map<string, Ride[]>();
+  const pairsInUse = new Set<string>();
+  for (const r of busy) {
+    if (r.driverId)
+      busyByDriver.set(r.driverId, [
+        ...(busyByDriver.get(r.driverId) ?? []),
+        r,
+      ]);
+    if (r.vehicleId)
+      busyByVehicle.set(r.vehicleId, [
+        ...(busyByVehicle.get(r.vehicleId) ?? []),
+        r,
+      ]);
+    if (r.driverId && r.vehicleId)
+      pairsInUse.add(`${r.driverId}|${r.vehicleId}`);
+  }
+
+  type Var = { name: string; ride: number; driver: number; vehicle: number };
+  const vars: Var[] = [];
+  const reasons = new Map<string, string>();
+
+  requested.forEach((ride, ri) => {
+    const onShift = drivers
+      .map((d, di) => ({ d, di }))
+      .filter(({ d }) =>
+        d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end),
+      );
+    const freeDrivers = onShift.filter(({ d }) =>
+      (busyByDriver.get(d.id) ?? []).every((b) => compatible(b, ride)),
+    );
+    const suitableVehicles = vehicles
+      .map((v, vi) => ({ v, vi }))
+      .filter(({ v }) => !ride.needsWheelchair || v.wheelchair);
+    const freeVehicles = suitableVehicles.filter(({ v }) =>
+      (busyByVehicle.get(v.id) ?? []).every((b) => compatible(b, ride)),
+    );
+
+    if (!onShift.length)
+      reasons.set(ride.id, "No driver is on shift for the whole ride");
+    else if (!freeDrivers.length)
+      reasons.set(ride.id, "Every on-shift driver already has a ride then");
+    else if (!suitableVehicles.length)
+      reasons.set(ride.id, "Needs a wheelchair vehicle, and none exist");
+    else if (!freeVehicles.length)
+      reasons.set(ride.id, "Every suitable vehicle is already in use then");
+    else
+      reasons.set(
+        ride.id,
+        "Overlaps other rides; not enough drivers or vehicles for all of them",
+      );
+
+    for (const { d, di } of freeDrivers) {
+      for (const { v, vi } of freeVehicles) {
+        if (fixedKeys && !fixedKeys.has(`${ride.id}|${d.id}|${v.id}`)) continue;
+        vars.push({
+          name: `x_${ri}_${di}_${vi}`,
+          ride: ri,
+          driver: di,
+          vehicle: vi,
+        });
+      }
+    }
+  });
+
+  if (fixed && vars.length !== fixed.length) {
+    throw new AutoScheduleConflictError(
+      "Some proposed assignments are no longer valid. Regenerate the schedule.",
+    );
+  }
+
+  const objective: string[] = [];
+  const constraints: string[] = [];
+  const pairVars = new Map<string, Var[]>();
+  const byRideDriver = new Map<string, string[]>();
+  const byRideVehicle = new Map<string, string[]>();
+  const push = (m: Map<string, string[]>, k: string, v: string) =>
+    m.set(k, [...(m.get(k) ?? []), v]);
+
+  for (const x of vars) {
+    const ride = requested[x.ride];
+    const misuse =
+      vehicles[x.vehicle].wheelchair && !ride.needsWheelchair
+        ? ACCESSIBLE_VEHICLE_MISUSE_COST
+        : 0;
+    objective.push(`+ ${RIDE_WEIGHT - misuse} ${x.name}`);
+    push(byRideDriver, `${x.ride}|${x.driver}`, x.name);
+    push(byRideVehicle, `${x.ride}|${x.vehicle}`, x.name);
+    const pk = `${x.driver}|${x.vehicle}`;
+    pairVars.set(pk, [...(pairVars.get(pk) ?? []), x]);
+  }
+
+  // Each ride gets at most one driver/vehicle (exactly one when validating).
+  requested.forEach((_, ri) => {
+    const names = vars.filter((x) => x.ride === ri).map((x) => x.name);
+    if (names.length)
+      constraints.push(`${names.join(" + ")} ${fixed ? "=" : "<="} 1`);
+  });
+
+  // No driver or vehicle takes two rides that overlap once turnaround is added.
+  for (let i = 0; i < requested.length; i++) {
+    for (let j = i + 1; j < requested.length; j++) {
+      if (compatible(requested[i], requested[j])) continue;
+      drivers.forEach((_, di) => {
+        const names = [
+          ...(byRideDriver.get(`${i}|${di}`) ?? []),
+          ...(byRideDriver.get(`${j}|${di}`) ?? []),
+        ];
+        if (names.length > 1) constraints.push(`${names.join(" + ")} <= 1`);
+      });
+      vehicles.forEach((_, vi) => {
+        const names = [
+          ...(byRideVehicle.get(`${i}|${vi}`) ?? []),
+          ...(byRideVehicle.get(`${j}|${vi}`) ?? []),
+        ];
+        if (names.length > 1) constraints.push(`${names.join(" + ")} <= 1`);
+      });
+    }
+  }
+
+  // Prefer keeping each driver in the same vehicle across the day.
+  const pairNames: string[] = [];
+  for (const [pk, xs] of pairVars) {
+    const [di, vi] = pk.split("|").map(Number);
+    const y = `y_${di}_${vi}`;
+    pairNames.push(y);
+    const cost = pairsInUse.has(`${drivers[di].id}|${vehicles[vi].id}`)
+      ? 0
+      : NEW_DRIVER_VEHICLE_PAIR_COST;
+    if (cost) objective.push(`- ${cost} ${y}`);
+    constraints.push(
+      `${xs.map((x) => x.name).join(" + ")} - ${xs.length} ${y} <= 0`,
+    );
+  }
+
+  let solverStatus = "Empty";
+  const chosen = new Set<string>();
+  if (vars.length) {
+    // One term per line keeps rows under the LP reader's line-length limit.
+    const lp = [
+      "Maximize",
+      ` obj: ${objective.join("\n ")}`,
+      "Subject To",
+      ...constraints.map((c, k) => ` c${k}: ${c.split(" + ").join("\n + ")}`),
+      "Binary",
+      ...[...vars.map((x) => x.name), ...pairNames].map((n) => ` ${n}`),
+      "End",
+    ].join("\n");
+    const result = (await getHighs()).solve(lp, {
+      output_flag: false,
+      time_limit: 20,
+    });
+    solverStatus = result.Status;
+    if (fixed && result.Status !== "Optimal") {
+      throw new AutoScheduleConflictError(
+        "Proposed assignments now conflict with existing rides. Regenerate the schedule.",
+      );
+    }
+    for (const x of vars) {
+      const col = result.Columns[x.name];
+      if (col && "Primal" in col && col.Primal > 0.5) chosen.add(x.name);
+    }
+  }
+
+  const assignments = vars
+    .filter((x) => chosen.has(x.name))
+    .map((x) => ({
+      rideId: requested[x.ride].id,
+      driverId: drivers[x.driver].id,
+      vehicleId: vehicles[x.vehicle].id,
+    }));
+  const assignedRides = new Set(assignments.map((a) => a.rideId));
+
+  const doubleBookings: AutoSchedulePlan["doubleBookings"] = [];
+  const findOverlaps = (
+    resource: "driver" | "vehicle",
+    byResource: Map<string, Ride[]>,
+    nameOf: (id: string) => string,
+  ) => {
+    for (const [id, rides] of byResource) {
+      for (let i = 0; i < rides.length; i++) {
+        for (let j = i + 1; j < rides.length; j++) {
+          if (!compatible(rides[i], rides[j])) {
+            doubleBookings.push({
+              resource,
+              name: nameOf(id),
+              rides: [rides[i], rides[j]].sort((a, b) => a.start - b.start) as [
+                Ride,
+                Ride,
+              ],
+            });
+          }
+        }
+      }
+    }
+  };
+  findOverlaps(
+    "driver",
+    busyByDriver,
+    (id) => drivers.find((d) => d.id === id)?.name ?? "Unknown driver",
+  );
+  findOverlaps(
+    "vehicle",
+    busyByVehicle,
+    (id) =>
+      vehicles.find((v) => v.id === id)?.label ??
+      busy.find((r) => r.vehicleId === id)?.vehicleLabel ??
+      "Unknown vehicle",
+  );
+
+  return {
+    doubleBookings,
+    date,
+    solverStatus,
+    drivers: drivers.map((d) => ({
+      _id: d.id,
+      name: d.name,
+      shifts: d.shifts,
+      rides: [
+        ...(busyByDriver.get(d.id) ?? []).map((r) => ({
+          ...r,
+          kind: "existing" as const,
+        })),
+        ...assignments
+          .filter((a) => a.driverId === d.id)
+          .map((a) => {
+            const r = requested.find((rr) => rr.id === a.rideId)!;
+            const v = vehicles.find((vv) => vv.id === a.vehicleId)!;
+            return {
+              ...r,
+              driverId: d.id,
+              vehicleId: v.id,
+              vehicleLabel: v.label,
+              kind: "proposed" as const,
+            };
+          }),
+      ].sort((a, b) => a.start - b.start),
+    })),
+    assignments,
+    unassigned: requested
+      .filter((r) => !assignedRides.has(r.id))
+      .map((r) => ({ ...r, reason: reasons.get(r.id) ?? "" })),
+  };
+}
