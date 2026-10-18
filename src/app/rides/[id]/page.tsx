@@ -54,6 +54,7 @@ type Location = {
 
 type ChatMessage = {
   sender: "user" | "other";
+  senderType: "student" | "driver" | "admin";
   text: string;
   timestamp: Date;
 };
@@ -486,6 +487,7 @@ export default function RideDetailPage({
         setMessages(
           history.map((m) => ({
             sender: m.senderType === userType.toLowerCase() ? "user" : "other",
+            senderType: m.senderType as "student" | "driver" | "admin",
             text: m.text,
             timestamp: new Date(m.time),
           })),
@@ -501,6 +503,7 @@ export default function RideDetailPage({
           {
             sender:
               message.senderType === userType.toLowerCase() ? "user" : "other",
+            senderType: message.senderType as "student" | "driver" | "admin",
             text: message.text,
             timestamp: new Date(message.time),
           },
@@ -859,6 +862,7 @@ export default function RideDetailPage({
             )}
             {messages.map((msg, idx) => {
               const isUser = msg.sender === "user";
+              const isAdmin = msg.senderType === "admin";
               const prevIsOther =
                 !isUser && idx > 0 && messages[idx - 1].sender === "other";
               return (
@@ -876,7 +880,14 @@ export default function RideDetailPage({
                         <BogIcon name="user" size={18} />
                       </div>
                     ))}
-                  <div className={styles.messageBubble}>
+                  <div
+                    className={`${styles.messageBubble} ${
+                      isAdmin ? styles.adminMessageBubble : ""
+                    }`}
+                  >
+                    {isAdmin && (
+                      <span className={styles.adminMessageLabel}>Admin</span>
+                    )}
                     <p className={styles.messageText}>{msg.text}</p>
                   </div>
                 </div>
@@ -1309,6 +1320,7 @@ export default function RideDetailPage({
               )}
               {messages.map((msg, idx) => {
                 const isUser = msg.sender === "user";
+                const isAdmin = msg.senderType === "admin";
                 const prevIsOther =
                   !isUser && idx > 0 && messages[idx - 1].sender === "other";
                 return (
@@ -1326,7 +1338,14 @@ export default function RideDetailPage({
                           <BogIcon name="user" size={18} />
                         </div>
                       ))}
-                    <div className={styles.messageBubble}>
+                    <div
+                      className={`${styles.messageBubble} ${
+                        isAdmin ? styles.adminMessageBubble : ""
+                      }`}
+                    >
+                      {isAdmin && (
+                        <span className={styles.adminMessageLabel}>Admin</span>
+                      )}
                       <p className={styles.messageText}>{msg.text}</p>
                     </div>
                   </div>
