@@ -3,6 +3,7 @@
 import React from "react";
 import BogModal from "@/components/BogModal/BogModal";
 import BogButton from "@/components/BogButton/BogButton";
+import BogIcon from "@/components/BogIcon/BogIcon";
 
 type ConfirmActionModalProps = {
   open: boolean;
@@ -21,6 +22,9 @@ type ConfirmActionModalProps = {
   /** True while the confirmed request is running — disables the buttons and
    *  prevents the modal from being dismissed. */
   confirming?: boolean;
+  /** Confirm button color: "destructive" (red, default) or "primary" (navy)
+   *  for non-destructive confirmations. */
+  variant?: "destructive" | "primary";
 };
 
 /**
@@ -38,6 +42,7 @@ export default function ConfirmActionModal({
   confirmingLabel,
   cancelLabel = "Nevermind",
   confirming = false,
+  variant = "destructive",
 }: ConfirmActionModalProps) {
   // While the request is in flight, don't let the modal be dismissed
   // (Escape, outside click, or the close button).
@@ -60,34 +65,58 @@ export default function ConfirmActionModal({
           style={{ display: "none" }}
         />
       }
-      title={<h3>{title}</h3>}
+      contentProps={{
+        style: {
+          width: "60rem",
+          maxWidth: "90vw",
+          padding: "4.8rem 2.88rem",
+          borderRadius: "0.8rem",
+          gap: "2rem",
+          boxShadow: "0 0.72rem 3.012rem -0.24rem rgba(0, 0, 0, 0.16)",
+        },
+      }}
+      closeButton={<BogIcon name="x" size={36} />}
+      title={
+        <h3
+          style={{
+            fontSize: "3.2rem",
+            lineHeight: "4rem",
+            color: "var(--color-grey-text-strong)",
+          }}
+        >
+          {title}
+        </h3>
+      }
     >
-      <div className="flex flex-col gap-[2.4rem]">
-        <p className="m-0 text-paragraph-1 text-[var(--color-grey-text-strong)]">
+      <div className="flex flex-col gap-[4.8rem]">
+        <p className="m-0 text-paragraph-1 text-[var(--color-grey-text-weak)]">
           {description}
         </p>
-        <div className="flex flex-wrap justify-end gap-[1.2rem]">
+        <div className="flex flex-wrap justify-end gap-[1.6rem]">
           <BogButton
             variant="secondary"
-            size="medium"
+            size="large"
             disabled={confirming}
             onClick={() => setOpen(false)}
-            style={{ borderRadius: "0.5rem" }}
+            style={{ fontWeight: 600 }}
           >
             {cancelLabel}
           </BogButton>
           <BogButton
             variant="primary"
-            size="medium"
+            size="large"
             disabled={confirming}
             onClick={() => void onConfirm()}
-            style={
-              {
-                "--color-brand-text": "var(--color-status-red-text)",
-                "--color-brand-hover": "var(--color-status-red-stroke-strong)",
-                borderRadius: "0.5rem",
-              } as React.CSSProperties
-            }
+            style={{
+              fontWeight: 600,
+              ...(variant === "destructive"
+                ? {
+                    "--color-brand-text": "var(--color-status-red-text)",
+                    "--color-brand-hover":
+                      "var(--color-status-red-stroke-strong)",
+                  }
+                : {}),
+            }}
           >
             {confirming ? (confirmingLabel ?? confirmLabel) : confirmLabel}
           </BogButton>

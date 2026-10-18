@@ -9,7 +9,7 @@ import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
-import { CancelRideModal } from "./CancelRideModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 import {
@@ -302,14 +302,20 @@ export default function RidesPage() {
 
   return (
     <div className={styles.ridesPage}>
-      <CancelRideModal
+      <ConfirmActionModal
         open={cancelTargetId !== null}
         onOpenChange={(open) => {
           if (!open) setCancelTargetId(null);
         }}
-        onConfirmCancel={() => {
+        onConfirm={() => {
           if (cancelTargetId) void handleCancel(cancelTargetId);
         }}
+        variant="destructive"
+        title="Cancel Ride?"
+        description="Are you sure you want to cancel this ride?"
+        confirmLabel="Cancel ride"
+        confirmingLabel="Cancelling…"
+        cancelLabel="Nevermind"
         confirming={cancelTargetId !== null && cancellingId === cancelTargetId}
       />
       <main className={styles.main}>

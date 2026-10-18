@@ -3,11 +3,6 @@ https://www.{default}/:
   upstream: app:http
   cache:
     enabled: false
-https://www.{default}/socket.io/:
-  type: upstream
-  upstream: websocket:http
-  cache:
-    enabled: false
 https://{default}/:
   type: redirect
   to: https://www.{default}/
