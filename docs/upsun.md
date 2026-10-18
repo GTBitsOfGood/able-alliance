@@ -2,6 +2,8 @@
 
 Upsun is the hosting provider for `gatech.edu` websites.
 
+Our current domain is `paratransit.pts.gatech.edu`.
+
 ## Configuration
 
 - YAML for applications, routes, and services in `.platform/`
@@ -15,19 +17,6 @@ Upsun is the hosting provider for `gatech.edu` websites.
 
   Upsun CLI options can be passed after a second `--`, for example:
   `npm run upsun:env -- .env.upsun NEXT_PUBLIC_WS_URL -- --project <project>`.
-
-- To provision a user in the configured MongoDB database, run:
-
-  ```sh
-  npm run create-user -- --type Student --username jdoe3 --first-name Jane --last-name Doe --email jdoe3@gatech.edu
-  ```
-
-  Pass `--mongo-uri <uri>` to target a specific database; otherwise the script
-  uses `MONGODB_URI` from the environment.
-
-  Supported types are `Student`, `Driver`, `Admin`, and `SuperAdmin`. Student
-  and driver records start with empty student information or shifts. The script
-  validates the details and refuses duplicate usernames or email addresses.
 
 ## Caveats
 
