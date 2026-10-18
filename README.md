@@ -31,6 +31,7 @@ A deployment preview of the main branch from Netlify is available at https://abl
 - [Auth.js](https://authjs.dev/) and Georgia Tech CAS for authentication
 
 There are two server components:
+
 1. Next.js handles the frontend and API routes.
 2. The Express.js `websocket-server` handles persistent websocket connections.
 
