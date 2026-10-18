@@ -70,9 +70,10 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
 
     const isStudent = route.student?._id?.toString() === userId;
     const isDriver = route.driver?._id?.toString() === userId;
+    const isAdmin = decoded.type === "Admin";
     const isSuperAdmin = decoded.type === "SuperAdmin";
 
-    if (!isStudent && !isDriver && !isSuperAdmin) {
+    if (!isStudent && !isDriver && !isSuperAdmin && !isAdmin) {
       return next(new Error("User not authorized for this route"));
     }
 
