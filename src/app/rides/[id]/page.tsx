@@ -10,7 +10,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
-import { CancelRideModal } from "../CancelRideModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
 
@@ -180,6 +180,8 @@ export default function RideDetailPage({
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
+  const [showPickupModal, setShowPickupModal] = useState(false);
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
   const delayActionBusy = false;
 
   // Extract ID from params
@@ -910,6 +912,36 @@ export default function RideDetailPage({
     return (
       <div className={styles.rideDetailPage}>
         {chatModal}
+        <ConfirmActionModal
+          open={showPickupModal}
+          onOpenChange={setShowPickupModal}
+          onConfirm={async () => {
+            await handlePickupStudent();
+            setShowPickupModal(false);
+          }}
+          variant="primary"
+          title="Student Picked Up"
+          description={`I have picked up ${studentName}.`}
+          confirmLabel="Confirm Pickup"
+          confirmingLabel="Confirming…"
+          cancelLabel="Cancel"
+          confirming={driverActionBusy}
+        />
+        <ConfirmActionModal
+          open={showNoShowModal}
+          onOpenChange={setShowNoShowModal}
+          onConfirm={async () => {
+            await handleMarkMissing();
+            setShowNoShowModal(false);
+          }}
+          variant="destructive"
+          title="Student No-Show"
+          description={`${studentName} did not show up for their ride.`}
+          confirmLabel="Confirm No-Show"
+          confirmingLabel="Marking…"
+          cancelLabel="Cancel"
+          confirming={markingMissing}
+        />
         <main className={styles.main}>
           <header className={styles.header}>
             <Link href="/rides" className={styles.backLink}>
@@ -1038,7 +1070,7 @@ export default function RideDetailPage({
                       className={
                         styles.outlineButton + " " + styles.greenOutlineButton
                       }
-                      onClick={() => void handlePickupStudent()}
+                      onClick={() => setShowPickupModal(true)}
                       disabled={driverActionBusy}
                     >
                       {driverActionBusy ? "Updating…" : "Student picked up"}
@@ -1048,7 +1080,7 @@ export default function RideDetailPage({
                       className={
                         styles.outlineButton + " " + styles.redOutlineButton
                       }
-                      onClick={() => void handleMarkMissing()}
+                      onClick={() => setShowNoShowModal(true)}
                       disabled={markingMissing}
                     >
                       {markingMissing ? "Marking…" : "Student no-show"}
@@ -1107,12 +1139,18 @@ export default function RideDetailPage({
 
   return (
     <div className={styles.rideDetailPage}>
-      <CancelRideModal
+      <ConfirmActionModal
         open={showCancelModal}
         onOpenChange={(open) => {
           if (!open) setShowCancelModal(false);
         }}
-        onConfirmCancel={() => void handleCancelRide()}
+        onConfirm={() => void handleCancelRide()}
+        variant="destructive"
+        title="Cancel Ride?"
+        description="Are you sure you want to cancel this ride?"
+        confirmLabel="Cancel ride"
+        confirmingLabel="Cancelling…"
+        cancelLabel="Nevermind"
         confirming={cancellingRide}
       />
       <main className={styles.main}>
