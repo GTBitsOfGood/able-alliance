@@ -16,7 +16,7 @@ jobs:
         image: mongo:4.0
         ports: ["27017:27017"]
         options: >-
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })' --quiet"
+          --health-cmd "mongo --eval 'db.adminCommand({ ping: 1 })' --quiet"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       CI: "true"
@@ -31,12 +31,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: API layer (backend)
-        run: npx playwright test --project=api
+        run: npm run test:e2e:api
       - name: UI layer (frontend)
         if: always()
-        run: npx playwright test --project=ui
+        run: npm run test:e2e:ui
       - uses: actions/upload-artifact@v4
         if: always()
         with:

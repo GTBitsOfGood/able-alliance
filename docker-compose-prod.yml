@@ -29,7 +29,7 @@ services:
       driver: "none"
     healthcheck:
       test:
-        ["CMD", "mongosh", "--eval", "db.adminCommand({ ping: 1 })", "--quiet"]
+        ["CMD", "mongo", "--eval", "db.adminCommand({ ping: 1 })", "--quiet"]
       interval: 10s
       timeout: 5s
       retries: 5
