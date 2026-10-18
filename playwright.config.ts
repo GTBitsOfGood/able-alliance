@@ -35,6 +35,9 @@ export default defineConfig({
     : {
         // makes production build rather than 'next dev'
         command: "npm run build && npm run start",
+        // Next.js can print TypeScript diagnostics to stdout; keep them in CI logs.
+        stdout: "pipe",
+        stderr: "pipe",
         url: `${E2E.baseURL}/login`,
         env: appServerEnv(),
         reuseExistingServer: !isCI,

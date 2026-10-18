@@ -45,10 +45,15 @@ test("route E: driver marks student as no-show (UI)", async ({
     driver.getByRole("button", { name: "Student no-show" }),
   ).toBeVisible();
 
+  await driver.getByRole("button", { name: "Student no-show" }).click();
+  const noShowDialog = driver.getByRole("dialog");
+  await expect(
+    noShowDialog.getByRole("heading", { name: "Student No-Show" }),
+  ).toBeVisible();
   const missing = driver.waitForResponse((r) =>
     r.url().endsWith("/api/routes/missing"),
   );
-  await driver.getByRole("button", { name: "Student no-show" }).click();
+  await noShowDialog.getByRole("button", { name: "Confirm No-Show" }).click();
   const missingRes = await missing;
   expect(missingRes.status(), await missingRes.text()).toBe(200);
   await expect(chip).toHaveText("Missing");
