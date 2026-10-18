@@ -92,7 +92,7 @@ docker run --name mongodb -d -p 27017:27017 mongo:4.0
 
 We have MongoDB pinned at `4.0` intentionally; see [docs/upsun.md](docs/upsun.md) for more information.
 
-To seed the database with sample users, locations, vehicles, and routes, run:
+To seed the database, run:
 
 ```sh
 npm run seed -- "mongodb://localhost:27017/able-alliance"

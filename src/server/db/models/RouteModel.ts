@@ -1,7 +1,13 @@
 import mongoose, { Schema } from "mongoose";
 import type { RouteInput } from "@/utils/types";
-import type { IBaseUser } from "./UserModel";
 import type { IVehicle } from "./VehicleModel";
+import { VehicleSnapshotSchema } from "./VehicleSnapshotSchema";
+import {
+  StudentSnapshotSchema,
+  DriverSnapshotSchema,
+  type IStudentSnapshot,
+  type IDriverSnapshot,
+} from "./UserSnapshotSchema";
 
 export type IRoute = RouteInput;
 
@@ -15,18 +21,11 @@ export enum RouteStatus {
   CancelledByStudent = "Cancelled by Student",
   CancelledByAdmin = "Cancelled by Admin",
 }
-// A display snapshot of a user taken when the route was created. username is
-// omitted alongside settings: it is a login identity, not something a route
-// needs to render, and snapshots predate the field.
-type IEmbeddedUser = Omit<IBaseUser, "settings" | "username"> & {
-  _id: mongoose.Types.ObjectId;
-};
-
 interface IRouteDocument {
   pickupLocation: mongoose.Types.ObjectId;
   dropoffLocation: mongoose.Types.ObjectId;
-  student: IEmbeddedUser;
-  driver?: IEmbeddedUser;
+  student: IStudentSnapshot;
+  driver?: IDriverSnapshot;
   vehicle?: IVehicle;
   scheduledPickupTime: Date;
   pickupWindowStart: Date;
@@ -34,54 +33,6 @@ interface IRouteDocument {
   estimatedDropoffTime?: Date;
   status: RouteStatus;
 }
-
-// Embedded user/student schemas WITHOUT unique indexes (same structure as UserModel
-// but for subdocuments; unique on email only makes sense in the users collection).
-const EmbeddedBaseUserSchema = new Schema(
-  {
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
-    email: { type: String, required: true },
-    type: {
-      type: String,
-      required: true,
-      enum: ["Student", "Driver", "Admin", "SuperAdmin"],
-    },
-  },
-  { _id: true, versionKey: false },
-);
-
-const EmbeddedStudentSchema = new Schema(
-  {
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
-    email: { type: String, required: true },
-    type: { type: String, required: true, enum: ["Student"] },
-    studentInfo: {
-      notes: { type: String },
-      accessibilityNeeds: [{ type: String }],
-    },
-  },
-  { _id: true, versionKey: false },
-);
-
-// Embedded vehicle schema WITHOUT unique indexes (unique on licensePlate only
-// makes sense in the vehicles collection, not as a subdocument).
-const EmbeddedVehicleSchema = new Schema(
-  {
-    vehicleId: { type: String },
-    name: { type: String, required: true },
-    licensePlate: { type: String, required: true },
-    description: { type: String },
-    accessibility: {
-      type: String,
-      enum: ["None", "Wheelchair"],
-      required: true,
-    },
-    seatCount: { type: Number, required: true, min: 1 },
-  },
-  { _id: true, versionKey: false },
-);
 
 const RouteSchema = new Schema<IRouteDocument>(
   {
@@ -95,9 +46,9 @@ const RouteSchema = new Schema<IRouteDocument>(
       ref: "Location",
       required: true,
     },
-    student: { type: EmbeddedStudentSchema, required: true },
-    driver: { type: EmbeddedBaseUserSchema, required: false },
-    vehicle: { type: EmbeddedVehicleSchema, required: false },
+    student: { type: StudentSnapshotSchema, required: true },
+    driver: { type: DriverSnapshotSchema, required: false },
+    vehicle: { type: VehicleSnapshotSchema, required: false },
     scheduledPickupTime: { type: Date, required: true },
     pickupWindowStart: { type: Date, required: true },
     pickupWindowEnd: { type: Date, required: true },

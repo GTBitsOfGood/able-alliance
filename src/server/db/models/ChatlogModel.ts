@@ -1,6 +1,10 @@
 import mongoose, { Schema } from "mongoose";
-import { BaseUserSchema, StudentSchema } from "./UserModel";
-import type { IBaseUser, IStudentUser } from "./UserModel";
+import {
+  StudentSnapshotSchema,
+  DriverSnapshotSchema,
+  type IStudentSnapshot,
+  type IDriverSnapshot,
+} from "./UserSnapshotSchema";
 
 interface IMessage {
   time: Date;
@@ -12,8 +16,8 @@ interface IMessage {
 
 export interface IChatlog {
   routeId: mongoose.Types.ObjectId;
-  student: IStudentUser & { _id: mongoose.Types.ObjectId };
-  driver: IBaseUser & { _id: mongoose.Types.ObjectId };
+  student: IStudentSnapshot;
+  driver: IDriverSnapshot;
   time: Date;
   status: "active" | "archived";
   archivedAt?: Date;
@@ -37,11 +41,11 @@ const ChatlogSchema = new Schema<IChatlog>({
     required: true,
   },
   student: {
-    type: StudentSchema,
+    type: StudentSnapshotSchema,
     required: true,
   },
   driver: {
-    type: BaseUserSchema,
+    type: DriverSnapshotSchema,
     required: true,
   },
   time: { type: Date, required: true },

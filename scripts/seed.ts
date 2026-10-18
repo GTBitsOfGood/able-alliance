@@ -10,6 +10,11 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import { getMapboxTravelDuration } from "@/server/mapbox";
+import Chatlog from "@/server/db/models/ChatlogModel";
+import {
+  createStudentSnapshot,
+  createDriverSnapshot,
+} from "@/server/db/models/UserSnapshotSchema";
 
 const MONGODB_URI =
   process.argv[2] ??
@@ -38,6 +43,7 @@ async function seed() {
   console.log("Connecting to MongoDB…");
   await mongoose.connect(MONGODB_URI);
   const db = mongoose.connection.db!;
+  await Chatlog.init();
 
   // ---------- Accommodations ----------
   const accCol = db.collection("accommodations");
@@ -347,15 +353,6 @@ async function seed() {
 
   const addMinutes = (date: Date, minutes: number): Date =>
     new Date(date.getTime() + minutes * 60 * 1000);
-
-  const makeEmbed = (user: Record<string, unknown>) => ({
-    _id: user._id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    type: user.type,
-    ...(user.studentInfo ? { studentInfo: user.studentInfo } : {}),
-  });
 
   const makeVehicleEmbed = (
     v: (typeof vehicleDefs)[0] & { _id: mongoose.Types.ObjectId },
@@ -762,7 +759,7 @@ async function seed() {
     await routesCol.insertOne({
       pickupLocation: pickupLoc._id,
       dropoffLocation: dropoffLoc._id,
-      student: makeEmbed(t.student as unknown as Record<string, unknown>),
+      student: createStudentSnapshot(t.student),
       scheduledPickupTime: t.pickupTime,
       pickupWindowStart: windowStart,
       pickupWindowEnd: windowEnd,
@@ -817,8 +814,8 @@ async function seed() {
     await routesCol.insertOne({
       pickupLocation: pickupLoc._id,
       dropoffLocation: dropoffLoc._id,
-      student: makeEmbed(t.student as unknown as Record<string, unknown>),
-      driver: makeEmbed(t.driver as unknown as Record<string, unknown>),
+      student: createStudentSnapshot(t.student),
+      driver: createDriverSnapshot(t.driver),
       vehicle: makeVehicleEmbed(t.vehicle),
       scheduledPickupTime: t.pickupTime,
       pickupWindowStart: windowStart,
@@ -830,6 +827,157 @@ async function seed() {
   }
 
   console.log(`\n– Routes: created ${created}, skipped ${skipped}`);
+
+  // ---------- Archived chat history ----------
+  // Add a few completed rides with transcripts so the admin chat archive has
+  // realistic data to browse
+  const previousMonth = new Date(now);
+  previousMonth.setDate(1);
+  previousMonth.setHours(0, 0, 0, 0);
+  previousMonth.setMonth(previousMonth.getMonth() - 1);
+
+  const historicalChats = [
+    {
+      student: student1,
+      driver: driver1,
+      vehicle: vehicles["1001"],
+      pickupLocation: "Exhibition Hall" as const,
+      dropoffLocation: "Tech Square Eastbound" as const,
+      day: 8,
+      hour: 9,
+      messages: [
+        {
+          offset: -12,
+          senderType: "student",
+          text: "Hi, I’m at the Exhibition Hall entrance.",
+        },
+        {
+          offset: -8,
+          senderType: "driver",
+          text: "I’m pulling up now. I’m in the white SUV.",
+        },
+        { offset: 4, senderType: "student", text: "I see you, thank you!" },
+      ],
+    },
+    {
+      student: student2,
+      driver: driver2,
+      vehicle: vehicles["1002"],
+      pickupLocation: "Student Center" as const,
+      dropoffLocation: "Stamps Health Services" as const,
+      day: 16,
+      hour: 13,
+      messages: [
+        {
+          offset: -18,
+          senderType: "student",
+          text: "I’m waiting by the Student Center loop.",
+        },
+        {
+          offset: -10,
+          senderType: "driver",
+          text: "Got it. The silver minivan is on its way.",
+        },
+        {
+          offset: 2,
+          senderType: "student",
+          text: "Found you. I’m coming out now.",
+        },
+        { offset: 24, senderType: "driver", text: "We’re here at Stamps." },
+      ],
+    },
+    {
+      student: student1,
+      driver: driver3,
+      vehicle: vehicles["1004"],
+      pickupLocation: "West Village Dining" as const,
+      dropoffLocation: "Clough Undergraduate Learning Commons" as const,
+      day: 23,
+      hour: 15,
+      messages: [
+        {
+          offset: -15,
+          senderType: "student",
+          text: "Could you meet me at the main entrance?",
+        },
+        {
+          offset: -7,
+          senderType: "driver",
+          text: "Yes, I’m outside in the red minivan.",
+        },
+        { offset: 3, senderType: "student", text: "Thanks, I’m here." },
+        {
+          offset: 26,
+          senderType: "student",
+          text: "Made it to Clough. Thanks for the ride!",
+        },
+      ],
+    },
+  ];
+
+  let chatsCreated = 0;
+  let chatsSkipped = 0;
+  let historicalRoutesCreated = 0;
+  for (const sample of historicalChats) {
+    const pickupTime = new Date(previousMonth);
+    pickupTime.setDate(sample.day);
+    pickupTime.setHours(sample.hour, 0, 0, 0);
+
+    const pickupLoc = locations[sample.pickupLocation];
+    const dropoffLoc = locations[sample.dropoffLocation];
+    const routeQuery = {
+      "student._id": sample.student._id,
+      pickupLocation: pickupLoc._id,
+      dropoffLocation: dropoffLoc._id,
+      scheduledPickupTime: pickupTime,
+    };
+    let route = await routesCol.findOne(routeQuery);
+    if (!route) {
+      const routeId = new mongoose.Types.ObjectId();
+      const windowStart = addMinutes(pickupTime, -30);
+      const windowEnd = addMinutes(pickupTime, 30);
+      const result = await routesCol.insertOne({
+        _id: routeId,
+        pickupLocation: pickupLoc._id,
+        dropoffLocation: dropoffLoc._id,
+        student: createStudentSnapshot(sample.student),
+        driver: createDriverSnapshot(sample.driver),
+        vehicle: makeVehicleEmbed(sample.vehicle),
+        scheduledPickupTime: pickupTime,
+        pickupWindowStart: windowStart,
+        pickupWindowEnd: windowEnd,
+        estimatedDropoffTime: addMinutes(pickupTime, 30),
+        status: "Completed",
+      });
+      route = { _id: result.insertedId };
+      historicalRoutesCreated++;
+    }
+
+    const existingChat = await Chatlog.findOne({ routeId: route._id });
+    if (existingChat) {
+      chatsSkipped++;
+      continue;
+    }
+
+    await Chatlog.create({
+      routeId: route._id,
+      student: createStudentSnapshot(sample.student),
+      driver: createDriverSnapshot(sample.driver),
+      time: addMinutes(pickupTime, sample.messages[0].offset),
+      status: "archived",
+      archivedAt: addMinutes(pickupTime, 45),
+      messages: sample.messages.map((message) => ({
+        time: addMinutes(pickupTime, message.offset),
+        senderType: message.senderType,
+        text: message.text,
+      })),
+    });
+    chatsCreated++;
+  }
+
+  console.log(
+    `– Archived chats: created ${chatsCreated}, already present ${chatsSkipped} (historical rides created ${historicalRoutesCreated})`,
+  );
   console.log("\nSeed complete!");
   await mongoose.disconnect();
 }
