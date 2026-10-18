@@ -6,7 +6,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import { ProfileRidesTab } from "@/app/profile/ProfileRidesTab";
-import ConfirmActionModal from "./ConfirmActionModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 
