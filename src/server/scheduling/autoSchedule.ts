@@ -1,12 +1,15 @@
-import loadHighs from "highs";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import type loadHighs from "highs";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import connectMongoDB from "../db/mongodb";
 import RouteModel, { RouteStatus } from "../db/models/RouteModel";
-import { DriverModel } from "../db/models/UserModel";
+import { DriverModel, StudentModel } from "../db/models/UserModel";
 import VehicleModel from "../db/models/VehicleModel";
 import LocationModel from "../db/models/LocationModel";
+import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 
 const TZ = "America/New_York";
+const DAY_MIN = 24 * 60;
+const DAY_MS = DAY_MIN * 60 * 1000;
 
 // Minimum slack between rides for parking, unloading, and check-in.
 const BASE_TURNAROUND_MIN = 5;
@@ -34,7 +37,7 @@ type Ride = {
   studentName: string;
   accommodations: string[];
   needsWheelchair: boolean;
-  start: number; // pickup, minutes from EST midnight
+  start: number;
   // Busy-until time used for conflict checks only: dropoff + boarding. Without
   // a stored estimate the dropoff comes from the locations' distance.
   end: number;
@@ -89,19 +92,31 @@ export class AutoScheduleConflictError extends Error {
 }
 
 export function formatMinutes(min: number): string {
-  const h = Math.floor(min / 60);
-  return `${h % 12 || 12}:${String(min % 60).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+  const inDay = ((min % DAY_MIN) + DAY_MIN) % DAY_MIN;
+  const h = Math.floor(inDay / 60);
+  const label = `${h % 12 || 12}:${String(inDay % 60).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+  return min < 0
+    ? `${label} (prev day)`
+    : min >= DAY_MIN
+      ? `${label} (next day)`
+      : label;
 }
 
 let highsPromise: ReturnType<typeof loadHighs> | null = null;
 function getHighs() {
-  highsPromise ??= loadHighs();
+  highsPromise ??= import("highs").then((m) => m.default());
   return highsPromise;
 }
 
-function minutesOfDay(date: Date): number {
-  const zoned = toZonedTime(date, TZ);
-  return zoned.getHours() * 60 + zoned.getMinutes();
+function minutesFromDay(date: Date, day: string): number {
+  const z = toZonedTime(date, TZ);
+  const [y, m, d] = day.split("-").map(Number);
+  const dayOffset = Math.round(
+    (Date.UTC(z.getFullYear(), z.getMonth(), z.getDate()) -
+      Date.UTC(y, m - 1, d)) /
+      DAY_MS,
+  );
+  return dayOffset * DAY_MIN + z.getHours() * 60 + z.getMinutes();
 }
 
 function hhmmToMin(t: string): number {
@@ -133,23 +148,103 @@ function compatible(a: Ride, b: Ride): boolean {
   return canFollow(a, b) || canFollow(b, a);
 }
 
+const SERVICE_START = hhmmToMin(SERVICE_START_TIME);
+const SERVICE_END = hhmmToMin(SERVICE_END_TIME);
+const SERVICE_HOURS = `${formatMinutes(SERVICE_START)}–${formatMinutes(SERVICE_END)}`;
+
+function inServiceHours(ride: Ride): boolean {
+  return SERVICE_START <= ride.start && ride.start <= SERVICE_END;
+}
+
+function touchesDay(ride: Ride): boolean {
+  return ride.end > 0 && ride.start < DAY_MIN;
+}
+
+function indexBusy(busy: Ride[]) {
+  const byDriver = new Map<string, Ride[]>();
+  const byVehicle = new Map<string, Ride[]>();
+  for (const r of busy) {
+    if (r.driverId)
+      byDriver.set(r.driverId, [...(byDriver.get(r.driverId) ?? []), r]);
+    if (r.vehicleId)
+      byVehicle.set(r.vehicleId, [...(byVehicle.get(r.vehicleId) ?? []), r]);
+  }
+  return { byDriver, byVehicle };
+}
+
+/** Overlap and accessibility problems with booking `ride` on a driver and vehicle. */
+function bookingProblems(
+  ride: Ride,
+  driver: { id: string; name: string },
+  vehicle: { id: string; label: string; wheelchair: boolean },
+  busyByDriver: Map<string, Ride[]>,
+  busyByVehicle: Map<string, Ride[]>,
+): string[] {
+  const problems: string[] = [];
+  const driverClash = (busyByDriver.get(driver.id) ?? []).find(
+    (b) => b.id !== ride.id && !compatible(b, ride),
+  );
+  if (driverClash)
+    problems.push(
+      `${driver.name} is already driving ${driverClash.studentName} at ${formatMinutes(driverClash.start)}.`,
+    );
+  if (ride.needsWheelchair && !vehicle.wheelchair)
+    problems.push(`Vehicle ${vehicle.label} is not wheelchair-accessible.`);
+  const vehicleClash = (busyByVehicle.get(vehicle.id) ?? []).find(
+    (b) => b.id !== ride.id && !compatible(b, ride),
+  );
+  if (vehicleClash)
+    problems.push(
+      `Vehicle ${vehicle.label} is already in use for ${vehicleClash.studentName} at ${formatMinutes(vehicleClash.start)}.`,
+    );
+  return problems;
+}
+
 async function loadDay(date: string) {
   await connectMongoDB();
   const dayStart = fromZonedTime(`${date}T00:00:00`, TZ);
   const dayEnd = fromZonedTime(`${date}T23:59:59.999`, TZ);
   const dayOfWeek = toZonedTime(dayStart, TZ).getDay();
 
+  // Bookings from the neighbouring days can run across midnight into this one.
   const [vehicles, routes] = await Promise.all([
     VehicleModel.find().lean(),
     RouteModel.find({
-      scheduledPickupTime: { $gte: dayStart, $lte: dayEnd },
-      status: { $in: [RouteStatus.Requested, ...BUSY_STATUSES] },
+      $or: [
+        {
+          status: RouteStatus.Requested,
+          scheduledPickupTime: { $gte: dayStart, $lte: dayEnd },
+        },
+        {
+          status: { $in: BUSY_STATUSES },
+          scheduledPickupTime: {
+            $gte: new Date(dayStart.getTime() - DAY_MS),
+            $lte: new Date(dayEnd.getTime() + DAY_MS),
+          },
+        },
+      ],
     }).lean(),
   ]);
   const bookedDriverIds = routes.flatMap((r) => r.driver?._id ?? []);
-  const drivers = await DriverModel.find({
-    $or: [{ "shifts.dayOfWeek": dayOfWeek }, { _id: { $in: bookedDriverIds } }],
-  }).lean();
+  const [drivers, students] = await Promise.all([
+    DriverModel.find({
+      $or: [
+        { "shifts.dayOfWeek": dayOfWeek },
+        { _id: { $in: bookedDriverIds } },
+      ],
+    }).lean(),
+    StudentModel.find(
+      { _id: { $in: routes.map((r) => r.student._id) } },
+      { studentInfo: 1 },
+    ).lean(),
+  ]);
+  // The ride embeds a copy of the student; profile edits only reach this one.
+  const needsByStudent = new Map(
+    students.map((st) => [
+      st._id.toString(),
+      st.studentInfo?.accessibilityNeeds ?? [],
+    ]),
+  );
 
   const locationIds = new Set(
     routes.flatMap((r) => [
@@ -165,8 +260,10 @@ async function loadDay(date: string) {
 
   const toRide = (r: (typeof routes)[number]): Ride => {
     const accommodations =
+      needsByStudent.get(r.student._id.toString()) ??
       (r.student as { studentInfo?: { accessibilityNeeds?: string[] } })
-        .studentInfo?.accessibilityNeeds ?? [];
+        .studentInfo?.accessibilityNeeds ??
+      [];
     const needsWheelchair = accommodations.some((a) =>
       a.toLowerCase().includes("wheelchair"),
     );
@@ -175,11 +272,11 @@ async function loadDay(date: string) {
         ? WHEELCHAIR_BOARDING_MIN
         : OTHER_ACCOMMODATION_BOARDING_MIN
       : 0;
-    const start = minutesOfDay(r.scheduledPickupTime);
+    const start = minutesFromDay(r.scheduledPickupTime, date);
     const pickupLoc = locations.get(r.pickupLocation.toString());
     const dropoffLoc = locations.get(r.dropoffLocation.toString());
     const estimatedDropoff = r.estimatedDropoffTime
-      ? minutesOfDay(r.estimatedDropoffTime)
+      ? minutesFromDay(r.estimatedDropoffTime, date)
       : null;
     const busyUntil =
       estimatedDropoff ??
@@ -191,8 +288,8 @@ async function loadDay(date: string) {
       needsWheelchair,
       start,
       end: Math.max(busyUntil, start) + boarding,
-      pickupWindowStart: minutesOfDay(r.pickupWindowStart),
-      pickupWindowEnd: minutesOfDay(r.pickupWindowEnd),
+      pickupWindowStart: minutesFromDay(r.pickupWindowStart, date),
+      pickupWindowEnd: minutesFromDay(r.pickupWindowEnd, date),
       estimatedDropoff,
       pickup: pickupLoc ?? null,
       dropoff: dropoffLoc ?? null,
@@ -269,6 +366,10 @@ function diagnoseAssignment(
   const d = ctx.drivers[di];
   const v = ctx.vehicles[vi];
   const problems: string[] = [];
+  if (!inServiceHours(ride))
+    problems.push(
+      `${who}: pickup is outside service hours (${SERVICE_HOURS}).`,
+    );
   if (!d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end))
     problems.push(
       `${who}: ${d.name} is not on shift for the whole ride (${
@@ -279,22 +380,14 @@ function diagnoseAssignment(
           : "no shift today"
       }).`,
     );
-  const driverClash = (ctx.busyByDriver.get(d.id) ?? []).find(
-    (b) => !compatible(b, ride),
-  );
-  if (driverClash)
-    problems.push(
-      `${who}: ${d.name} is already driving ${driverClash.studentName} at ${formatMinutes(driverClash.start)}.`,
-    );
-  if (ride.needsWheelchair && !v.wheelchair)
-    problems.push(`${who}: vehicle ${v.label} is not wheelchair-accessible.`);
-  const vehicleClash = (ctx.busyByVehicle.get(v.id) ?? []).find(
-    (b) => !compatible(b, ride),
-  );
-  if (vehicleClash)
-    problems.push(
-      `${who}: vehicle ${v.label} is already in use for ${vehicleClash.studentName} at ${formatMinutes(vehicleClash.start)}.`,
-    );
+  for (const p of bookingProblems(
+    ride,
+    d,
+    v,
+    ctx.busyByDriver,
+    ctx.busyByVehicle,
+  ))
+    problems.push(`${who}: ${p}`);
   return problems.length
     ? problems
     : [`${who}: assignment is no longer valid.`];
@@ -314,23 +407,14 @@ export async function planDay(
     ? new Set(fixed.map((f) => `${f.rideId}|${f.driverId}|${f.vehicleId}`))
     : null;
 
-  const busyByDriver = new Map<string, Ride[]>();
-  const busyByVehicle = new Map<string, Ride[]>();
-  const pairsInUse = new Set<string>();
-  for (const r of busy) {
-    if (r.driverId)
-      busyByDriver.set(r.driverId, [
-        ...(busyByDriver.get(r.driverId) ?? []),
-        r,
-      ]);
-    if (r.vehicleId)
-      busyByVehicle.set(r.vehicleId, [
-        ...(busyByVehicle.get(r.vehicleId) ?? []),
-        r,
-      ]);
-    if (r.driverId && r.vehicleId)
-      pairsInUse.add(`${r.driverId}|${r.vehicleId}`);
-  }
+  const { byDriver: busyByDriver, byVehicle: busyByVehicle } = indexBusy(busy);
+  const busyToday = busy.filter(touchesDay);
+  const shownByDriver = indexBusy(busyToday).byDriver;
+  const pairsInUse = new Set(
+    busyToday.flatMap((r) =>
+      r.driverId && r.vehicleId ? [`${r.driverId}|${r.vehicleId}`] : [],
+    ),
+  );
 
   type Var = { name: string; ride: number; driver: number; vehicle: number };
   const vars: Var[] = [];
@@ -352,6 +436,13 @@ export async function planDay(
       (busyByVehicle.get(v.id) ?? []).every((b) => compatible(b, ride)),
     );
 
+    if (!inServiceHours(ride)) {
+      reasons.set(
+        ride.id,
+        `Pickup is outside service hours (${SERVICE_HOURS})`,
+      );
+      return;
+    }
     if (!onShift.length)
       reasons.set(ride.id, "No driver is on shift for the whole ride");
     else if (!freeDrivers.length)
@@ -546,21 +637,23 @@ export async function planDay(
       }
     }
   };
+  const shownByVehicle = indexBusy(busyToday).byVehicle;
   findOverlaps(
     "driver",
-    busyByDriver,
+    shownByDriver,
     (id) => drivers.find((d) => d.id === id)?.name ?? "Unknown driver",
   );
   findOverlaps(
     "vehicle",
-    busyByVehicle,
+    shownByVehicle,
     (id) =>
       vehicles.find((v) => v.id === id)?.label ??
       busy.find((r) => r.vehicleId === id)?.vehicleLabel ??
       "Unknown vehicle",
   );
 
-  const offShiftBookings = busy.flatMap((ride) => {
+  const offShiftBookings = busyToday.flatMap((ride) => {
+    if (ride.start < 0) return [];
     const d = drivers.find((dd) => dd.id === ride.driverId);
     if (!d || d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end))
       return [];
@@ -577,7 +670,7 @@ export async function planDay(
       name: d.name,
       shifts: d.shifts,
       rides: [
-        ...(busyByDriver.get(d.id) ?? []).map((r) => ({
+        ...(shownByDriver.get(d.id) ?? []).map((r) => ({
           ...r,
           kind: "existing" as const,
         })),
@@ -601,4 +694,29 @@ export async function planDay(
       .filter((r) => !assignedRides.has(r.id))
       .map((r) => ({ ...r, reason: reasons.get(r.id) ?? "" })),
   };
+}
+
+//Problems with booking a requested ride on a driver and vehicle given the bookings currently stored.
+export async function findBookingConflicts(
+  routeId: string,
+  driverId: string,
+  vehicleId: string,
+): Promise<string[]> {
+  await connectMongoDB();
+  const route = await RouteModel.findById(routeId, {
+    scheduledPickupTime: 1,
+  }).lean();
+  if (!route) return [];
+  const { drivers, vehicles, requested, busy } = await loadDay(
+    formatInTimeZone(route.scheduledPickupTime, TZ, "yyyy-MM-dd"),
+  );
+  const ride = requested.find((r) => r.id === routeId);
+  const vehicle = vehicles.find((v) => v.id === vehicleId);
+  if (!ride || !vehicle) return [];
+  const driver = drivers.find((d) => d.id === driverId) ?? {
+    id: driverId,
+    name: "The driver",
+  };
+  const { byDriver, byVehicle } = indexBusy(busy);
+  return bookingProblems(ride, driver, vehicle, byDriver, byVehicle);
 }

@@ -20,13 +20,13 @@
 
 .experimental {
   padding: 0.3rem 0.9rem;
-  border-radius: 9999px;
+  border-radius: 999rem;
   font-family: var(--font-paragraph);
   font-size: 1.2rem;
   font-weight: 600;
   background: var(--color-status-amber-fill);
   color: var(--color-status-amber-text);
-  border: 1px solid var(--color-status-amber-stroke-weak);
+  border: 0.1rem solid var(--color-status-amber-stroke-weak);
 }
 
 /* ── Controls ── */
@@ -39,7 +39,7 @@
 
 .dateInput {
   padding: 0.7rem 1rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.5rem;
   font-family: var(--font-paragraph);
   font-size: 1.4rem;
@@ -48,7 +48,7 @@
 
 .btnSecondary {
   padding: 0.8rem 1.8rem;
-  border: 1px solid var(--color-brand-text);
+  border: 0.1rem solid var(--color-brand-text);
   border-radius: 0.4rem;
   background: transparent;
   font-family: var(--font-paragraph);
@@ -59,7 +59,7 @@
 }
 
 .btnSecondary:hover:not(:disabled) {
-  background: rgba(24, 55, 119, 0.06);
+  background: var(--color-brand-fill);
 }
 
 .btnPrimary {
@@ -70,12 +70,12 @@
   font-family: var(--font-paragraph);
   font-size: 1.4rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-solid-bg-base);
   cursor: pointer;
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: #152d55;
+  filter: brightness(0.85);
 }
 
 .btnPrimary:disabled,
@@ -89,7 +89,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.6rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.8rem;
   padding: 1.6rem 2rem;
 }
@@ -172,14 +172,14 @@
 
 .bar {
   position: relative;
-  background: #f1f1f1;
+  background: var(--color-grey-fill-weak);
   border-radius: 0.8rem;
   overflow: hidden;
 }
 
 .shift,
 .swatchShift {
-  background: #9beba0;
+  background: var(--color-status-green);
 }
 
 .shift {
@@ -193,9 +193,9 @@
   position: absolute;
   top: 0;
   z-index: 1;
-  width: 1px;
+  width: 0.1rem;
   height: 100%;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--color-grey-off-state);
   pointer-events: none;
 }
 
@@ -204,7 +204,7 @@
   top: 0;
   z-index: 1;
   height: 100%;
-  border-left: 1px dashed rgba(0, 0, 0, 0.12);
+  border-left: 0.1rem dashed var(--color-grey-stroke-weak);
   pointer-events: none;
 }
 
@@ -216,7 +216,7 @@
   box-sizing: border-box;
   /* Square left edge marks the exact start time on the grid. */
   border-radius: 0 0.4rem 0.4rem 0;
-  box-shadow: 1px 0 0 0 #fff;
+  box-shadow: 0.1rem 0 0 0 var(--color-solid-bg-base);
   font-family: var(--font-paragraph);
   font-size: 1.1rem;
   font-weight: 600;
@@ -231,34 +231,43 @@
   filter: brightness(0.92);
 }
 
+/* Translucent theme colors sit on the solid base so blocks stay opaque. */
 .ride_existing,
-.swatchExisting {
-  background: #8e8e8e;
-  color: #fff;
+.swatchExisting,
+.swatchConflict {
+  background-color: var(--color-solid-bg-base);
+  background-image: linear-gradient(
+    var(--color-grey-stroke-strong),
+    var(--color-grey-stroke-strong)
+  );
+  color: var(--color-solid-bg-base);
 }
 
 .ride_proposed,
 .swatchProposed {
-  background: #2e7d32;
-  color: #fff;
+  background: var(--color-status-green-text);
+  color: var(--color-solid-bg-base);
 }
 
 .ride_unassigned,
 .swatchUnassigned {
-  background: var(--color-status-red-fill, #fde8e8);
-  color: var(--color-status-red-text, #b42318);
-  box-shadow: inset 0 0 0 1px var(--color-status-red-text, #b42318);
+  background-color: var(--color-solid-bg-base);
+  background-image: linear-gradient(
+    var(--color-status-red-fill),
+    var(--color-status-red-fill)
+  );
+  color: var(--color-status-red-text);
+  box-shadow: inset 0 0 0 0.1rem var(--color-status-red-text);
 }
 
 .rideConflict {
   box-shadow:
-    0 0 0 1px #fff,
-    0 0 0 3px var(--color-status-red-text, #b42318);
+    0 0 0 0.1rem var(--color-solid-bg-base),
+    0 0 0 0.3rem var(--color-status-red-text);
 }
 
 .swatchConflict {
-  background: #8e8e8e;
-  box-shadow: inset 0 0 0 2px var(--color-status-red-text, #b42318);
+  box-shadow: inset 0 0 0 0.2rem var(--color-status-red-text);
 }
 
 /* ── Compact alert cards ── */
@@ -267,9 +276,9 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.8rem 1.2rem;
-  border: 1px solid var(--color-status-red-text, #b42318);
+  border: 0.1rem solid var(--color-status-red-text);
   border-radius: 0.6rem;
-  background: var(--color-status-red-fill, #fde8e8);
+  background: var(--color-status-red-fill);
   font-family: var(--font-paragraph);
 }
 
@@ -287,7 +296,7 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: 1.5rem;
-  color: var(--color-status-red-text, #b42318);
+  color: var(--color-status-red-text);
 }
 
 .alertHint {
@@ -318,25 +327,25 @@
 }
 
 .alert_success {
-  border-color: #2e7d32;
-  background: #edf7ee;
+  border-color: var(--color-status-green-text);
+  background: var(--color-status-green-fill);
 }
 
 .alert_success .alertTitle {
-  color: #2e7d32;
+  color: var(--color-status-green-text);
 }
 
 .alert_warning {
-  border-color: var(--color-status-amber-stroke-weak, #e0b252);
-  background: var(--color-status-amber-fill, #fff6e0);
+  border-color: var(--color-status-amber-stroke-weak);
+  background: var(--color-status-amber-fill);
 }
 
 .alert_warning .alertTitle {
-  color: var(--color-status-amber-text, #8a5a00);
+  color: var(--color-status-amber-text);
 }
 
 .unassignedName {
-  color: var(--color-status-red-text, #b42318);
+  color: var(--color-status-red-text);
   font-weight: 600;
 }
 
@@ -356,7 +365,7 @@
 }
 
 .table thead tr {
-  background: #dcecf8;
+  background: var(--color-brand-fill);
 }
 
 .table th {
@@ -365,14 +374,14 @@
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--color-grey-text-strong);
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
   white-space: nowrap;
 }
 
 .table td {
   padding: 1rem 1.2rem;
   color: var(--color-grey-text-strong);
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
 }
 
 .table tbody tr:last-child td {
@@ -396,53 +405,53 @@
 }
 
 .proposedCard {
-  border-color: #2e7d32;
+  border-color: var(--color-status-green-text);
 }
 
 .proposedCard .sectionTitle {
-  color: #2e7d32;
+  color: var(--color-status-green-text);
 }
 
 .proposedTable thead tr {
-  background: #2e7d32;
+  background: var(--color-status-green-text);
 }
 
 .proposedTable th {
-  color: #fff;
-  border-bottom-color: #2e7d32;
+  color: var(--color-solid-bg-base);
+  border-bottom-color: var(--color-status-green-text);
 }
 
 .proposedTable td {
-  border-bottom-color: #c8e6c9;
+  border-bottom-color: var(--color-status-green-stroke-weak);
 }
 
 .proposedTable tbody tr:nth-child(even) {
-  background: #f1f8f1;
+  background: var(--color-status-green-fill);
 }
 
 .unassignedCard {
-  border-color: var(--color-status-red-text, #b42318);
+  border-color: var(--color-status-red-text);
 }
 
 .unassignedCard .sectionTitle {
-  color: var(--color-status-red-text, #b42318);
+  color: var(--color-status-red-text);
 }
 
 .unassignedTable thead tr {
-  background: var(--color-status-red-fill, #fde8e8);
+  background: var(--color-status-red-fill);
 }
 
 .unassignedTable th {
-  color: var(--color-status-red-text, #b42318);
-  border-bottom: 1px solid var(--color-status-red-text, #b42318);
+  color: var(--color-status-red-text);
+  border-bottom: 0.1rem solid var(--color-status-red-text);
 }
 
 .unassignedTable td {
-  border-bottom-color: var(--color-status-red-fill, #fde8e8);
+  border-bottom-color: var(--color-status-red-fill);
 }
 
 .unassignedTable td:last-child {
-  color: var(--color-status-red-text, #b42318);
+  color: var(--color-status-red-text);
   font-weight: 600;
 }
 

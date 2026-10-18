@@ -3,10 +3,16 @@ import mongoose from "mongoose";
 import { getUserFromRequest } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
-import { scheduleRoute } from "@/server/db/actions/RouteAction";
 import {
+  schedulingLockKeys,
+  scheduleRouteWhileLocked,
+  withSchedulingLock,
+} from "@/server/db/actions/RouteAction";
+import {
+  BookingConflictException,
   DriverNotAvailableException,
   RouteReferenceNotFoundException,
+  SchedulingBusyException,
 } from "@/utils/exceptions/route";
 import {
   planDay,
@@ -100,6 +106,7 @@ function describeScheduleError(e: unknown, driverName: string, at: string) {
   if (e instanceof DriverNotAvailableException)
     return `${driverName} is not on shift at ${at}.`;
   if (e instanceof RouteReferenceNotFoundException) return `${e.message}.`;
+  if (e instanceof BookingConflictException) return e.message;
   return `Unexpected error: ${e instanceof Error ? e.message : String(e)}`;
 }
 
@@ -121,52 +128,27 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const plan = await planDay(date, assignments);
-    const info = new Map(
-      plan.drivers.flatMap((d) =>
-        d.rides
-          .filter((r) => r.kind === "proposed")
-          .map((r) => [r.id, { ride: r, driverName: d.name }] as const),
-      ),
+    // Validation and every write share one lock so concurrent applies or
+    // manual bookings can't slip a conflicting ride in between.
+    const results = await withSchedulingLock(
+      schedulingLockKeys(assignments),
+      () => applyAssignments(date, assignments),
     );
-
-    const results = [];
-    for (const a of assignments) {
-      const found = info.get(a.rideId);
-      const summary = {
-        rideId: a.rideId,
-        studentName: found?.ride.studentName ?? "Unknown student",
-        pickup: found ? formatMinutes(found.ride.start) : "",
-        driverName: found?.driverName ?? "Unknown driver",
-        vehicleLabel: found?.ride.vehicleLabel ?? "",
-      };
-      try {
-        const updated = await scheduleRoute(a.rideId, a.driverId, a.vehicleId);
-        results.push({
-          ...summary,
-          success: !!updated,
-          error: updated
-            ? undefined
-            : "Ride is no longer requested; it may have been scheduled or cancelled.",
-        });
-      } catch (e) {
-        console.error("[POST /api/routes/auto-schedule] ride", a.rideId, e);
-        results.push({
-          ...summary,
-          success: false,
-          error: describeScheduleError(e, summary.driverName, summary.pickup),
-        });
-      }
-    }
     return NextResponse.json(
       { results },
       { status: results.every((r) => r.success) ? HTTP_STATUS_CODE.OK : 207 },
     );
   } catch (e) {
-    if (e instanceof AutoScheduleConflictError) {
+    if (
+      e instanceof AutoScheduleConflictError ||
+      e instanceof SchedulingBusyException
+    ) {
       return NextResponse.json(
-        { error: e.message, details: e.details },
-        { status: 409 },
+        {
+          error: e.message,
+          details: e instanceof AutoScheduleConflictError ? e.details : [],
+        },
+        { status: HTTP_STATUS_CODE.CONFLICT },
       );
     }
     console.error("[POST /api/routes/auto-schedule]", e);
@@ -174,4 +156,49 @@ export async function POST(req: NextRequest) {
       status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
     });
   }
+}
+
+async function applyAssignments(date: string, assignments: Assignment[]) {
+  const plan = await planDay(date, assignments);
+  const info = new Map(
+    plan.drivers.flatMap((d) =>
+      d.rides
+        .filter((r) => r.kind === "proposed")
+        .map((r) => [r.id, { ride: r, driverName: d.name }] as const),
+    ),
+  );
+
+  const results = [];
+  for (const a of assignments) {
+    const found = info.get(a.rideId);
+    const summary = {
+      rideId: a.rideId,
+      studentName: found?.ride.studentName ?? "Unknown student",
+      pickup: found ? formatMinutes(found.ride.start) : "",
+      driverName: found?.driverName ?? "Unknown driver",
+      vehicleLabel: found?.ride.vehicleLabel ?? "",
+    };
+    try {
+      const updated = await scheduleRouteWhileLocked(
+        a.rideId,
+        a.driverId,
+        a.vehicleId,
+      );
+      results.push({
+        ...summary,
+        success: !!updated,
+        error: updated
+          ? undefined
+          : "Ride is no longer requested; it may have been scheduled or cancelled.",
+      });
+    } catch (e) {
+      console.error("[POST /api/routes/auto-schedule] ride", a.rideId, e);
+      results.push({
+        ...summary,
+        success: false,
+        error: describeScheduleError(e, summary.driverName, summary.pickup),
+      });
+    }
+  }
+  return results;
 }

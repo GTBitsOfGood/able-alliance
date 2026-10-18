@@ -1,15 +1,20 @@
+import mongoose from "mongoose";
 import connectMongoDB from "../mongodb";
 import RouteModel, { RouteStatus } from "../models/RouteModel";
 import LocationModel from "../models/LocationModel";
 import UserModel from "../models/UserModel";
 import VehicleModel from "../models/VehicleModel";
 import Chatlog from "../models/ChatlogModel";
+import SchedulingLockModel from "../models/SchedulingLockModel";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import {
   RouteAlreadyExistsException,
   RouteReferenceNotFoundException,
   DriverNotAvailableException,
+  BookingConflictException,
+  SchedulingBusyException,
 } from "@/utils/exceptions/route";
+import { findBookingConflicts } from "@/server/scheduling/autoSchedule";
 import { getMapboxTravelDuration } from "@/server/mapbox";
 import {
   estDayOfWeek,
@@ -344,7 +349,71 @@ export async function markRouteMissing(routeId: string) {
   return route.toObject();
 }
 
+const LOCK_LEASE_MS = 60_000;
+const LOCK_WAIT_MS = 10_000;
+const LOCK_RETRY_MS = 150;
+
+export function schedulingLockKeys(
+  assignments: { driverId: string; vehicleId: string }[],
+): string[] {
+  return assignments.flatMap((a) => [
+    `driver:${a.driverId}`,
+    `vehicle:${a.vehicleId}`,
+  ]);
+}
+
+
+export async function withSchedulingLock<T>(
+  keys: string[],
+  fn: () => Promise<T>,
+): Promise<T> {
+  await connectMongoDB();
+  const owner = new mongoose.Types.ObjectId().toString();
+  const held: string[] = [];
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  try {
+    // Sorted acquisition keeps two overlapping batches from deadlocking.
+    for (const key of [...new Set(keys)].sort()) {
+      for (;;) {
+        const now = new Date();
+        try {
+          await SchedulingLockModel.findOneAndUpdate(
+            { _id: key, expiresAt: { $lt: now } },
+            {
+              $set: {
+                owner,
+                expiresAt: new Date(now.getTime() + LOCK_LEASE_MS),
+              },
+            },
+            { upsert: true },
+          );
+          held.push(key);
+          break;
+        } catch (error) {
+          if ((error as { code?: number }).code !== 11000) throw error;
+          if (Date.now() > deadline) throw new SchedulingBusyException();
+          await new Promise((r) => setTimeout(r, LOCK_RETRY_MS));
+        }
+      }
+    }
+    return await fn();
+  } finally {
+    if (held.length)
+      await SchedulingLockModel.deleteMany({ _id: { $in: held }, owner });
+  }
+}
+
 export async function scheduleRoute(
+  routeId: string,
+  driverId: string,
+  vehicleId: string,
+) {
+  return withSchedulingLock(schedulingLockKeys([{ driverId, vehicleId }]), () =>
+    scheduleRouteWhileLocked(routeId, driverId, vehicleId),
+  );
+}
+
+export async function scheduleRouteWhileLocked(
   routeId: string,
   driverId: string,
   vehicleId: string,
@@ -396,6 +465,11 @@ export async function scheduleRoute(
 
   if (!isAvailable) {
     throw new DriverNotAvailableException();
+  }
+
+  const conflicts = await findBookingConflicts(routeId, driverId, vehicleId);
+  if (conflicts.length) {
+    throw new BookingConflictException(conflicts);
   }
   const driverEmbed = {
     _id: driver._id,

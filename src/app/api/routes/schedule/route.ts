@@ -5,6 +5,8 @@ import { scheduleRoute } from "@/server/db/actions/RouteAction";
 import {
   RouteReferenceNotFoundException,
   DriverNotAvailableException,
+  BookingConflictException,
+  SchedulingBusyException,
 } from "@/utils/exceptions/route";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { internalErrorPayload } from "@/utils/apiError";
@@ -58,6 +60,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
     if (e instanceof DriverNotAvailableException) {
+      return NextResponse.json({ error: e.message }, { status: e.code });
+    }
+    if (e instanceof BookingConflictException) {
+      return NextResponse.json(
+        { error: e.message, details: e.details },
+        { status: e.code },
+      );
+    }
+    if (e instanceof SchedulingBusyException) {
       return NextResponse.json({ error: e.message }, { status: e.code });
     }
     if (e instanceof SyntaxError || e instanceof TypeError) {

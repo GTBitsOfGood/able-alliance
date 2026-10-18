@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMeasure } from "react-use";
@@ -38,6 +38,7 @@ const KIND_LABEL: Record<BlockKind, string> = {
 const LABEL_CHAR_PX = 6.6;
 const LABEL_PADDING_PX = 14;
 const FALLBACK_BAR_PX = 800;
+const DAY_MIN = 24 * 60;
 
 type Alert = {
   tone: "success" | "warning" | "error";
@@ -78,15 +79,21 @@ function todayEst(): string {
 }
 
 function minLabel(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = String(min % 60).padStart(2, "0");
-  return `${h % 12 || 12}:${m} ${h >= 12 ? "PM" : "AM"}`;
+  const inDay = ((min % DAY_MIN) + DAY_MIN) % DAY_MIN;
+  const h = Math.floor(inDay / 60);
+  const m = String(inDay % 60).padStart(2, "0");
+  const label = `${h % 12 || 12}:${m} ${h >= 12 ? "PM" : "AM"}`;
+  return min < 0
+    ? `${label} (prev day)`
+    : min >= DAY_MIN
+      ? `${label} (next day)`
+      : label;
 }
 
 function rangeLabel(from: number, to: number): string {
-  const [fromTime, fromPeriod] = minLabel(from).split(" ");
+  const [fromTime, ...fromRest] = minLabel(from).split(" ");
   const toLabel = minLabel(to);
-  return toLabel.endsWith(fromPeriod)
+  return toLabel.endsWith(` ${fromRest.join(" ")}`)
     ? `${fromTime}–${toLabel}`
     : `${minLabel(from)}–${toLabel}`;
 }
@@ -98,7 +105,7 @@ function dropoffLabel(r: RideInfo): string {
 }
 
 function hourLabel(min: number): string {
-  const h = Math.floor(min / 60);
+  const h = Math.floor(min / 60) % 24;
   return `${h % 12 || 12} ${h >= 12 ? "PM" : "AM"}`;
 }
 
@@ -115,7 +122,7 @@ function toBlock(r: RideInfo, kind: BlockKind, extra?: string): Block {
     kind,
     start: r.start,
     end: r.end,
-    label: `${minLabel(r.start).replace(/ [AP]M$/, "")} ${shortName(r.studentName)}`,
+    label: `${minLabel(r.start).split(" ")[0]} ${shortName(r.studentName)}`,
     title: [
       `${r.studentName} (${KIND_LABEL[kind]})`,
       `Pickup ${minLabel(r.start)} (window ${rangeLabel(r.pickupWindowStart, r.pickupWindowEnd)})`,
@@ -163,10 +170,13 @@ function layoutLanes(
   const placed = [...blocks]
     .sort((a, b) => a.start - b.start)
     .map((b) => {
-      const left = pct(b.start);
+      const left = Math.max(pct(b.start), 0);
       const labelPct =
         ((b.label.length * LABEL_CHAR_PX + LABEL_PADDING_PX) / barPx) * 100;
-      const width = Math.max(pct(b.end) - left, labelPct);
+      const width = Math.min(
+        Math.max(Math.min(pct(b.end), 100) - left, labelPct),
+        100 - left,
+      );
       let lane = laneEnds.findIndex((end) => end <= left);
       if (lane === -1) lane = laneEnds.push(0) - 1;
       laneEnds[lane] = left + width + 0.3;
@@ -187,17 +197,21 @@ export default function AutoSchedulePage() {
   const [applying, setApplying] = useState(false);
   const [alert, setAlert] = useState<Alert | null>(null);
   const [axisRef, { width: axisWidth }] = useMeasure<HTMLDivElement>();
+  // Bumped on every request and date change; stale responses are dropped.
+  const requestId = useRef(0);
 
   useEffect(() => {
     if (sessionStatus !== "loading" && !isAdmin) router.replace("/");
   }, [sessionStatus, isAdmin, router]);
 
   async function generate(keepAlert = false) {
+    const id = ++requestId.current;
     setLoading(true);
     if (!keepAlert) setAlert(null);
     try {
       const r = await fetch(`/api/routes/auto-schedule?date=${date}`);
       const body = await readJson(r);
+      if (id !== requestId.current) return;
       if (!r.ok) {
         setPlan(null);
         setAlert({
@@ -209,9 +223,9 @@ export default function AutoSchedulePage() {
       }
       setPlan(body as AutoSchedulePlan);
     } catch {
-      setAlert(NETWORK_ALERT);
+      if (id === requestId.current) setAlert(NETWORK_ALERT);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }
 
@@ -223,7 +237,10 @@ export default function AutoSchedulePage() {
       const r = await fetch("/api/routes/auto-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, assignments: plan.assignments }),
+        body: JSON.stringify({
+          date: plan.date,
+          assignments: plan.assignments,
+        }),
       });
       const body = await readJson(r);
       if (!r.ok && r.status !== 207) {
@@ -341,10 +358,13 @@ export default function AutoSchedulePage() {
 
   const spans = rows.flatMap((r) => [...r.shifts, ...r.blocks]);
   const windowStart = spans.length
-    ? Math.floor(Math.min(...spans.map((b) => b.start)) / 60) * 60
+    ? Math.max(Math.floor(Math.min(...spans.map((b) => b.start)) / 60) * 60, 0)
     : 0;
   const windowEnd = spans.length
-    ? Math.ceil(Math.max(...spans.map((b) => b.end)) / 60) * 60
+    ? Math.min(
+        Math.ceil(Math.max(...spans.map((b) => b.end)) / 60) * 60,
+        DAY_MIN,
+      )
     : 0;
   const span = Math.max(windowEnd - windowStart, 60);
   const pct = (min: number) => ((min - windowStart) / span) * 100;
@@ -366,7 +386,9 @@ export default function AutoSchedulePage() {
           type="date"
           className={styles.dateInput}
           value={date}
+          disabled={loading || applying}
           onChange={(e) => {
+            requestId.current++;
             setDate(e.target.value);
             setPlan(null);
           }}
