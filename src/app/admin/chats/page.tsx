@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
-import BogButton from "@/components/BogButton/BogButton";
+import BogTable, {
+  type ColumnHeaderCellContent,
+  type TableRow,
+} from "@/components/BogTable/BogTable";
+import AdminChatView from "@/app/admin/AdminChatView";
+import styles from "./styles.module.css";
 
 type ChatUser = {
   firstName: string;
@@ -18,59 +22,22 @@ type ChatlogEntry = {
   status: "active" | "archived";
 };
 
-function ChatsTable({ chats }: { chats: ChatlogEntry[] }) {
-  if (chats.length === 0) {
-    return <p className="text-gray-600">No chats found.</p>;
-  }
-
-  return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b bg-gray-50">
-            <th className="p-3">Student</th>
-            <th className="p-3">Driver</th>
-            <th className="p-3">Started</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Chat</th>
-          </tr>
-        </thead>
-        <tbody>
-          {chats.map((chat) => {
-            const routeId = String(chat.routeId);
-            return (
-              <tr key={routeId} className="border-b last:border-b-0">
-                <td className="p-3">
-                  {chat.student.firstName} {chat.student.lastName}
-                </td>
-                <td className="p-3">
-                  {chat.driver
-                    ? `${chat.driver.firstName} ${chat.driver.lastName}`
-                    : "—"}
-                </td>
-                <td className="p-3">{new Date(chat.time).toLocaleString()}</td>
-                <td className="p-3 capitalize">{chat.status}</td>
-                <td className="p-3">
-                  <Link href={`/admin/chat/${encodeURIComponent(routeId)}`}>
-                    <BogButton variant="secondary" size="small">
-                      Open
-                    </BogButton>
-                  </Link>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+const COLUMNS: ColumnHeaderCellContent[] = [
+  { content: "Student", datatype: "string" },
+  { content: "Driver", datatype: "string" },
+  { content: "Started", datatype: "string" },
+  { content: "Status", datatype: "string" },
+  { content: "Chat", datatype: "string" },
+];
 
 export default function AdminChatsPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [chatlogs, setChatlogs] = useState<ChatlogEntry[]>([]);
+  const [selectedChat, setSelectedChat] = useState<ChatlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isAuthorized =
+    session?.user?.type === "Admin" || session?.user?.type === "SuperAdmin";
 
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;
@@ -103,27 +70,93 @@ export default function AdminChatsPage() {
     void loadChats();
   }, [session, sessionStatus]);
 
-  if (sessionStatus === "loading" || loading) {
+  if (sessionStatus === "loading") {
     return <main className="p-6 text-gray-600">Loading chats...</main>;
   }
 
-  const isAuthorized =
-    session?.user?.type === "Admin" || session?.user?.type === "SuperAdmin";
-
-  return (
-    <main className="p-6">
-      <h1 className="mb-6 text-3xl font-semibold">Chats</h1>
-      {!isAuthorized && (
-        <p className="mb-4 text-sm text-red-700" role="alert">
+  if (!isAuthorized) {
+    return (
+      <main className={styles.page}>
+        <h1 className={styles.title}>Chats</h1>
+        <p className={styles.error} role="alert">
           You do not have access to chats.
         </p>
-      )}
+      </main>
+    );
+  }
+
+  if (loading) {
+    return <main className="p-6 text-gray-600">Loading chats...</main>;
+  }
+
+  const rows: TableRow[] = chatlogs.map((chat) => ({
+    styleProps: { id: `chat-${String(chat.routeId)}` },
+    cells: [
+      { content: `${chat.student.firstName} ${chat.student.lastName}` },
+      {
+        content: chat.driver
+          ? `${chat.driver.firstName} ${chat.driver.lastName}`
+          : "—",
+      },
+      { content: new Date(chat.time).toLocaleString() },
+      { content: chat.status === "active" ? "Active" : "Archived" },
+      { content: <span className={styles.viewChat}>View chat</span> },
+    ],
+  }));
+
+  return (
+    <main className={styles.page}>
+      <h1 className={styles.title}>Chats</h1>
       {isAuthorized && error && (
-        <p className="mb-4 text-sm text-red-700" role="alert">
+        <p className={styles.error} role="alert">
           {error}
         </p>
       )}
-      {isAuthorized && !error && <ChatsTable chats={chatlogs} />}
+      {isAuthorized && !error && (
+        <div className={styles.tableWrap}>
+          {chatlogs.length === 0 ? (
+            <p className={styles.empty}>No chats found.</p>
+          ) : (
+            <BogTable
+              columnHeaders={COLUMNS}
+              rows={rows}
+              onRowClick={(_, rowElement) => {
+                const routeId = rowElement.id.replace(/^chat-/, "");
+                setSelectedChat(
+                  chatlogs.find((chat) => String(chat.routeId) === routeId) ??
+                    null,
+                );
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {selectedChat && (
+        <div className={styles.drawerLayer}>
+          <button
+            type="button"
+            className={styles.drawerBackdrop}
+            aria-label="Close chat"
+            onClick={() => setSelectedChat(null)}
+          />
+          <aside className={styles.drawer} aria-label="Chat transcript">
+            <AdminChatView
+              routeId={String(selectedChat.routeId)}
+              rideLabel={[
+                `${selectedChat.student.firstName} ${selectedChat.student.lastName}`,
+                selectedChat.driver
+                  ? `Driver: ${selectedChat.driver.firstName} ${selectedChat.driver.lastName}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              routeStatus={selectedChat.status}
+              onClose={() => setSelectedChat(null)}
+            />
+          </aside>
+        </div>
+      )}
     </main>
   );
 }

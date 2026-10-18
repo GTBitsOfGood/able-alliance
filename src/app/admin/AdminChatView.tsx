@@ -33,7 +33,8 @@ export default function AdminChatView({
   const { data: session } = useSession();
   const [chatlog, setChatlog] = useState<Chatlog | null>(null);
   const [input, setInput] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [socketError, setSocketError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -43,7 +44,7 @@ export default function AdminChatView({
 
     const loadChatlog = async () => {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       try {
         const response = await fetch(
           `/api/chat-logs?routeId=${encodeURIComponent(routeId)}`,
@@ -63,7 +64,7 @@ export default function AdminChatView({
         }
       } catch (caught) {
         if (!cancelled) {
-          setError(
+          setLoadError(
             caught instanceof Error
               ? caught.message
               : "Unable to load this ride transcript.",
@@ -93,25 +94,39 @@ export default function AdminChatView({
 
     nextSocket.on("connect", () => {
       setConnected(true);
-      setError(null);
+      setSocketError(null);
     });
     nextSocket.on("disconnect", () => setConnected(false));
+    nextSocket.on("routeClosed", () => {
+      setConnected(false);
+      setChatlog((current) =>
+        current ? { ...current, status: "archived" } : current,
+      );
+      setSocketError("This ride has ended. The chat is now read-only.");
+    });
     nextSocket.on("chatHistory", (messages: ChatMessage[]) => {
       setChatlog((current) =>
         current ? { ...current, messages } : { status: "active", messages },
       );
     });
     nextSocket.on("receiveChatMessage", (message: ChatMessage) => {
+      if (message.senderType === "admin") {
+        setInput((currentInput) =>
+          currentInput.trim() === message.text ? "" : currentInput,
+        );
+      }
       setChatlog((current) =>
         current
           ? { ...current, messages: [...current.messages, message] }
           : current,
       );
     });
-    nextSocket.on("chatError", (message: string) => setError(message));
+    nextSocket.on("chatError", (message: string) => {
+      setSocketError(message);
+    });
     nextSocket.on("connect_error", (connectionError) => {
       setConnected(false);
-      setError(
+      setSocketError(
         `Unable to connect to the active ride chat: ${connectionError.message}`,
       );
     });
@@ -129,7 +144,6 @@ export default function AdminChatView({
     const text = input.trim();
     if (!text || !socketRef.current?.connected) return;
     socketRef.current.emit("sendChatMessage", text);
-    setInput("");
   };
 
   return (
@@ -147,9 +161,14 @@ export default function AdminChatView({
         </BogButton>
       </div>
       {loading && <p>Loading transcript...</p>}
-      {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
-      {!loading && !error && (
+      {loadError && <p className="mb-3 text-sm text-red-700">{loadError}</p>}
+      {!loading && !loadError && (
         <>
+          {socketError && (
+            <p className="mb-3 text-sm text-red-700" role="alert">
+              {socketError}
+            </p>
+          )}
           <div className="max-h-80 space-y-3 overflow-y-auto rounded border bg-gray-50 p-4">
             {messages.length === 0 && (
               <p className="text-sm text-gray-600">No messages yet.</p>
@@ -201,6 +220,11 @@ export default function AdminChatView({
                 Send
               </BogButton>
             </form>
+          )}
+          {chatlog?.status === "archived" && (
+            <p className="mt-4 text-sm text-gray-600">
+              This ride has ended. The chat is read-only.
+            </p>
           )}
         </>
       )}
