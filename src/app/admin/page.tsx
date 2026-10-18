@@ -8,7 +8,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect, Suspense } from "react";
 import AccommodationsPanel from "./AccommodationsPanel";
 import VehicleDetailsPanel from "./VehicleDetailsPanel";
-import ConfirmActionModal from "./ConfirmActionModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";

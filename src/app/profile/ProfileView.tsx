@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import { Shifts } from "./Shifts";
-import { DeleteUserModal } from "./DeleteUserModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { ProfileRidesTab } from "./ProfileRidesTab";
 import styles from "./profile.module.css";
 import type { UserType } from "@/utils/authUser";
@@ -745,12 +745,18 @@ export function ProfileView({
             >
               Delete user
             </button>
-            <DeleteUserModal
+            <ConfirmActionModal
               open={showDeleteModal}
               onOpenChange={(open) => {
                 if (!open) setShowDeleteModal(false);
               }}
-              onConfirmDelete={() => void handleDelete()}
+              onConfirm={() => void handleDelete()}
+              variant="destructive"
+              title="Delete User?"
+              description="Are you sure you want to delete this user? This action cannot be undone."
+              confirmLabel="Delete user"
+              confirmingLabel="Deleting…"
+              cancelLabel="Nevermind"
               confirming={deleting}
             />
           </div>

@@ -6,7 +6,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import BogButton from "@/components/BogButton/BogButton";
 import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
-import ConfirmActionModal from "./ConfirmActionModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
 type RouteEntry = {
   _id: string;
