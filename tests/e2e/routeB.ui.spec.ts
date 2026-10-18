@@ -114,6 +114,11 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     driver.getByRole("button", { name: "Student no-show" }),
   ).toBeVisible();
   await driver.getByRole("button", { name: "Student picked up" }).click();
+  const pickupDialog = driver.getByRole("dialog");
+  await expect(
+    pickupDialog.getByRole("heading", { name: "Student Picked Up" }),
+  ).toBeVisible();
+  await pickupDialog.getByRole("button", { name: "Confirm Pickup" }).click();
   await expect(chip).toHaveText("Pickedup");
   await expect(
     driver.getByRole("button", { name: "Student dropped off" }),
