@@ -6,7 +6,9 @@ import type {
 } from "./types.js";
 import express from "express";
 import dotenv from "dotenv";
-import { createServer } from "node:http";
+import { createServer, type RequestListener } from "node:http";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import { registerHttpRoutes } from "./httpRoutes.js";
@@ -15,13 +17,13 @@ import { handleConnection } from "./handlers/connection.js";
 
 dotenv.config();
 
-export async function startServer() {
+export async function startServer(requestHandler?: RequestListener) {
   const PORT = Number(process.env.PORT ?? 4000);
 
   const app = express();
   app.use(express.json());
 
-  const server = createServer(app);
+  const server = createServer(requestHandler ?? app);
   const io = new Server<
     ClientEvents,
     ServerEvents,
@@ -62,9 +64,33 @@ export async function startServer() {
 
     registerHttpRoutes(app, notificationsNsp);
 
-    server.listen(PORT, () => {
-      console.log(`Websocket server listening on port ${PORT}`);
+    if (requestHandler) {
+      // Keep notification HTTP routes on a private loopback listener. Socket.IO
+      // and Next.js share the public server and its Platform-assigned port.
+      const internalServer = createServer(app);
+      await new Promise<void>((resolve, reject) => {
+        internalServer.once("error", reject);
+        internalServer.listen(0, "127.0.0.1", () => {
+          internalServer.off("error", reject);
+          resolve();
+        });
+      });
+      const address = internalServer.address();
+      if (address && typeof address !== "string") {
+        process.env.WEBSOCKET_INTERNAL_URL = `http://127.0.0.1:${address.port}`;
+      }
+      server.once("close", () => internalServer.close());
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(PORT, "0.0.0.0", () => {
+        server.off("error", reject);
+        resolve();
+      });
     });
+    console.log(`Websocket server listening on port ${PORT}`);
+    return server;
   } catch (error) {
     console.error(
       "Failed to connect to MongoDB",
@@ -74,4 +100,9 @@ export async function startServer() {
   }
 }
 
-void startServer();
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  void startServer();
+}

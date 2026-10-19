@@ -2,49 +2,34 @@ app:
   source:
     root: /
   type: nodejs:24
+  size: S
+  resources:
+    base_memory: 512
+    memory_ratio: 512
   build:
     flavor: none
   relationships:
     mongodb: mongodb:mongodb
-    websocket: websocket:http
   hooks:
     build: |
       set -eu
       HUSKY=0 npm ci --include=dev
+      npm --prefix websocket-server ci --include=dev
       npm run build
+      npm --prefix websocket-server prune --omit=dev
   mounts:
     /.next/cache:
       source: local
       source_path: next-cache
   web:
     commands:
-      start: npm start
+      start: npm run start:upsun
     locations:
       /:
         root: ""
         allow: false
         passthru: true
-  disk: 512
-
-websocket:
-  source:
-    root: /
-  type: nodejs:24
-  build:
-    flavor: none
-  relationships:
-    mongodb: mongodb:mongodb
-  hooks:
-    build: |
-      set -eu
-      npm --prefix websocket-server ci --include=dev
-      npm --prefix websocket-server run build
-      npm --prefix websocket-server prune --omit=dev
-  web:
-    commands:
-      start: node websocket-server/dist/server.js
-    locations:
-      /:
+      /socket.io/:
         root: ""
         allow: false
         passthru: true
