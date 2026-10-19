@@ -115,25 +115,33 @@ export function ProfileRidesTab({
   const [locations, setLocations] = useState<LocationMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // A failed background refresh keeps the current rows and only shows this.
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>(
     userType === "Vehicle" ? "this-week" : "all",
   );
 
   const beginRequest = useLatestRequest();
 
-  const fetchRides = useCallback(() => {
-    const isLatest = beginRequest();
-    const param =
-      userType === "Driver"
-        ? `driver=${userId}`
-        : userType === "Vehicle"
-          ? `vehicle=${userId}`
-          : `student=${userId}`;
-    return Promise.all([
-      fetch(`/api/routes?${param}`).then((r) => r.json()),
-      fetch("/api/locations").then((r) => r.json()),
-    ])
-      .then(([routesData, locData]) => {
+  const fetchRides = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const isLatest = beginRequest();
+      const param =
+        userType === "Driver"
+          ? `driver=${userId}`
+          : userType === "Vehicle"
+            ? `vehicle=${userId}`
+            : `student=${userId}`;
+      try {
+        const [routesRes, locRes] = await Promise.all([
+          fetch(`/api/routes?${param}`),
+          fetch("/api/locations"),
+        ]);
+        if (!routesRes.ok || !locRes.ok) throw new Error("Request failed");
+        const [routesData, locData] = await Promise.all([
+          routesRes.json(),
+          locRes.json(),
+        ]);
         if (!isLatest()) return;
         setRoutes(Array.isArray(routesData) ? routesData : []);
         const map: LocationMap = {};
@@ -142,21 +150,31 @@ export function ProfileRidesTab({
         }
         setLocations(map);
         setError(null);
-      })
-      .catch(() => {
-        if (isLatest()) setError("Failed to load rides.");
-      })
-      .finally(() => {
+        setRefreshError(null);
+      } catch {
+        if (!isLatest()) return;
+        if (options?.silent) {
+          setRefreshError(
+            "Couldn't refresh rides. Showing the last loaded data.",
+          );
+        } else {
+          setError("Failed to load rides.");
+        }
+      } finally {
         if (isLatest()) setLoading(false);
-      });
-  }, [userId, userType, beginRequest]);
+      }
+    },
+    [userId, userType, beginRequest],
+  );
 
   useEffect(() => {
+    // This effect starts an asynchronous API request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchRides();
   }, [fetchRides]);
 
   useRouteUpdates(() => {
-    void fetchRides();
+    void fetchRides({ silent: true });
   });
 
   const filtered = useMemo(() => {
@@ -226,6 +244,11 @@ export function ProfileRidesTab({
 
       {loading && <p className={styles.stateMsg}>Loading…</p>}
       {error && <p className={styles.errorMsg}>{error}</p>}
+      {!error && refreshError && (
+        <p className={styles.errorMsg} role="status">
+          {refreshError}
+        </p>
+      )}
 
       {!loading && !error && (
         <div className={styles.tableWrapper}>

@@ -125,6 +125,7 @@ export async function getRoutes(filters?: {
   student?: string;
   driver?: string;
   vehicle?: string;
+  status?: RouteStatus;
   start_time?: Date;
   end_time?: Date;
 }) {
@@ -140,6 +141,9 @@ export async function getRoutes(filters?: {
   }
   if (filters?.vehicle) {
     query["vehicle._id"] = filters.vehicle;
+  }
+  if (filters?.status) {
+    query.status = filters.status;
   }
   if (filters?.start_time != null || filters?.end_time != null) {
     query.scheduledPickupTime = {};

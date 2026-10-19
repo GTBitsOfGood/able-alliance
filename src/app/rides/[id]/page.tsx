@@ -137,6 +137,8 @@ export default function RideDetailPage({
   const [locations, setLocations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // A failed background refresh keeps the ride visible and only shows this.
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingRide, setCancellingRide] = useState(false);
 
@@ -193,56 +195,75 @@ export default function RideDetailPage({
 
   const beginRequest = useLatestRequest();
 
-  // Fetch route data
-  const fetchRoute = useCallback(async () => {
-    if (!routeId || sessionStatus !== "authenticated" || !session?.user?.userId)
-      return;
-    const isLatest = beginRequest();
+  // Fetch route data. A `silent` (background) refresh that fails transiently
+  // keeps the ride on screen; losing the ride or access to it still doesn't.
+  const fetchRoute = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (
+        !routeId ||
+        sessionStatus !== "authenticated" ||
+        !session?.user?.userId
+      )
+        return;
+      const isLatest = beginRequest();
+      let unavailable = false;
 
-    try {
-      const res = await fetch(`/api/routes/${routeId}`);
+      try {
+        const res = await fetch(`/api/routes/${routeId}`);
 
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error("Route not found");
-        } else if (res.status === 403) {
-          throw new Error("You do not have access to this route");
+        if (!res.ok) {
+          if (res.status === 404) {
+            unavailable = true;
+            throw new Error("Route not found");
+          } else if (res.status === 403) {
+            unavailable = true;
+            throw new Error("You do not have access to this route");
+          }
+          throw new Error("Failed to fetch route");
         }
-        throw new Error("Failed to fetch route");
-      }
 
-      const routeData: RouteData = await res.json();
-      if (!isLatest()) return;
+        const routeData: RouteData = await res.json();
+        if (!isLatest()) return;
 
-      if (session.user.type === "Student") {
-        const studentId = getStudentId(routeData.student);
-        if (studentId !== session.user.userId) {
-          throw new Error("You are not the student for this route");
+        unavailable = true;
+        if (session.user.type === "Student") {
+          const studentId = getStudentId(routeData.student);
+          if (studentId !== session.user.userId) {
+            throw new Error("You are not the student for this route");
+          }
+        } else if (session.user.type === "Driver") {
+          const driverId = getDriverId(routeData.driver);
+          if (driverId !== session.user.userId) {
+            router.push("/rides");
+            return;
+          }
+        } else {
+          throw new Error("Unauthorized");
         }
-      } else if (session.user.type === "Driver") {
-        const driverId = getDriverId(routeData.driver);
-        if (driverId !== session.user.userId) {
-          router.push("/rides");
+
+        setRoute(routeData);
+        setError(null);
+        setRefreshError(null);
+
+        // Determine if chat is eligible (ride is today)
+        const chatEligible = isToday(routeData.scheduledPickupTime);
+        setIsChatEligible(chatEligible);
+      } catch (e) {
+        if (!isLatest()) return;
+        if (options?.silent && !unavailable) {
+          setRefreshError(
+            "Couldn't refresh this ride. Showing the last loaded details.",
+          );
           return;
         }
-      } else {
-        throw new Error("Unauthorized");
+        setError(e instanceof Error ? e.message : "Failed to fetch route");
+        setRoute(null);
+      } finally {
+        if (isLatest()) setLoading(false);
       }
-
-      setRoute(routeData);
-      setError(null);
-
-      // Determine if chat is eligible (ride is today)
-      const chatEligible = isToday(routeData.scheduledPickupTime);
-      setIsChatEligible(chatEligible);
-    } catch (e) {
-      if (!isLatest()) return;
-      setError(e instanceof Error ? e.message : "Failed to fetch route");
-      setRoute(null);
-    } finally {
-      if (isLatest()) setLoading(false);
-    }
-  }, [routeId, session, sessionStatus, router, beginRequest]);
+    },
+    [routeId, session, sessionStatus, router, beginRequest],
+  );
 
   useEffect(() => {
     // This effect starts an asynchronous API request.
@@ -253,7 +274,7 @@ export default function RideDetailPage({
   // Refetch when this route changes elsewhere (status, driver, cancellation).
   useRouteUpdates(
     () => {
-      void fetchRoute();
+      void fetchRoute({ silent: true });
     },
     { routeId },
   );
@@ -785,6 +806,12 @@ export default function RideDetailPage({
     );
   }
 
+  const refreshNotice = refreshError && (
+    <p className={styles.refreshError} role="status">
+      {refreshError}
+    </p>
+  );
+
   const pickupLocationName =
     locations[route.pickupLocation] ?? route.pickupLocation;
   const dropoffLocationName =
@@ -934,6 +961,7 @@ export default function RideDetailPage({
               <span>Back to rides</span>
             </Link>
           </header>
+          {refreshNotice}
 
           <div className={styles.titleRow}>
             <h1 className={styles.pageTitle}>Ride Details</h1>
@@ -1139,6 +1167,7 @@ export default function RideDetailPage({
             <span>Back to rides</span>
           </Link>
         </header>
+        {refreshNotice}
 
         {/* Title row */}
         <div className={styles.titleRow}>

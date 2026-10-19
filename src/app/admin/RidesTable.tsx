@@ -1,27 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import BogTable from "@/components/BogTable/BogTable";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import BogButton from "@/components/BogButton/BogButton";
 import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
 import ConfirmActionModal from "./ConfirmActionModal";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
-
-type RouteEntry = {
-  _id: string;
-  student: { firstName: string; lastName: string };
-  pickupLocation: string;
-  dropoffLocation: string;
-  scheduledPickupTime: string;
-  status: string;
-};
-
-type DriverEntry = { _id: string; firstName: string; lastName: string };
-type VehicleEntry = { _id: string; name: string; licensePlate: string };
-type LocationEntry = { _id: string; name: string };
+import {
+  useRequestedRides,
+  type DriverEntry,
+  type VehicleEntry,
+} from "./useRequestedRides";
 
 function makeDriverLabel(d: DriverEntry) {
   return `${d.lastName}, ${d.firstName}`;
@@ -32,12 +22,16 @@ function makeVehicleLabel(v: VehicleEntry) {
 }
 
 export default function RidesTable() {
-  const [routes, setRoutes] = useState<RouteEntry[]>([]);
-  const [drivers, setDrivers] = useState<DriverEntry[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleEntry[]>([]);
-  const [locationMap, setLocationMap] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    routes,
+    drivers,
+    vehicles,
+    locationMap,
+    loading,
+    error,
+    refreshError,
+    removeRoute,
+  } = useRequestedRides();
 
   // Per-row selections keyed by routeId — store display labels for BogDropdown
   const [driverLabels, setDriverLabels] = useState<Record<string, string>>({});
@@ -49,75 +43,6 @@ export default function RidesTable() {
   const [canceling, setCanceling] = useState<Set<string>>(new Set());
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
-
-  const beginRequest = useLatestRequest();
-
-  // `silent` refetches (real-time updates) keep the table on screen instead
-  // of swapping in the loading state.
-  const loadRides = useCallback(
-    async (options?: { silent?: boolean }) => {
-      const isLatest = beginRequest();
-      if (!options?.silent) {
-        setLoading(true);
-        setError(null);
-      }
-      try {
-        const [routesRes, locationsRes, driversRes, vehiclesRes] =
-          await Promise.all([
-            fetch("/api/routes"),
-            fetch("/api/locations"),
-            fetch("/api/users?type=Driver"),
-            fetch("/api/vehicles"),
-          ]);
-
-        if (!routesRes.ok) throw new Error(`Routes API ${routesRes.status}`);
-        if (!locationsRes.ok)
-          throw new Error(`Locations API ${locationsRes.status}`);
-        if (!driversRes.ok) throw new Error(`Drivers API ${driversRes.status}`);
-        if (!vehiclesRes.ok)
-          throw new Error(`Vehicles API ${vehiclesRes.status}`);
-
-        const [routesData, locationsData, driversData, vehiclesData] =
-          await Promise.all([
-            routesRes.json(),
-            locationsRes.json(),
-            driversRes.json(),
-            vehiclesRes.json(),
-          ]);
-
-        const requested = Array.isArray(routesData)
-          ? routesData.filter((r: RouteEntry) => r.status === "Requested")
-          : [];
-
-        const locMap: Record<string, string> = {};
-        if (Array.isArray(locationsData)) {
-          for (const loc of locationsData as LocationEntry[]) {
-            locMap[String(loc._id)] = String(loc.name);
-          }
-        }
-        if (!isLatest()) return;
-        setRoutes(requested);
-        setError(null);
-        setLocationMap(locMap);
-        setDrivers(Array.isArray(driversData) ? driversData : []);
-        setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
-      } catch (e) {
-        if (!isLatest()) return;
-        setError(e instanceof Error ? e.message : "Failed to load rides.");
-      } finally {
-        if (isLatest()) setLoading(false);
-      }
-    },
-    [beginRequest],
-  );
-
-  useEffect(() => {
-    void loadRides();
-  }, [loadRides]);
-
-  useRouteUpdates(() => {
-    void loadRides({ silent: true });
-  });
 
   const handleAssign = async (routeId: string) => {
     const driverLabel = driverLabels[routeId];
@@ -149,7 +74,7 @@ export default function RidesTable() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      removeRoute(routeId);
     } catch (e) {
       setAssignErrors((prev) => ({
         ...prev,
@@ -182,7 +107,7 @@ export default function RidesTable() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      removeRoute(routeId);
     } catch (e) {
       setCancelErrors((prev) => ({
         ...prev,
@@ -311,8 +236,19 @@ export default function RidesTable() {
         {error}
       </p>
     );
+  const refreshNotice = refreshError && (
+    <p className="mb-4 text-sm text-amber-700" role="status">
+      {refreshError}
+    </p>
+  );
+
   if (routes.length === 0)
-    return <p className="text-gray-600">No requested rides.</p>;
+    return (
+      <>
+        {refreshNotice}
+        <p className="text-gray-600">No requested rides.</p>
+      </>
+    );
 
   const pendingCancelRoute = pendingCancelId
     ? routes.find((r) => r._id === pendingCancelId)
@@ -320,6 +256,7 @@ export default function RidesTable() {
 
   return (
     <>
+      {refreshNotice}
       <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
       <ConfirmActionModal
         open={pendingCancelId !== null}
