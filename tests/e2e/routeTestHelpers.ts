@@ -8,7 +8,7 @@ const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
 import type {
-  ScheduleRouteResponse,
+  AdminRouteResponse,
   StudentRouteResponse,
 } from "@/utils/types/api";
 
@@ -63,7 +63,7 @@ export async function createRequestedRide(
 export async function scheduleRide(
   admin: APIRequestContext,
   routeId: string,
-): Promise<ScheduleRouteResponse> {
+): Promise<AdminRouteResponse> {
   const res = await admin.post("/api/routes/schedule", {
     data: {
       routeId,
@@ -72,7 +72,7 @@ export async function scheduleRide(
     },
   });
   expect(res.status(), await res.text()).toBe(200);
-  return (await res.json()) as ScheduleRouteResponse;
+  return (await res.json()) as AdminRouteResponse;
 }
 
 export async function expectRouteStatus(

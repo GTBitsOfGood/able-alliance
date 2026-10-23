@@ -16,7 +16,6 @@ import type {
   AdminRouteResponse,
   DriverRouteDetailResponse,
   RouteResponse,
-  ScheduleRouteResponse,
   StudentRouteResponse,
 } from "@/utils/types/api";
 
@@ -77,8 +76,8 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
     },
   });
   expect(scheduled.status(), await scheduled.text()).toBe(200);
-  const scheduledResponse = (await scheduled.json()) as ScheduleRouteResponse;
-  expect(scheduledResponse.route.status).toBe("Scheduled");
+  const scheduledResponse = (await scheduled.json()) as AdminRouteResponse;
+  expect(scheduledResponse.status).toBe("Scheduled");
   expect(scheduledResponse.driver).toHaveProperty("shifts");
 
   const driverList = await driver.get(

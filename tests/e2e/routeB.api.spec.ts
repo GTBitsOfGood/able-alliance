@@ -55,9 +55,9 @@ test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
     scheduled.status(),
     `/api/routes/schedule: ${await scheduled.text()}`,
   ).toBe(200);
-  expect(
-    ((await scheduled.json()) as { route: { status: string } }).route.status,
-  ).toBe("Scheduled");
+  expect(((await scheduled.json()) as { status: string }).status).toBe(
+    "Scheduled",
+  );
   await step(driver, "/api/routes/start", { routeId }, "EnRoute");
   await step(driver, "/api/routes/pickup", { routeId }, "Pickedup");
   await step(driver, "/api/routes/complete", { routeId }, "Completed");

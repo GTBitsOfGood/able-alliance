@@ -39,10 +39,6 @@ export type RouteResponse =
   | DriverRouteResponse
   | DriverRouteDetailResponse
   | AdminRouteResponse;
-export type ScheduleRouteResponse = {
-  route: AdminRouteResponse;
-  driver: UserResponse;
-};
 export type UserResponse = Prisma.UserGetPayload<{
   include: typeof userInclude;
 }>;
