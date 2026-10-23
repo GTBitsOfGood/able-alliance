@@ -1,10 +1,15 @@
+import type { UserType } from "@db/generated/browser";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
 import { createUser, getUsers } from "@/server/db/actions/UserAction";
-import { baseUserSchema, studentSchema } from "@/utils/types/user";
+import {
+  baseUserSchema,
+  studentSchema,
+  type StudentInput,
+} from "@/utils/types/user";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { UserAlreadyExistsException } from "@/utils/exceptions/user";
-import { internalErrorPayload } from "@/utils/apiError";
+import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function GET(request: NextRequest) {
   let user;
@@ -25,15 +30,12 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     //so you can filter by the type of user
-    const type = searchParams.get("type") as
-      "Student" | "Driver" | "Admin" | "SuperAdmin" | null;
+    const type = searchParams.get("type") as UserType | null;
 
     const users = await getUsers(type || undefined);
     return NextResponse.json(users, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -54,7 +56,15 @@ export async function POST(request: NextRequest) {
     );
   }
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => {
+      throw new ArgumentError("Invalid JSON body");
+    });
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
     const username =
       typeof body.username === "string"
         ? body.username.trim().toLowerCase()
@@ -89,20 +99,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = await createUser(parsed.data);
-    const createdObj = created as Record<string, unknown> & {
-      _id: { toString(): string };
-    };
-    return NextResponse.json(
-      { ...createdObj, _id: createdObj._id.toString() },
-      { status: HTTP_STATUS_CODE.CREATED },
-    );
-  } catch (e) {
-    if (e instanceof UserAlreadyExistsException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
+    const data = parsed.data;
+    const studentInfo =
+      data.type === "Student" ? (data as StudentInput).studentInfo : undefined;
+    if (studentInfo?.accessibilityNeeds?.length) {
+      const invalid = await findInvalidAccommodations(
+        studentInfo.accessibilityNeeds,
+      );
+      if (invalid.length) {
+        return NextResponse.json(
+          { error: `Invalid accommodations: ${invalid.join(", ")}` },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      }
     }
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+    const created = await createUser({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      preferredName: data.preferredName,
+      username: data.username,
+      email: data.email,
+      type: data.type,
+      settings: { create: data.settings ?? {} },
+      ...(studentInfo
+        ? {
+            studentInfo: {
+              create: {
+                notes: studentInfo.notes,
+                accessibilityNeeds: {
+                  connect: (studentInfo.accessibilityNeeds ?? []).map(
+                    (label) => ({ label }),
+                  ),
+                },
+              },
+            },
+          }
+        : {}),
     });
+    return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

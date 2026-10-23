@@ -7,13 +7,8 @@ import { PERSONAS, VEHICLE } from "./seed";
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
-export type RouteJson = {
-  _id: string;
-  status: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  scheduledPickupTime: string;
-};
+import type { RouteResponse as RouteJson } from "@/utils/types/api";
+export type { RouteResponse as RouteJson } from "@/utils/types/api";
 
 export function estDateDaysFromNow(days: number): Date {
   return addDays(toZonedTime(new Date(), "America/New_York"), days);

@@ -1,5 +1,6 @@
 "use client";
 
+import { routeStatusLabels } from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
@@ -13,50 +14,12 @@ import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
+import type {
+  RouteResponse as RouteData,
+  ChatMessageResponse,
+} from "@/utils/types/api";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
-
-type RouteUser = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  studentInfo?: {
-    accessibilityNeeds?: string[];
-    notes?: string;
-  };
-};
-
-type RouteData = {
-  _id: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  student: string | RouteUser;
-  driver?: string | RouteUser;
-  vehicle?: {
-    _id: string;
-    name: string;
-    licensePlate: string;
-    description?: string;
-    accessibility: string;
-    seatCount: number;
-  };
-  scheduledPickupTime: string;
-  estimatedDropoffTime?: string;
-  status: string;
-};
-
-type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
-
-type ChatMessage = {
-  sender: "user" | "other";
-  text: string;
-  timestamp: Date;
-};
 
 function createCustomPin(
   labelText: string,
@@ -103,21 +66,17 @@ function isToday(iso: string): boolean {
   return fmt(new Date(iso)) === fmt(new Date());
 }
 
-function getStudentId(student: string | RouteUser): string {
-  if (typeof student === "string") return student;
-  return student._id;
+function getStudentId(student: RouteData["student"]): string {
+  return student.id;
 }
 
-function getDriverName(driver: string | RouteUser | undefined): string | null {
+function getDriverName(driver: RouteData["driver"]): string | null {
   if (!driver) return null;
-  if (typeof driver === "string") return null;
   return `${driver.firstName} ${driver.lastName}`.trim() || null;
 }
 
-function getDriverId(driver: string | RouteUser | undefined): string | null {
-  if (!driver) return null;
-  if (typeof driver === "string") return driver;
-  return driver._id;
+function getDriverId(driver: RouteData["driver"]): string | null {
+  return driver?.id ?? null;
 }
 
 export default function RideDetailPage({
@@ -132,7 +91,6 @@ export default function RideDetailPage({
   const searchParams = useSearchParams();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
-  const [locations, setLocations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -157,7 +115,7 @@ export default function RideDetailPage({
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [chatInput, setChatInput] = useState("");
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
@@ -243,31 +201,9 @@ export default function RideDetailPage({
     fetchRoute();
   }, [routeId, session, sessionStatus, router]);
 
-  // Fetch locations
-  useEffect(() => {
-    if (!route) return;
-
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch("/api/locations");
-        if (!res.ok) throw new Error("Failed to fetch locations");
-        const locationsData: Location[] = await res.json();
-        const locationMap: Record<string, string> = {};
-        for (const loc of locationsData) {
-          locationMap[loc._id] = loc.name;
-        }
-        setLocations(locationMap);
-      } catch (e) {
-        console.error("Failed to fetch locations:", e);
-      }
-    };
-
-    fetchLocations();
-  }, [route]);
-
   // Initialize and update Mapbox map
   useEffect(() => {
-    if (!route || !locations[route.pickupLocation]) {
+    if (!route) {
       return;
     }
 
@@ -276,25 +212,8 @@ export default function RideDetailPage({
       const container = mapContainerRef.current;
       if (!container || !token) return;
 
-      // Get location coordinates from the locations object (fetched from API)
-      const pickupLocationName = locations[route.pickupLocation] || "Pickup";
-      const dropoffLocationName = locations[route.dropoffLocation] || "Dropoff";
-
-      // Default GT campus coordinates for fallback
-      const defaultPickup = { latitude: 33.7756, longitude: -84.4027 };
-      const defaultDropoff = { latitude: 33.7767, longitude: -84.3891 };
-
-      const pickup = {
-        name: pickupLocationName,
-        latitude: defaultPickup.latitude,
-        longitude: defaultPickup.longitude,
-      };
-
-      const dropoff = {
-        name: dropoffLocationName,
-        latitude: defaultDropoff.latitude,
-        longitude: defaultDropoff.longitude,
-      };
+      const pickup = route.pickup;
+      const dropoff = route.dropoff;
 
       const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
 
@@ -366,7 +285,7 @@ export default function RideDetailPage({
     };
 
     initializeMap();
-  }, [route, locations]);
+  }, [route]);
 
   useEffect(() => {
     return () => {
@@ -384,28 +303,6 @@ export default function RideDetailPage({
       mapRef.current = null;
     };
   }, []);
-
-  // Fetch locations (original - keep for backward compatibility)
-  useEffect(() => {
-    if (!route) return;
-
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch("/api/locations");
-        if (!res.ok) throw new Error("Failed to fetch locations");
-        const locationsData: Location[] = await res.json();
-        const locationMap: Record<string, string> = {};
-        for (const loc of locationsData) {
-          locationMap[loc._id] = loc.name;
-        }
-        setLocations(locationMap);
-      } catch (e) {
-        console.error("Failed to fetch locations:", e);
-      }
-    };
-
-    fetchLocations();
-  }, [route]);
 
   // ── WebSocket lifecycle ─────────────────────────────────────────────────────
   //
@@ -430,10 +327,10 @@ export default function RideDetailPage({
           ![
             "Missing",
             "Completed",
-            "Cancelled by Student",
-            "Cancelled by Admin",
+            "CancelledByStudent",
+            "CancelledByAdmin",
           ].includes(route?.status ?? "") &&
-          (route?.status === "En-route" || showChatModal)));
+          (route?.status === "EnRoute" || showChatModal)));
 
     if (!shouldConnect || socketRef.current) return;
 
@@ -480,35 +377,13 @@ export default function RideDetailPage({
       setSocket(null);
     });
 
-    // Server sends { senderType, text, time } objects
-    const userType = session.user.type;
-    newSocket.on(
-      "chatHistory",
-      (history: { senderType: string; text: string; time: string }[]) => {
-        setMessages(
-          history.map((m) => ({
-            sender: m.senderType === userType.toLowerCase() ? "user" : "other",
-            text: m.text,
-            timestamp: new Date(m.time),
-          })),
-        );
-      },
-    );
+    newSocket.on("chatHistory", (history: ChatMessageResponse[]) => {
+      setMessages(history);
+    });
 
-    newSocket.on(
-      "receiveChatMessage",
-      (message: { senderType: string; text: string; time: string }) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender:
-              message.senderType === userType.toLowerCase() ? "user" : "other",
-            text: message.text,
-            timestamp: new Date(message.time),
-          },
-        ]);
-      },
-    );
+    newSocket.on("receiveChatMessage", (message: ChatMessageResponse) => {
+      setMessages((prev) => [...prev, message]);
+    });
 
     newSocket.on(
       "broadcastLocation",
@@ -573,7 +448,7 @@ export default function RideDetailPage({
           longitude: pos.coords.longitude,
         });
         if (
-          routeStatusRef.current === "En-route" &&
+          routeStatusRef.current === "EnRoute" &&
           socketRef.current?.connected
         ) {
           socketRef.current.emit("updateLocation", {
@@ -770,10 +645,8 @@ export default function RideDetailPage({
     );
   }
 
-  const pickupLocationName =
-    locations[route.pickupLocation] ?? route.pickupLocation;
-  const dropoffLocationName =
-    locations[route.dropoffLocation] ?? route.dropoffLocation;
+  const pickupLocationName = route.pickup.name;
+  const dropoffLocationName = route.dropoff.name;
   const driverName = getDriverName(route.driver);
   const hasDriver = !!driverName;
 
@@ -820,15 +693,14 @@ export default function RideDetailPage({
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.type === "Driver") {
-    const studentObj =
-      route.student && typeof route.student !== "string"
-        ? (route.student as RouteUser)
-        : null;
+    const studentObj = route.student;
     const studentName = studentObj
       ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
       : "—";
     const accommodations =
-      studentObj?.studentInfo?.accessibilityNeeds?.join(", ") || "—";
+      studentObj?.studentInfo?.accessibilityNeeds
+        .map(({ label }) => label)
+        .join(", ") || "—";
     const additionalComments = studentObj?.studentInfo?.notes || "—";
 
     const chatModal = showChatModal && (
@@ -860,12 +732,14 @@ export default function RideDetailPage({
               </div>
             )}
             {messages.map((msg, idx) => {
-              const isUser = msg.sender === "user";
+              const isUser = msg.senderId === session?.user.userId;
               const prevIsOther =
-                !isUser && idx > 0 && messages[idx - 1].sender === "other";
+                !isUser &&
+                idx > 0 &&
+                messages[idx - 1].senderId === msg.senderId;
               return (
                 <div
-                  key={idx}
+                  key={msg.id}
                   className={`${styles.messageRow} ${
                     isUser ? styles.messageRowUser : styles.messageRowOther
                   }`}
@@ -953,7 +827,7 @@ export default function RideDetailPage({
           <div className={styles.titleRow}>
             <h1 className={styles.pageTitle}>Ride Details</h1>
             <span className={styles.statusChip} style={statusChipStyle}>
-              {route.status}
+              {routeStatusLabels[route.status]}
             </span>
           </div>
 
@@ -1029,8 +903,8 @@ export default function RideDetailPage({
                       "Pickedup",
                       "Completed",
                       "Missing",
-                      "Cancelled by Student",
-                      "Cancelled by Admin",
+                      "CancelledByStudent",
+                      "CancelledByAdmin",
                     ].includes(route.status)
                   }
                 >
@@ -1052,7 +926,7 @@ export default function RideDetailPage({
               )}
 
               {/* En-route: Student picked up + Student no-show */}
-              {route.status === "En-route" && (
+              {route.status === "EnRoute" && (
                 <div className={styles.enRouteActions}>
                   <button
                     type="button"
@@ -1165,7 +1039,7 @@ export default function RideDetailPage({
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>Ride Details</h1>
           <span className={styles.statusChip} style={statusChipStyle}>
-            {route.status}
+            {routeStatusLabels[route.status]}
           </span>
         </div>
 
@@ -1265,8 +1139,8 @@ export default function RideDetailPage({
                 [
                   "Missing",
                   "Completed",
-                  "Cancelled by Student",
-                  "Cancelled by Admin",
+                  "CancelledByStudent",
+                  "CancelledByAdmin",
                 ].includes(route.status)
               }
             >
@@ -1346,12 +1220,14 @@ export default function RideDetailPage({
                 </div>
               )}
               {messages.map((msg, idx) => {
-                const isUser = msg.sender === "user";
+                const isUser = msg.senderId === session?.user.userId;
                 const prevIsOther =
-                  !isUser && idx > 0 && messages[idx - 1].sender === "other";
+                  !isUser &&
+                  idx > 0 &&
+                  messages[idx - 1].senderId === msg.senderId;
                 return (
                   <div
-                    key={idx}
+                    key={msg.id}
                     className={`${styles.messageRow} ${
                       isUser ? styles.messageRowUser : styles.messageRowOther
                     }`}

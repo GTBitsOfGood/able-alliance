@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
+import { isValidId } from "@/utils/ids";
 import {
   getUserById,
   deleteUser,
-  updateStudentInfo,
-  updateDriverShifts,
-  updatePreferredName,
-  updateNotificationSettings,
+  updateUser,
 } from "@/server/db/actions/UserAction";
 import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { internalErrorPayload } from "@/utils/apiError";
+import { errorResponse } from "@/utils/errors";
 import { auth } from "@/auth";
 import { z } from "zod";
+import { notificationSettingsSchema, shiftSchema } from "@/utils/types/user";
 
 export async function GET(
   req: NextRequest,
@@ -29,7 +27,7 @@ export async function GET(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid user ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -37,34 +35,20 @@ export async function GET(
   }
   try {
     const user = await getUserById(id);
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
     // Only allow: Admin/SuperAdmin, or self
     if (
       authUser.type === "Admin" ||
       authUser.type === "SuperAdmin" ||
-      user._id?.toString() === authUser.userId
+      user.id === authUser.userId
     ) {
-      const userObj = user as Record<string, unknown> & {
-        _id: { toString(): string };
-      };
-      return NextResponse.json(
-        { ...userObj, _id: userObj._id.toString() },
-        { status: HTTP_STATUS_CODE.OK },
-      );
+      return NextResponse.json(user, { status: HTTP_STATUS_CODE.OK });
     }
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
-  } catch (e) {
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -73,49 +57,20 @@ const studentInfoPatchSchema = z
     preferredName: z.string().max(100).nullable().optional(),
     notes: z.string().max(2000).nullable().optional(),
     accessibilityNeeds: z.array(z.string().min(1)).nullable().optional(),
+    settings: notificationSettingsSchema.optional(),
   })
   .strict();
 
 const driverShiftsPatchSchema = z
   .object({
-    shifts: z
-      .array(
-        z
-          .object({
-            dayOfWeek: z.number().int().min(0).max(6),
-            startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-            endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-          })
-          .refine((shift) => shift.startTime < shift.endTime, {
-            message: "Start time must be before end time",
-            path: ["startTime"],
-          }),
-      )
-      .optional(),
+    shifts: z.array(shiftSchema).optional(),
+    settings: notificationSettingsSchema.optional(),
   })
   .strict();
 
-const notificationSettingsPatchSchema = z
-  .object({
-    settings: z
-      .object({
-        notifications: z
-          .object({
-            dailySummary: z.boolean().optional(),
-            driverAssigned: z.boolean().optional(),
-            driverEnRoute: z.boolean().optional(),
-            rideCancelled: z.boolean().optional(),
-            rideAssigned: z.boolean().optional(),
-            rideCompleted: z.boolean().optional(),
-            rideDelayed: z.boolean().optional(),
-            newMessageFromDriver: z.boolean().optional(),
-          })
-          .optional(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+const adminPatchSchema = z
+  .object({ settings: notificationSettingsSchema.optional() })
+  .strict();
 
 export async function PATCH(
   req: NextRequest,
@@ -123,7 +78,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid user ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -162,49 +117,17 @@ export async function PATCH(
     );
   }
 
-  // Get the user to determine type
-  const user = await getUserById(id);
-  if (!user) {
-    return NextResponse.json(
-      { error: "User not found" },
-      { status: HTTP_STATUS_CODE.NOT_FOUND },
-    );
-  }
-
   try {
-    const parsedNotif = notificationSettingsPatchSchema.safeParse(body);
-    let notificationUpdated;
-    if (parsedNotif.success && parsedNotif.data.settings?.notifications) {
-      notificationUpdated = await updateNotificationSettings(id, {
-        notifications: parsedNotif.data.settings.notifications,
-      });
-
-      if (!notificationUpdated) {
-        return NextResponse.json(
-          { error: "Update failed" },
-          { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-        );
-      }
-    }
-
-    let updated;
-    const bodyWithoutSettings =
-      typeof body === "object" && body !== null
-        ? Object.fromEntries(
-            Object.entries(body as Record<string, unknown>).filter(
-              ([key]) => key !== "settings",
-            ),
-          )
-        : {};
-
+    const user = await getUserById(id);
+    let parsed;
     if (user.type === "Student") {
-      const parsed = studentInfoPatchSchema.safeParse(bodyWithoutSettings);
+      parsed = studentInfoPatchSchema.safeParse(body);
       if (!parsed.success) {
         return NextResponse.json(parsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      const { preferredName, notes, accessibilityNeeds } = parsed.data;
+      const { accessibilityNeeds } = parsed.data;
       if (accessibilityNeeds && accessibilityNeeds.length > 0) {
         const invalid = await findInvalidAccommodations(accessibilityNeeds);
         if (invalid.length > 0) {
@@ -214,86 +137,45 @@ export async function PATCH(
           );
         }
       }
-      if (preferredName !== undefined) {
-        updated = await updatePreferredName(id, preferredName ?? null);
-        if (!updated) {
-          return NextResponse.json(
-            { error: "User not found" },
-            { status: HTTP_STATUS_CODE.NOT_FOUND },
-          );
-        }
-      }
-      if (notes !== undefined || accessibilityNeeds !== undefined) {
-        updated = await updateStudentInfo(id, {
-          notes: notes ?? null,
-          accessibilityNeeds: accessibilityNeeds ?? null,
-        });
-        if (!updated) {
-          return NextResponse.json(
-            { error: "User not found or not a student" },
-            { status: HTTP_STATUS_CODE.NOT_FOUND },
-          );
-        }
-      }
-      if (!updated) {
-        const currentUser = await getUserById(id);
-        if (!currentUser) {
-          return NextResponse.json(
-            { error: "User not found" },
-            { status: HTTP_STATUS_CODE.NOT_FOUND },
-          );
-        }
-        updated = currentUser;
-      }
+      const updated = await updateUser(id, "Student", parsed.data);
+      return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else if (user.type === "Driver") {
       // For drivers, only admins can update shifts
-      if (!isAdmin && bodyWithoutSettings.shifts !== undefined) {
+      if (
+        !isAdmin &&
+        typeof body === "object" &&
+        body !== null &&
+        "shifts" in body
+      ) {
         return NextResponse.json(
           { error: "Only admins can update driver shifts" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-      const parsed = driverShiftsPatchSchema.safeParse(bodyWithoutSettings);
+      parsed = driverShiftsPatchSchema.safeParse(body);
       if (!parsed.success) {
         return NextResponse.json(parsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      if (parsed.data.shifts !== undefined) {
-        updated = await updateDriverShifts(id, parsed.data.shifts ?? []);
-        if (!updated) {
-          return NextResponse.json(
-            { error: "User not found or update failed" },
-            { status: HTTP_STATUS_CODE.NOT_FOUND },
-          );
-        }
-      }
+      const updated = await updateUser(id, "Driver", parsed.data);
+      return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else {
-      return NextResponse.json(
-        { error: "Cannot update this user type" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
+      if (!isAdmin)
+        return NextResponse.json(
+          { error: "Cannot update this user type" },
+          { status: HTTP_STATUS_CODE.BAD_REQUEST },
+        );
+      const adminParsed = adminPatchSchema.safeParse(body);
+      if (!adminParsed.success)
+        return NextResponse.json(adminParsed.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      const updated = await updateUser(id, user.type, adminParsed.data);
+      return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     }
-
-    const finalUser = (updated ?? notificationUpdated) as
-      (Record<string, unknown> & { _id: { toString(): string } }) | null;
-
-    if (!finalUser) {
-      return NextResponse.json(
-        { error: "User update failed" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-
-    const userObj = finalUser;
-    return NextResponse.json(
-      { ...userObj, _id: userObj._id.toString() },
-      { status: HTTP_STATUS_CODE.OK },
-    );
-  } catch (e) {
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -311,7 +193,7 @@ export async function DELETE(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid user ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -319,12 +201,6 @@ export async function DELETE(
   }
   try {
     const user = await getUserById(id);
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
     if (
       (authUser.type !== "Admin" && authUser.type !== "SuperAdmin") ||
       ((user.type === "Admin" || user.type === "SuperAdmin") &&
@@ -335,20 +211,12 @@ export async function DELETE(
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    const deleted = await deleteUser(id);
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    await deleteUser(id);
     return NextResponse.json(
       { message: "User deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
-  } catch (e) {
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

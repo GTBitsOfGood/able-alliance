@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import Location from "@/server/db/models/LocationModel";
+import {
+  deleteLocation,
+  getLocationById,
+} from "@/server/db/actions/LocationAction";
+import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { getUserFromRequest } from "@/utils/authUser";
+import { errorResponse } from "@/utils/errors";
 
 // GET /api/locations/:id
 export async function GET(
@@ -17,24 +22,17 @@ export async function GET(
     );
   }
   const { id } = await context.params; // Await params before accessing id
+  if (!isValidId(id)) {
+    return NextResponse.json(
+      { error: "Invalid location ID" },
+      { status: HTTP_STATUS_CODE.BAD_REQUEST },
+    );
+  }
   try {
-    const location = await Location.findById(id).lean();
-    if (!location) {
-      return NextResponse.json(
-        { error: "Location not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    const location = await getLocationById(id);
     return NextResponse.json(location, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
-    console.error(
-      "[GET /api/locations/:id]",
-      error instanceof Error ? error.message : error,
-    );
-    return NextResponse.json(
-      { error: "Failed to fetch location" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    return errorResponse(error);
   }
 }
 
@@ -59,26 +57,19 @@ export async function DELETE(
     );
   }
   const { id } = await context.params; // Await params before accessing id
+  if (!isValidId(id)) {
+    return NextResponse.json(
+      { error: "Invalid location ID" },
+      { status: HTTP_STATUS_CODE.BAD_REQUEST },
+    );
+  }
   try {
-    const deleted = await Location.findByIdAndDelete(id).lean();
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Location not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    await deleteLocation(id);
     return NextResponse.json(
       { message: "Location deleted successfully" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {
-    console.error(
-      "[DELETE /api/locations/:id]",
-      error instanceof Error ? error.message : error,
-    );
-    return NextResponse.json(
-      { error: "Failed to delete location" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    return errorResponse(error);
   }
 }

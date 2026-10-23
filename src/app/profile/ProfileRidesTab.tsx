@@ -1,34 +1,11 @@
 "use client";
 
+import { routeStatusLabels } from "@/utils/route-status";
 import React, { useState, useEffect, useMemo } from "react";
 import styles from "./profileRides.module.css";
 import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
 
-type RouteUser = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-};
-
-type RouteVehicle = {
-  vehicleId?: string;
-  name?: string;
-  licensePlate?: string;
-};
-
-type Route = {
-  _id: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  student: RouteUser;
-  driver?: RouteUser;
-  vehicle?: RouteVehicle;
-  scheduledPickupTime: string;
-  estimatedDropoffTime?: string;
-  status: string;
-};
-
-type LocationMap = Record<string, string>;
+import type { RouteResponse as Route } from "@/utils/types/api";
 
 type Filter = "all" | "this-week" | "next-week";
 
@@ -59,14 +36,14 @@ function fmtDate(iso: string): string {
   });
 }
 
-function statusChipStyle(status: string): React.CSSProperties {
+function statusChipStyle(status: Route["status"]): React.CSSProperties {
   switch (status) {
     case "Scheduled":
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-status-yellow-text)",
       };
-    case "En-route":
+    case "EnRoute":
     case "Pickedup":
       return {
         background: "var(--color-status-yellow)",
@@ -82,9 +59,8 @@ function statusChipStyle(status: string): React.CSSProperties {
         background: "var(--color-admin-bg)",
         color: "var(--color-grey-text-strong)",
       };
-    case "Cancelled by Student":
-    case "Cancelled by Admin":
-    case "Delayed":
+    case "CancelledByStudent":
+    case "CancelledByAdmin":
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-status-yellow-text)",
@@ -110,7 +86,6 @@ export function ProfileRidesTab({
   userType: "Student" | "Driver" | "Vehicle";
 }) {
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [locations, setLocations] = useState<LocationMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>(
@@ -124,18 +99,12 @@ export function ProfileRidesTab({
         : userType === "Vehicle"
           ? `vehicle=${userId}`
           : `student=${userId}`;
-    Promise.all([
-      fetch(`/api/routes?${param}`).then((r) => r.json()),
-      fetch("/api/locations").then((r) => r.json()),
-    ])
-      .then(([routesData, locData]) => {
-        setRoutes(Array.isArray(routesData) ? routesData : []);
-        const map: LocationMap = {};
-        if (Array.isArray(locData)) {
-          for (const l of locData) map[l._id] = l.name;
-        }
-        setLocations(map);
+    fetch(`/api/routes?${param}`)
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to load rides.");
+        return response.json();
       })
+      .then((routesData: Route[]) => setRoutes(routesData))
       .catch(() => setError("Failed to load rides."))
       .finally(() => setLoading(false));
   }, [userId, userType]);
@@ -146,8 +115,6 @@ export function ProfileRidesTab({
     const [s, e] = getWeekRange(offset);
     return routes.filter((r) => inRange(r.scheduledPickupTime, s, e));
   }, [routes, filter]);
-
-  const locName = (id: string) => locations[id] ?? id;
 
   const [thisWeekStart, thisWeekEnd] = getWeekRange(0);
   const [nextWeekStart, nextWeekEnd] = getWeekRange(1);
@@ -252,12 +219,12 @@ export function ProfileRidesTab({
                         ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
                         : "—"
                       : (route.vehicle?.vehicleId ?? "—");
-                  const pickup = `${fmtTime(route.scheduledPickupTime)} @ ${locName(route.pickupLocation)}`;
+                  const pickup = `${fmtTime(route.scheduledPickupTime)} @ ${route.pickup.name}`;
                   const dropoff = route.estimatedDropoffTime
-                    ? `${fmtTime(route.estimatedDropoffTime)} @ ${locName(route.dropoffLocation)}`
-                    : `— @ ${locName(route.dropoffLocation)}`;
+                    ? `${fmtTime(route.estimatedDropoffTime)} @ ${route.dropoff.name}`
+                    : `— @ ${route.dropoff.name}`;
                   return (
-                    <tr key={route._id} className={styles.row}>
+                    <tr key={route.id} className={styles.row}>
                       <td className={styles.td}>{col1}</td>
                       <td className={styles.td}>{col2}</td>
                       <td className={styles.td}>
@@ -270,7 +237,7 @@ export function ProfileRidesTab({
                           className={styles.statusChip}
                           style={statusChipStyle(route.status)}
                         >
-                          {route.status}
+                          {routeStatusLabels[route.status]}
                         </span>
                       </td>
                     </tr>

@@ -1,31 +1,30 @@
 /**
  * Who and what exists when a run starts. Also Playwright's globalSetup.
  *
- * Fixed ObjectIds so specs reference users/locations/vehicles without lookups.
+ * Fixed UUIDs so specs reference users/locations/vehicles without lookups.
  * No routes are seeded: each flow creates its own ride, so flows never
  * collide even when the api and ui projects run in parallel.
  */
-import mongoose, { Types } from "mongoose";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@db/generated/client";
 import { E2E } from "./env";
 
-export type UserType = "Student" | "Driver" | "Admin";
+import type { User } from "@db/generated/browser";
 
-export interface Persona {
-  id: string;
-  /** GT Account username — how the CAS callback matches a provisioned user. */
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  type: UserType;
-}
+export type Persona = Pick<
+  User,
+  "id" | "username" | "email" | "firstName" | "lastName"
+> & {
+  type: Extract<User["type"], "Student" | "Driver" | "Admin">;
+};
 
-/** 24-char hex ObjectId with a readable suffix, e.g. oid("a001"). */
-const oid = (suffix: string) => "e2e" + "0".repeat(21 - suffix.length) + suffix;
+/** Stable UUIDs let specs reference fixtures without lookups. */
+const fixtureId = (suffix: string) =>
+  `e2e00000-0000-4000-8000-${suffix.padStart(12, "0")}`;
 
 export const PERSONAS = {
   student: {
-    id: oid("a001"),
+    id: fixtureId("a001"),
     username: "gburdell3",
     email: "gburdell3@gatech.edu",
     firstName: "George",
@@ -33,7 +32,7 @@ export const PERSONAS = {
     type: "Student",
   },
   driver: {
-    id: oid("a002"),
+    id: fixtureId("a002"),
     username: "driver1",
     email: "driver1@gatech.edu",
     firstName: "Test",
@@ -41,7 +40,7 @@ export const PERSONAS = {
     type: "Driver",
   },
   admin: {
-    id: oid("a003"),
+    id: fixtureId("a003"),
     username: "adminuser",
     email: "adminuser@gatech.edu",
     firstName: "Admin",
@@ -54,19 +53,19 @@ export type PersonaKey = keyof typeof PERSONAS;
 
 export const LOCATIONS = {
   exhibitionHall: {
-    id: oid("b001"),
+    id: fixtureId("b001"),
     name: "Exhibition Hall",
     latitude: 33.7756,
     longitude: -84.4027,
   },
   techSquare: {
-    id: oid("b002"),
+    id: fixtureId("b002"),
     name: "Tech Square Eastbound",
     latitude: 33.7767,
     longitude: -84.3891,
   },
   studentCenter: {
-    id: oid("b003"),
+    id: fixtureId("b003"),
     name: "Student Center",
     latitude: 33.7739,
     longitude: -84.3983,
@@ -74,7 +73,7 @@ export const LOCATIONS = {
 } as const;
 
 export const VEHICLE = {
-  id: oid("c001"),
+  id: fixtureId("c001"),
   vehicleId: "1001",
   name: "2026 Honda HR-V",
   licensePlate: "RVG1730",
@@ -83,11 +82,9 @@ export const VEHICLE = {
   seatCount: 4,
 } as const;
 
-const toObjectId = (hex: string) => Types.ObjectId.createFromHexString(hex);
-
 function buildSeed() {
   const user = (p: Persona) => ({
-    _id: toObjectId(p.id),
+    id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
     username: p.username,
@@ -102,19 +99,19 @@ function buildSeed() {
   }));
   return {
     users: [
-      { ...user(PERSONAS.student), studentInfo: {} },
-      { ...user(PERSONAS.driver), shifts: allWeek },
+      { ...user(PERSONAS.student), studentInfo: { create: {} } },
+      { ...user(PERSONAS.driver), shifts: { create: allWeek } },
       user(PERSONAS.admin),
     ],
     locations: Object.values(LOCATIONS).map((l) => ({
-      _id: toObjectId(l.id),
+      id: l.id,
       name: l.name,
       latitude: l.latitude,
       longitude: l.longitude,
     })),
     vehicles: [
       {
-        _id: toObjectId(VEHICLE.id),
+        id: VEHICLE.id,
         vehicleId: VEHICLE.vehicleId,
         name: VEHICLE.name,
         licensePlate: VEHICLE.licensePlate,
@@ -123,43 +120,46 @@ function buildSeed() {
         seatCount: VEHICLE.seatCount,
       },
     ],
-    accommodations: ["Wheelchair", "LowMobility"].map((label) => ({ label })),
+    accommodations: ["Wheelchair", "LowMobility"].map((label) => ({
+      label,
+    })),
   };
 }
 
-const COLLECTIONS = [
-  "users",
-  "locations",
-  "vehicles",
-  "accommodations",
-  "routes",
-  "chatlogs",
-];
-
-export async function resetAndSeed(uri: string = E2E.mongodbUri) {
-  const conn = await mongoose
-    .createConnection(uri, { serverSelectionTimeoutMS: 5000 })
-    .asPromise();
+export async function resetAndSeed(url: string = E2E.databaseUrl) {
+  const target = new URL(url);
+  const name = decodeURIComponent(target.pathname.slice(1));
+  if (process.env.E2E_ALLOW_ANY_DB !== "1" && !/e2e|test/i.test(name)) {
+    throw new Error(
+      `[e2e] Refusing to wipe database "${name}". Use a name containing "e2e"/"test" or set E2E_ALLOW_ANY_DB=1.`,
+    );
+  }
+  const db = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: url }),
+  });
   try {
-    if (process.env.E2E_ALLOW_ANY_DB !== "1" && !/e2e|test/i.test(conn.name)) {
-      throw new Error(
-        `[e2e] Refusing to wipe database "${conn.name}". Use a name containing "e2e"/"test" or set E2E_ALLOW_ANY_DB=1.`,
-      );
-    }
-    const db = conn.db!;
-    for (const name of COLLECTIONS) await db.collection(name).deleteMany({});
     const data = buildSeed();
-    for (const [name, docs] of Object.entries(data)) {
-      await db.collection(name).insertMany(docs as mongoose.mongo.Document[]);
-    }
+    await db.$transaction(async (tx) => {
+      await tx.message.deleteMany();
+      await tx.route.deleteMany();
+      await tx.user.deleteMany();
+      await tx.location.deleteMany();
+      await tx.vehicle.deleteMany();
+      await tx.accommodation.deleteMany();
+      await tx.location.createMany({ data: data.locations });
+      await tx.vehicle.createMany({ data: data.vehicles });
+      await tx.accommodation.createMany({ data: data.accommodations });
+      for (const user of data.users)
+        await tx.user.create({ data: { ...user, settings: { create: {} } } });
+    });
     console.log(
-      `[e2e] Seeded "${conn.name}": ` +
+      `[e2e] Seeded "${name}": ` +
         Object.entries(data)
           .map(([k, v]) => `${k}=${v.length}`)
           .join(", "),
     );
   } finally {
-    await conn.close();
+    await db.$disconnect();
   }
 }
 

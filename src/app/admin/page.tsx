@@ -1,5 +1,8 @@
 "use client";
 
+import type { StudentInput } from "@/utils/types/user";
+import type { VehicleInput } from "@/utils/types/vehicle";
+
 import BogTable from "@/components/BogTable/BogTable";
 import BogForm from "@/components/BogForm/BogForm";
 import BogButton from "@/components/BogButton/BogButton";
@@ -128,17 +131,10 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
       return;
     }
 
-    const studentInfo: {
-      notes?: string;
-      accessibilityNeeds?: (
-        "Wheelchair" | "LowMobility" | "VisualImpairment" | "ExtraTime"
-      )[];
-    } = {
+    const studentInfo: StudentInput["studentInfo"] = {
       ...(additionalComments && { notes: additionalComments }),
       ...(studentAccessibilityNeeds.length > 0 && {
-        accessibilityNeeds: studentAccessibilityNeeds as (
-          "Wheelchair" | "LowMobility" | "VisualImpairment" | "ExtraTime"
-        )[],
+        accessibilityNeeds: studentAccessibilityNeeds,
       }),
     };
     fetch("/api/users", {
@@ -318,7 +314,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
         name,
         licensePlate,
         description: description || undefined,
-        accessibility: vehicleAccessibility as "None" | "Wheelchair",
+        accessibility: vehicleAccessibility as VehicleInput["accessibility"],
         seatCount,
       }),
     })

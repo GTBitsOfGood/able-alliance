@@ -18,8 +18,8 @@ A deployment preview of the main branch from Netlify is available at https://abl
 
 ## Technologies
 
-- [MongoDB](https://www.mongodb.com/)
-- [Mongoose](https://mongoosejs.com/) for MongoDB models and queries
+- [PostgreSQL 18](https://www.postgresql.org/)
+- [Prisma ORM 7](https://www.prisma.io/) for the database schema and queries
 - [Next.js](https://nextjs.org)
 - [React](https://react.dev)
 - [TypeScript](https://www.typescriptlang.org/)
@@ -34,6 +34,8 @@ There are two server components:
 
 1. Next.js handles the frontend and API routes.
 2. The Express.js `websocket-server` handles persistent websocket connections.
+
+The Prisma schema, shared connection, and generated client live in `db/`. Both servers import `db/index.ts`, and `npx prisma generate` writes the client to `db/generated/`.
 
 On Upsun, both run together in the `app` container on one HTTP server. See [docs/upsun.md](docs/upsun.md) for deployment details.
 
@@ -59,16 +61,18 @@ For host development, use `localhost` instead of Docker service names.
   docker compose -f docker-compose-prod.yml up --build
   ```
 
-To run MongoDB 4.0 by itself in Docker:
+To run PostgreSQL 18 by itself in Docker:
 
 ```sh
-docker run --name mongodb -d -p 27017:27017 mongo:4.0
+docker run --name able-postgres -d -p 5432:5432 \
+  -e POSTGRES_USER=able -e POSTGRES_PASSWORD=able -e POSTGRES_DB=able_alliance \
+  -v able-postgres-data:/var/lib/postgresql postgres:18
 ```
 
 ## Local Setup (without Docker)
 
 - Install [Node.js 24](https://nodejs.org/en/download/).
-- Install MongoDB locally and ensure it is running.
+- Install PostgreSQL 18 locally and ensure it is running.
 - Update the service URLs in `.env` to use `localhost`
 - Install dependencies for each server:
   ```sh
@@ -76,6 +80,12 @@ docker run --name mongodb -d -p 27017:27017 mongo:4.0
   npm ci --prefix websocket-server
   npm ci --prefix mock-cas-server
   ```
+- Generate the Prisma client and apply committed migrations:
+  ```sh
+  npx prisma generate
+  npx prisma migrate deploy
+  ```
+  From `websocket-server/`, generate the same shared client with `npx prisma generate --schema ../db/schema.prisma`.
 - Start each server in a separate terminal:
   ```sh
   npm run dev
@@ -90,16 +100,25 @@ docker run --name mongodb -d -p 27017:27017 mongo:4.0
 
 ## Database Setup
 
-We have MongoDB pinned at `4.0` intentionally; see [docs/upsun.md](docs/upsun.md) for more information.
+`DATABASE_URL` is required for migrations and the running servers. Client generation does not connect to a database. Migrations live in `db/migrations/`. Docker and Upsun app startup run `npx prisma migrate deploy` to apply committed migrations before starting the server.
+
+After editing `db/schema.prisma`, create and apply a migration against your local development database, then regenerate the client:
+
+```sh
+npx prisma migrate dev --name describe_change
+npx prisma generate
+```
+
+Commit the generated migration alongside the schema change. Run `migrate dev` deliberately during development; startup and CI only apply existing migrations with `migrate deploy`.
 
 To seed the database with sample users, locations, vehicles, and routes, run:
 
 ```sh
-npm run seed -- "mongodb://localhost:27017/able-alliance"
+npm run seed -- "postgresql://able:able@localhost:5432/able_alliance"
 ```
 
 ## DevSecOps & Tests
 
 - There is a husky pre-commit hook to lint and style code to maintain consistency.
-- We use Playwright for E2E testing.
+- We use Playwright for API and UI testing. Use a disposable database whose name contains `test` or `e2e`.
 - GitHub Actions run linting, formatting, type checks, and Playwright end-to-end tests. Netlify provides the deployment preview.

@@ -7,25 +7,12 @@
  */
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
+import { estDateKey } from "@/utils/dateEst";
 
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
-type Embedded = { _id: string; firstName?: string; lastName?: string };
-type RouteJson = {
-  _id: string;
-  status: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  student?: Embedded | string;
-  driver?: Embedded | string;
-  vehicle?: { _id: string; name?: string; licensePlate?: string } | string;
-};
-
-function idOf(value: Embedded | string | undefined): string {
-  if (!value) return "";
-  return typeof value === "string" ? value : String(value._id);
-}
+import type { RouteResponse as RouteJson } from "@/utils/types/api";
 
 function asRoutes(body: unknown): RouteJson[] {
   return Array.isArray(body) ? (body as RouteJson[]) : [];
@@ -51,13 +38,16 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   });
   expect(create.status(), await create.text()).toBe(201);
   const created = (await create.json()) as RouteJson;
-  const routeId = String(created._id);
+  const routeId = String(created.id);
   expect(created.status).toBe("Requested");
+  expect(created.pickup).toEqual(LOCATIONS.exhibitionHall);
+  expect(created.dropoff).toEqual(LOCATIONS.studentCenter);
+  expect(created.student.settings?.userId).toBe(PERSONAS.student.id);
 
   const studentList = await student.get("/api/routes");
   expect(studentList.status()).toBe(200);
   const studentRide = asRoutes(await studentList.json()).find(
-    (r) => String(r._id) === routeId,
+    (r) => String(r.id) === routeId,
   );
   expect(studentRide, "ride missing from student list").toBeTruthy();
   expect(studentRide!.status).toBe("Requested");
@@ -67,7 +57,7 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   const adminList = await admin.get("/api/routes");
   expect(adminList.status()).toBe(200);
   const adminRide = asRoutes(await adminList.json()).find(
-    (r) => String(r._id) === routeId,
+    (r) => String(r.id) === routeId,
   );
   expect(adminRide, "ride missing from admin list").toBeTruthy();
   expect(adminRide!.status).toBe("Requested");
@@ -87,17 +77,46 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   );
   expect(driverList.status()).toBe(200);
   const driverRide = asRoutes(await driverList.json()).find(
-    (r) => String(r._id) === routeId,
+    (r) => String(r.id) === routeId,
   );
   expect(driverRide, "ride missing from driver list").toBeTruthy();
   expect(driverRide!.status).toBe("Scheduled");
-  expect(idOf(driverRide!.driver)).toBe(PERSONAS.driver.id);
-  expect(idOf(driverRide!.vehicle)).toBe(VEHICLE.id);
+  expect(driverRide!.driver?.id).toBe(PERSONAS.driver.id);
+  expect(driverRide!.vehicle?.id).toBe(VEHICLE.id);
 
   const readBack = await student.get(`/api/routes?id=${routeId}`);
   expect(readBack.status()).toBe(200);
   const studentView = (await readBack.json()) as RouteJson;
   expect(studentView.status).toBe("Scheduled");
-  expect(idOf(studentView.driver)).toBe(PERSONAS.driver.id);
-  expect(idOf(studentView.vehicle)).toBe(VEHICLE.id);
+  expect(studentView.driver?.id).toBe(PERSONAS.driver.id);
+  expect(studentView.vehicle?.id).toBe(VEHICLE.id);
+
+  const shift = await admin.get(
+    `/api/shifts/${PERSONAS.driver.id}?date=${estDateKey(pickup)}`,
+  );
+  expect(shift.status(), await shift.text()).toBe(200);
+  const scheduledRoutes: RouteJson[] = (await shift.json()).scheduledRoutes;
+  expect(scheduledRoutes.find((route) => route.id === routeId)).toEqual(
+    studentView,
+  );
+
+  // Foreign keys preserve the referenced users, vehicle, and locations.
+  for (const path of [
+    `/api/users/${PERSONAS.student.id}`,
+    `/api/users/${PERSONAS.driver.id}`,
+    `/api/vehicles/${VEHICLE.id}`,
+    `/api/locations/${LOCATIONS.exhibitionHall.id}`,
+  ]) {
+    const deleted = await admin.delete(path);
+    expect(deleted.status(), `${path}: ${await deleted.text()}`).toBe(409);
+  }
+  const messages = await student.get(`/api/routes/${routeId}/messages`);
+  expect(messages.status(), await messages.text()).toBe(200);
+  expect(await messages.json()).toEqual([]);
+
+  const deleted = await admin.delete(`/api/routes/${routeId}`);
+  expect(deleted.status(), await deleted.text()).toBe(200);
+  expect((await student.get(`/api/routes/${routeId}/messages`)).status()).toBe(
+    404,
+  );
 });

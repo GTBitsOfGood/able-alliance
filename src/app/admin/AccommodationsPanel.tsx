@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 
-type Accommodation = { _id: string; label: string };
+import type { Accommodation } from "@db/generated/browser";
 
 export default function AccommodationsPanel({
   onSaved,
@@ -50,7 +50,7 @@ export default function AccommodationsPanel({
 
   function updateDraftLabel(id: string, value: string) {
     setDraft((prev) =>
-      prev.map((d) => (d._id === id ? { ...d, label: value } : d)),
+      prev.map((d) => (d.id === id ? { ...d, label: value } : d)),
     );
   }
 
@@ -58,11 +58,11 @@ export default function AccommodationsPanel({
     setSaving(true);
     setError(null);
     try {
-      const originalMap = new Map(items.map((i) => [i._id, i.label]));
-      const draftIds = new Set(draft.map((d) => d._id));
-      const toDelete = items.filter((i) => !draftIds.has(i._id));
+      const originalMap = new Map(items.map((i) => [i.id, i.label]));
+      const draftIds = new Set(draft.map((d) => d.id));
+      const toDelete = items.filter((i) => !draftIds.has(i.id));
       const toRename = draft.filter(
-        (d) => d.label.trim() && d.label.trim() !== originalMap.get(d._id),
+        (d) => d.label.trim() && d.label.trim() !== originalMap.get(d.id),
       );
       const allNew = newLabel.trim()
         ? [...pendingNew, newLabel.trim()]
@@ -74,7 +74,7 @@ export default function AccommodationsPanel({
 
       await Promise.all(
         toDelete.map((i) =>
-          fetch(`/api/accommodations/${i._id}`, { method: "DELETE" }).then(
+          fetch(`/api/accommodations/${i.id}`, { method: "DELETE" }).then(
             (r) => {
               if (!r.ok) throw new Error(`Failed to delete "${i.label}"`);
             },
@@ -83,7 +83,7 @@ export default function AccommodationsPanel({
       );
 
       for (const item of toRename) {
-        const res = await fetch(`/api/accommodations/${item._id}`, {
+        const res = await fetch(`/api/accommodations/${item.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ label: item.label.trim() }),
@@ -110,7 +110,7 @@ export default function AccommodationsPanel({
 
       setItems([
         ...draft
-          .filter((d) => draftIds.has(d._id))
+          .filter((d) => draftIds.has(d.id))
           .map((d) => ({ ...d, label: d.label.trim() })),
         ...created,
       ]);
@@ -124,7 +124,7 @@ export default function AccommodationsPanel({
   }
 
   function removeFromDraft(id: string) {
-    setDraft((prev) => prev.filter((d) => d._id !== id));
+    setDraft((prev) => prev.filter((d) => d.id !== id));
   }
 
   function removeFromPending(idx: number) {
@@ -149,14 +149,14 @@ export default function AccommodationsPanel({
         >
           {/* Existing items — editable */}
           {draft.map((item) => (
-            <div key={item._id} style={rowStyle}>
+            <div key={item.id} style={rowStyle}>
               <input
                 style={newInputStyle}
                 value={item.label}
-                onChange={(e) => updateDraftLabel(item._id, e.target.value)}
+                onChange={(e) => updateDraftLabel(item.id, e.target.value)}
               />
               <button
-                onClick={() => removeFromDraft(item._id)}
+                onClick={() => removeFromDraft(item.id)}
                 style={xBtnStyle}
                 title="Remove"
               >
@@ -243,7 +243,7 @@ export default function AccommodationsPanel({
             </p>
           )}
           {items.map((item) => (
-            <div key={item._id} style={itemBoxStyle}>
+            <div key={item.id} style={itemBoxStyle}>
               {item.label}
             </div>
           ))}

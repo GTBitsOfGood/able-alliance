@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
-import { getRouteById, deleteRouteById } from "@/server/db/actions/RouteAction";
+import { isValidId } from "@/utils/ids";
+import { deleteRoute, getRouteById } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { internalErrorPayload } from "@/utils/apiError";
+import { errorResponse } from "@/utils/errors";
 
 export async function GET(
   req: NextRequest,
@@ -19,7 +19,7 @@ export async function GET(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid route ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -27,21 +27,12 @@ export async function GET(
   }
   try {
     const route = await getRouteById(id);
-    if (!route) {
-      return NextResponse.json(
-        { error: "Route not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
-    // Only allow: Admin/SuperAdmin, or owner (student._id or driver._id matches userId)
+    // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
     if (
       user.type === "Admin" ||
       user.type === "SuperAdmin" ||
-      (route.student &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (route.student as any)._id?.toString() === user.userId) ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (route.driver && (route.driver as any)._id?.toString() === user.userId)
+      route.student?.id === user.userId ||
+      route.driver?.id === user.userId
     ) {
       return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
     }
@@ -49,11 +40,8 @@ export async function GET(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
-  } catch (e) {
-    console.error("[GET /api/routes/:id]", e);
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -77,28 +65,19 @@ export async function DELETE(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid route ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   try {
-    const deleted = await deleteRouteById(id);
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Route not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    await deleteRoute(id);
     return NextResponse.json(
       { message: "Route deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
-  } catch (e) {
-    console.error("[DELETE /api/routes/:id]", e);
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

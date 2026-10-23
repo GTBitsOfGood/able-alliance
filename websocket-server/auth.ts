@@ -1,7 +1,7 @@
 import type { AppSocket, AuthNext } from "./types.js";
 import jwt from "jsonwebtoken";
 import { debugLog } from "./utils/logger.js";
-import { getRouteForAuth } from "./utils/db.js";
+import { getRouteForAuth } from "./actions.js";
 
 // Compare dates in America/New_York using Intl (works reliably in Node).
 function estDateStr(date: Date) {
@@ -68,8 +68,8 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
       return next(new Error("Route is not scheduled for today"));
     }
 
-    const isStudent = route.student?._id?.toString() === userId;
-    const isDriver = route.driver?._id?.toString() === userId;
+    const isStudent = route.student?.id === userId;
+    const isDriver = route.driver?.id === userId;
     const isSuperAdmin = decoded.type === "SuperAdmin";
 
     if (!isStudent && !isDriver && !isSuperAdmin) {

@@ -5,8 +5,8 @@ import {
   renameAccommodation,
 } from "@/server/db/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { internalErrorPayload } from "@/utils/apiError";
-import mongoose from "mongoose";
+import { isValidId } from "@/utils/ids";
+import { errorResponse } from "@/utils/errors";
 
 export async function PATCH(
   req: NextRequest,
@@ -28,7 +28,7 @@ export async function PATCH(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid accommodation ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -44,23 +44,9 @@ export async function PATCH(
   }
   try {
     const updated = await renameAccommodation(id, newLabel);
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Accommodation not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    if (e instanceof Error && e.message.includes("already exists")) {
-      return NextResponse.json(
-        { error: e.message },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -84,27 +70,19 @@ export async function DELETE(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid accommodation ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   try {
-    const deleted = await deleteAccommodation(id);
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Accommodation not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    await deleteAccommodation(id);
     return NextResponse.json(
       { message: "Accommodation deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
-  } catch (e) {
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

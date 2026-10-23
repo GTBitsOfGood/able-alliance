@@ -1,5 +1,4 @@
-import connectMongoDB from "../mongodb";
-import UserModel from "../models/UserModel";
+import { db } from "@db";
 
 /** Creates the initial SuperAdmin on server startup, if none exists. */
 export async function initSuperAdmin() {
@@ -15,20 +14,21 @@ export async function initSuperAdmin() {
   }
   const email = `${username}@gatech.edu`;
 
-  await connectMongoDB();
-
-  const existing = await UserModel.findOne({ type: "SuperAdmin" });
+  const existing = await db.user.findFirst({ where: { type: "SuperAdmin" } });
   if (existing) {
     console.log(`[Init] SuperAdmin already exists: ${existing.email}`);
     return;
   }
 
-  await UserModel.create({
-    firstName,
-    lastName,
-    email,
-    username,
-    type: "SuperAdmin",
+  await db.user.create({
+    data: {
+      firstName,
+      lastName,
+      email,
+      username,
+      type: "SuperAdmin",
+      settings: { create: {} },
+    },
   });
   console.log(`[Init] SuperAdmin created: ${email}`);
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { UserType } from "@db/generated/enums";
 
 export const shiftSchema = z
   .object({
@@ -15,19 +16,15 @@ export const shiftSchema = z
     path: ["startTime"],
   });
 
-const notificationSchema = z.object({
-  dailySummary: z.boolean().default(false),
-  driverAssigned: z.boolean().default(false),
-  driverEnRoute: z.boolean().default(false),
-  rideCancelled: z.boolean().default(false),
-  rideAssigned: z.boolean().default(false),
-  rideCompleted: z.boolean().default(false),
-  rideDelayed: z.boolean().default(false),
-  newMessageFromDriver: z.boolean().default(false),
-});
-
-const userSettingsSchema = z.object({
-  notifications: notificationSchema.prefault({}),
+export const notificationSettingsSchema = z.object({
+  dailySummary: z.boolean().optional(),
+  driverAssigned: z.boolean().optional(),
+  driverEnRoute: z.boolean().optional(),
+  rideCancelled: z.boolean().optional(),
+  rideAssigned: z.boolean().optional(),
+  rideCompleted: z.boolean().optional(),
+  rideDelayed: z.boolean().optional(),
+  newMessageFromDriver: z.boolean().optional(),
 });
 
 export const baseUserSchema = z.object({
@@ -49,8 +46,8 @@ export const baseUserSchema = z.object({
       /^[\w-.]+@gatech\.edu$/,
       "Email must be a valid Georgia Tech email ending with @gatech.edu",
     ),
-  type: z.enum(["Student", "Driver", "Admin", "SuperAdmin"]),
-  settings: userSettingsSchema.prefault({}),
+  type: z.enum(UserType),
+  settings: notificationSettingsSchema.optional(),
 });
 
 export const studentSchema = baseUserSchema.extend({
@@ -61,12 +58,6 @@ export const studentSchema = baseUserSchema.extend({
   }),
 });
 
-export const driverSchema = baseUserSchema.extend({
-  type: z.literal("Driver"),
-  shifts: z.array(shiftSchema).default([]),
-});
-
 export type BaseUserInput = z.infer<typeof baseUserSchema>;
 export type StudentInput = z.infer<typeof studentSchema>;
-export type DriverInput = z.infer<typeof driverSchema>;
 export type Shift = z.infer<typeof shiftSchema>;

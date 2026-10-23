@@ -1,3 +1,4 @@
+import type { ShiftInstanceResponse as ShiftInstance } from "@/utils/types/api";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
 import { getUsers } from "@/server/db/actions/UserAction";
@@ -5,6 +6,7 @@ import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { estWeekRange } from "@/utils/dateEst";
 import { addDays } from "date-fns";
 import { toZonedTime, format as tzFormat } from "date-fns-tz";
+import { errorResponse } from "@/utils/errors";
 
 const TZ = "America/New_York";
 const DAY_NAMES = [
@@ -72,18 +74,6 @@ export async function GET(req: NextRequest) {
     // Fetch all drivers
     const drivers = await getUsers("Driver");
 
-    type ShiftInstance = {
-      driverId: string;
-      driverName: string;
-      date: string;
-      dateLabel: string;
-      dayName: string;
-      startTime: string;
-      endTime: string;
-      startTime24: string;
-      endTime24: string;
-    };
-
     const instances: ShiftInstance[] = [];
 
     // Today's date string in EST — used to filter out past shifts
@@ -97,16 +87,7 @@ export async function GET(req: NextRequest) {
 
       for (const driver of drivers) {
         const driverName = `${driver.firstName} ${driver.lastName}`;
-        const shifts =
-          (
-            driver as {
-              shifts?: Array<{
-                dayOfWeek: number;
-                startTime: string;
-                endTime: string;
-              }>;
-            }
-          ).shifts ?? [];
+        const shifts = driver.shifts ?? [];
 
         for (const shift of shifts) {
           const { dayOfWeek, startTime, endTime } = shift;
@@ -120,7 +101,7 @@ export async function GET(req: NextRequest) {
           if (date < todayStr) continue;
 
           instances.push({
-            driverId: driver._id.toString(),
+            driverId: driver.id,
             driverName,
             date,
             dateLabel: formatDateLabel(date),
@@ -141,11 +122,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(instances, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    console.error("[GET /api/shifts]", e);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (error) {
+    return errorResponse(error);
   }
 }

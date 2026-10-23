@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
+import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import {
   getRouteById,
   markRouteMissing,
 } from "@/server/db/actions/RouteAction";
-import { internalErrorPayload } from "@/utils/apiError";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function POST(request: NextRequest) {
   let user;
@@ -27,10 +27,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => {
+      throw new ArgumentError("Malformed request body");
+    });
+    if (typeof body !== "object" || body === null || Array.isArray(body))
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
     const { routeId } = body as { routeId?: string };
 
-    if (!routeId || !mongoose.Types.ObjectId.isValid(routeId)) {
+    if (!routeId || !isValidId(routeId)) {
       return NextResponse.json(
         { error: "Invalid route ID" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -38,17 +45,9 @@ export async function POST(request: NextRequest) {
     }
 
     const route = await getRouteById(routeId);
-    if (!route) {
-      return NextResponse.json(
-        { error: "Route not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
 
     // Validate caller is the assigned driver
-    const driverId = (
-      route.driver as { _id?: { toString(): string } } | undefined
-    )?._id?.toString();
+    const driverId = route.driver?.id;
     if (!driverId || driverId !== user.userId) {
       return NextResponse.json(
         { error: "Forbidden" },
@@ -58,16 +57,7 @@ export async function POST(request: NextRequest) {
 
     const updated = await markRouteMissing(routeId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    console.error("[POST /api/routes/missing]", e);
-    if (e instanceof SyntaxError || e instanceof TypeError) {
-      return NextResponse.json(
-        { error: "Malformed request body" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

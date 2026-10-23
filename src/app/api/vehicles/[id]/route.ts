@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
+import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { vehicleSchema } from "@/utils/types/vehicle";
 import {
+  deleteVehicle,
   getVehicleById,
-  deleteVehicleById,
-  updateVehicleById,
+  updateVehicle,
 } from "@/server/db/actions/VehicleAction";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function GET(
   req: NextRequest,
@@ -22,7 +23,7 @@ export async function GET(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid vehicle ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -30,18 +31,9 @@ export async function GET(
   }
   try {
     const vehicle = await getVehicleById(id);
-    if (!vehicle) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
     return NextResponse.json(vehicle, { status: HTTP_STATUS_CODE.OK });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -65,29 +57,20 @@ export async function DELETE(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid vehicle ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   try {
-    const deleted = await deleteVehicleById(id);
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    await deleteVehicle(id);
     return NextResponse.json(
       { message: "Vehicle deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -111,14 +94,16 @@ export async function PATCH(
     );
   }
   const { id } = await params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidId(id)) {
     return NextResponse.json(
       { error: "Invalid vehicle ID" },
       { status: HTTP_STATUS_CODE.BAD_REQUEST },
     );
   }
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => {
+      throw new ArgumentError("Invalid JSON body");
+    });
     const parsed = vehicleSchema.partial().safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -126,18 +111,9 @@ export async function PATCH(
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    const updated = await updateVehicleById(id, parsed.data);
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Vehicle not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
+    const updated = await updateVehicle(id, parsed.data);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (error) {
+    return errorResponse(error);
   }
 }

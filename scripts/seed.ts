@@ -1,60 +1,108 @@
 /**
  * Seed script for local development.
  *
- * Run via:  npx tsx scripts/seed.ts [mongodb-url]
- *       or:  npm run seed [-- mongodb-url]
+ * Run via:  npx tsx scripts/seed.ts [postgresql-url]
+ *       or:  npm run seed [-- postgresql-url]
  *
  * Idempotent — checks for existing data before inserting.
  */
 
 import "dotenv/config";
-import mongoose from "mongoose";
-import { getMapboxTravelDuration } from "@/server/mapbox";
+import { PrismaPg } from "@prisma/adapter-pg";
+import {
+  PrismaClient,
+  type Location,
+  type Vehicle,
+  type Prisma,
+  type Route,
+} from "@db/generated/client";
+import type { LocationInput } from "@/utils/types";
+import type { VehicleInput } from "@/utils/types/vehicle";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
-const MONGODB_URI =
+const DATABASE_URL =
   process.argv[2] ??
-  process.env.MONGODB_URI ??
-  "mongodb://localhost:27017/able-alliance";
+  process.env.DATABASE_URL ??
+  "postgresql://able:able@localhost:5432/able_alliance";
+const db = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: DATABASE_URL }),
+});
 
-async function upsertOne<T extends Record<string, unknown>>(
-  col: mongoose.mongo.Collection,
-  query: Partial<T>,
-  doc: T,
+// Existing local fixtures are kept when reseeding.
+async function seedRecord<T>(
+  existing: Promise<T | null>,
+  create: () => Promise<T>,
   label: string,
-): Promise<T & { _id: mongoose.Types.ObjectId }> {
-  const existing = await col.findOne(query);
-  if (existing) {
-    console.log(`– ${label} already exists`);
-    return existing as T & { _id: mongoose.Types.ObjectId };
-  }
-  const res = await col.insertOne(doc);
-  console.log(`✓ Created ${label}`);
-  return { ...doc, _id: res.insertedId } as T & {
-    _id: mongoose.Types.ObjectId;
-  };
+): Promise<T> {
+  const row = await existing;
+  console.log(`${row ? "– Existing" : "✓ Creating"} ${label}`);
+  return row ?? create();
+}
+function seedUser(
+  query: { username: string },
+  data: Prisma.UserCreateInput,
+  label: string,
+) {
+  return seedRecord(
+    db.user.findUnique({ where: query }),
+    () =>
+      db.user.create({
+        data: { ...data, settings: data.settings ?? { create: {} } },
+      }),
+    label,
+  );
+}
+function seedLocation(
+  query: { name: string },
+  data: LocationInput,
+  label: string,
+) {
+  return seedRecord(
+    db.location.findUnique({ where: query }),
+    () => db.location.create({ data }),
+    label,
+  );
+}
+function seedVehicle(
+  query: { vehicleId: string },
+  data: VehicleInput,
+  label: string,
+) {
+  return seedRecord(
+    db.vehicle.findUnique({ where: query }),
+    () => db.vehicle.create({ data }),
+    label,
+  );
+}
+function seedAccommodation(
+  query: { label: string },
+  data: { label: string },
+  label: string,
+) {
+  return seedRecord(
+    db.accommodation.findUnique({ where: query }),
+    () => db.accommodation.create({ data }),
+    label,
+  );
 }
 
 async function seed() {
-  console.log("Connecting to MongoDB…");
-  await mongoose.connect(MONGODB_URI);
-  const db = mongoose.connection.db!;
+  console.log("Connecting to PostgreSQL…");
+  await db.$connect();
 
   // ---------- Accommodations ----------
-  const accCol = db.collection("accommodations");
   for (const label of [
     "Wheelchair",
     "LowMobility",
     "VisualImpairment",
     "ExtraTime",
   ]) {
-    await upsertOne(accCol, { label }, { label }, `accommodation: ${label}`);
+    await seedAccommodation({ label }, { label }, `accommodation: ${label}`);
   }
 
   // ---------- Users ----------
-  const usersCol = db.collection("users");
 
-  const student1 = await upsertOne(
-    usersCol,
+  const student1 = await seedUser(
     { username: "gburdell3" },
     {
       firstName: "George",
@@ -63,13 +111,18 @@ async function seed() {
       username: "gburdell3",
       email: "gburdell3@gatech.edu",
       type: "Student",
-      studentInfo: { accessibilityNeeds: ["Wheelchair", "ExtraTime"] },
+      studentInfo: {
+        create: {
+          accessibilityNeeds: {
+            connect: ["Wheelchair", "ExtraTime"].map((label) => ({ label })),
+          },
+        },
+      },
     },
     "student: George Burdell",
   );
 
-  const student2 = await upsertOne(
-    usersCol,
+  const student2 = await seedUser(
     { username: "jdoe3" },
     {
       firstName: "Jane",
@@ -77,13 +130,12 @@ async function seed() {
       username: "jdoe3",
       email: "jdoe3@gatech.edu",
       type: "Student",
-      studentInfo: { notes: "Please call ahead of arrival." },
+      studentInfo: { create: { notes: "Please call ahead of arrival." } },
     },
     "student: Jane Doe",
   );
 
-  const student3 = await upsertOne(
-    usersCol,
+  const student3 = await seedUser(
     { username: "mchen3" },
     {
       firstName: "Michael",
@@ -91,13 +143,18 @@ async function seed() {
       username: "mchen3",
       email: "mchen3@gatech.edu",
       type: "Student",
-      studentInfo: { accessibilityNeeds: ["LowMobility"] },
+      studentInfo: {
+        create: {
+          accessibilityNeeds: {
+            connect: [{ label: "LowMobility" }],
+          },
+        },
+      },
     },
     "student: Michael Chen",
   );
 
-  const student4 = await upsertOne(
-    usersCol,
+  const student4 = await seedUser(
     { username: "spriya3" },
     {
       firstName: "Sara",
@@ -106,15 +163,18 @@ async function seed() {
       email: "spriya3@gatech.edu",
       type: "Student",
       studentInfo: {
-        accessibilityNeeds: ["VisualImpairment"],
-        notes: "Needs extra assistance at entry.",
+        create: {
+          accessibilityNeeds: {
+            connect: [{ label: "VisualImpairment" }],
+          },
+          notes: "Needs extra assistance at entry.",
+        },
       },
     },
     "student: Sara Priya",
   );
 
-  const driver1 = await upsertOne(
-    usersCol,
+  const driver1 = await seedUser(
     { username: "driver1" },
     {
       firstName: "Test",
@@ -123,19 +183,20 @@ async function seed() {
       username: "driver1",
       email: "driver1@gatech.edu",
       type: "Driver",
-      shifts: [
-        { dayOfWeek: 1, startTime: "08:00", endTime: "14:00" },
-        { dayOfWeek: 2, startTime: "08:00", endTime: "14:00" },
-        { dayOfWeek: 3, startTime: "08:00", endTime: "14:00" },
-        { dayOfWeek: 4, startTime: "08:00", endTime: "14:00" },
-        { dayOfWeek: 5, startTime: "08:00", endTime: "14:00" },
-      ],
+      shifts: {
+        create: [
+          { dayOfWeek: 1, startTime: "08:00", endTime: "14:00" },
+          { dayOfWeek: 2, startTime: "08:00", endTime: "14:00" },
+          { dayOfWeek: 3, startTime: "08:00", endTime: "14:00" },
+          { dayOfWeek: 4, startTime: "08:00", endTime: "14:00" },
+          { dayOfWeek: 5, startTime: "08:00", endTime: "14:00" },
+        ],
+      },
     },
     "driver: Test Driver",
   );
 
-  const driver2 = await upsertOne(
-    usersCol,
+  const driver2 = await seedUser(
     { username: "driver2" },
     {
       firstName: "Alex",
@@ -143,18 +204,19 @@ async function seed() {
       username: "driver2",
       email: "driver2@gatech.edu",
       type: "Driver",
-      shifts: [
-        { dayOfWeek: 1, startTime: "13:00", endTime: "19:00" },
-        { dayOfWeek: 3, startTime: "13:00", endTime: "19:00" },
-        { dayOfWeek: 5, startTime: "13:00", endTime: "19:00" },
-        { dayOfWeek: 6, startTime: "10:00", endTime: "16:00" },
-      ],
+      shifts: {
+        create: [
+          { dayOfWeek: 1, startTime: "13:00", endTime: "19:00" },
+          { dayOfWeek: 3, startTime: "13:00", endTime: "19:00" },
+          { dayOfWeek: 5, startTime: "13:00", endTime: "19:00" },
+          { dayOfWeek: 6, startTime: "10:00", endTime: "16:00" },
+        ],
+      },
     },
     "driver: Alex Smith",
   );
 
-  const driver3 = await upsertOne(
-    usersCol,
+  const driver3 = await seedUser(
     { username: "aevans3" },
     {
       firstName: "Austin",
@@ -162,17 +224,18 @@ async function seed() {
       username: "aevans3",
       email: "aevans3@gatech.edu",
       type: "Driver",
-      shifts: [
-        { dayOfWeek: 0, startTime: "09:00", endTime: "15:00" },
-        { dayOfWeek: 2, startTime: "09:00", endTime: "15:00" },
-        { dayOfWeek: 4, startTime: "09:00", endTime: "15:00" },
-      ],
+      shifts: {
+        create: [
+          { dayOfWeek: 0, startTime: "09:00", endTime: "15:00" },
+          { dayOfWeek: 2, startTime: "09:00", endTime: "15:00" },
+          { dayOfWeek: 4, startTime: "09:00", endTime: "15:00" },
+        ],
+      },
     },
     "driver: Austin Evans",
   );
 
-  await upsertOne(
-    usersCol,
+  await seedUser(
     { username: "adminuser" },
     {
       firstName: "Admin",
@@ -184,8 +247,7 @@ async function seed() {
     "admin: Admin User",
   );
 
-  await upsertOne(
-    usersCol,
+  await seedUser(
     { username: "dnestani3" },
     {
       firstName: "Daniele",
@@ -197,8 +259,7 @@ async function seed() {
     "admin: Daniele Nestani",
   );
 
-  await upsertOne(
-    usersCol,
+  await seedUser(
     { username: "superadmin" },
     {
       firstName: "Super",
@@ -211,7 +272,6 @@ async function seed() {
   );
 
   // ---------- Locations ----------
-  const locsCol = db.collection("locations");
 
   const locDefs = [
     {
@@ -266,24 +326,19 @@ async function seed() {
     },
   ];
 
-  const locations: Record<
-    string,
-    { _id: mongoose.Types.ObjectId } & (typeof locDefs)[0]
-  > = {};
+  const locations: Record<string, Location> = {};
   for (const def of locDefs) {
-    const loc = await upsertOne(
-      locsCol,
+    const loc = await seedLocation(
       { name: def.name },
       def,
       `location: ${def.name}`,
     );
-    locations[def.name] = loc as { _id: mongoose.Types.ObjectId } & typeof def;
+    locations[def.name] = loc;
   }
 
   // ---------- Vehicles ----------
-  const vehCol = db.collection("vehicles");
 
-  const vehicleDefs = [
+  const vehicleDefs: VehicleInput[] = [
     {
       vehicleId: "1001",
       name: "2026 Honda HR-V",
@@ -326,515 +381,172 @@ async function seed() {
     },
   ];
 
-  const vehicles: Record<
-    string,
-    (typeof vehicleDefs)[0] & { _id: mongoose.Types.ObjectId }
-  > = {};
+  const vehicles: Record<string, Vehicle> = {};
   for (const def of vehicleDefs) {
-    const v = await upsertOne(
-      vehCol,
+    const v = await seedVehicle(
       { vehicleId: def.vehicleId },
       def,
       `vehicle: ${def.name} (ID ${def.vehicleId})`,
     );
-    vehicles[def.vehicleId] = v as typeof def & {
-      _id: mongoose.Types.ObjectId;
-    };
+    vehicles[def.vehicleId] = v;
   }
 
   // ---------- Routes ----------
-  const routesCol = db.collection("routes");
-
-  const addMinutes = (date: Date, minutes: number): Date =>
-    new Date(date.getTime() + minutes * 60 * 1000);
-
-  const makeEmbed = (user: Record<string, unknown>) => ({
-    _id: user._id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    type: user.type,
-    ...(user.studentInfo ? { studentInfo: user.studentInfo } : {}),
-  });
-
-  const makeVehicleEmbed = (
-    v: (typeof vehicleDefs)[0] & { _id: mongoose.Types.ObjectId },
-  ) => ({
-    _id: v._id,
-    vehicleId: v.vehicleId,
-    name: v.name,
-    licensePlate: v.licensePlate,
-    description: v.description,
-    accessibility: v.accessibility,
-    seatCount: v.seatCount,
-  });
-
+  // Explicit fixture durations keep the sample schedule repeatable offline.
+  const tripMinutes = 20;
+  const windowMinutes = 30;
+  const slotSpacingMinutes = 90;
   const now = new Date();
+  const today = formatInTimeZone(now, "America/New_York", "yyyy-MM-dd");
+  const students = [student1, student2, student3, student4];
+  const fleet = Object.values(vehicles);
+  const drivers = await db.user.findMany({
+    where: { id: { in: [driver1.id, driver2.id, driver3.id] }, type: "Driver" },
+    include: {
+      shifts: {
+        orderBy: [
+          { dayOfWeek: "asc" },
+          { startTime: "asc" },
+          { endTime: "asc" },
+        ],
+      },
+    },
+    orderBy: { username: "asc" },
+  });
+  const stops = Object.values(locations);
+  const planned: Omit<Route, "id">[] = [];
+  let studentCursor = 0;
 
-  // Build a list of dates: today + 6 more days, plus next 7 days
-  const makeDate = (daysOffset: number, hour: number, minute: number): Date => {
-    const d = new Date(now);
-    d.setDate(now.getDate() + daysOffset);
-    d.setHours(hour, minute, 0, 0);
-    return d;
-  };
-
-  type AnyUser = {
-    _id: mongoose.Types.ObjectId;
-    firstName: string;
-    lastName: string;
-    email: string;
-    type: string;
-    preferredName?: string;
-    shifts?: { dayOfWeek: number; startTime: string; endTime: string }[];
-    studentInfo?: { accessibilityNeeds?: string[]; notes?: string };
-  };
-
-  type RouteTemplate = {
-    student: AnyUser;
-    driver: AnyUser;
-    vehicle: (typeof vehicleDefs)[0] & { _id: mongoose.Types.ObjectId };
-    pickupLocation: keyof typeof locations;
-    dropoffLocation: keyof typeof locations;
-    pickupTime: Date;
-    status: string;
-  };
-
-  const routeTemplates: RouteTemplate[] = [
-    // George + driver1 + vehicle 1001
-    {
-      student: student1,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(0, 10, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student1,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(0, 14, 30),
-      status: "Scheduled",
-    },
-    {
-      student: student1,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Student Center",
-      pickupTime: makeDate(1, 9, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student1,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Campus Recreation Center",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(2, 11, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student1,
-      driver: driver2,
-      vehicle: vehicles["1002"],
-      pickupLocation: "West Village Dining",
-      dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(3, 13, 30),
-      status: "Scheduled",
-    },
-    {
-      student: student1,
-      driver: driver2,
-      vehicle: vehicles["1002"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(4, 15, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student1,
-      driver: driver3,
-      vehicle: vehicles["1003"],
-      pickupLocation: "Eighth Street Apartments",
-      dropoffLocation: "Student Center",
-      pickupTime: makeDate(-1, 10, 0),
-      status: "Completed",
-    },
-    {
-      student: student1,
-      driver: driver3,
-      vehicle: vehicles["1003"],
-      pickupLocation: "North Avenue Apartments",
-      dropoffLocation: "Ferst Center for the Arts",
-      pickupTime: makeDate(-2, 14, 0),
-      status: "Completed",
-    },
-
-    // Jane + driver2 + vehicle 1002
-    {
-      student: student2,
-      driver: driver2,
-      vehicle: vehicles["1002"],
-      pickupLocation: "Student Center",
-      dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(0, 9, 30),
-      status: "Scheduled",
-    },
-    {
-      student: student2,
-      driver: driver2,
-      vehicle: vehicles["1002"],
-      pickupLocation: "Campus Recreation Center",
-      dropoffLocation: "West Village Dining",
-      pickupTime: makeDate(1, 11, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student2,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(3, 10, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student2,
-      driver: driver1,
-      vehicle: vehicles["1001"],
-      pickupLocation: "Stamps Health Services",
-      dropoffLocation: "Eighth Street Apartments",
-      pickupTime: makeDate(-1, 13, 0),
-      status: "Completed",
-    },
-
-    // Michael + driver3 + vehicle 1003
-    {
-      student: student3,
-      driver: driver3,
-      vehicle: vehicles["1003"],
-      pickupLocation: "Ferst Center for the Arts",
-      dropoffLocation: "Student Center",
-      pickupTime: makeDate(0, 8, 30),
-      status: "Scheduled",
-    },
-    {
-      student: student3,
-      driver: driver3,
-      vehicle: vehicles["1003"],
-      pickupLocation: "North Avenue Apartments",
-      dropoffLocation: "Campus Recreation Center",
-      pickupTime: makeDate(2, 13, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student3,
-      driver: driver1,
-      vehicle: vehicles["1004"],
-      pickupLocation: "Eighth Street Apartments",
-      dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(4, 9, 0),
-      status: "Scheduled",
-    },
-
-    // Sara + driver1 + vehicle 1004
-    {
-      student: student4,
-      driver: driver1,
-      vehicle: vehicles["1004"],
-      pickupLocation: "West Village Dining",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(1, 10, 30),
-      status: "Scheduled",
-    },
-    {
-      student: student4,
-      driver: driver2,
-      vehicle: vehicles["1005"],
-      pickupLocation: "Student Center",
-      dropoffLocation: "Ferst Center for the Arts",
-      pickupTime: makeDate(3, 14, 0),
-      status: "Scheduled",
-    },
-    {
-      student: student4,
-      driver: driver3,
-      vehicle: vehicles["1003"],
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(-1, 11, 0),
-      status: "Completed",
-    },
-  ];
-
-  // ---------- Requested routes (no driver/vehicle — available to schedule) ----------
-  // Spread across next week Mon–Fri, timed within each driver's shift windows:
-  //   driver1 (Test):  Mon–Fri 08:00–14:00
-  //   driver2 (Alex):  Mon/Wed/Fri 13:00–19:00, Sat 10:00–16:00
-  //   driver3 (Austin):Tue/Thu 09:00–15:00
-  // Today is treated as day 0; Mon=+2, Tue=+3, Wed=+4, Thu=+5, Fri=+6
-  type RequestedTemplate = {
-    student: AnyUser;
-    pickupLocation: keyof typeof locations;
-    dropoffLocation: keyof typeof locations;
-    pickupTime: Date;
-  };
-
-  const requestedTemplates: RequestedTemplate[] = [
-    // ── Monday (driver1 08–14, driver2 13–19) ──────────────────────────────
-    {
-      student: student1,
-      pickupLocation: "West Village Dining",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(2, 8, 30),
-    },
-    {
-      student: student2,
-      pickupLocation: "North Avenue Apartments",
-      dropoffLocation: "Student Center",
-      pickupTime: makeDate(2, 9, 15),
-    },
-    {
-      student: student3,
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(2, 10, 0),
-    },
-    {
-      student: student4,
-      pickupLocation: "Campus Recreation Center",
-      dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(2, 11, 30),
-    },
-    {
-      student: student2,
-      pickupLocation: "Student Center",
-      dropoffLocation: "Eighth Street Apartments",
-      pickupTime: makeDate(2, 14, 30),
-    },
-    {
-      student: student3,
-      pickupLocation: "Ferst Center for the Arts",
-      dropoffLocation: "West Village Dining",
-      pickupTime: makeDate(2, 16, 0),
-    },
-
-    // ── Tuesday (driver1 08–14, driver3 09–15) ────────────────────────────
-    {
-      student: student4,
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(3, 8, 30),
-    },
-    {
-      student: student1,
-      pickupLocation: "West Village Dining",
-      dropoffLocation: "Student Center",
-      pickupTime: makeDate(3, 9, 0),
-    },
-    {
-      student: student2,
-      pickupLocation: "North Avenue Apartments",
-      dropoffLocation: "Campus Recreation Center",
-      pickupTime: makeDate(3, 10, 30),
-    },
-    {
-      student: student3,
-      pickupLocation: "Eighth Street Apartments",
-      dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(3, 12, 0),
-    },
-    {
-      student: student4,
-      pickupLocation: "Clough Undergraduate Learning Commons",
-      dropoffLocation: "Ferst Center for the Arts",
-      pickupTime: makeDate(3, 13, 30),
-    },
-
-    // ── Wednesday (driver1 08–14, driver2 13–19, driver3 09–15) ──────────
-    {
-      student: student1,
-      pickupLocation: "Exhibition Hall",
-      dropoffLocation: "Eighth Street Apartments",
-      pickupTime: makeDate(4, 9, 0),
-    },
-    {
-      student: student2,
-      pickupLocation: "Student Center",
-      dropoffLocation: "Ferst Center for the Arts",
-      pickupTime: makeDate(4, 11, 0),
-    },
-    {
-      student: student3,
-      pickupLocation: "West Village Dining",
-      dropoffLocation: "North Avenue Apartments",
-      pickupTime: makeDate(4, 14, 0),
-    },
-    {
-      student: student4,
-      pickupLocation: "Tech Square Eastbound",
-      dropoffLocation: "Campus Recreation Center",
-      pickupTime: makeDate(4, 15, 30),
-    },
-
-    // ── Thursday (driver1 08–14, driver3 09–15) ───────────────────────────
-    {
-      student: student1,
-      pickupLocation: "Campus Recreation Center",
-      dropoffLocation: "Clough Undergraduate Learning Commons",
-      pickupTime: makeDate(5, 9, 30),
-    },
-    {
-      student: student2,
-      pickupLocation: "North Avenue Apartments",
-      dropoffLocation: "Exhibition Hall",
-      pickupTime: makeDate(5, 11, 0),
-    },
-    {
-      student: student3,
-      pickupLocation: "West Village Dining",
-      dropoffLocation: "Stamps Health Services",
-      pickupTime: makeDate(5, 13, 0),
-    },
-
-    // ── Friday (driver1 08–14, driver2 13–19) ────────────────────────────
-    {
-      student: student4,
-      pickupLocation: "Eighth Street Apartments",
-      dropoffLocation: "Student Center",
-      pickupTime: makeDate(6, 8, 30),
-    },
-    {
-      student: student1,
-      pickupLocation: "Ferst Center for the Arts",
-      dropoffLocation: "Tech Square Eastbound",
-      pickupTime: makeDate(6, 10, 0),
-    },
-    {
-      student: student2,
-      pickupLocation: "Student Center",
-      dropoffLocation: "West Village Dining",
-      pickupTime: makeDate(6, 13, 30),
-    },
-  ];
-
-  let createdReq = 0;
-  let skippedReq = 0;
-
-  for (const t of requestedTemplates) {
-    const pickupLoc = locations[t.pickupLocation];
-    const dropoffLoc = locations[t.dropoffLocation];
-    if (!pickupLoc || !dropoffLoc) continue;
-
-    const existing = await routesCol.findOne({
-      "student._id": t.student._id,
-      scheduledPickupTime: t.pickupTime,
-    });
-    if (existing) {
-      skippedReq++;
-      continue;
-    }
-
-    const windowStart = addMinutes(t.pickupTime, -30);
-    const windowEnd = addMinutes(t.pickupTime, 30);
-
-    let estimatedDropoffTime: Date | undefined;
-    try {
-      const secs = await getMapboxTravelDuration(
-        pickupLoc.latitude,
-        pickupLoc.longitude,
-        dropoffLoc.latitude,
-        dropoffLoc.longitude,
-        t.pickupTime,
-      );
-      if (secs !== null) {
-        estimatedDropoffTime = new Date(t.pickupTime.getTime() + secs * 1000);
-      }
-    } catch {
-      /* skip if Mapbox unavailable */
-    }
-
-    await routesCol.insertOne({
-      pickupLocation: pickupLoc._id,
-      dropoffLocation: dropoffLoc._id,
-      student: makeEmbed(t.student as unknown as Record<string, unknown>),
-      scheduledPickupTime: t.pickupTime,
-      pickupWindowStart: windowStart,
-      pickupWindowEnd: windowEnd,
-      estimatedDropoffTime,
-      status: "Requested",
-    });
-    createdReq++;
+  function conflicts(a: Omit<Route, "id">, b: Omit<Route, "id">) {
+    const sharedResource =
+      a.studentId === b.studentId ||
+      (a.driverId !== null && a.driverId === b.driverId) ||
+      (a.vehicleId !== null && a.vehicleId === b.vehicleId);
+    const endA = Math.max(
+      a.pickupWindowEnd.getTime(),
+      a.estimatedDropoffTime?.getTime() ?? 0,
+    );
+    const endB = Math.max(
+      b.pickupWindowEnd.getTime(),
+      b.estimatedDropoffTime?.getTime() ?? 0,
+    );
+    return (
+      sharedResource &&
+      a.pickupWindowStart.getTime() < endB &&
+      b.pickupWindowStart.getTime() < endA
+    );
   }
 
-  console.log(
-    `– Requested routes: created ${createdReq}, skipped ${skippedReq}`,
-  );
+  // Use a UTC calendar date to advance days independently of the host timezone.
+  // Convert each driver's local shift times to UTC in America/New_York.
+  for (let dayOffset = -2; dayOffset < 14; dayOffset++) {
+    const day = new Date(`${today}T00:00:00Z`);
+    day.setUTCDate(day.getUTCDate() + dayOffset);
+    const date = day.toISOString().slice(0, 10);
+    for (const [driverIndex, driver] of drivers.entries()) {
+      const vehicle = fleet[(dayOffset + 2 + driverIndex) % fleet.length];
+      for (const shift of driver.shifts.filter(
+        (shift) => shift.dayOfWeek === day.getUTCDay(),
+      )) {
+        const shiftStart = fromZonedTime(
+          `${date}T${shift.startTime}:00`,
+          "America/New_York",
+        );
+        const shiftEnd = fromZonedTime(
+          `${date}T${shift.endTime}:00`,
+          "America/New_York",
+        );
+        // Two assigned rides and one future request per shift, with room to turn around.
+        for (let slot = 0; slot < 3; slot++) {
+          const pickup = new Date(
+            shiftStart.getTime() +
+              (windowMinutes + slot * slotSpacingMinutes) * 60000,
+          );
+          const windowStart = new Date(
+            pickup.getTime() - windowMinutes * 60000,
+          );
+          const windowEnd = new Date(pickup.getTime() + windowMinutes * 60000);
+          const dropoff = new Date(pickup.getTime() + tripMinutes * 60000);
+          if (windowEnd > shiftEnd || dropoff > shiftEnd) continue;
+          const requested = slot === 2;
+          if (requested && pickup <= now) continue;
+          const pickupLocation =
+            stops[(dayOffset + 2 + driverIndex + slot) % stops.length];
+          const dropoffLocation =
+            stops[(dayOffset + 3 + driverIndex + slot) % stops.length];
+          for (let attempt = 0; attempt < students.length; attempt++) {
+            const studentIndex = (studentCursor + attempt) % students.length;
+            const candidate: Omit<Route, "id"> = {
+              studentId: students[studentIndex].id,
+              driverId: requested ? null : driver.id,
+              vehicleId: requested ? null : vehicle.id,
+              pickupLocation: pickupLocation.id,
+              dropoffLocation: dropoffLocation.id,
+              scheduledPickupTime: pickup,
+              pickupWindowStart: windowStart,
+              pickupWindowEnd: windowEnd,
+              estimatedDropoffTime: dropoff,
+              status: requested
+                ? "Requested"
+                : dropoff <= now
+                  ? "Completed"
+                  : pickup <= now
+                    ? "Pickedup"
+                    : "Scheduled",
+            };
+            if (planned.some((other) => conflicts(candidate, other))) continue;
+            planned.push(candidate);
+            studentCursor = (studentIndex + 1) % students.length;
+            break;
+          }
+        }
+      }
+    }
+  }
 
+  const existingRoutes = await db.route.findMany({
+    where: {
+      OR: [
+        { studentId: { in: students.map((student) => student.id) } },
+        { driverId: { in: drivers.map((driver) => driver.id) } },
+        { vehicleId: { in: fleet.map((vehicle) => vehicle.id) } },
+      ],
+    },
+  });
   let created = 0;
-  let skipped = 0;
-
-  for (const t of routeTemplates) {
-    const pickupLoc = locations[t.pickupLocation];
-    const dropoffLoc = locations[t.dropoffLocation];
-    if (!pickupLoc || !dropoffLoc) continue;
-
-    const existing = await routesCol.findOne({
-      "student._id": t.student._id,
-      pickupLocation: pickupLoc._id,
-      dropoffLocation: dropoffLoc._id,
-      scheduledPickupTime: t.pickupTime,
-    });
-    if (existing) {
-      skipped++;
+  let skippedExisting = 0;
+  let skippedConflicts = 0;
+  for (const candidate of planned) {
+    if (
+      existingRoutes.some(
+        (route) =>
+          route.studentId === candidate.studentId &&
+          route.scheduledPickupTime.getTime() ===
+            candidate.scheduledPickupTime.getTime(),
+      )
+    ) {
+      skippedExisting++;
       continue;
     }
-
-    const windowStart = addMinutes(t.pickupTime, -30);
-    const windowEnd = addMinutes(t.pickupTime, 30);
-
-    let estimatedDropoffTime: Date | undefined;
-    try {
-      const secs = await getMapboxTravelDuration(
-        pickupLoc.latitude,
-        pickupLoc.longitude,
-        dropoffLoc.latitude,
-        dropoffLoc.longitude,
-        t.pickupTime,
-      );
-      if (secs !== null) {
-        estimatedDropoffTime = new Date(t.pickupTime.getTime() + secs * 1000);
-      }
-    } catch {
-      /* skip if Mapbox unavailable */
+    if (existingRoutes.some((route) => conflicts(candidate, route))) {
+      skippedConflicts++;
+      continue;
     }
-
-    await routesCol.insertOne({
-      pickupLocation: pickupLoc._id,
-      dropoffLocation: dropoffLoc._id,
-      student: makeEmbed(t.student as unknown as Record<string, unknown>),
-      driver: makeEmbed(t.driver as unknown as Record<string, unknown>),
-      vehicle: makeVehicleEmbed(t.vehicle),
-      scheduledPickupTime: t.pickupTime,
-      pickupWindowStart: windowStart,
-      pickupWindowEnd: windowEnd,
-      estimatedDropoffTime,
-      status: t.status,
-    });
+    const createdRoute = await db.route.create({ data: candidate });
+    existingRoutes.push(createdRoute);
     created++;
   }
-
-  console.log(`\n– Routes: created ${created}, skipped ${skipped}`);
+  console.log(
+    `\n– Routes: created ${created}, existing ${skippedExisting}, conflicting slots skipped ${skippedConflicts}`,
+  );
   console.log("\nSeed complete!");
-  await mongoose.disconnect();
 }
 
-seed().catch((err) => {
-  console.error("Seed failed:", err);
-  process.exit(1);
-});
+seed()
+  .catch((err) => {
+    console.error("Seed failed:", err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await db.$disconnect();
+  });

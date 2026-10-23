@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
+import { isValidId } from "@/utils/ids";
 import { completeRoute, getRouteById } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { internalErrorPayload } from "@/utils/apiError";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function POST(request: NextRequest) {
   let userId, type;
@@ -18,7 +18,14 @@ export async function POST(request: NextRequest) {
     );
   }
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => {
+      throw new ArgumentError("Malformed request body");
+    });
+    if (typeof body !== "object" || body === null || Array.isArray(body))
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
     const { routeId } = body;
     if (!routeId) {
       return NextResponse.json(
@@ -26,7 +33,7 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    if (!mongoose.Types.ObjectId.isValid(routeId)) {
+    if (!isValidId(routeId)) {
       return NextResponse.json(
         { error: "Invalid routeId" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -34,17 +41,7 @@ export async function POST(request: NextRequest) {
     }
     if (type === "Driver") {
       const route = await getRouteById(routeId);
-      if (!route) {
-        return NextResponse.json(
-          { error: "Route not found" },
-          { status: HTTP_STATUS_CODE.NOT_FOUND },
-        );
-      }
-      if (
-        (
-          route.driver as { _id?: { toString(): string } } | undefined
-        )?._id?.toString() !== userId
-      ) {
+      if (route.driver?.id !== userId) {
         return NextResponse.json(
           { error: "Forbidden" },
           { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -57,23 +54,8 @@ export async function POST(request: NextRequest) {
       );
     }
     const updated = await completeRoute(routeId);
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Route not found" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    console.error("[POST /api/routes/complete]", e);
-    if (e instanceof SyntaxError || e instanceof TypeError) {
-      return NextResponse.json(
-        { error: "Malformed request body" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

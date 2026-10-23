@@ -1,4 +1,4 @@
-import juno from "juno-sdk";
+import { juno } from "juno-sdk/lib/juno";
 
 const apiKey = process.env.JUNO_API_KEY;
 const baseURL = process.env.JUNO_BASE_URL;
