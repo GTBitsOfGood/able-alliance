@@ -12,10 +12,16 @@ import { estDateKey } from "@/utils/dateEst";
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
-import type { RouteResponse as RouteJson } from "@/utils/types/api";
+import type {
+  AdminRouteResponse,
+  DriverRouteDetailResponse,
+  RouteResponse,
+  ScheduleRouteResponse,
+  StudentRouteResponse,
+} from "@/utils/types/api";
 
-function asRoutes(body: unknown): RouteJson[] {
-  return Array.isArray(body) ? (body as RouteJson[]) : [];
+function asRoutes(body: unknown): RouteResponse[] {
+  return Array.isArray(body) ? (body as RouteResponse[]) : [];
 }
 
 test("route A: student creates, admin schedules, lists stay consistent", async ({
@@ -37,12 +43,11 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
     },
   });
   expect(create.status(), await create.text()).toBe(201);
-  const created = (await create.json()) as RouteJson;
+  const created = (await create.json()) as StudentRouteResponse;
   const routeId = String(created.id);
   expect(created.status).toBe("Requested");
   expect(created.pickup).toEqual(LOCATIONS.exhibitionHall);
   expect(created.dropoff).toEqual(LOCATIONS.studentCenter);
-  expect(created.student).not.toHaveProperty("settings");
 
   const studentList = await student.get("/api/routes");
   expect(studentList.status()).toBe(200);
@@ -53,6 +58,7 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   expect(studentRide!.status).toBe("Requested");
   expect(String(studentRide!.pickupLocation)).toBe(LOCATIONS.exhibitionHall.id);
   expect(String(studentRide!.dropoffLocation)).toBe(LOCATIONS.studentCenter.id);
+  expect(studentRide!.student).not.toHaveProperty("settings");
 
   const adminList = await admin.get("/api/routes");
   expect(adminList.status()).toBe(200);
@@ -61,6 +67,7 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   );
   expect(adminRide, "ride missing from admin list").toBeTruthy();
   expect(adminRide!.status).toBe("Requested");
+  expect(adminRide!.student).toHaveProperty("settings");
 
   const scheduled = await admin.post("/api/routes/schedule", {
     data: {
@@ -70,7 +77,9 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
     },
   });
   expect(scheduled.status(), await scheduled.text()).toBe(200);
-  expect(((await scheduled.json()) as RouteJson).status).toBe("Scheduled");
+  const scheduledResponse = (await scheduled.json()) as ScheduleRouteResponse;
+  expect(scheduledResponse.route.status).toBe("Scheduled");
+  expect(scheduledResponse.driver).toHaveProperty("shifts");
 
   const driverList = await driver.get(
     `/api/routes?driver=${PERSONAS.driver.id}`,
@@ -83,22 +92,39 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   expect(driverRide!.status).toBe("Scheduled");
   expect(driverRide!.driver?.id).toBe(PERSONAS.driver.id);
   expect(driverRide!.vehicle?.id).toBe(VEHICLE.id);
+  expect(driverRide!.driver).toBeTruthy();
+  expect(driverRide!.driver).not.toHaveProperty("shifts");
+  expect(driverRide!.student).not.toHaveProperty("settings");
 
   const readBack = await student.get(`/api/routes?id=${routeId}`);
   expect(readBack.status()).toBe(200);
-  const studentView = (await readBack.json()) as RouteJson;
+  const studentView = (await readBack.json()) as StudentRouteResponse;
   expect(studentView.status).toBe("Scheduled");
   expect(studentView.driver?.id).toBe(PERSONAS.driver.id);
   expect(studentView.vehicle?.id).toBe(VEHICLE.id);
+  expect(studentView.driver).not.toHaveProperty("settings");
+
+  const driverDetailResponse = await driver.get(`/api/routes?id=${routeId}`);
+  expect(driverDetailResponse.status()).toBe(200);
+  const driverView =
+    (await driverDetailResponse.json()) as DriverRouteDetailResponse;
+  expect(driverView.student.studentInfo).toBeTruthy();
+  expect(driverView.student.studentInfo?.accessibilityNeeds).toEqual([]);
+  expect(driverView.student).not.toHaveProperty("settings");
+  expect(driverView.driver).toBeTruthy();
+  expect(driverView.driver).not.toHaveProperty("shifts");
 
   const shift = await admin.get(
     `/api/shifts/${PERSONAS.driver.id}?date=${estDateKey(pickup)}`,
   );
   expect(shift.status(), await shift.text()).toBe(200);
-  const scheduledRoutes: RouteJson[] = (await shift.json()).scheduledRoutes;
-  expect(scheduledRoutes.find((route) => route.id === routeId)).toEqual(
-    studentView,
-  );
+  const scheduledRoutes: AdminRouteResponse[] = (await shift.json())
+    .scheduledRoutes;
+  const adminShiftRoute = scheduledRoutes.find((route) => route.id === routeId);
+  expect(adminShiftRoute).toBeTruthy();
+  expect(adminShiftRoute!.status).toBe(studentView.status);
+  expect(adminShiftRoute!.driver?.id).toBe(studentView.driver?.id);
+  expect(adminShiftRoute!.vehicle?.id).toBe(studentView.vehicle?.id);
 
   // Foreign keys preserve the referenced users, vehicle, and locations.
   for (const path of [
