@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import {
   createAccommodation,
   getAccommodations,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

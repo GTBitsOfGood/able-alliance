@@ -1,6 +1,6 @@
 import type { ShiftInstanceResponse as ShiftInstance } from "@/utils/types/api";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { getUsers } from "@/server/db/actions/UserAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { estWeekRange } from "@/utils/dateEst";
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

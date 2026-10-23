@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { completeRoute, getRouteById } from "@/server/db/actions/RouteAction";
+import { limitRouteInfo } from "@/server/db/queries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -47,14 +48,16 @@ export async function POST(request: NextRequest) {
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-    } else if (type !== "Admin" && type !== "SuperAdmin") {
+    } else if (!isAdmin(type)) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
     const updated = await completeRoute(routeId);
-    return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
+    return NextResponse.json(limitRouteInfo(updated, isAdmin(type)), {
+      status: HTTP_STATUS_CODE.OK,
+    });
   } catch (error) {
     return errorResponse(error);
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isValidId } from "@/utils/ids";
 import { auth } from "@/auth";
 import { getRouteById, pickupStudent } from "@/server/db/actions/RouteAction";
+import { limitRouteInfo } from "@/server/db/queries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -43,7 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await pickupStudent(routeId);
-    return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
+    return NextResponse.json(limitRouteInfo(updated), {
+      status: HTTP_STATUS_CODE.OK,
+    });
   } catch (error) {
     return errorResponse(error);
   }

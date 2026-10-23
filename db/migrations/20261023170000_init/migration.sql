@@ -8,7 +8,7 @@ CREATE TYPE "UserType" AS ENUM ('Student', 'Driver', 'Admin', 'SuperAdmin');
 CREATE TYPE "VehicleAccessibility" AS ENUM ('None', 'Wheelchair');
 
 -- CreateEnum
-CREATE TYPE "RouteStatus" AS ENUM ('Requested', 'Scheduled', 'En-route', 'Pickedup', 'Completed', 'Missing', 'Cancelled by Student', 'Cancelled by Admin');
+CREATE TYPE "RouteStatus" AS ENUM ('Requested', 'Scheduled', 'EnRoute', 'Pickedup', 'Completed', 'Missing', 'CancelledByStudent', 'CancelledByAdmin');
 
 -- CreateTable
 CREATE TABLE "User" (

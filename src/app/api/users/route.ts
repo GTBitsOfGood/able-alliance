@@ -1,6 +1,6 @@
 import type { UserType } from "@db/generated/browser";
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { createUser, getUsers } from "@/server/db/actions/UserAction";
 import {
   baseUserSchema,
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

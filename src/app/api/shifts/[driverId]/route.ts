@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { getUserById } from "@/server/db/actions/UserAction";
 import { getRoutes } from "@/server/db/actions/RouteAction";
@@ -42,7 +42,7 @@ export async function GET(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

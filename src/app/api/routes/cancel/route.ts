@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { cancelRoute, getRouteById } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 import { RouteStatus } from "@db/generated/enums";
+import { limitRouteInfo } from "@/server/db/queries";
 
 export async function POST(request: NextRequest) {
   let userId, type;
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
           { status: HTTP_STATUS_CODE.FORBIDDEN },
         );
       }
-    } else if (type !== "Admin" && type !== "SuperAdmin") {
+    } else if (!isAdmin(type)) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -64,7 +65,9 @@ export async function POST(request: NextRequest) {
         ? RouteStatus.CancelledByStudent
         : RouteStatus.CancelledByAdmin;
     const updated = await cancelRoute(routeId, cancelStatus);
-    return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
+    return NextResponse.json(limitRouteInfo(updated, isAdmin(type)), {
+      status: HTTP_STATUS_CODE.OK,
+    });
   } catch (error) {
     return errorResponse(error);
   }

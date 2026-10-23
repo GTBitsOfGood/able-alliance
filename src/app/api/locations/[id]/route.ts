@@ -5,7 +5,7 @@ import {
 } from "@/server/db/actions/LocationAction";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { errorResponse } from "@/utils/errors";
 
 // GET /api/locations/:id
@@ -50,7 +50,7 @@ export async function DELETE(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

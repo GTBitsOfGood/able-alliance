@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { auth } from "@/auth";
 import {
@@ -33,11 +33,11 @@ export async function GET(req: NextRequest) {
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
         );
       }
-      const route = await getRouteById(id);
+      const includeAdminDetails = isAdmin(user.type);
+      const route = await getRouteById(id, includeAdminDetails);
       // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
       if (
-        user.type === "Admin" ||
-        user.type === "SuperAdmin" ||
+        isAdmin(user.type) ||
         (route.student && route.student.id === user.userId) ||
         (route.driver && route.driver.id === user.userId)
       ) {
@@ -125,13 +125,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const routes = await getRoutes({
-      student: studentFilter,
-      driver: driver ?? undefined,
-      vehicle: vehicleParam ?? undefined,
-      start_time: startDate,
-      end_time: endDate,
-    });
+    const routes = await getRoutes(
+      {
+        student: studentFilter,
+        driver: driver ?? undefined,
+        vehicle: vehicleParam ?? undefined,
+        start_time: startDate,
+        end_time: endDate,
+      },
+      isAdmin(userType),
+    );
     return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     return errorResponse(error);

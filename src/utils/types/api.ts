@@ -1,5 +1,5 @@
 import type { Message, User, Shift, Prisma } from "@db/generated/browser";
-import type { userInclude, routeInclude } from "@/server/db/queries";
+import type { userInclude, routeResponseInclude } from "@/server/db/queries";
 
 /** Dates become ISO strings when database results are sent as JSON. */
 export type Serialized<T> = T extends Date
@@ -9,7 +9,7 @@ export type Serialized<T> = T extends Date
     : T;
 
 export type RouteResponse = Serialized<
-  Prisma.RouteGetPayload<{ include: typeof routeInclude }>
+  Prisma.RouteGetPayload<{ include: typeof routeResponseInclude }>
 >;
 export type UserResponse = Prisma.UserGetPayload<{
   include: typeof userInclude;

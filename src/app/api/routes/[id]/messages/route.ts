@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
@@ -30,8 +30,7 @@ export async function GET(
   try {
     const route = await getRouteById(routeId);
     if (
-      user.type !== "Admin" &&
-      user.type !== "SuperAdmin" &&
+      !isAdmin(user.type) &&
       route.student?.id !== user.userId &&
       route.driver?.id !== user.userId
     ) {

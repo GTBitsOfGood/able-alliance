@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { vehicleSchema } from "@/utils/types/vehicle";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { createVehicle, getVehicles } from "@/server/db/actions/VehicleAction";
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

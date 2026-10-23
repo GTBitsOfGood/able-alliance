@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { deleteRoute, getRouteById } from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -26,11 +26,10 @@ export async function GET(
     );
   }
   try {
-    const route = await getRouteById(id);
+    const route = await getRouteById(id, isAdmin(user.type));
     // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
     if (
-      user.type === "Admin" ||
-      user.type === "SuperAdmin" ||
+      isAdmin(user.type) ||
       route.student?.id === user.userId ||
       route.driver?.id === user.userId
     ) {
@@ -58,7 +57,7 @@ export async function DELETE(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

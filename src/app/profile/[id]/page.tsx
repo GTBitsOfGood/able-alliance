@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserById } from "@/server/db/actions/UserAction";
+import { isAdmin } from "@/utils/authUser";
 import { NotFoundError } from "@/utils/errors";
 import { ProfileView } from "../ProfileView";
 
@@ -19,15 +20,9 @@ export default async function ProfilePage({
   const viewerType = session.user.type;
 
   const canView =
-    viewerId === targetId ||
-    viewerType === "Driver" ||
-    viewerType === "Admin" ||
-    viewerType === "SuperAdmin";
+    viewerId === targetId || viewerType === "Driver" || isAdmin(viewerType);
 
-  const canEdit =
-    viewerId === targetId ||
-    viewerType === "Admin" ||
-    viewerType === "SuperAdmin";
+  const canEdit = viewerId === targetId || isAdmin(viewerType);
 
   if (!canView) {
     redirect("/"); // default redirect to home if not allowed
@@ -47,7 +42,7 @@ export default async function ProfilePage({
   const canDelete =
     !isOwnProfile &&
     (viewerType === "SuperAdmin" ||
-      (viewerType === "Admin" &&
+      (isAdmin(viewerType) &&
         (targetType === "Student" || targetType === "Driver")));
 
   return (

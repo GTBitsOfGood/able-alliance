@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import {
   getUserById,
@@ -36,11 +36,7 @@ export async function GET(
   try {
     const user = await getUserById(id);
     // Only allow: Admin/SuperAdmin, or self
-    if (
-      authUser.type === "Admin" ||
-      authUser.type === "SuperAdmin" ||
-      user.id === authUser.userId
-    ) {
+    if (isAdmin(authUser.type) || user.id === authUser.userId) {
       return NextResponse.json(user, { status: HTTP_STATUS_CODE.OK });
     }
     return NextResponse.json(
@@ -98,9 +94,9 @@ export async function PATCH(
   const viewerId = viewer.userId as string;
 
   const isSelf = viewerId === id;
-  const isAdmin = viewerType === "Admin" || viewerType === "SuperAdmin";
+  const viewerIsAdmin = isAdmin(viewerType);
 
-  if (!isSelf && !isAdmin) {
+  if (!isSelf && !viewerIsAdmin) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -202,9 +198,8 @@ export async function DELETE(
   try {
     const user = await getUserById(id);
     if (
-      (authUser.type !== "Admin" && authUser.type !== "SuperAdmin") ||
-      ((user.type === "Admin" || user.type === "SuperAdmin") &&
-        authUser.type !== "SuperAdmin")
+      !isAdmin(authUser.type) ||
+      (isAdmin(user.type) && authUser.type !== "SuperAdmin")
     ) {
       return NextResponse.json(
         { error: "Forbidden" },

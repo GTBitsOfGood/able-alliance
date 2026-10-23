@@ -1,6 +1,10 @@
 import { db } from "@db";
 import { Prisma, RouteStatus } from "@db/generated/client";
-import { userInclude, routeInclude } from "@/server/db/queries";
+import {
+  userInclude,
+  routeInclude,
+  routeResponseInclude,
+} from "@/server/db/queries";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { getMapboxTravelDuration } from "@/server/mapbox";
@@ -76,7 +80,7 @@ export async function createRoute(data: CreateRouteInput) {
             ? new Date(input.scheduledPickupTime.getTime() + seconds * 1000)
             : undefined,
       },
-      include: routeInclude,
+      include: routeResponseInclude,
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -88,11 +92,11 @@ export async function createRoute(data: CreateRouteInput) {
     throw error;
   }
 }
-export async function getRouteById(id: string) {
-  const route = await db.route.findUnique({
-    where: { id: id.toLowerCase() },
-    include: routeInclude,
-  });
+export async function getRouteById(id: string, includeAdminDetails = false) {
+  const where = { id: id.toLowerCase() };
+  const route = includeAdminDetails
+    ? await db.route.findUnique({ where, include: routeInclude })
+    : await db.route.findUnique({ where, include: routeResponseInclude });
   if (!route) throw new NotFoundError("Route not found");
   return route;
 }
@@ -111,27 +115,31 @@ export async function deleteRoute(id: string) {
     throw error;
   }
 }
-export async function getRoutes(filters?: {
-  student?: string;
-  driver?: string;
-  vehicle?: string;
-  status?: RouteStatus;
-  start_time?: Date;
-  end_time?: Date;
-}) {
-  return db.route.findMany({
-    include: routeInclude,
-    where: {
-      ...(filters?.student ? { studentId: filters.student.toLowerCase() } : {}),
-      ...(filters?.driver ? { driverId: filters.driver.toLowerCase() } : {}),
-      ...(filters?.vehicle ? { vehicleId: filters.vehicle.toLowerCase() } : {}),
-      ...(filters?.status ? { status: filters.status } : {}),
-      scheduledPickupTime: {
-        gte: filters?.start_time,
-        lte: filters?.end_time,
-      },
+export async function getRoutes(
+  filters?: {
+    student?: string;
+    driver?: string;
+    vehicle?: string;
+    status?: RouteStatus;
+    start_time?: Date;
+    end_time?: Date;
+  },
+  includeAdminDetails = false,
+) {
+  const where = {
+    ...(filters?.student ? { studentId: filters.student.toLowerCase() } : {}),
+    ...(filters?.driver ? { driverId: filters.driver.toLowerCase() } : {}),
+    ...(filters?.vehicle ? { vehicleId: filters.vehicle.toLowerCase() } : {}),
+    ...(filters?.status ? { status: filters.status } : {}),
+    scheduledPickupTime: {
+      gte: filters?.start_time,
+      lte: filters?.end_time,
     },
-  });
+  };
+
+  return includeAdminDetails
+    ? db.route.findMany({ include: routeInclude, where })
+    : db.route.findMany({ include: routeResponseInclude, where });
 }
 
 export async function completeRoute(routeId: string) {
@@ -266,6 +274,7 @@ export async function startRoute(routeId: string) {
 
 export const pickupStudent = (routeId: string) =>
   transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Pickedup);
+
 export const markRouteMissing = (routeId: string) =>
   transitionRoute(
     routeId,
