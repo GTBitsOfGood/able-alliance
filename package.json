@@ -23,7 +23,6 @@
     "email:dev": "email dev"
   },
   "dependencies": {
-    "@netlify/functions": "^6.0.1",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-checkbox": "^1.3.11",
     "@radix-ui/react-icons": "^1.3.2",
