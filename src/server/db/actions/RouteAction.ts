@@ -1,15 +1,15 @@
-import connectMongoDB from "../mongodb";
-import RouteModel, { RouteStatus } from "../models/RouteModel";
-import LocationModel from "../models/LocationModel";
-import UserModel from "../models/UserModel";
-import VehicleModel from "../models/VehicleModel";
-import Chatlog from "../models/ChatlogModel";
-import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
+import { db } from "@db";
+import { Prisma, RouteStatus } from "@db/generated/client";
+import type { UserType } from "@db/generated/browser";
 import {
-  RouteAlreadyExistsException,
-  RouteReferenceNotFoundException,
-  DriverNotAvailableException,
-} from "@/utils/exceptions/route";
+  userInclude,
+  adminRouteInclude,
+  studentRouteInclude,
+  driverRouteInclude,
+} from "@/server/db/queries";
+import { isAdmin } from "@/utils/authUser";
+import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
+import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { getMapboxTravelDuration } from "@/server/mapbox";
 import {
   estDayOfWeek,
@@ -35,149 +35,129 @@ function dispatchNotifications(tasks: Promise<void>[]) {
 }
 
 export async function createRoute(data: CreateRouteInput) {
-  await connectMongoDB();
-  const validatedData = createRouteSchema.parse(data);
-
-  const pickupLoc = await LocationModel.findById(validatedData.pickupLocation);
-  if (!pickupLoc) {
-    throw new RouteReferenceNotFoundException("Pickup location not found");
-  }
-  const dropoffLoc = await LocationModel.findById(
-    validatedData.dropoffLocation,
-  );
-  if (!dropoffLoc) {
-    throw new RouteReferenceNotFoundException("Dropoff location not found");
-  }
-  const studentObj = await UserModel.findById(validatedData.student).lean();
-  if (!studentObj) {
-    throw new RouteReferenceNotFoundException("Student not found");
-  }
-  const studentType = (studentObj as { type?: string }).type;
-  if (studentType !== "Student") {
-    throw new RouteReferenceNotFoundException(
-      "Referenced user is not a student",
-    );
-  }
-
-  const existing = await RouteModel.findOne({
-    "student._id": studentObj._id,
-    scheduledPickupTime: validatedData.scheduledPickupTime,
-  });
-  if (existing) {
-    throw new RouteAlreadyExistsException();
-  }
-
-  const studentEmbed = {
-    _id: studentObj._id,
-    firstName: studentObj.firstName,
-    lastName: studentObj.lastName,
-    email: studentObj.email,
-    type: studentObj.type,
-    studentInfo:
-      (studentObj as { studentInfo?: Record<string, unknown> }).studentInfo ??
-      {},
+  const parsed = createRouteSchema.parse(data);
+  const input = {
+    ...parsed,
+    pickupLocation: parsed.pickupLocation.toLowerCase(),
+    dropoffLocation: parsed.dropoffLocation.toLowerCase(),
+    student: parsed.student.toLowerCase(),
   };
-
-  const durationSeconds = await getMapboxTravelDuration(
-    pickupLoc.latitude,
-    pickupLoc.longitude,
-    dropoffLoc.latitude,
-    dropoffLoc.longitude,
-    validatedData.scheduledPickupTime,
-  );
-
-  const estimatedDropoffTime =
-    durationSeconds !== null
-      ? new Date(
-          validatedData.scheduledPickupTime.getTime() + durationSeconds * 1000,
-        )
-      : undefined;
-
-  const route = await RouteModel.create({
-    pickupLocation: validatedData.pickupLocation,
-    dropoffLocation: validatedData.dropoffLocation,
-    student: studentEmbed,
-    scheduledPickupTime: validatedData.scheduledPickupTime,
-    pickupWindowStart: validatedData.pickupWindowStart,
-    pickupWindowEnd: validatedData.pickupWindowEnd,
-    estimatedDropoffTime,
-    status: RouteStatus.Requested,
+  const [pickup, dropoff, student] = await Promise.all([
+    db.location.findUnique({ where: { id: input.pickupLocation } }),
+    db.location.findUnique({ where: { id: input.dropoffLocation } }),
+    db.user.findUnique({ where: { id: input.student } }),
+  ]);
+  if (!pickup) throw new ArgumentError("Pickup location not found");
+  if (!dropoff) throw new ArgumentError("Dropoff location not found");
+  if (!student) throw new ArgumentError("Student not found");
+  if (student.type !== "Student")
+    throw new ArgumentError("Referenced user is not a student");
+  const existing = await db.route.findUnique({
+    where: {
+      studentId_scheduledPickupTime: {
+        studentId: student.id,
+        scheduledPickupTime: input.scheduledPickupTime,
+      },
+    },
   });
-  return route.toObject();
+  if (existing) throw new ConflictError("Route already exists");
+  const seconds = await getMapboxTravelDuration(
+    pickup.latitude,
+    pickup.longitude,
+    dropoff.latitude,
+    dropoff.longitude,
+    input.scheduledPickupTime,
+  );
+  try {
+    return await db.route.create({
+      data: {
+        pickupLocation: input.pickupLocation,
+        dropoffLocation: input.dropoffLocation,
+        scheduledPickupTime: input.scheduledPickupTime,
+        pickupWindowStart: input.pickupWindowStart,
+        pickupWindowEnd: input.pickupWindowEnd,
+        studentId: student.id,
+        status: RouteStatus.Requested,
+        estimatedDropoffTime:
+          seconds !== null
+            ? new Date(input.scheduledPickupTime.getTime() + seconds * 1000)
+            : undefined,
+      },
+      include: studentRouteInclude,
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002")
+        throw new ConflictError("Route already exists");
+      if (error.code === "P2003")
+        throw new ArgumentError("Referenced location or user not found");
+    }
+    throw error;
+  }
 }
-
-export async function getRouteById(id: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(id).lean();
+export async function getRouteById(id: string, role: UserType) {
+  const where = { id: id.toLowerCase() };
+  const route = isAdmin(role)
+    ? await db.route.findUnique({ where, include: adminRouteInclude })
+    : role === "Driver"
+      ? await db.route.findUnique({ where, include: driverRouteInclude })
+      : await db.route.findUnique({ where, include: studentRouteInclude });
+  if (!route) throw new NotFoundError("Route not found");
   return route;
 }
-
-export async function deleteRouteById(id: string) {
-  await connectMongoDB();
-  const deleted = await RouteModel.findByIdAndDelete(id).lean();
-  return deleted;
-}
-
-export async function getRoutes(filters?: {
-  student?: string;
-  driver?: string;
-  vehicle?: string;
-  start_time?: Date;
-  end_time?: Date;
-}) {
-  await connectMongoDB();
-
-  const query: Record<string, unknown> = {};
-
-  if (filters?.student) {
-    query["student._id"] = filters.student;
-  }
-  if (filters?.driver) {
-    query["driver._id"] = filters.driver;
-  }
-  if (filters?.vehicle) {
-    query["vehicle._id"] = filters.vehicle;
-  }
-  if (filters?.start_time != null || filters?.end_time != null) {
-    query.scheduledPickupTime = {};
-    if (filters?.start_time != null) {
-      (query.scheduledPickupTime as Record<string, Date>).$gte =
-        filters.start_time;
+export async function deleteRoute(id: string) {
+  try {
+    return await db.route.delete({
+      where: { id: id.toLowerCase() },
+      include: adminRouteInclude,
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") throw new NotFoundError("Route not found");
+      if (error.code === "P2003")
+        throw new ConflictError("Route has chat history and cannot be deleted");
     }
-    if (filters?.end_time != null) {
-      (query.scheduledPickupTime as Record<string, Date>).$lte =
-        filters.end_time;
-    }
+    throw error;
   }
-
-  const routes = await RouteModel.find(query).lean();
-  return routes;
 }
+export async function getRoutes(
+  filters:
+    | {
+        student?: string;
+        driver?: string;
+        vehicle?: string;
+        status?: RouteStatus;
+        start_time?: Date;
+        end_time?: Date;
+      }
+    | undefined,
+  role: UserType,
+) {
+  const where = {
+    ...(filters?.student ? { studentId: filters.student.toLowerCase() } : {}),
+    ...(filters?.driver ? { driverId: filters.driver.toLowerCase() } : {}),
+    ...(filters?.vehicle ? { vehicleId: filters.vehicle.toLowerCase() } : {}),
+    ...(filters?.status ? { status: filters.status } : {}),
+    scheduledPickupTime: {
+      gte: filters?.start_time,
+      lte: filters?.end_time,
+    },
+  };
 
-async function archiveChatlogForRoute(routeId: string) {
-  await Chatlog.findOneAndUpdate(
-    { routeId, status: "active" },
-    { $set: { status: "archived", archivedAt: new Date() } },
-  );
+  return isAdmin(role)
+    ? db.route.findMany({ include: adminRouteInclude, where })
+    : db.route.findMany({ include: studentRouteInclude, where });
 }
 
 export async function completeRoute(routeId: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId);
-  if (!route) return null;
-  if (route.status !== RouteStatus.Pickedup) return null;
-  route.status = RouteStatus.Completed;
-  await route.save();
+  const route = await transitionRoute(
+    routeId,
+    [RouteStatus.Pickedup],
+    RouteStatus.Completed,
+  );
 
-  const studentUser = await UserModel.findById(route.student._id).lean();
-  if (
-    studentUser &&
-    (
-      studentUser as {
-        settings?: { notifications?: { rideCompleted?: boolean } };
-      }
-    ).settings?.notifications?.rideCompleted
-  ) {
+  const studentUser = route.student;
+  if (studentUser && studentUser.settings?.rideCompleted) {
     dispatchNotifications([
       sendEmailSafely("rideCompleted", () =>
         EmailClient.rideCompleted(
@@ -185,43 +165,42 @@ export async function completeRoute(routeId: string) {
           studentUser.preferredName ??
             `${studentUser.firstName} ${studentUser.lastName}`,
           {
-            rideId: route._id.toString(),
+            rideId: route.id.toString(),
           },
         ),
       ),
-      emitToast(studentUser._id.toString(), {
+      emitToast(studentUser.id.toString(), {
         type: "success",
         message: "Your ride has been completed. Thank you for riding with us!",
       }),
     ]);
   }
 
-  await archiveChatlogForRoute(routeId);
-
-  return route.toObject();
+  return route;
 }
-export async function cancelRoute(routeId: string, status?: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId);
-  if (!route) {
-    return null;
-  }
-  if (status && Object.values(RouteStatus).includes(status as RouteStatus)) {
-    route.status = status as RouteStatus;
-  } else {
-    route.status = RouteStatus.CancelledByStudent;
-  }
-  await route.save();
-
-  const studentUser = await UserModel.findById(route.student._id).lean();
+export async function cancelRoute(
+  routeId: string,
+  status:
+    | typeof RouteStatus.CancelledByStudent
+    | typeof RouteStatus.CancelledByAdmin = RouteStatus.CancelledByStudent,
+) {
   if (
-    studentUser &&
-    (
-      studentUser as {
-        settings?: { notifications?: { rideCancelled?: boolean } };
-      }
-    ).settings?.notifications?.rideCancelled
-  ) {
+    status !== RouteStatus.CancelledByStudent &&
+    status !== RouteStatus.CancelledByAdmin
+  )
+    throw new ArgumentError("Invalid cancellation status");
+  const route = await transitionRoute(
+    routeId,
+    [
+      RouteStatus.Requested,
+      RouteStatus.Scheduled,
+      RouteStatus.EnRoute,
+      RouteStatus.Pickedup,
+    ],
+    status,
+  );
+  const studentUser = route.student;
+  if (studentUser && studentUser.settings?.rideCancelled) {
     dispatchNotifications([
       sendEmailSafely("rideCancelled", () =>
         EmailClient.rideCancelled(
@@ -229,28 +208,21 @@ export async function cancelRoute(routeId: string, status?: string) {
           studentUser.preferredName ??
             `${studentUser.firstName} ${studentUser.lastName}`,
           {
-            rideId: route._id.toString(),
+            rideId: route.id.toString(),
             reason: `Ride status: ${route.status}`,
           },
         ),
       ),
-      emitToast(studentUser._id.toString(), {
+      emitToast(studentUser.id.toString(), {
         type: "error",
         message: "Your ride has been cancelled.",
       }),
     ]);
   }
 
-  if (route.driver?._id) {
-    const driverUser = await UserModel.findById(route.driver._id).lean();
-    if (
-      driverUser &&
-      (
-        driverUser as {
-          settings?: { notifications?: { rideCancelled?: boolean } };
-        }
-      ).settings?.notifications?.rideCancelled
-    ) {
+  if (route.driver?.id) {
+    const driverUser = route.driver;
+    if (driverUser && driverUser.settings?.rideCancelled) {
       dispatchNotifications([
         sendEmailSafely("rideCancelled", () =>
           EmailClient.rideCancelled(
@@ -258,12 +230,12 @@ export async function cancelRoute(routeId: string, status?: string) {
             driverUser.preferredName ??
               `${driverUser.firstName} ${driverUser.lastName}`,
             {
-              rideId: route._id.toString(),
+              rideId: route.id.toString(),
               reason: `Ride status: ${route.status}`,
             },
           ),
         ),
-        emitToast(driverUser._id.toString(), {
+        emitToast(driverUser.id.toString(), {
           type: "error",
           message: "Your ride has been cancelled.",
         }),
@@ -271,29 +243,17 @@ export async function cancelRoute(routeId: string, status?: string) {
     }
   }
 
-  await archiveChatlogForRoute(routeId);
-
-  return route.toObject();
+  return route;
 }
 
 export async function startRoute(routeId: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId);
-  if (!route || route.status !== RouteStatus.Scheduled) {
-    return null;
-  }
-  route.status = RouteStatus.EnRoute;
-  await route.save();
-
-  const studentUser = await UserModel.findById(route.student._id).lean();
-  if (
-    studentUser &&
-    (
-      studentUser as {
-        settings?: { notifications?: { driverEnRoute?: boolean } };
-      }
-    ).settings?.notifications?.driverEnRoute
-  ) {
+  const route = await transitionRoute(
+    routeId,
+    [RouteStatus.Scheduled],
+    RouteStatus.EnRoute,
+  );
+  const studentUser = route.student;
+  if (studentUser && studentUser.settings?.driverEnRoute) {
     dispatchNotifications([
       sendEmailSafely("driverEnRoute", () =>
         EmailClient.driverEnRoute(
@@ -309,169 +269,167 @@ export async function startRoute(routeId: string) {
           },
         ),
       ),
-      emitToast(studentUser._id.toString(), {
+      emitToast(studentUser.id.toString(), {
         type: "info",
         message: "Your driver is on the way!",
       }),
     ]);
   }
 
-  return route.toObject();
+  return route;
 }
 
-export async function pickupStudent(routeId: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId);
-  if (!route || route.status !== RouteStatus.EnRoute) return null;
-  route.status = RouteStatus.Pickedup;
-  await route.save();
-  return route.toObject();
-}
+export const pickupStudent = (routeId: string) =>
+  transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Pickedup);
 
-export async function markRouteMissing(routeId: string) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId);
-  if (!route) return null;
-  if (
-    route.status !== RouteStatus.Scheduled &&
-    route.status !== RouteStatus.EnRoute
-  ) {
-    return null;
-  }
-  route.status = RouteStatus.Missing;
-  await route.save();
-  await archiveChatlogForRoute(routeId);
-  return route.toObject();
-}
+export const markRouteMissing = (routeId: string) =>
+  transitionRoute(
+    routeId,
+    [RouteStatus.Scheduled, RouteStatus.EnRoute],
+    RouteStatus.Missing,
+  );
 
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
 ) {
-  await connectMongoDB();
+  const assigned = await assignRoute(routeId, driverId, vehicleId);
+  const { route, driver } = assigned;
 
-  // Fetch route, driver, and vehicle in parallel
-  const [route, driver, vehicle] = await Promise.all([
-    RouteModel.findById(routeId),
-    UserModel.findById(driverId).lean(),
-    VehicleModel.findById(vehicleId).lean(),
-  ]);
-
-  if (!route || route.status !== RouteStatus.Requested) {
-    return null;
-  }
-
-  if (!driver || driver.type !== "Driver") {
-    throw new RouteReferenceNotFoundException(
-      "Driver not found or not a driver",
-    );
-  }
-
-  if (!vehicle) {
-    throw new RouteReferenceNotFoundException("Vehicle not found");
-  }
-
-  // Check if driver is available at the scheduled time (in EST/EDT)
-  const pickupTime = route.scheduledPickupTime;
-  const dayOfWeek = estDayOfWeek(pickupTime); // 0=Sun, 6=Sat in America/New_York
-  const timeStr = estTimeStr(pickupTime); // HH:MM in America/New_York
-
-  const driverShifts =
-    (
-      driver as {
-        shifts?: Array<{
-          dayOfWeek: number;
-          startTime: string;
-          endTime: string;
-        }>;
-      }
-    ).shifts || [];
-  const isAvailable = driverShifts.some(
-    (shift) =>
-      shift.dayOfWeek === dayOfWeek &&
-      shift.startTime <= timeStr &&
-      timeStr <= shift.endTime,
-  );
-
-  if (!isAvailable) {
-    throw new DriverNotAvailableException();
-  }
-  const driverEmbed = {
-    _id: driver._id,
-    firstName: driver.firstName,
-    lastName: driver.lastName,
-    email: driver.email,
-    type: driver.type,
-  };
-  const vehicleEmbed = {
-    _id: vehicle._id,
-    vehicleId: vehicle.vehicleId,
-    name: vehicle.name,
-    licensePlate: vehicle.licensePlate,
-    description: vehicle.description,
-    accessibility: vehicle.accessibility,
-    seatCount: vehicle.seatCount,
-  };
-  route.driver = driverEmbed;
-  route.vehicle = vehicleEmbed;
-  route.status = RouteStatus.Scheduled;
-  await route.save();
-
-  try {
-    await Chatlog.findOneAndUpdate(
-      { routeId: route._id },
-      {
-        $setOnInsert: {
-          routeId: route._id,
-          student: route.student,
-          driver: driverEmbed,
-          time: new Date(),
-          status: "active",
-          messages: [],
-        },
-      },
-      { upsert: true },
-    );
-  } catch (error) {
-    if ((error as { code?: number }).code !== 11000) {
-      throw error;
-    }
-  }
-
-  const studentUser = await UserModel.findById(route.student._id).lean();
-  if (studentUser?.settings?.notifications?.driverAssigned) {
+  const studentUser = route.student;
+  if (studentUser?.settings?.driverAssigned) {
     dispatchNotifications([
       sendEmailSafely("rideConfirmed", () =>
-        EmailClient.rideConfirmed(route._id.toString()),
+        EmailClient.rideConfirmed(route.id.toString()),
       ),
-      emitToast(studentUser._id.toString(), {
+      emitToast(studentUser.id.toString(), {
         type: "success",
         message: `Your driver ${driver.firstName} ${driver.lastName} has been assigned.`,
       }),
     ]);
   }
 
-  if (driver.settings?.notifications?.rideAssigned) {
+  if (driver.settings?.rideAssigned) {
     dispatchNotifications([
       sendEmailSafely("rideAssigned", () =>
         EmailClient.rideAssigned(
           driver.email,
           driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
           {
-            rideId: route._id.toString(),
+            rideId: route.id.toString(),
             pickup: route.pickupLocation.toString(),
             dropoff: route.dropoffLocation.toString(),
             time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
           },
         ),
       ),
-      emitToast(driver._id.toString(), {
+      emitToast(driver.id.toString(), {
         type: "info",
         message: "You have been assigned a new ride.",
       }),
     ]);
   }
 
-  return route.toObject();
+  return route;
+}
+
+/** Every assignment path uses this transaction, including bulk shift assignment. */
+async function assignRoute(
+  routeId: string,
+  driverId: string,
+  vehicleId: string,
+) {
+  routeId = routeId.toLowerCase();
+  driverId = driverId.toLowerCase();
+  vehicleId = vehicleId.toLowerCase();
+  try {
+    return await db.$transaction(async (tx) => {
+      const route = await tx.route.findUnique({ where: { id: routeId } });
+      if (!route) throw new NotFoundError("Route not found");
+      if (route.status !== RouteStatus.Requested)
+        throw new ConflictError("Route is no longer in Requested status");
+      const driverRow = await tx.user.findUnique({
+        where: { id: driverId },
+        include: userInclude,
+      });
+      const vehicleRow = await tx.vehicle.findUnique({
+        where: { id: vehicleId },
+      });
+      if (!driverRow || driverRow.type !== "Driver")
+        throw new ArgumentError("Driver not found or not a driver");
+      if (!vehicleRow) throw new ArgumentError("Vehicle not found");
+      const driver = driverRow;
+      const startTime = estTimeStr(route.scheduledPickupTime);
+      const day = estDayOfWeek(route.scheduledPickupTime);
+      if (
+        !driver.shifts?.some(
+          (shift) =>
+            shift.dayOfWeek === day &&
+            shift.startTime <= startTime &&
+            startTime <= shift.endTime,
+        )
+      )
+        throw new ConflictError(
+          "Driver is not available during the scheduled time",
+        );
+      const { count } = await tx.route.updateMany({
+        where: { id: routeId, status: RouteStatus.Requested },
+        data: {
+          driverId,
+          vehicleId,
+          status: RouteStatus.Scheduled,
+        },
+      });
+      if (count === 0) {
+        const current = await tx.route.findUnique({
+          where: { id: routeId },
+          select: { id: true },
+        });
+        if (!current) throw new NotFoundError("Route not found");
+        throw new ConflictError("Route is no longer in Requested status");
+      }
+      const updated = await tx.route.findUniqueOrThrow({
+        where: { id: routeId },
+        include: adminRouteInclude,
+      });
+      return { route: updated, driver };
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    )
+      throw new ArgumentError("Referenced driver or vehicle not found");
+    throw error;
+  }
+}
+export async function transitionRoute(
+  routeId: string,
+  expected: RouteStatus[],
+  status: RouteStatus,
+) {
+  routeId = routeId.toLowerCase();
+  return db.$transaction(async (tx) => {
+    const { count } = await tx.route.updateMany({
+      where: {
+        id: routeId,
+        status: { in: expected },
+      },
+      data: { status: status },
+    });
+    if (count === 0) {
+      const current = await tx.route.findUnique({
+        where: { id: routeId },
+        select: { id: true },
+      });
+      if (!current) throw new NotFoundError("Route not found");
+      throw new ConflictError("Route is in an incompatible state");
+    }
+    const updated = await tx.route.findUniqueOrThrow({
+      where: { id: routeId },
+      include: adminRouteInclude,
+    });
+    return updated;
+  });
 }

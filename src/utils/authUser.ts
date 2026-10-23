@@ -1,10 +1,12 @@
 import { auth } from "../auth";
 
-export type UserType = "Student" | "Driver" | "Admin" | "SuperAdmin";
+import type { User } from "@db/generated/browser";
+export type { UserType } from "@db/generated/browser";
 
-export interface AuthUser {
-  userId: string;
-  type: UserType;
+export type AuthUser = Pick<User, "type"> & { userId: User["id"] };
+
+export function isAdmin(type: string | null | undefined): boolean {
+  return type === "Admin" || type === "SuperAdmin";
 }
 
 export async function getUserFromRequest(): Promise<AuthUser> {
@@ -14,6 +16,6 @@ export async function getUserFromRequest(): Promise<AuthUser> {
   }
   return {
     userId: session.user.userId,
-    type: session.user.type as UserType,
+    type: session.user.type,
   };
 }

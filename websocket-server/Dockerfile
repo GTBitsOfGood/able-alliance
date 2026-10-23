@@ -3,15 +3,18 @@ FROM node:24-slim
 WORKDIR /app
 
 COPY websocket-server/package.json websocket-server/package-lock.json ./
-COPY websocket-server/tsconfig.json ./
-RUN npm install
+RUN npm ci
 
-COPY websocket-server ./
+COPY websocket-server ./websocket-server
+COPY db ./db
+RUN npx prisma generate --schema db/schema.prisma
 
-RUN npm run build && npm prune --omit=dev
+RUN npm --prefix websocket-server run build && npm prune --omit=dev
+
+WORKDIR /app/websocket-server
 
 ENV PORT=4000
 
 EXPOSE 4000
 
-CMD ["node", "dist/server.js"]
+CMD ["npm", "start"]

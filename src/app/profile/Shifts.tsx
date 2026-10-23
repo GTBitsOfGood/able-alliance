@@ -5,13 +5,9 @@ import BogButton from "@/components/BogButton/BogButton";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./profile.module.css";
 
-type Shift = {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-};
-
-type UserType = "Student" | "Driver" | "Admin" | "SuperAdmin";
+import type { Shift } from "@/utils/types/user";
+import type { UserResponse } from "@/utils/types/api";
+import type { UserType } from "@db/generated/browser";
 
 const DAY_NAMES = [
   "Sunday",
@@ -168,15 +164,15 @@ export function Shifts({
   viewerType,
   onUpdate,
 }: {
-  user: { id: string; type: UserType; shifts?: Shift[] };
+  user: UserResponse;
   canEdit: boolean;
   viewerType: UserType;
-  onUpdate: (shifts: Shift[]) => void;
+  onUpdate: (user: UserResponse) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [draftShifts, setDraftShifts] = useState(user.shifts ?? []);
+  const [draftShifts, setDraftShifts] = useState<Shift[]>(user.shifts ?? []);
 
   const handleEdit = () => {
     setDraftShifts(user.shifts ?? []);
@@ -202,7 +198,8 @@ export function Shifts({
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error ?? "Failed to save changes");
       }
-      onUpdate(draftShifts);
+      const updated: UserResponse = await res.json();
+      onUpdate(updated);
       setEditing(false);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save changes");

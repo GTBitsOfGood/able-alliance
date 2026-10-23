@@ -1,45 +1,22 @@
-import type { Types } from "mongoose";
 import type { Server, Socket, Namespace } from "socket.io";
+import type {
+  User,
+  Message,
+  Location as DatabaseLocation,
+} from "@db/generated/client";
 
-export interface RouteUser {
-  _id: Types.ObjectId;
-}
-
-export interface RouteForAuth {
-  scheduledPickupTime: Date;
-  status: string;
-  student: RouteUser;
-  driver?: RouteUser;
-}
-
-export interface ChatMessage {
-  _id: Types.ObjectId;
-  senderType: "driver" | "student" | "admin";
-  text: string;
-  time: Date;
-}
-
-export interface Chatlog {
-  routeId: Types.ObjectId;
-  status: "active" | "archived";
-  messages: ChatMessage[];
-}
-
-export interface Location {
-  latitude: number;
-  longitude: number;
-}
+export type Coordinates = Pick<DatabaseLocation, "latitude" | "longitude">;
 
 export interface ClientEvents {
   sendChatMessage: (text: unknown) => void;
-  updateLocation: (location: Location) => void;
+  updateLocation: (location: Coordinates) => void;
   closeRouteRoom: () => void;
 }
 
 export interface ServerEvents {
-  chatHistory: (history: ChatMessage[]) => void;
-  receiveChatMessage: (message: ChatMessage) => void;
-  broadcastLocation: (location: Location) => void;
+  chatHistory: (history: Message[]) => void;
+  receiveChatMessage: (message: Message) => void;
+  broadcastLocation: (location: Coordinates) => void;
   routeClosed: () => void;
   chatError: (message: string) => void;
   locationError: (message: string) => void;
@@ -52,8 +29,8 @@ export interface SocketData {
   user: string;
   routeId: string;
   userType: string;
-  routeStudent?: RouteUser;
-  routeDriver?: RouteUser;
+  routeStudent?: Pick<User, "id">;
+  routeDriver?: Pick<User, "id"> | null;
 }
 
 export type InterServerEvents = Record<string, never>;

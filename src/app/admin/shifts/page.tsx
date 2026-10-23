@@ -9,17 +9,7 @@ import BogTable, {
 } from "@/components/BogTable/BogTable";
 import styles from "./styles.module.css";
 
-type ShiftInstance = {
-  driverId: string;
-  driverName: string;
-  date: string;
-  dateLabel: string;
-  dayName: string;
-  startTime: string;
-  endTime: string;
-  startTime24: string;
-  endTime24: string;
-};
+import type { ShiftInstanceResponse as ShiftInstance } from "@/utils/types/api";
 
 const WEEK_OPTIONS = [
   { label: "All", value: "all" },

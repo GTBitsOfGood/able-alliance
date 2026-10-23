@@ -1,4 +1,4 @@
-mongodb:
-  type: mongodb:4.0
+postgresql:
+  type: postgresql:18
   size: S
   disk: 2048

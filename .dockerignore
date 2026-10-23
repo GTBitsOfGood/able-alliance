@@ -1,12 +1,13 @@
 .next
-node_modules
+**/node_modules
+db/generated
 .git
 .vscode
 .idea
 .cursor
 .DS_Store
 coverage
-dist
+**/dist
 build
 *.log
 .env*

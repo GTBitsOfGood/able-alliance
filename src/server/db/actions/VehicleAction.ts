@@ -1,44 +1,50 @@
-import connectMongoDB from "../mongodb";
-import VehicleModel, { IVehicle } from "../models/VehicleModel";
-import { VehicleAlreadyExistsException } from "@/utils/exceptions/vehicle";
-
-export async function createVehicle(data: IVehicle) {
-  await connectMongoDB();
-
-  const existing = await VehicleModel.findOne({
-    licensePlate: data.licensePlate,
-  });
-  if (existing) {
-    throw new VehicleAlreadyExistsException();
+import { db } from "@db";
+import { Prisma } from "@db/generated/client";
+import type { VehicleInput } from "@/utils/types/vehicle";
+import { ConflictError, NotFoundError } from "@/utils/errors";
+export async function createVehicle(data: VehicleInput) {
+  try {
+    return await db.vehicle.create({ data });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    )
+      throw new ConflictError("Vehicle ID or license plate already exists");
+    throw error;
   }
-
-  const vehicle = await VehicleModel.create(data);
-  return vehicle.toObject();
 }
-
-export async function getVehicles() {
-  await connectMongoDB();
-  const vehicles = await VehicleModel.find().lean();
-  return vehicles;
-}
-
+export const getVehicles = () => db.vehicle.findMany();
 export async function getVehicleById(id: string) {
-  await connectMongoDB();
-  const vehicle = await VehicleModel.findById(id).lean();
+  const vehicle = await db.vehicle.findUnique({
+    where: { id: id.toLowerCase() },
+  });
+  if (!vehicle) throw new NotFoundError("Vehicle not found");
   return vehicle;
 }
-
-export async function deleteVehicleById(id: string) {
-  await connectMongoDB();
-  const deleted = await VehicleModel.findByIdAndDelete(id);
-  return deleted;
+export async function deleteVehicle(id: string) {
+  try {
+    return await db.vehicle.delete({ where: { id: id.toLowerCase() } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") throw new NotFoundError("Vehicle not found");
+      if (error.code === "P2003")
+        throw new ConflictError(
+          "Vehicle is referenced by a ride and cannot be deleted",
+        );
+    }
+    throw error;
+  }
 }
-
-export async function updateVehicleById(id: string, data: Partial<IVehicle>) {
-  await connectMongoDB();
-  const updated = await VehicleModel.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  }).lean();
-  return updated;
+export async function updateVehicle(id: string, data: Partial<VehicleInput>) {
+  try {
+    return await db.vehicle.update({ where: { id: id.toLowerCase() }, data });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") throw new NotFoundError("Vehicle not found");
+      if (error.code === "P2002")
+        throw new ConflictError("Vehicle ID or license plate already exists");
+    }
+    throw error;
+  }
 }
