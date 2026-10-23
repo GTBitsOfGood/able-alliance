@@ -117,12 +117,17 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     const username = (
       form.elements.namedItem("username") as HTMLInputElement
     ).value.trim();
+    const email = (
+      form.elements.namedItem("email") as HTMLInputElement
+    ).value.trim();
     const additionalComments = (
       form.elements.namedItem("additionalComments") as HTMLInputElement
     ).value.trim();
 
-    if (!firstName || !lastName || !username) {
-      setSubmitError("First name, last name, and username are required.");
+    if (!firstName || !lastName || !username || !email) {
+      setSubmitError(
+        "First name, last name, username, and email are required.",
+      );
       return;
     }
 
@@ -146,6 +151,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
         lastName,
         ...(preferredName && { preferredName }),
         username,
+        email,
         studentInfo,
       }),
     })
@@ -183,9 +189,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     const username = (
       form.elements.namedItem("username") as HTMLInputElement
     ).value.trim();
+    const email = (
+      form.elements.namedItem("email") as HTMLInputElement
+    ).value.trim();
 
-    if (!firstName || !lastName || !username) {
-      setSubmitError("First name, last name, and username are required.");
+    if (!firstName || !lastName || !username || !email) {
+      setSubmitError(
+        "First name, last name, username, and email are required.",
+      );
       return;
     }
 
@@ -203,6 +214,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
         lastName,
         ...(preferredName && { preferredName }),
         username,
+        email,
       }),
     })
       .then((res) => {
@@ -239,9 +251,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     const username = (
       form.elements.namedItem("username") as HTMLInputElement
     ).value.trim();
+    const email = (
+      form.elements.namedItem("email") as HTMLInputElement
+    ).value.trim();
 
-    if (!firstName || !lastName || !username) {
-      setSubmitError("First name, last name, and username are required.");
+    if (!firstName || !lastName || !username || !email) {
+      setSubmitError(
+        "First name, last name, username, and email are required.",
+      );
       return;
     }
 
@@ -259,6 +276,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
         lastName,
         ...(preferredName && { preferredName }),
         username,
+        email,
       }),
     })
       .then((res) => {
@@ -446,6 +464,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
               required
             />
+            <BogTextInput
+              name="email"
+              label="Email"
+              type="email"
+              placeholder="george.burdell@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
           </div>
           <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <div className="flex flex-col flex-1 basis-[20rem] max-w-[35rem] gap-3">
@@ -623,6 +649,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
               required
             />
+            <BogTextInput
+              name="email"
+              label="Email"
+              type="email"
+              placeholder="george.burdell@gatech.edu"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
           </div>
           <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <BogTextInput
@@ -678,6 +712,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
               name="username"
               label="Username"
               placeholder="gburdell3"
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+            <BogTextInput
+              name="email"
+              label="Email"
+              type="email"
+              placeholder="george.burdell@gatech.edu"
               className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
               required
             />

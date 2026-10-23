@@ -41,11 +41,8 @@ export const baseUserSchema = z.object({
     .regex(/^[a-z0-9]+$/i, "username must be alphanumeric"),
   email: z
     .string()
-    .email("Email is required")
-    .regex(
-      /^[\w-.]+@gatech\.edu$/,
-      "Email must be a valid Georgia Tech email ending with @gatech.edu",
-    ),
+    .trim()
+    .check(z.email({ error: "Enter a valid email address" })),
   type: z.enum(UserType),
   settings: notificationSettingsSchema.optional(),
 });

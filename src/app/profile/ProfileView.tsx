@@ -14,20 +14,6 @@ type ProfileTab = "profile" | "rides";
 
 import type { UserResponse } from "@/utils/types/api";
 
-function roleLabel(type: UserType): string {
-  switch (type) {
-    case "Student":
-      return "Rider";
-    case "Driver":
-      return "Driver";
-    case "Admin":
-    case "SuperAdmin":
-      return "Admin";
-    default:
-      return type;
-  }
-}
-
 function avatarClass(type: UserType): string {
   switch (type) {
     case "Student":
@@ -232,9 +218,7 @@ export function ProfileView({
           </div>
           <div className={styles.profileNameBlock}>
             <h1 className={styles.profileDisplayName}>{displayName}</h1>
-            <span className={styles.profileRole}>
-              {roleLabel(displayUser.type)}
-            </span>
+            <span className={styles.profileRole}>displayUser.type</span>
           </div>
         </header>
 

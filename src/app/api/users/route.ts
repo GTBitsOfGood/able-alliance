@@ -72,8 +72,6 @@ export async function POST(request: NextRequest) {
     const userData = {
       ...body,
       username,
-      email:
-        typeof username === "string" ? `${username}@gatech.edu` : undefined,
     };
     let parsed;
 
