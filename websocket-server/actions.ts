@@ -1,4 +1,5 @@
 import { db } from "@db";
+import { RouteStatus } from "@db/generated/client";
 import { z } from "zod";
 
 const routeIdSchema = z.uuid();
@@ -25,10 +26,30 @@ export function getChatHistory(routeId: string) {
   });
 }
 
-export function appendMessage(routeId: string, senderId: string, text: string) {
+const closedChatStatuses = new Set<RouteStatus>([
+  RouteStatus.Completed,
+  RouteStatus.Missing,
+  RouteStatus.CancelledByStudent,
+  RouteStatus.CancelledByAdmin,
+]);
+
+export async function appendMessage(
+  routeId: string,
+  senderId: string,
+  text: string,
+) {
+  const route = await db.route.findUnique({
+    where: { id: routeId },
+    select: { status: true },
+  });
+
+  if (!route || closedChatStatuses.has(route.status)) {
+    throw new Error("Chat is closed for this route");
+  }
+
   return db.message.create({
     data: {
-      route: { connect: { id: routeId.toLowerCase() } },
+      route: { connect: { id: routeId } },
       sender: { connect: { id: senderId } },
       text,
       time: new Date(),
