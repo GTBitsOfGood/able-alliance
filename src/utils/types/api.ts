@@ -1,5 +1,10 @@
 import type { Message, User, Shift, Prisma } from "@db/generated/browser";
-import type { userInclude, routeResponseInclude } from "@/server/db/queries";
+import type {
+  userInclude,
+  studentRouteInclude,
+  driverRouteInclude,
+  adminRouteInclude,
+} from "@/server/db/queries";
 
 /** Dates become ISO strings when database results are sent as JSON. */
 export type Serialized<T> = T extends Date
@@ -8,9 +13,32 @@ export type Serialized<T> = T extends Date
     ? { [K in keyof T]: Serialized<T[K]> }
     : T;
 
-export type RouteResponse = Serialized<
-  Prisma.RouteGetPayload<{ include: typeof routeResponseInclude }>
->;
+type StudentRoutePayload = Prisma.RouteGetPayload<{
+  include: typeof studentRouteInclude;
+}>;
+type DriverRoutePayload = Prisma.RouteGetPayload<{
+  include: typeof driverRouteInclude;
+}>;
+type AdminRoutePayload = Prisma.RouteGetPayload<{
+  include: typeof adminRouteInclude;
+}>;
+
+type StudentRouteRecord = Serialized<StudentRoutePayload> & {
+  student: Serialized<StudentRoutePayload["student"]> & {
+    studentInfo?: Serialized<DriverRoutePayload["student"]["studentInfo"]>;
+  };
+};
+export type StudentRouteResponse = StudentRouteRecord;
+export type DriverRouteResponse = StudentRouteRecord;
+export type DriverRouteDetailResponse = Serialized<DriverRoutePayload>;
+export type AdminRouteResponse = Serialized<AdminRoutePayload>;
+export type RouteDetailResponse =
+  StudentRouteResponse | DriverRouteDetailResponse | AdminRouteResponse;
+export type RouteResponse =
+  | StudentRouteResponse
+  | DriverRouteResponse
+  | DriverRouteDetailResponse
+  | AdminRouteResponse;
 export type UserResponse = Prisma.UserGetPayload<{
   include: typeof userInclude;
 }>;
@@ -24,8 +52,8 @@ export type ShiftDetailResponse = Pick<Shift, "startTime" | "endTime"> & {
   endTimeLabel: string;
   shiftStartIso: string;
   shiftEndIso: string;
-  scheduledRoutes: RouteResponse[];
-  requestedRoutes: RouteResponse[];
+  scheduledRoutes: AdminRouteResponse[];
+  requestedRoutes: AdminRouteResponse[];
 };
 
 export type ShiftInstanceResponse = Pick<Shift, "startTime" | "endTime"> & {

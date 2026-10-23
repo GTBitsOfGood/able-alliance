@@ -15,7 +15,7 @@ import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionMod
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
 import type {
-  RouteResponse as RouteData,
+  RouteDetailResponse as RouteData,
   ChatMessageResponse,
 } from "@/utils/types/api";
 

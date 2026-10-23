@@ -1,4 +1,6 @@
 import type { Prisma } from "@db/generated/client";
+import type { UserType } from "@db/generated/browser";
+import { isAdmin } from "@/utils/authUser";
 
 export const userInclude = {
   settings: true,
@@ -14,7 +16,7 @@ export const userInclude = {
   },
 } as const satisfies Prisma.UserInclude;
 
-export const routeInclude = {
+export const adminRouteInclude = {
   student: { include: userInclude },
   driver: { include: userInclude },
   vehicle: true,
@@ -23,7 +25,7 @@ export const routeInclude = {
 } as const satisfies Prisma.RouteInclude;
 
 // Limit participant details in route responses for students and drivers.
-export const routeResponseInclude = {
+export const studentRouteInclude = {
   student: {
     select: {
       id: true,
@@ -47,17 +49,30 @@ export const routeResponseInclude = {
   dropoff: true,
 } as const satisfies Prisma.RouteInclude;
 
-type FullRoute = Prisma.RouteGetPayload<{ include: typeof routeInclude }>;
-type RouteResponse = Prisma.RouteGetPayload<{
-  include: typeof routeResponseInclude;
-}>;
+export const driverRouteInclude = {
+  ...studentRouteInclude,
+  student: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      preferredName: true,
+      type: true,
+      studentInfo: {
+        select: {
+          notes: true,
+          accessibilityNeeds: { select: { label: true } },
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.RouteInclude;
 
-// Student and driver responses omit private participant fields; admins can retain the full route.
-export function limitRouteInfo(
-  route: FullRoute,
-  isAdmin = false,
-): FullRoute | RouteResponse {
-  if (isAdmin) return route;
+type FullRoute = Prisma.RouteGetPayload<{ include: typeof adminRouteInclude }>;
+
+// Student responses are minimal; driver detail responses also include rider instructions.
+export function routeResponseForRole(route: FullRoute, role: UserType) {
+  if (isAdmin(role)) return route;
 
   const participant = (user: NonNullable<FullRoute["driver"]>) => ({
     id: user.id,
@@ -67,9 +82,27 @@ export function limitRouteInfo(
     type: user.type,
   });
 
-  return {
+  const response = {
     ...route,
     student: participant(route.student),
     driver: route.driver ? participant(route.driver) : null,
+  };
+
+  if (role !== "Driver") return response;
+
+  return {
+    ...response,
+    student: {
+      ...response.student,
+      studentInfo: route.student.studentInfo
+        ? {
+            notes: route.student.studentInfo.notes,
+            accessibilityNeeds:
+              route.student.studentInfo.accessibilityNeeds.map(({ label }) => ({
+                label,
+              })),
+          }
+        : null,
+    },
   };
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isValidId } from "@/utils/ids";
 import { auth } from "@/auth";
 import { getRouteById, pickupStudent } from "@/server/db/actions/RouteAction";
-import { limitRouteInfo } from "@/server/db/queries";
+import { routeResponseForRole } from "@/server/db/queries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const route = await getRouteById(routeId);
+    const route = await getRouteById(routeId, session.user.type);
 
     const driverId = route.driver?.id;
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await pickupStudent(routeId);
-    return NextResponse.json(limitRouteInfo(updated), {
+    return NextResponse.json(routeResponseForRole(updated, session.user.type), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {

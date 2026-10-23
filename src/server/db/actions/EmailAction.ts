@@ -1,11 +1,11 @@
 import { db } from "@db";
-import { routeInclude } from "@/server/db/queries";
+import { adminRouteInclude } from "@/server/db/queries";
 
 /** Route and user records used by ride email rendering. */
 export const getEmailRoute = (routeId: string) =>
   db.route.findUnique({
     where: { id: routeId.toLowerCase() },
-    include: routeInclude,
+    include: adminRouteInclude,
   });
 
 export const getDailySummaryUsers = () =>

@@ -13,7 +13,7 @@ import {
 } from "@/utils/dateEst";
 import type { Shift } from "@/utils/types/user";
 
-import type { RouteResponse as DriverRoute } from "@/utils/types/api";
+import type { DriverRouteResponse as DriverRoute } from "@/utils/types/api";
 
 function formatDayRangeHeading(range: [Date, Date]) {
   return formatEstDate(range[0], {

@@ -76,6 +76,9 @@ services:
     env_file: .env
     environment:
       PORT: "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - able-alliance-net
 

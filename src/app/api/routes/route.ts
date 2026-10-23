@@ -33,8 +33,7 @@ export async function GET(req: NextRequest) {
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
         );
       }
-      const includeAdminDetails = isAdmin(user.type);
-      const route = await getRouteById(id, includeAdminDetails);
+      const route = await getRouteById(id, user.type);
       // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
       if (
         isAdmin(user.type) ||
@@ -133,7 +132,7 @@ export async function GET(req: NextRequest) {
         start_time: startDate,
         end_time: endDate,
       },
-      isAdmin(userType),
+      user.type,
     );
     return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {

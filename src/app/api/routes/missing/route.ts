@@ -6,7 +6,7 @@ import {
   getRouteById,
   markRouteMissing,
 } from "@/server/db/actions/RouteAction";
-import { limitRouteInfo } from "@/server/db/queries";
+import { routeResponseForRole } from "@/server/db/queries";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function POST(request: NextRequest) {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const route = await getRouteById(routeId);
+    const route = await getRouteById(routeId, user.type);
 
     // Validate caller is the assigned driver
     const driverId = route.driver?.id;
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await markRouteMissing(routeId);
-    return NextResponse.json(limitRouteInfo(updated), {
+    return NextResponse.json(routeResponseForRole(updated, user.type), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {

@@ -138,7 +138,7 @@ export async function PATCH(
     } else if (user.type === "Driver") {
       // For drivers, only admins can update shifts
       if (
-        !isAdmin &&
+        !viewerIsAdmin &&
         typeof body === "object" &&
         body !== null &&
         "shifts" in body
@@ -157,7 +157,7 @@ export async function PATCH(
       const updated = await updateUser(id, "Driver", parsed.data);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else {
-      if (!isAdmin)
+      if (!viewerIsAdmin)
         return NextResponse.json(
           { error: "Cannot update this user type" },
           { status: HTTP_STATUS_CODE.BAD_REQUEST },

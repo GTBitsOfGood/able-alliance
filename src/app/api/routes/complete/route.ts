@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { completeRoute, getRouteById } from "@/server/db/actions/RouteAction";
-import { limitRouteInfo } from "@/server/db/queries";
+import { routeResponseForRole } from "@/server/db/queries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (type === "Driver") {
-      const route = await getRouteById(routeId);
+      const route = await getRouteById(routeId, type);
       if (route.driver?.id !== userId) {
         return NextResponse.json(
           { error: "Forbidden" },
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const updated = await completeRoute(routeId);
-    return NextResponse.json(limitRouteInfo(updated, isAdmin(type)), {
+    return NextResponse.json(routeResponseForRole(updated, type), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {

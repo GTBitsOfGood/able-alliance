@@ -26,7 +26,7 @@ export async function GET(
     );
   }
   try {
-    const route = await getRouteById(id, isAdmin(user.type));
+    const route = await getRouteById(id, user.type);
     // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
     if (
       isAdmin(user.type) ||

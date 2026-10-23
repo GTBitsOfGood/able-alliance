@@ -1,10 +1,13 @@
 import { db } from "@db";
 import { Prisma, RouteStatus } from "@db/generated/client";
+import type { UserType } from "@db/generated/browser";
 import {
   userInclude,
-  routeInclude,
-  routeResponseInclude,
+  adminRouteInclude,
+  studentRouteInclude,
+  driverRouteInclude,
 } from "@/server/db/queries";
+import { isAdmin } from "@/utils/authUser";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { getMapboxTravelDuration } from "@/server/mapbox";
@@ -80,7 +83,7 @@ export async function createRoute(data: CreateRouteInput) {
             ? new Date(input.scheduledPickupTime.getTime() + seconds * 1000)
             : undefined,
       },
-      include: routeResponseInclude,
+      include: studentRouteInclude,
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -92,11 +95,13 @@ export async function createRoute(data: CreateRouteInput) {
     throw error;
   }
 }
-export async function getRouteById(id: string, includeAdminDetails = false) {
+export async function getRouteById(id: string, role: UserType) {
   const where = { id: id.toLowerCase() };
-  const route = includeAdminDetails
-    ? await db.route.findUnique({ where, include: routeInclude })
-    : await db.route.findUnique({ where, include: routeResponseInclude });
+  const route = isAdmin(role)
+    ? await db.route.findUnique({ where, include: adminRouteInclude })
+    : role === "Driver"
+      ? await db.route.findUnique({ where, include: driverRouteInclude })
+      : await db.route.findUnique({ where, include: studentRouteInclude });
   if (!route) throw new NotFoundError("Route not found");
   return route;
 }
@@ -104,7 +109,7 @@ export async function deleteRoute(id: string) {
   try {
     return await db.route.delete({
       where: { id: id.toLowerCase() },
-      include: routeInclude,
+      include: adminRouteInclude,
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -116,15 +121,17 @@ export async function deleteRoute(id: string) {
   }
 }
 export async function getRoutes(
-  filters?: {
-    student?: string;
-    driver?: string;
-    vehicle?: string;
-    status?: RouteStatus;
-    start_time?: Date;
-    end_time?: Date;
-  },
-  includeAdminDetails = false,
+  filters:
+    | {
+        student?: string;
+        driver?: string;
+        vehicle?: string;
+        status?: RouteStatus;
+        start_time?: Date;
+        end_time?: Date;
+      }
+    | undefined,
+  role: UserType,
 ) {
   const where = {
     ...(filters?.student ? { studentId: filters.student.toLowerCase() } : {}),
@@ -137,9 +144,9 @@ export async function getRoutes(
     },
   };
 
-  return includeAdminDetails
-    ? db.route.findMany({ include: routeInclude, where })
-    : db.route.findMany({ include: routeResponseInclude, where });
+  return isAdmin(role)
+    ? db.route.findMany({ include: adminRouteInclude, where })
+    : db.route.findMany({ include: studentRouteInclude, where });
 }
 
 export async function completeRoute(routeId: string) {
@@ -384,7 +391,7 @@ async function assignRoute(
       }
       const updated = await tx.route.findUniqueOrThrow({
         where: { id: routeId },
-        include: routeInclude,
+        include: adminRouteInclude,
       });
       return { route: updated, driver };
     });
@@ -421,7 +428,7 @@ export async function transitionRoute(
     }
     const updated = await tx.route.findUniqueOrThrow({
       where: { id: routeId },
-      include: routeInclude,
+      include: adminRouteInclude,
     });
     return updated;
   });

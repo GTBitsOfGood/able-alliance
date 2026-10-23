@@ -42,7 +42,7 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   expect(created.status).toBe("Requested");
   expect(created.pickup).toEqual(LOCATIONS.exhibitionHall);
   expect(created.dropoff).toEqual(LOCATIONS.studentCenter);
-  expect(created.student.settings?.userId).toBe(PERSONAS.student.id);
+  expect(created.student).not.toHaveProperty("settings");
 
   const studentList = await student.get("/api/routes");
   expect(studentList.status()).toBe(200);

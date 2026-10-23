@@ -99,18 +99,24 @@ export async function GET(
     const shiftEnd = fromZonedTime(`${dateParam}T${shift.endTime}:00`, TZ);
 
     // Scheduled routes for this driver on this date (all non-requested statuses)
-    const scheduledRoutes = await getRoutes({
-      driver: driverId,
-      start_time: dayStart,
-      end_time: dayEnd,
-    });
+    const scheduledRoutes = await getRoutes(
+      {
+        driver: driverId,
+        start_time: dayStart,
+        end_time: dayEnd,
+      },
+      user.type,
+    );
 
     // Requested routes (no driver) that fall within the shift time window
-    const requestedRoutes = await getRoutes({
-      status: RouteStatus.Requested,
-      start_time: shiftStart,
-      end_time: shiftEnd,
-    });
+    const requestedRoutes = await getRoutes(
+      {
+        status: RouteStatus.Requested,
+        start_time: shiftStart,
+        end_time: shiftEnd,
+      },
+      user.type,
+    );
 
     return NextResponse.json(
       {
