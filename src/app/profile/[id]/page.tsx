@@ -1,21 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserById } from "@/server/db/actions/UserAction";
-import { ProfileView, type ProfileUser } from "../ProfileView";
-import type { UserType } from "@/utils/authUser";
-
-type UserDocument = {
-  _id?: { toString(): string };
-  firstName?: string;
-  lastName?: string;
-  preferredName?: string;
-  name?: string;
-  email?: string;
-  type?: ProfileUser["type"];
-  studentInfo?: ProfileUser["studentInfo"];
-  shifts?: ProfileUser["shifts"];
-  settings?: ProfileUser["settings"];
-};
+import { isAdmin } from "@/utils/authUser";
+import { NotFoundError } from "@/utils/errors";
+import { ProfileView } from "../ProfileView";
 
 export default async function ProfilePage({
   params,
@@ -32,82 +20,36 @@ export default async function ProfilePage({
   const viewerType = session.user.type;
 
   const canView =
-    viewerId === targetId ||
-    viewerType === "Driver" ||
-    viewerType === "Admin" ||
-    viewerType === "SuperAdmin";
+    viewerId === targetId || viewerType === "Driver" || isAdmin(viewerType);
 
-  const canEdit =
-    viewerId === targetId ||
-    viewerType === "Admin" ||
-    viewerType === "SuperAdmin";
+  const canEdit = viewerId === targetId || isAdmin(viewerType);
 
   if (!canView) {
     redirect("/"); // default redirect to home if not allowed
   }
 
-  const data = await getUserById(targetId).catch(() => null);
+  const data = await getUserById(targetId).catch((error) => {
+    if (error instanceof NotFoundError) return null;
+    throw error;
+  });
 
-  if (!data) {
-    if (viewerId !== targetId) {
-      redirect("/");
-    }
+  if (!data) redirect("/");
 
-    const selfFromSession: ProfileUser = {
-      id: targetId,
-      firstName: session.user.firstName ?? session.user.email ?? "User",
-      lastName: session.user.lastName ?? "",
-      preferredName: undefined,
-      email: session.user.email as string,
-      type: session.user.type as ProfileUser["type"],
-      studentInfo: null,
-    };
-
-    return (
-      <ProfileView
-        user={selfFromSession}
-        canEdit={canEdit}
-        viewerType={viewerType as UserType}
-        isOwnProfile={viewerId === targetId}
-      />
-    );
-  }
-
-  const doc = data as UserDocument;
-  const user: ProfileUser = {
-    id: doc._id?.toString?.() ?? targetId,
-    firstName:
-      doc.firstName ??
-      doc.name?.split(" ")[0] ??
-      session.user.firstName ??
-      session.user.email ??
-      "User",
-    lastName:
-      doc.lastName ??
-      (doc.name ? doc.name.split(" ").slice(1).join(" ") : "") ??
-      session.user.lastName ??
-      "",
-    preferredName: doc.preferredName,
-    email: doc.email ?? (session.user.email as string),
-    type: doc.type ?? (session.user.type as ProfileUser["type"]),
-    studentInfo: doc.studentInfo ?? null,
-    shifts: doc.shifts ?? [],
-    settings: doc.settings ?? { notifications: {} },
-  };
+  const user = data;
 
   const isOwnProfile = viewerId === targetId;
   const targetType = user.type;
   const canDelete =
     !isOwnProfile &&
     (viewerType === "SuperAdmin" ||
-      ((viewerType === "Admin" || viewerType === "SuperAdmin") &&
+      (isAdmin(viewerType) &&
         (targetType === "Student" || targetType === "Driver")));
 
   return (
     <ProfileView
       user={user}
       canEdit={canEdit}
-      viewerType={viewerType as UserType}
+      viewerType={viewerType}
       isOwnProfile={isOwnProfile}
       canDelete={canDelete}
     />

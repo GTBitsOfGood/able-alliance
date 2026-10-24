@@ -15,8 +15,10 @@ services:
     volumes:
       - ./src:/app/src
       - ./emails:/app/emails
+      - ./db:/app/db
       - ./scripts:/app/scripts
       - ./public:/app/public
+      - ./prisma.config.ts:/app/prisma.config.ts
       - ./next.config.ts:/app/next.config.ts
       - ./tsconfig.json:/app/tsconfig.json
       - ./postcss.config.mjs:/app/postcss.config.mjs
@@ -26,28 +28,28 @@ services:
     networks:
       - able-alliance-net
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
       cas:
         condition: service_started
-    command:
-      - /bin/bash
-      - -c
-      - npm run dev
 
-  mongo:
-    image: mongo:4.0
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: able
+      POSTGRES_PASSWORD: able
+      POSTGRES_DB: able_alliance
     ports:
-      - "27017:27017"
+      - "5432:5432"
     networks:
       - able-alliance-net
     volumes:
-      - mongodb-data:/data/db
+      # PostgreSQL 18 stores versioned PGDATA beneath this directory.
+      - postgresql-data:/var/lib/postgresql
     logging:
       driver: "none"
     healthcheck:
-      test:
-        ["CMD", "mongo", "--eval", "db.adminCommand({ ping: 1 })", "--quiet"]
+      test: ["CMD-SHELL", "pg_isready -U able -d able_alliance"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,12 +73,12 @@ services:
       dockerfile: websocket-server/Dockerfile
     ports:
       - "4000:4000"
-    depends_on:
-      mongo:
-        condition: service_healthy
     env_file: .env
     environment:
       PORT: "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - able-alliance-net
 
@@ -85,5 +87,5 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb-data:
+  postgresql-data:
   next_cache:

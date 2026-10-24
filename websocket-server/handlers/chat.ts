@@ -1,49 +1,30 @@
-import type { AppServer, AppSocket, ChatMessage } from "../types.js";
-import { appendMessage } from "../utils/db.js";
+import type { AppServer, AppSocket } from "../types.js";
+import { appendMessage } from "../actions.js";
 import { debugLog } from "../utils/logger.js";
 import { notifyDriverMessage } from "../utils/email.js";
-import mongoose from "mongoose";
 
 export function registerChatHandler(
   io: AppServer,
   socket: AppSocket,
   room: string,
-  chatReady: Promise<void>,
+  historyReady: Promise<void>,
 ) {
   socket.on("sendChatMessage", async (text) => {
     try {
-      await chatReady;
+      await historyReady;
 
       if (typeof text !== "string") {
         throw new Error("Message text is required");
       }
 
       const routeId = socket.data.routeId;
-      const senderType =
-        socket.data.routeDriver?._id?.toString() === socket.data.user
-          ? "driver"
-          : socket.data.routeStudent?._id?.toString() === socket.data.user
-            ? "student"
-            : "admin";
-
-      const message: ChatMessage = {
-        _id: new mongoose.Types.ObjectId(),
-        senderType,
-        text,
-        time: new Date(),
-      };
-      const saved = await appendMessage(routeId, message);
-      if (!saved) {
-        socket.emit("chatError", "This ride's chat has ended");
-        return;
-      }
-
+      const message = await appendMessage(routeId, socket.data.user, text);
       io.to(room).emit("receiveChatMessage", message);
       debugLog(`User ${socket.data.user} sent a message to room ${room}`);
-      if (senderType === "driver") {
+      if (message.senderId === socket.data.routeDriver?.id) {
         void notifyDriverMessage(
           routeId,
-          message._id.toString(),
+          message.id,
           socket.handshake.auth.token,
         ).catch((error) => {
           console.error(
@@ -57,7 +38,7 @@ export function registerChatHandler(
         `sendChatMessage failed for user ${socket.data.user} in room ${room}:`,
         error,
       );
-      socket.emit("chatError", "Invalid message format");
+      socket.emit("chatError", "Failed to send message");
     }
   });
 }

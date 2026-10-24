@@ -20,7 +20,7 @@ test("route C: student cancels a scheduled ride", async ({ apiAs }) => {
     dropoffLocation: LOCATIONS.exhibitionHall.id,
     hoursFromNow: 54,
   });
-  const routeId = created._id;
+  const routeId = created.id;
 
   await scheduleRide(admin, routeId);
 
@@ -29,13 +29,13 @@ test("route C: student cancels a scheduled ride", async ({ apiAs }) => {
   });
   expect(cancelled.status(), await cancelled.text()).toBe(200);
   expect(((await cancelled.json()) as { status: string }).status).toBe(
-    "Cancelled by Student",
+    "CancelledByStudent",
   );
 
-  await expectRouteStatus(student, routeId, "Cancelled by Student", "student");
-  await expectRouteStatus(driver, routeId, "Cancelled by Student", "driver");
-  await expectRouteStatus(admin, routeId, "Cancelled by Student", "admin");
+  await expectRouteStatus(student, routeId, "CancelledByStudent", "student");
+  await expectRouteStatus(driver, routeId, "CancelledByStudent", "driver");
+  await expectRouteStatus(admin, routeId, "CancelledByStudent", "admin");
 
   const start = await driver.post("/api/routes/start", { data: { routeId } });
-  expect(start.status(), await start.text()).toBe(404);
+  expect(start.status(), await start.text()).toBe(409);
 });

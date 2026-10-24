@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserType {
+  Student
+  Driver
+  Admin
+  SuperAdmin
+}
+
+enum VehicleAccessibility {
+  None
+  Wheelchair
+}
+
+enum RouteStatus {
+  Requested
+  Scheduled
+  EnRoute
+  Pickedup
+  Completed
+  Missing
+  CancelledByStudent
+  CancelledByAdmin
+}
+
+model User {
+  id            String          @id @default(uuid()) @db.Uuid
+  firstName     String
+  lastName      String
+  preferredName String?
+  username      String          @unique
+  email         String          @unique
+  type          UserType
+  settings      UserSettings?
+  studentInfo   StudentProfile?
+  shifts        Shift[]
+  studentRoutes Route[]         @relation("StudentRoutes")
+  driverRoutes  Route[]         @relation("DriverRoutes")
+  sentMessages  Message[]
+}
+
+model UserSettings {
+  userId               String  @id @db.Uuid
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailySummary         Boolean @default(false)
+  driverAssigned       Boolean @default(false)
+  driverEnRoute        Boolean @default(false)
+  rideCancelled        Boolean @default(false)
+  rideAssigned         Boolean @default(false)
+  rideCompleted        Boolean @default(false)
+  rideDelayed          Boolean @default(false)
+  newMessageFromDriver Boolean @default(false)
+}
+
+model StudentProfile {
+  userId             String          @id @db.Uuid
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes              String?
+  accessibilityNeeds Accommodation[]
+}
+
+model Shift {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @db.Uuid
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayOfWeek Int
+  startTime String @db.VarChar(5)
+  endTime   String @db.VarChar(5)
+
+  @@index([userId])
+}
+
+model Location {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String  @unique
+  latitude  Float
+  longitude Float
+  pickups   Route[] @relation("PickupLocation")
+  dropoffs  Route[] @relation("DropoffLocation")
+}
+
+model Vehicle {
+  id            String               @id @default(uuid()) @db.Uuid
+  vehicleId     String               @unique
+  name          String
+  licensePlate  String               @unique
+  description   String?
+  accessibility VehicleAccessibility
+  seatCount     Int
+  routes        Route[]
+}
+
+model Accommodation {
+  id       String           @id @default(uuid()) @db.Uuid
+  label    String           @unique
+  students StudentProfile[]
+}
+
+model Route {
+  id                   String      @id @default(uuid()) @db.Uuid
+  pickupLocation       String      @db.Uuid
+  dropoffLocation      String      @db.Uuid
+  studentId            String      @db.Uuid
+  driverId             String?     @db.Uuid
+  vehicleId            String?     @db.Uuid
+  pickup               Location    @relation("PickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
+  dropoff              Location    @relation("DropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
+  student              User        @relation("StudentRoutes", fields: [studentId], references: [id], onDelete: Restrict)
+  driver               User?       @relation("DriverRoutes", fields: [driverId], references: [id], onDelete: Restrict)
+  vehicle              Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  scheduledPickupTime  DateTime    @db.Timestamptz(3)
+  pickupWindowStart    DateTime    @db.Timestamptz(3)
+  pickupWindowEnd      DateTime    @db.Timestamptz(3)
+  estimatedDropoffTime DateTime?   @db.Timestamptz(3)
+  status               RouteStatus @default(Requested)
+  messages             Message[]
+
+  @@unique([studentId, scheduledPickupTime])
+  @@index([scheduledPickupTime])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([pickupLocation])
+  @@index([dropoffLocation])
+}
+
+model Message {
+  id       String   @id @default(uuid()) @db.Uuid
+  routeId  String   @db.Uuid
+  route    Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  senderId String   @db.Uuid
+  sender   User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  text     String
+  time     DateTime @db.Timestamptz(3)
+
+  @@index([routeId, time, id])
+  @@index([senderId])
+}

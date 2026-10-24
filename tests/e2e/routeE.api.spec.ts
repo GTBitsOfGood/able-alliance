@@ -20,15 +20,13 @@ test("route E: driver marks student as no-show", async ({ apiAs }) => {
     dropoffLocation: LOCATIONS.studentCenter.id,
     hoursFromNow: 56,
   });
-  const routeId = created._id;
+  const routeId = created.id;
 
   await scheduleRide(admin, routeId);
 
   const started = await driver.post("/api/routes/start", { data: { routeId } });
   expect(started.status(), await started.text()).toBe(200);
-  expect(((await started.json()) as { status: string }).status).toBe(
-    "En-route",
-  );
+  expect(((await started.json()) as { status: string }).status).toBe("EnRoute");
 
   const missing = await driver.post("/api/routes/missing", {
     data: { routeId },
@@ -41,5 +39,5 @@ test("route E: driver marks student as no-show", async ({ apiAs }) => {
   await expectRouteStatus(admin, routeId, "Missing", "admin");
 
   const pickup = await driver.post("/api/routes/pickup", { data: { routeId } });
-  expect(pickup.status(), await pickup.text()).toBe(404);
+  expect(pickup.status(), await pickup.text()).toBe(409);
 });

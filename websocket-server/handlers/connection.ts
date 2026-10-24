@@ -1,6 +1,6 @@
 import type { AppServer, AppSocket } from "../types.js";
 import { debugLog } from "../utils/logger.js";
-import { getChatHistory } from "../utils/db.js";
+import { getChatHistory } from "../actions.js";
 import { registerChatHandler } from "./chat.js";
 import { registerLocationHandler } from "./location.js";
 import { registerCloseRouteRoomHandler } from "./closeRouteRoom.js";
@@ -22,11 +22,9 @@ export function handleConnection(io: AppServer, socket: AppSocket) {
     return;
   }
 
-  // Handler is registered immediately (below) so a fast client's events
-  // can't be dropped while this resolves; the chat handler awaits this
-  // promise before touching the chat record. The record itself is created
-  // by RouteAction.ts when the ride is scheduled — this only reads it.
-  const chatReady = getChatHistory(room)
+  // Register handlers immediately and wait for history before sending so
+  // a fast message cannot be overwritten by the initial history response.
+  const historyReady = getChatHistory(room)
     .then((history) => {
       socket.emit("chatHistory", history);
       debugLog(
@@ -43,7 +41,7 @@ export function handleConnection(io: AppServer, socket: AppSocket) {
       throw error;
     });
 
-  registerChatHandler(io, socket, room, chatReady);
+  registerChatHandler(io, socket, room, historyReady);
   registerLocationHandler(socket, room);
   registerCloseRouteRoomHandler(io, socket, room);
 }

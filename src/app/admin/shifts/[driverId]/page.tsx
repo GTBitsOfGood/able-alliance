@@ -7,50 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type RouteUser = { _id: string; firstName: string; lastName: string };
-type RouteVehicle = {
-  _id: string;
-  vehicleId?: string;
-  name: string;
-  licensePlate: string;
-};
-
-type ShiftRoute = {
-  _id: string;
-  status: string;
-  student: RouteUser & { studentInfo?: unknown };
-  driver?: RouteUser;
-  vehicle?: RouteVehicle;
-  scheduledPickupTime: string;
-  pickupWindowStart: string;
-  pickupWindowEnd: string;
-  estimatedDropoffTime?: string;
-  pickupLocationName: string;
-  dropoffLocationName: string;
-};
-
-type ShiftDetail = {
-  driver: { _id: string; firstName: string; lastName: string };
-  date: string; // YYYY-MM-DD
-  dayName: string;
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
-  startTimeLabel: string;
-  endTimeLabel: string;
-  shiftStartIso: string;
-  shiftEndIso: string;
-  scheduledRoutes: ShiftRoute[];
-  requestedRoutes: ShiftRoute[];
-};
-
-type Vehicle = {
-  _id: string;
-  vehicleId: string;
-  name: string;
-  licensePlate: string;
-};
+import type { Vehicle } from "@db/generated/browser";
+import type { ShiftDetailResponse as ShiftDetail } from "@/utils/types/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -180,7 +138,7 @@ export default function ShiftDetailPage({
     const scheduled = shiftDetail.scheduledRoutes;
     const conflicts = new Set<string>();
     for (const rideId of selectedRideIds) {
-      const ride = shiftDetail.requestedRoutes.find((r) => r._id === rideId);
+      const ride = shiftDetail.requestedRoutes.find((r) => r.id === rideId);
       if (!ride) continue;
       const rideMin = pickupMinutes(ride.scheduledPickupTime);
       // Flag conflict if within 15 minutes of any scheduled ride
@@ -360,7 +318,7 @@ export default function ShiftDetailPage({
             </thead>
             <tbody>
               {scheduledRoutes.map((route) => (
-                <tr key={route._id}>
+                <tr key={route.id}>
                   <td>
                     {route.student.firstName} {route.student.lastName}
                   </td>
@@ -382,13 +340,13 @@ export default function ShiftDetailPage({
                   </td>
                   <td>
                     {formatTime(route.scheduledPickupTime)} @{" "}
-                    {route.pickupLocationName}
+                    {route.pickup.name}
                   </td>
                   <td>
                     {route.estimatedDropoffTime
                       ? `${formatTime(route.estimatedDropoffTime)} @ `
                       : ""}
-                    {route.dropoffLocationName}
+                    {route.dropoff.name}
                   </td>
                 </tr>
               ))}
@@ -426,7 +384,7 @@ export default function ShiftDetailPage({
                   );
                   return (
                     <div
-                      key={r._id}
+                      key={r.id}
                       className={`${styles.timelineBlock} ${styles.timelineBlockScheduled}`}
                       style={{ left: `${left}%`, width: "4%" }}
                     />
@@ -434,15 +392,15 @@ export default function ShiftDetailPage({
                 })}
                 {/* Selected-to-add rides */}
                 {requestedRoutes
-                  .filter((r) => selectedRideIds.has(r._id))
+                  .filter((r) => selectedRideIds.has(r.id))
                   .map((r) => {
                     const left = timelinePercent(
                       pickupMinutes(r.scheduledPickupTime),
                     );
-                    const isConflict = conflictRideIds.has(r._id);
+                    const isConflict = conflictRideIds.has(r.id);
                     return (
                       <div
-                        key={r._id}
+                        key={r.id}
                         className={`${styles.timelineBlock} ${
                           isConflict
                             ? styles.timelineBlockConflict
@@ -474,11 +432,11 @@ export default function ShiftDetailPage({
                 </thead>
                 <tbody>
                   {requestedRoutes.map((route) => {
-                    const isSelected = selectedRideIds.has(route._id);
-                    const isConflict = conflictRideIds.has(route._id);
+                    const isSelected = selectedRideIds.has(route.id);
+                    const isConflict = conflictRideIds.has(route.id);
                     return (
                       <tr
-                        key={route._id}
+                        key={route.id}
                         className={isConflict ? styles.rowConflict : ""}
                       >
                         <td>
@@ -487,14 +445,14 @@ export default function ShiftDetailPage({
                         <td>
                           <select
                             className={styles.vehicleSelect}
-                            value={vehicleAssignments[route._id] ?? ""}
+                            value={vehicleAssignments[route.id] ?? ""}
                             onChange={(e) =>
-                              handleVehicleChange(route._id, e.target.value)
+                              handleVehicleChange(route.id, e.target.value)
                             }
                           >
                             <option value="">—</option>
                             {vehicles.map((v) => (
-                              <option key={v._id} value={v._id}>
+                              <option key={v.id} value={v.id}>
                                 {v.vehicleId || v.name}
                               </option>
                             ))}
@@ -502,13 +460,13 @@ export default function ShiftDetailPage({
                         </td>
                         <td>
                           {formatTime(route.scheduledPickupTime)} @{" "}
-                          {route.pickupLocationName}
+                          {route.pickup.name}
                         </td>
                         <td>
                           {route.estimatedDropoffTime
                             ? `${formatTime(route.estimatedDropoffTime)} @ `
                             : ""}
-                          {route.dropoffLocationName}
+                          {route.dropoff.name}
                         </td>
                         <td>
                           <span
@@ -526,7 +484,7 @@ export default function ShiftDetailPage({
                             type="checkbox"
                             className={styles.checkbox}
                             checked={isSelected}
-                            onChange={() => toggleRide(route._id)}
+                            onChange={() => toggleRide(route.id)}
                             aria-label={`Select ride for ${route.student.firstName} ${route.student.lastName}`}
                           />
                         </td>

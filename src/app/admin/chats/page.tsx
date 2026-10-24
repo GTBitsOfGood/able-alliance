@@ -15,11 +15,11 @@ type ChatUser = {
 };
 
 type ChatlogEntry = {
-  routeId: string | { toString(): string };
+  id: string;
   student: ChatUser;
   driver?: ChatUser;
-  time: string;
-  status: "active" | "archived";
+  scheduledPickupTime: string;
+  status: string;
 };
 
 const COLUMNS: ColumnHeaderCellContent[] = [
@@ -46,7 +46,7 @@ export default function AdminChatsPage() {
 
     const loadChats = async () => {
       try {
-        const response = await fetch("/api/chat-logs");
+        const response = await fetch("/api/routes");
         if (!response.ok) throw new Error("Unable to load chats.");
 
         const data = await response.json();
@@ -54,7 +54,8 @@ export default function AdminChatsPage() {
           Array.isArray(data)
             ? (data as ChatlogEntry[]).sort(
                 (a, b) =>
-                  new Date(b.time).getTime() - new Date(a.time).getTime(),
+                  new Date(b.scheduledPickupTime).getTime() -
+                  new Date(a.scheduledPickupTime).getTime(),
               )
             : [],
         );
@@ -90,7 +91,7 @@ export default function AdminChatsPage() {
   }
 
   const rows: TableRow[] = chatlogs.map((chat) => ({
-    styleProps: { id: `chat-${String(chat.routeId)}` },
+    styleProps: { id: `chat-${chat.id}` },
     cells: [
       { content: `${chat.student.firstName} ${chat.student.lastName}` },
       {
@@ -98,8 +99,17 @@ export default function AdminChatsPage() {
           ? `${chat.driver.firstName} ${chat.driver.lastName}`
           : "—",
       },
-      { content: new Date(chat.time).toLocaleString() },
-      { content: chat.status === "active" ? "Active" : "Archived" },
+      { content: new Date(chat.scheduledPickupTime).toLocaleString() },
+      {
+        content: [
+          "Completed",
+          "Missing",
+          "CancelledByStudent",
+          "CancelledByAdmin",
+        ].includes(chat.status)
+          ? "Archived"
+          : "Active",
+      },
       { content: <span className={styles.viewChat}>View chat</span> },
     ],
   }));
@@ -123,8 +133,7 @@ export default function AdminChatsPage() {
               onRowClick={(_, rowElement) => {
                 const routeId = rowElement.id.replace(/^chat-/, "");
                 setSelectedChat(
-                  chatlogs.find((chat) => String(chat.routeId) === routeId) ??
-                    null,
+                  chatlogs.find((chat) => chat.id === routeId) ?? null,
                 );
               }}
             />
@@ -142,7 +151,7 @@ export default function AdminChatsPage() {
           />
           <aside className={styles.drawer} aria-label="Chat transcript">
             <AdminChatView
-              routeId={String(selectedChat.routeId)}
+              routeId={selectedChat.id}
               rideLabel={[
                 `${selectedChat.student.firstName} ${selectedChat.student.lastName}`,
                 selectedChat.driver

@@ -1,4 +1,6 @@
 /** @type {import("prettier").Config} */
-module.exports = {
+const config = {
   endOfLine: "auto",
 };
+
+export default config;

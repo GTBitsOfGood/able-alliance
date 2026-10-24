@@ -6,8 +6,8 @@ import { useSession } from "next-auth/react";
 import BogButton from "@/components/BogButton/BogButton";
 
 type ChatMessage = {
-  _id?: string;
-  senderType: "student" | "driver" | "admin";
+  id: string;
+  senderId: string;
   text: string;
   time: string | Date;
 };
@@ -17,7 +17,7 @@ type Chatlog = {
   messages: ChatMessage[];
 };
 
-const ACTIVE_ROUTE_STATUSES = new Set(["Scheduled", "En-route", "Pickedup"]);
+const ACTIVE_ROUTE_STATUSES = new Set(["Scheduled", "EnRoute", "Pickedup"]);
 
 export default function AdminChatView({
   routeId,
@@ -47,20 +47,20 @@ export default function AdminChatView({
       setLoadError(null);
       try {
         const response = await fetch(
-          `/api/chat-logs?routeId=${encodeURIComponent(routeId)}`,
+          `/api/routes/${encodeURIComponent(routeId)}/messages`,
         );
         if (!response.ok) {
           throw new Error("Unable to load this ride transcript.");
         }
 
-        const data = (await response.json()) as Chatlog[];
+        const data = (await response.json()) as ChatMessage[];
         if (!cancelled) {
-          setChatlog(
-            data[0] ??
-              (ACTIVE_ROUTE_STATUSES.has(routeStatus)
-                ? { status: "active", messages: [] }
-                : { status: "archived", messages: [] }),
-          );
+          setChatlog({
+            status: ACTIVE_ROUTE_STATUSES.has(routeStatus)
+              ? "active"
+              : "archived",
+            messages: Array.isArray(data) ? data : [],
+          });
         }
       } catch (caught) {
         if (!cancelled) {
@@ -110,7 +110,7 @@ export default function AdminChatView({
       );
     });
     nextSocket.on("receiveChatMessage", (message: ChatMessage) => {
-      if (message.senderType === "admin") {
+      if (message.senderId === session?.user?.userId) {
         setInput((currentInput) =>
           currentInput.trim() === message.text ? "" : currentInput,
         );
@@ -174,10 +174,10 @@ export default function AdminChatView({
               <p className="text-sm text-gray-600">No messages yet.</p>
             )}
             {messages.map((message, index) => {
-              const isAdminMessage = message.senderType === "admin";
+              const isAdminMessage = message.senderId === session?.user?.userId;
               return (
                 <div
-                  key={message._id ?? `${message.time}-${index}`}
+                  key={message.id ?? `${message.time}-${index}`}
                   className={`rounded border p-3 ${
                     isAdminMessage
                       ? "border-blue-200 bg-blue-50"
@@ -185,13 +185,7 @@ export default function AdminChatView({
                   }`}
                 >
                   <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
-                    <span>
-                      {isAdminMessage
-                        ? "Admin"
-                        : message.senderType === "driver"
-                          ? "Driver"
-                          : "Student"}
-                    </span>
+                    <span>{isAdminMessage ? "Admin" : "Participant"}</span>
                   </div>
                   <p>{message.text}</p>
                   <time className="text-xs text-gray-500">
