@@ -7,17 +7,20 @@ import BogTable, {
   type TableRow,
 } from "@/components/BogTable/BogTable";
 import AdminChatView from "@/app/admin/AdminChatView";
+import { routeStatusLabels } from "@/utils/route-status";
+import type { AdminRouteResponse } from "@/utils/types/api";
 import styles from "./styles.module.css";
 
 type ChatUser = {
+  id: string;
   firstName: string;
   lastName: string;
 };
 
-type ChatlogEntry = {
+type ChatEntry = {
   id: string;
   student: ChatUser;
-  driver?: ChatUser;
+  driver: ChatUser | null;
   scheduledPickupTime: string;
   status: string;
 };
@@ -25,15 +28,15 @@ type ChatlogEntry = {
 const COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Student", datatype: "string" },
   { content: "Driver", datatype: "string" },
-  { content: "Started", datatype: "string" },
+  { content: "Ride time", datatype: "string" },
   { content: "Status", datatype: "string" },
   { content: "Chat", datatype: "string" },
 ];
 
 export default function AdminChatsPage() {
   const { data: session, status: sessionStatus } = useSession();
-  const [chatlogs, setChatlogs] = useState<ChatlogEntry[]>([]);
-  const [selectedChat, setSelectedChat] = useState<ChatlogEntry | null>(null);
+  const [routes, setRoutes] = useState<ChatEntry[]>([]);
+  const [selectedRoute, setSelectedRoute] = useState<ChatEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isAuthorized =
@@ -44,19 +47,26 @@ export default function AdminChatsPage() {
     if (session.user.type !== "Admin" && session.user.type !== "SuperAdmin")
       return;
 
-    const loadChats = async () => {
+    const loadRoutes = async () => {
       try {
         const response = await fetch("/api/routes");
         if (!response.ok) throw new Error("Unable to load chats.");
-
         const data = await response.json();
-        setChatlogs(
+        setRoutes(
           Array.isArray(data)
-            ? (data as ChatlogEntry[]).sort(
-                (a, b) =>
-                  new Date(b.scheduledPickupTime).getTime() -
-                  new Date(a.scheduledPickupTime).getTime(),
-              )
+            ? (data as AdminRouteResponse[])
+                .map((route) => ({
+                  id: route.id,
+                  student: route.student,
+                  driver: route.driver,
+                  scheduledPickupTime: route.scheduledPickupTime,
+                  status: route.status,
+                }))
+                .sort(
+                  (a, b) =>
+                    new Date(b.scheduledPickupTime).getTime() -
+                    new Date(a.scheduledPickupTime).getTime(),
+                )
             : [],
         );
       } catch (caught) {
@@ -68,7 +78,7 @@ export default function AdminChatsPage() {
       }
     };
 
-    void loadChats();
+    void loadRoutes();
   }, [session, sessionStatus]);
 
   if (sessionStatus === "loading") {
@@ -86,29 +96,20 @@ export default function AdminChatsPage() {
     );
   }
 
-  if (loading) {
-    return <main className="p-6 text-gray-600">Loading chats...</main>;
-  }
-
-  const rows: TableRow[] = chatlogs.map((chat) => ({
-    styleProps: { id: `chat-${chat.id}` },
+  const rows: TableRow[] = routes.map((route) => ({
+    styleProps: { id: `chat-${route.id}` },
     cells: [
-      { content: `${chat.student.firstName} ${chat.student.lastName}` },
+      { content: `${route.student.firstName} ${route.student.lastName}` },
       {
-        content: chat.driver
-          ? `${chat.driver.firstName} ${chat.driver.lastName}`
+        content: route.driver
+          ? `${route.driver.firstName} ${route.driver.lastName}`
           : "—",
       },
-      { content: new Date(chat.scheduledPickupTime).toLocaleString() },
+      { content: new Date(route.scheduledPickupTime).toLocaleString() },
       {
-        content: [
-          "Completed",
-          "Missing",
-          "CancelledByStudent",
-          "CancelledByAdmin",
-        ].includes(chat.status)
-          ? "Archived"
-          : "Active",
+        content:
+          routeStatusLabels[route.status as keyof typeof routeStatusLabels] ??
+          route.status,
       },
       { content: <span className={styles.viewChat}>View chat</span> },
     ],
@@ -117,14 +118,16 @@ export default function AdminChatsPage() {
   return (
     <main className={styles.page}>
       <h1 className={styles.title}>Chats</h1>
-      {isAuthorized && error && (
+      {error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
       )}
-      {isAuthorized && !error && (
+      {!error && (
         <div className={styles.tableWrap}>
-          {chatlogs.length === 0 ? (
+          {loading ? (
+            <p className={styles.empty}>Loading chats...</p>
+          ) : routes.length === 0 ? (
             <p className={styles.empty}>No chats found.</p>
           ) : (
             <BogTable
@@ -132,8 +135,8 @@ export default function AdminChatsPage() {
               rows={rows}
               onRowClick={(_, rowElement) => {
                 const routeId = rowElement.id.replace(/^chat-/, "");
-                setSelectedChat(
-                  chatlogs.find((chat) => chat.id === routeId) ?? null,
+                setSelectedRoute(
+                  routes.find((route) => route.id === routeId) ?? null,
                 );
               }}
             />
@@ -141,27 +144,29 @@ export default function AdminChatsPage() {
         </div>
       )}
 
-      {selectedChat && (
+      {selectedRoute && (
         <div className={styles.drawerLayer}>
           <button
             type="button"
             className={styles.drawerBackdrop}
             aria-label="Close chat"
-            onClick={() => setSelectedChat(null)}
+            onClick={() => setSelectedRoute(null)}
           />
           <aside className={styles.drawer} aria-label="Chat transcript">
             <AdminChatView
-              routeId={selectedChat.id}
+              routeId={selectedRoute.id}
               rideLabel={[
-                `${selectedChat.student.firstName} ${selectedChat.student.lastName}`,
-                selectedChat.driver
-                  ? `Driver: ${selectedChat.driver.firstName} ${selectedChat.driver.lastName}`
+                `${selectedRoute.student.firstName} ${selectedRoute.student.lastName}`,
+                selectedRoute.driver
+                  ? `Driver: ${selectedRoute.driver.firstName} ${selectedRoute.driver.lastName}`
                   : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              routeStatus={selectedChat.status}
-              onClose={() => setSelectedChat(null)}
+              routeStatus={selectedRoute.status}
+              studentId={selectedRoute.student.id}
+              driverId={selectedRoute.driver?.id ?? null}
+              onClose={() => setSelectedRoute(null)}
             />
           </aside>
         </div>

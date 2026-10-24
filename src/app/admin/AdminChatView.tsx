@@ -17,17 +17,26 @@ type Chatlog = {
   messages: ChatMessage[];
 };
 
-const ACTIVE_ROUTE_STATUSES = new Set(["Scheduled", "EnRoute", "Pickedup"]);
+const CLOSED_ROUTE_STATUSES = new Set([
+  "Completed",
+  "Missing",
+  "CancelledByStudent",
+  "CancelledByAdmin",
+]);
 
 export default function AdminChatView({
   routeId,
   rideLabel,
   routeStatus,
+  studentId,
+  driverId,
   onClose,
 }: {
   routeId: string;
   rideLabel: string;
   routeStatus: string;
+  studentId: string;
+  driverId: string | null;
   onClose: () => void;
 }) {
   const { data: session } = useSession();
@@ -42,23 +51,21 @@ export default function AdminChatView({
   useEffect(() => {
     let cancelled = false;
 
-    const loadChatlog = async () => {
+    const loadMessages = async () => {
       setLoading(true);
       setLoadError(null);
       try {
         const response = await fetch(
           `/api/routes/${encodeURIComponent(routeId)}/messages`,
         );
-        if (!response.ok) {
+        if (!response.ok)
           throw new Error("Unable to load this ride transcript.");
-        }
-
         const data = (await response.json()) as ChatMessage[];
         if (!cancelled) {
           setChatlog({
-            status: ACTIVE_ROUTE_STATUSES.has(routeStatus)
-              ? "active"
-              : "archived",
+            status: CLOSED_ROUTE_STATUSES.has(routeStatus)
+              ? "archived"
+              : "active",
             messages: Array.isArray(data) ? data : [],
           });
         }
@@ -75,7 +82,7 @@ export default function AdminChatView({
       }
     };
 
-    void loadChatlog();
+    void loadMessages();
     return () => {
       cancelled = true;
     };
@@ -121,9 +128,7 @@ export default function AdminChatView({
           : current,
       );
     });
-    nextSocket.on("chatError", (message: string) => {
-      setSocketError(message);
-    });
+    nextSocket.on("chatError", (message: string) => setSocketError(message));
     nextSocket.on("connect_error", (connectionError) => {
       setConnected(false);
       setSocketError(
@@ -144,7 +149,6 @@ export default function AdminChatView({
   ]);
 
   const messages = useMemo(() => chatlog?.messages ?? [], [chatlog]);
-
   const sendMessage = () => {
     const text = input.trim();
     if (!text || !socketRef.current?.connected) return;
@@ -179,7 +183,18 @@ export default function AdminChatView({
               <p className="text-sm text-gray-600">No messages yet.</p>
             )}
             {messages.map((message, index) => {
-              const isAdminMessage = message.senderId === session?.user?.userId;
+              const isOwnMessage = message.senderId === session?.user?.userId;
+              const isStudentMessage = message.senderId === studentId;
+              const isDriverMessage =
+                driverId !== null && message.senderId === driverId;
+              const isAdminMessage = !isStudentMessage && !isDriverMessage;
+              const senderLabel = isStudentMessage
+                ? "Student"
+                : isDriverMessage
+                  ? "Driver"
+                  : isOwnMessage
+                    ? "You · Admin"
+                    : "Admin";
               return (
                 <div
                   key={message.id ?? `${message.time}-${index}`}
@@ -190,7 +205,7 @@ export default function AdminChatView({
                   }`}
                 >
                   <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
-                    <span>{isAdminMessage ? "Admin" : "Participant"}</span>
+                    {senderLabel}
                   </div>
                   <p>{message.text}</p>
                   <time className="text-xs text-gray-500">
@@ -200,7 +215,7 @@ export default function AdminChatView({
               );
             })}
           </div>
-          {chatlog?.status === "active" && (
+          {chatlog?.status === "active" ? (
             <form
               className="mt-4 flex gap-2"
               onSubmit={(event) => {
@@ -219,8 +234,7 @@ export default function AdminChatView({
                 Send
               </BogButton>
             </form>
-          )}
-          {chatlog?.status === "archived" && (
+          ) : (
             <p className="mt-4 text-sm text-gray-600">
               This ride has ended. The chat is read-only.
             </p>

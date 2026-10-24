@@ -3,21 +3,8 @@ import jwt from "jsonwebtoken";
 import { debugLog } from "./utils/logger.js";
 import { getRouteForAuth } from "./actions.js";
 
-// Compare dates in America/New_York using Intl (works reliably in Node).
-function estDateStr(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value;
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-
 // Socket.IO middleware: verifies the client's JWT, loads the route, and
-// authorizes the connecting user (student/driver/super admin, same-day only).
+// authorizes the ride participants and admins for the lifetime of the chat.
 export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
   const { routeId, token } = socket.handshake.auth;
   try {
@@ -56,16 +43,6 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
     const route = await getRouteForAuth(routeId);
     if (!route) {
       return next(new Error("Route not found"));
-    }
-
-    const routeDateStr = estDateStr(new Date(route.scheduledPickupTime));
-    const todayStr = estDateStr(new Date());
-    const isSameDay = routeDateStr === todayStr;
-    debugLog(
-      `Date check: route=${routeDateStr}, today=${todayStr}, same=${isSameDay}`,
-    );
-    if (!isSameDay) {
-      return next(new Error("Route is not scheduled for today"));
     }
 
     const isStudent = route.student?.id === userId;

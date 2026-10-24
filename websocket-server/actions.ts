@@ -14,7 +14,6 @@ export async function getRouteForAuth(routeId: string) {
     select: {
       driver: { select: { id: true } },
       student: { select: { id: true } },
-      scheduledPickupTime: true,
     },
   });
 }

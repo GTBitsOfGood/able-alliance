@@ -6,7 +6,8 @@ import BogButton from "@/components/BogButton/BogButton";
 import AdminChatView from "@/app/admin/AdminChatView";
 
 type RouteDetails = {
-  student: { firstName: string; lastName: string };
+  student: { id: string; firstName: string; lastName: string };
+  driver?: { id: string } | null;
   status: string;
 };
 
@@ -73,6 +74,8 @@ export default function AdminChatPage() {
         routeId={params.routeId}
         rideLabel={`${route.student.firstName} ${route.student.lastName} · ${route.status}`}
         routeStatus={route.status}
+        studentId={route.student.id}
+        driverId={route.driver?.id ?? null}
         onClose={() => router.back()}
       />
     </main>

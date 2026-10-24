@@ -218,7 +218,7 @@ export function ProfileView({
           </div>
           <div className={styles.profileNameBlock}>
             <h1 className={styles.profileDisplayName}>{displayName}</h1>
-            <span className={styles.profileRole}>displayUser.type</span>
+            <span className={styles.profileRole}>{displayUser.type}</span>
           </div>
         </header>
 

@@ -34,6 +34,12 @@ export function registerChatHandler(
         });
       }
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "Chat is closed for this route"
+      ) {
+        io.to(room).emit("routeClosed");
+      }
       console.error(
         `sendChatMessage failed for user ${socket.data.user} in room ${room}:`,
         error,
