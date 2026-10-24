@@ -11,7 +11,7 @@ import { debugLog } from "../utils/logger.js";
  */
 
 /** How often to poke the materializer. */
-const INTERVAL_MS = 60 * 60 * 1000; // hourly
+const INTERVAL_MS = 24 * 60 * 60 * 1000; // daily
 
 /** Delay before the first run, so startup isn't competing with it. */
 const STARTUP_DELAY_MS = 30 * 1000;
@@ -81,9 +81,7 @@ export function startRideSeriesCron(): () => void {
   }, STARTUP_DELAY_MS);
   startupTimer.unref?.();
 
-  console.log(
-    `[rideSeriesCron] scheduled every ${INTERVAL_MS / 60000} minutes`,
-  );
+  console.log("[rideSeriesCron] scheduled daily (every 24 hours)");
 
   return () => {
     clearTimeout(startupTimer);
