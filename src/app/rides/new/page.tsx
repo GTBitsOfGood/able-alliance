@@ -71,6 +71,7 @@ export default function CreateRidePage() {
   const [pickupWindowErrorField, setPickupWindowErrorField] = useState<
     "from" | "to" | null
   >(null);
+  const [isRecurring, setIsRecurring] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -477,6 +478,8 @@ export default function CreateRidePage() {
           scheduledPickupTime,
           pickupWindowStart: pickupWindowStart.toISOString(),
           pickupWindowEnd: pickupWindowEnd.toISOString(),
+          // Omitted entirely for one-off rides so the API keeps its existing shape.
+          ...(isRecurring ? { recurring: { frequency: "weekly" } } : {}),
         }),
       });
       if (!res.ok) {
@@ -732,22 +735,21 @@ export default function CreateRidePage() {
 
                 {/* Recurring Ride */}
                 {isMobileLayout && (
-                  <div
-                    className={styles.formGroup}
-                    title="Recurring rides are coming soon"
-                  >
+                  <div className={styles.formGroup}>
                     <label className={styles.recurringCheckboxRow}>
                       <input
                         type="checkbox"
-                        disabled
+                        checked={isRecurring}
+                        onChange={(e) => setIsRecurring(e.target.checked)}
                         className={styles.recurringCheckbox}
                       />
                       Recurring ride (optional)
                     </label>
                     <div className={styles.recurringFrequencyCell}>
                       <select
-                        defaultValue="weekly"
-                        disabled
+                        value="weekly"
+                        onChange={() => {}}
+                        disabled={!isRecurring}
                         className={styles.recurringFrequencySelect}
                         aria-label="Recurring ride frequency"
                       >
@@ -761,23 +763,23 @@ export default function CreateRidePage() {
                     </div>
                   </div>
                 )}
-                {/* Recurring rides - TBD on implementation */}
                 <div
                   className={`${styles.recurringRide} ${styles.desktopRecurringRide}`}
-                  title="Recurring rides are coming soon"
                 >
                   <label className={styles.recurringRideLabel}>
                     <input
                       type="checkbox"
                       className={styles.recurringRideCheckbox}
-                      disabled
+                      checked={isRecurring}
+                      onChange={(e) => setIsRecurring(e.target.checked)}
                     />
                     Recurring ride
                   </label>
                   <select
                     className={styles.recurringRideSelect}
-                    defaultValue="weekly"
-                    disabled
+                    value="weekly"
+                    onChange={() => {}}
+                    disabled={!isRecurring}
                     aria-label="Recurring ride frequency"
                   >
                     <option value="weekly">Every Week</option>

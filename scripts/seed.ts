@@ -478,6 +478,7 @@ async function seed() {
             const studentIndex = (studentCursor + attempt) % students.length;
             const candidate: Omit<Route, "id"> = {
               studentId: students[studentIndex].id,
+              seriesId: null,
               driverId: requested ? null : driver.id,
               vehicleId: requested ? null : vehicle.id,
               pickupLocation: pickupLocation.id,

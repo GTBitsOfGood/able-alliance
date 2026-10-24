@@ -142,6 +142,7 @@ export async function resetAndSeed(url: string = E2E.databaseUrl) {
     await db.$transaction(async (tx) => {
       await tx.message.deleteMany();
       await tx.route.deleteMany();
+      await tx.rideSeries.deleteMany();
       await tx.user.deleteMany();
       await tx.location.deleteMany();
       await tx.vehicle.deleteMany();

@@ -43,6 +43,7 @@ model User {
   shifts        Shift[]
   studentRoutes Route[]         @relation("StudentRoutes")
   driverRoutes  Route[]         @relation("DriverRoutes")
+  rideSeries    RideSeries[]
   sentMessages  Message[]
 }
 
@@ -78,12 +79,14 @@ model Shift {
 }
 
 model Location {
-  id        String  @id @default(uuid()) @db.Uuid
-  name      String  @unique
-  latitude  Float
-  longitude Float
-  pickups   Route[] @relation("PickupLocation")
-  dropoffs  Route[] @relation("DropoffLocation")
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String       @unique
+  latitude       Float
+  longitude      Float
+  pickups        Route[]      @relation("PickupLocation")
+  dropoffs       Route[]      @relation("DropoffLocation")
+  seriesPickups  RideSeries[] @relation("SeriesPickupLocation")
+  seriesDropoffs RideSeries[] @relation("SeriesDropoffLocation")
 }
 
 model Vehicle {
@@ -120,9 +123,12 @@ model Route {
   pickupWindowEnd      DateTime    @db.Timestamptz(3)
   estimatedDropoffTime DateTime?   @db.Timestamptz(3)
   status               RouteStatus @default(Requested)
+  seriesId             String?     @db.Uuid
+  series               RideSeries? @relation(fields: [seriesId], references: [id], onDelete: Restrict)
   messages             Message[]
 
   @@unique([studentId, scheduledPickupTime])
+  @@unique([seriesId, scheduledPickupTime])
   @@index([scheduledPickupTime])
   @@index([driverId])
   @@index([vehicleId])
@@ -141,4 +147,32 @@ model Message {
 
   @@index([routeId, time, id])
   @@index([senderId])
+}
+
+enum RecurrenceFrequency {
+  weekly
+}
+
+model RideSeries {
+  id                        String              @id @default(uuid()) @db.Uuid
+  studentId                 String              @db.Uuid
+  student                   User                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  pickupLocation            String              @db.Uuid
+  dropoffLocation           String              @db.Uuid
+  pickup                    Location            @relation("SeriesPickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
+  dropoff                   Location            @relation("SeriesDropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
+  frequency                 RecurrenceFrequency @default(weekly)
+  firstPickupTime           DateTime            @db.Timestamptz(3)
+  pickupWindowStartOffsetMs Int
+  pickupWindowEndOffsetMs   Int
+  materializedThrough       DateTime            @db.Timestamptz(3)
+  active                    Boolean             @default(true)
+  createdAt                 DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
+  routes                    Route[]
+
+  @@index([active, materializedThrough])
+  @@index([studentId])
+  @@index([pickupLocation])
+  @@index([dropoffLocation])
 }

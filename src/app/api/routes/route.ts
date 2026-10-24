@@ -7,7 +7,9 @@ import {
   getRouteById,
   getRoutes,
 } from "@/server/db/actions/RouteAction";
+import { createRideSeries } from "@/server/db/actions/RideSeriesAction";
 import { createRouteSchema } from "@/utils/types";
+import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
 import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
@@ -182,9 +184,13 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
 
+    // `recurring` is a sibling of the route fields, not part of them —
+    // createRouteSchema is strict, so split it off before parsing.
+    const { recurring, ...routeFields } = body ?? {};
+
     // Add the student ID from the session
     const routeData = {
-      ...body,
+      ...routeFields,
       student: session.user.userId,
     };
 
@@ -201,6 +207,13 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
+    // seriesId is assigned by the recurring-ride job, never by a client.
+    if (body.seriesId != null) {
+      return NextResponse.json(
+        { error: "seriesId cannot be set when creating a route" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
     // Driver and vehicle must not be set on create; use POST /api/routes/schedule instead.
     if (body.driver != null || body.vehicle != null) {
       return NextResponse.json(
@@ -212,7 +225,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = await createRoute(parsed.data);
+    let created;
+    if (recurring != null) {
+      const recurrence = recurrenceRequestSchema.safeParse(recurring);
+      if (!recurrence.success) {
+        return NextResponse.json(recurrence.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      created = (await createRideSeries(parsed.data, recurrence.data))
+        .firstRoute;
+    } else {
+      created = await createRoute(parsed.data);
+    }
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {
     return errorResponse(error);

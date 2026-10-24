@@ -35,7 +35,11 @@ function dispatchNotifications(tasks: Promise<void>[]) {
   });
 }
 
-export async function createRoute(data: CreateRouteInput) {
+export async function createRoute(
+  data: CreateRouteInput,
+  options?: { seriesId?: string; tx?: Prisma.TransactionClient },
+) {
+  const client = options?.tx ?? db;
   const parsed = createRouteSchema.parse(data);
   const input = {
     ...parsed,
@@ -44,16 +48,16 @@ export async function createRoute(data: CreateRouteInput) {
     student: parsed.student.toLowerCase(),
   };
   const [pickup, dropoff, student] = await Promise.all([
-    db.location.findUnique({ where: { id: input.pickupLocation } }),
-    db.location.findUnique({ where: { id: input.dropoffLocation } }),
-    db.user.findUnique({ where: { id: input.student } }),
+    client.location.findUnique({ where: { id: input.pickupLocation } }),
+    client.location.findUnique({ where: { id: input.dropoffLocation } }),
+    client.user.findUnique({ where: { id: input.student } }),
   ]);
   if (!pickup) throw new ArgumentError("Pickup location not found");
   if (!dropoff) throw new ArgumentError("Dropoff location not found");
   if (!student) throw new ArgumentError("Student not found");
   if (student.type !== "Student")
     throw new ArgumentError("Referenced user is not a student");
-  const existing = await db.route.findUnique({
+  const existing = await client.route.findUnique({
     where: {
       studentId_scheduledPickupTime: {
         studentId: student.id,
@@ -70,7 +74,7 @@ export async function createRoute(data: CreateRouteInput) {
     input.scheduledPickupTime,
   );
   try {
-    const route = await db.route.create({
+    const route = await client.route.create({
       data: {
         pickupLocation: input.pickupLocation,
         dropoffLocation: input.dropoffLocation,
@@ -78,6 +82,7 @@ export async function createRoute(data: CreateRouteInput) {
         pickupWindowStart: input.pickupWindowStart,
         pickupWindowEnd: input.pickupWindowEnd,
         studentId: student.id,
+        seriesId: options?.seriesId?.toLowerCase(),
         status: RouteStatus.Requested,
         estimatedDropoffTime:
           seconds !== null
@@ -86,7 +91,7 @@ export async function createRoute(data: CreateRouteInput) {
       },
       include: studentRouteInclude,
     });
-    emitRouteUpdate(route);
+    if (!options?.tx) emitRouteUpdate(route);
     return route;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
