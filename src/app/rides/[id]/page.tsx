@@ -13,6 +13,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { getStudentStatusChipStyle } from "../RideCard";
+import { isAdmin } from "@/utils/authUser";
 import styles from "./styles.module.css";
 import type {
   RouteDetailResponse as RouteData,
@@ -733,6 +734,7 @@ export default function RideDetailPage({
             )}
             {messages.map((msg, idx) => {
               const isUser = msg.senderId === session?.user.userId;
+              const isAdminMessage = isUser && isAdmin(session?.user?.type);
               const prevIsOther =
                 !isUser &&
                 idx > 0 &&
@@ -754,10 +756,10 @@ export default function RideDetailPage({
                     ))}
                   <div
                     className={`${styles.messageBubble} ${
-                      isAdmin ? styles.adminMessageBubble : ""
+                      isAdminMessage ? styles.adminMessageBubble : ""
                     }`}
                   >
-                    {isAdmin && (
+                    {isAdminMessage && (
                       <span className={styles.adminMessageLabel}>Admin</span>
                     )}
                     <p className={styles.messageText}>{msg.text}</p>
@@ -1228,6 +1230,7 @@ export default function RideDetailPage({
               )}
               {messages.map((msg, idx) => {
                 const isUser = msg.senderId === session?.user.userId;
+                const isAdminMessage = isUser && isAdmin(session?.user?.type);
                 const prevIsOther =
                   !isUser &&
                   idx > 0 &&
@@ -1249,10 +1252,10 @@ export default function RideDetailPage({
                       ))}
                     <div
                       className={`${styles.messageBubble} ${
-                        isAdmin ? styles.adminMessageBubble : ""
+                        isAdminMessage ? styles.adminMessageBubble : ""
                       }`}
                     >
-                      {isAdmin && (
+                      {isAdminMessage && (
                         <span className={styles.adminMessageLabel}>Admin</span>
                       )}
                       <p className={styles.messageText}>{msg.text}</p>
