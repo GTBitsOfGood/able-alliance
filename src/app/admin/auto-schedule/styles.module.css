@@ -1,0 +1,470 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  padding: var(--layout-content-pad-y) var(--layout-admin-pad-x);
+  gap: 2.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-desktop-display);
+  line-height: var(--text-desktop-display--line-height);
+  color: var(--color-grey-text-strong);
+}
+
+.experimental {
+  padding: 0.3rem 0.9rem;
+  border-radius: 999rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: var(--color-status-amber-fill);
+  color: var(--color-status-amber-text);
+  border: 0.1rem solid var(--color-status-amber-stroke-weak);
+}
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dateInput {
+  padding: 0.7rem 1rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.5rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  color: var(--color-grey-text-strong);
+}
+
+.btnSecondary {
+  padding: 0.8rem 1.8rem;
+  border: 0.1rem solid var(--color-brand-text);
+  border-radius: 0.4rem;
+  background: transparent;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-brand-text);
+  cursor: pointer;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: var(--color-brand-fill);
+}
+
+.btnPrimary {
+  padding: 0.8rem 1.8rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: var(--color-brand-text);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-solid-bg-base);
+  cursor: pointer;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  filter: brightness(0.85);
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Section card ── */
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+  padding: 1.6rem 2rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+}
+
+.legend {
+  display: flex;
+  gap: 2rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.3rem;
+  color: var(--color-grey-text-weak);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.legend i {
+  display: inline-block;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.3rem;
+}
+
+/* ── Timeline ── */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.driverName {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-grey-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowDetail {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--color-grey-text-weak);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hourLabels {
+  position: relative;
+  height: 1.8rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.1rem;
+  color: var(--color-grey-text-weak);
+}
+
+.hourLabels span {
+  position: absolute;
+  white-space: nowrap;
+}
+
+.bar {
+  position: relative;
+  background: var(--color-grey-fill-weak);
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+.shift,
+.swatchShift {
+  background: var(--color-status-green);
+}
+
+.shift {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+/* Drawn after shifts so hour lines stay visible over the green. */
+.hourMark {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  width: 0.1rem;
+  height: 100%;
+  background: var(--color-grey-off-state);
+  pointer-events: none;
+}
+
+.halfHourMark {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  height: 100%;
+  border-left: 0.1rem dashed var(--color-grey-stroke-weak);
+  pointer-events: none;
+}
+
+.ride {
+  position: absolute;
+  z-index: 2;
+  height: 2.4rem;
+  padding: 0 0.6rem;
+  box-sizing: border-box;
+  /* Square left edge marks the exact start time on the grid. */
+  border-radius: 0 0.4rem 0.4rem 0;
+  box-shadow: 0.1rem 0 0 0 var(--color-solid-bg-base);
+  font-family: var(--font-paragraph);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 2.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ride:hover {
+  z-index: 3;
+  filter: brightness(0.92);
+}
+
+/* Translucent theme colors sit on the solid base so blocks stay opaque. */
+.ride_existing,
+.swatchExisting,
+.swatchConflict {
+  background-color: var(--color-solid-bg-base);
+  background-image: linear-gradient(
+    var(--color-grey-stroke-strong),
+    var(--color-grey-stroke-strong)
+  );
+  color: var(--color-solid-bg-base);
+}
+
+.ride_proposed,
+.swatchProposed {
+  background: var(--color-status-green-text);
+  color: var(--color-solid-bg-base);
+}
+
+.ride_unassigned,
+.swatchUnassigned {
+  background-color: var(--color-solid-bg-base);
+  background-image: linear-gradient(
+    var(--color-status-red-fill),
+    var(--color-status-red-fill)
+  );
+  color: var(--color-status-red-text);
+  box-shadow: inset 0 0 0 0.1rem var(--color-status-red-text);
+}
+
+.rideConflict {
+  box-shadow:
+    0 0 0 0.1rem var(--color-solid-bg-base),
+    0 0 0 0.3rem var(--color-status-red-text);
+}
+
+.swatchConflict {
+  box-shadow: inset 0 0 0 0.2rem var(--color-status-red-text);
+}
+
+/* ── Compact alert cards ── */
+.alertCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.8rem 1.2rem;
+  border: 0.1rem solid var(--color-status-red-text);
+  border-radius: 0.6rem;
+  background: var(--color-status-red-fill);
+  font-family: var(--font-paragraph);
+}
+
+.alertHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.alertTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--color-status-red-text);
+}
+
+.alertHint {
+  font-size: 1.2rem;
+  color: var(--color-grey-text-weak);
+}
+
+.alertList {
+  margin: 0;
+  padding-left: 1.8rem;
+  font-size: 1.3rem;
+  line-height: 1.6;
+  color: var(--color-grey-text-strong);
+}
+
+.alertDismiss {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 0.2rem;
+  border: none;
+  background: transparent;
+  color: var(--color-grey-text-weak);
+  cursor: pointer;
+}
+
+.alertDismiss:hover {
+  color: var(--color-grey-text-strong);
+}
+
+.alert_success {
+  border-color: var(--color-status-green-text);
+  background: var(--color-status-green-fill);
+}
+
+.alert_success .alertTitle {
+  color: var(--color-status-green-text);
+}
+
+.alert_warning {
+  border-color: var(--color-status-amber-stroke-weak);
+  background: var(--color-status-amber-fill);
+}
+
+.alert_warning .alertTitle {
+  color: var(--color-status-amber-text);
+}
+
+.unassignedName {
+  color: var(--color-status-red-text);
+  font-weight: 600;
+}
+
+.summary {
+  margin: 0;
+  font-family: var(--font-paragraph);
+  font-size: 1.5rem;
+  color: var(--color-grey-text-strong);
+}
+
+/* ── Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+}
+
+.table thead tr {
+  background: var(--color-brand-fill);
+}
+
+.table th {
+  padding: 1rem 1.2rem;
+  text-align: left;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-grey-text-strong);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 1rem 1.2rem;
+  color: var(--color-grey-text-strong);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Tables themed to match their timeline blocks ── */
+.proposedCard .sectionTitle,
+.unassignedCard .sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.proposedCard .sectionTitle i,
+.unassignedCard .sectionTitle i {
+  display: inline-block;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.3rem;
+}
+
+.proposedCard {
+  border-color: var(--color-status-green-text);
+}
+
+.proposedCard .sectionTitle {
+  color: var(--color-status-green-text);
+}
+
+.proposedTable thead tr {
+  background: var(--color-status-green-text);
+}
+
+.proposedTable th {
+  color: var(--color-solid-bg-base);
+  border-bottom-color: var(--color-status-green-text);
+}
+
+.proposedTable td {
+  border-bottom-color: var(--color-status-green-stroke-weak);
+}
+
+.proposedTable tbody tr:nth-child(even) {
+  background: var(--color-status-green-fill);
+}
+
+.unassignedCard {
+  border-color: var(--color-status-red-text);
+}
+
+.unassignedCard .sectionTitle {
+  color: var(--color-status-red-text);
+}
+
+.unassignedTable thead tr {
+  background: var(--color-status-red-fill);
+}
+
+.unassignedTable th {
+  color: var(--color-status-red-text);
+  border-bottom: 0.1rem solid var(--color-status-red-text);
+}
+
+.unassignedTable td {
+  border-bottom-color: var(--color-status-red-fill);
+}
+
+.unassignedTable td:last-child {
+  color: var(--color-status-red-text);
+  font-weight: 600;
+}
+
+.empty {
+  padding: 2.4rem 0;
+  text-align: center;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.cellSub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.2rem;
+  color: var(--color-grey-text-weak);
+}

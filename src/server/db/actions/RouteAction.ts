@@ -1,3 +1,4 @@
+import { findBookingConflicts } from "@/server/scheduling/autoSchedule";
 import { db } from "@db";
 import { Prisma, RouteStatus } from "@db/generated/client";
 import type { UserType } from "@db/generated/browser";
@@ -299,49 +300,114 @@ export const markRouteMissing = (routeId: string) =>
     RouteStatus.Missing,
   );
 
+const LOCK_WAIT_MS = 10_000;
+const LOCK_RETRY_MS = 150;
+
+export function schedulingLockKeys(
+  assignments: { driverId: string; vehicleId: string }[],
+): string[] {
+  return assignments.flatMap((a) => [
+    `driver:${a.driverId.toLowerCase()}`,
+    `vehicle:${a.vehicleId.toLowerCase()}`,
+  ]);
+}
+
+export async function withSchedulingLock<T>(
+  keys: string[],
+  fn: (tx: Prisma.TransactionClient, afterCommit: (() => void)[]) => Promise<T>,
+): Promise<T> {
+  const afterCommit: (() => void)[] = [];
+  const result = await db.$transaction(
+    async (tx) => {
+      const deadline = Date.now() + LOCK_WAIT_MS;
+      // Transaction locks are released automatically on commit or rollback.
+      // Sort resource keys so overlapping batches acquire them in the same order.
+      for (const key of [...new Set(keys)].sort()) {
+        for (;;) {
+          const [result] = await tx.$queryRaw<{ locked: boolean }[]>`
+          SELECT pg_try_advisory_xact_lock(hashtextextended(${key}, 0)) AS locked
+        `;
+          if (result.locked) break;
+          if (Date.now() >= deadline)
+            throw new ConflictError("Scheduling is busy. Please try again.");
+          await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+        }
+      }
+      return fn(tx, afterCommit);
+    },
+    { timeout: 120_000 },
+  );
+  for (const notify of afterCommit) notify();
+  return result;
+}
+
+export class BookingConflictError extends ConflictError {
+  constructor(readonly details: string[]) {
+    super(
+      "This assignment conflicts with existing bookings or accessibility requirements.",
+    );
+  }
+}
+
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
 ) {
-  const assigned = await assignRoute(routeId, driverId, vehicleId);
+  return withSchedulingLock(
+    schedulingLockKeys([{ driverId, vehicleId }]),
+    (tx, afterCommit) =>
+      scheduleRouteWhileLocked(routeId, driverId, vehicleId, tx, afterCommit),
+  );
+}
+
+/** Caller must hold the driver and vehicle locks in this transaction. */
+export async function scheduleRouteWhileLocked(
+  routeId: string,
+  driverId: string,
+  vehicleId: string,
+  tx: Prisma.TransactionClient,
+  afterCommit: (() => void)[],
+) {
+  const assigned = await assignRoute(routeId, driverId, vehicleId, tx);
   const { route, driver } = assigned;
-  emitRouteUpdate(route);
+  afterCommit.push(() => {
+    emitRouteUpdate(route);
 
-  const studentUser = route.student;
-  if (studentUser?.settings?.driverAssigned) {
-    dispatchNotifications([
-      sendEmailSafely("rideConfirmed", () =>
-        EmailClient.rideConfirmed(route.id.toString()),
-      ),
-      emitToast(studentUser.id.toString(), {
-        type: "success",
-        message: `Your driver ${driver.firstName} ${driver.lastName} has been assigned.`,
-      }),
-    ]);
-  }
-
-  if (driver.settings?.rideAssigned) {
-    dispatchNotifications([
-      sendEmailSafely("rideAssigned", () =>
-        EmailClient.rideAssigned(
-          driver.email,
-          driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
-          {
-            rideId: route.id.toString(),
-            pickup: route.pickupLocation.toString(),
-            dropoff: route.dropoffLocation.toString(),
-            time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
-          },
+    const studentUser = route.student;
+    if (studentUser?.settings?.driverAssigned) {
+      dispatchNotifications([
+        sendEmailSafely("rideConfirmed", () =>
+          EmailClient.rideConfirmed(route.id.toString()),
         ),
-      ),
-      emitToast(driver.id.toString(), {
-        type: "info",
-        message: "You have been assigned a new ride.",
-      }),
-    ]);
-  }
+        emitToast(studentUser.id.toString(), {
+          type: "success",
+          message: `Your driver ${driver.firstName} ${driver.lastName} has been assigned.`,
+        }),
+      ]);
+    }
 
+    if (driver.settings?.rideAssigned) {
+      dispatchNotifications([
+        sendEmailSafely("rideAssigned", () =>
+          EmailClient.rideAssigned(
+            driver.email,
+            driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
+            {
+              rideId: route.id.toString(),
+              pickup: route.pickupLocation.toString(),
+              dropoff: route.dropoffLocation.toString(),
+              time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
+            },
+          ),
+        ),
+        emitToast(driver.id.toString(), {
+          type: "info",
+          message: "You have been assigned a new ride.",
+        }),
+      ]);
+    }
+  });
   return route;
 }
 
@@ -350,62 +416,68 @@ async function assignRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
+  tx: Prisma.TransactionClient,
 ) {
   routeId = routeId.toLowerCase();
   driverId = driverId.toLowerCase();
   vehicleId = vehicleId.toLowerCase();
   try {
-    return await db.$transaction(async (tx) => {
-      const route = await tx.route.findUnique({ where: { id: routeId } });
-      if (!route) throw new NotFoundError("Route not found");
-      if (route.status !== RouteStatus.Requested)
-        throw new ConflictError("Route is no longer in Requested status");
-      const driverRow = await tx.user.findUnique({
-        where: { id: driverId },
-        include: userInclude,
-      });
-      const vehicleRow = await tx.vehicle.findUnique({
-        where: { id: vehicleId },
-      });
-      if (!driverRow || driverRow.type !== "Driver")
-        throw new ArgumentError("Driver not found or not a driver");
-      if (!vehicleRow) throw new ArgumentError("Vehicle not found");
-      const driver = driverRow;
-      const startTime = estTimeStr(route.scheduledPickupTime);
-      const day = estDayOfWeek(route.scheduledPickupTime);
-      if (
-        !driver.shifts?.some(
-          (shift) =>
-            shift.dayOfWeek === day &&
-            shift.startTime <= startTime &&
-            startTime <= shift.endTime,
-        )
-      )
-        throw new ConflictError(
-          "Driver is not available during the scheduled time",
-        );
-      const { count } = await tx.route.updateMany({
-        where: { id: routeId, status: RouteStatus.Requested },
-        data: {
-          driverId,
-          vehicleId,
-          status: RouteStatus.Scheduled,
-        },
-      });
-      if (count === 0) {
-        const current = await tx.route.findUnique({
-          where: { id: routeId },
-          select: { id: true },
-        });
-        if (!current) throw new NotFoundError("Route not found");
-        throw new ConflictError("Route is no longer in Requested status");
-      }
-      const updated = await tx.route.findUniqueOrThrow({
-        where: { id: routeId },
-        include: adminRouteInclude,
-      });
-      return { route: updated, driver };
+    const route = await tx.route.findUnique({ where: { id: routeId } });
+    if (!route) throw new NotFoundError("Route not found");
+    if (route.status !== RouteStatus.Requested)
+      throw new ConflictError("Route is no longer in Requested status");
+    const driverRow = await tx.user.findUnique({
+      where: { id: driverId },
+      include: userInclude,
     });
+    const vehicleRow = await tx.vehicle.findUnique({
+      where: { id: vehicleId },
+    });
+    if (!driverRow || driverRow.type !== "Driver")
+      throw new ArgumentError("Driver not found or not a driver");
+    if (!vehicleRow) throw new ArgumentError("Vehicle not found");
+    const driver = driverRow;
+    const startTime = estTimeStr(route.scheduledPickupTime);
+    const day = estDayOfWeek(route.scheduledPickupTime);
+    if (
+      !driver.shifts?.some(
+        (shift) =>
+          shift.dayOfWeek === day &&
+          shift.startTime <= startTime &&
+          startTime <= shift.endTime,
+      )
+    )
+      throw new ConflictError(
+        "Driver is not available during the scheduled time",
+      );
+    const conflicts = await findBookingConflicts(
+      routeId,
+      driverId,
+      vehicleId,
+      tx,
+    );
+    if (conflicts.length) throw new BookingConflictError(conflicts);
+    const { count } = await tx.route.updateMany({
+      where: { id: routeId, status: RouteStatus.Requested },
+      data: {
+        driverId,
+        vehicleId,
+        status: RouteStatus.Scheduled,
+      },
+    });
+    if (count === 0) {
+      const current = await tx.route.findUnique({
+        where: { id: routeId },
+        select: { id: true },
+      });
+      if (!current) throw new NotFoundError("Route not found");
+      throw new ConflictError("Route is no longer in Requested status");
+    }
+    const updated = await tx.route.findUniqueOrThrow({
+      where: { id: routeId },
+      include: adminRouteInclude,
+    });
+    return { route: updated, driver };
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

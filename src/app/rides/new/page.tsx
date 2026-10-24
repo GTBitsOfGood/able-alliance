@@ -8,6 +8,7 @@ import Link from "next/link";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import { SearchableSelect } from "@/components/SearchableSelect/SearchableSelect";
 import BogIcon from "@/components/BogIcon/BogIcon";
+import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
@@ -33,9 +34,6 @@ function PickupWindowErrorIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
-const SERVICE_START_TIME = "07:30";
-const SERVICE_END_TIME = "19:45";
 
 function isServiceDay(date: Date): boolean {
   const day = date.getDay();
