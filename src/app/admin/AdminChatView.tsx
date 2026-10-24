@@ -136,7 +136,12 @@ export default function AdminChatView({
       socketRef.current = null;
       setConnected(false);
     };
-  }, [chatlog?.status, routeId, session?.user?.accessToken]);
+  }, [
+    chatlog?.status,
+    routeId,
+    session?.user?.accessToken,
+    session?.user?.userId,
+  ]);
 
   const messages = useMemo(() => chatlog?.messages ?? [], [chatlog]);
 
