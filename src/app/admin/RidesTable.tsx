@@ -1,18 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import BogTable from "@/components/BogTable/BogTable";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import BogButton from "@/components/BogButton/BogButton";
 import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
-
-import type {
-  RouteResponse as RouteEntry,
-  UserResponse as DriverEntry,
-} from "@/utils/types/api";
-import type { Vehicle as VehicleEntry } from "@db/generated/browser";
+import {
+  useRequestedRides,
+  type DriverEntry,
+  type VehicleEntry,
+} from "./useRequestedRides";
 
 function makeDriverLabel(d: DriverEntry) {
   return `${d.lastName}, ${d.firstName}`;
@@ -23,11 +22,15 @@ function makeVehicleLabel(v: VehicleEntry) {
 }
 
 export default function RidesTable() {
-  const [routes, setRoutes] = useState<RouteEntry[]>([]);
-  const [drivers, setDrivers] = useState<DriverEntry[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    routes,
+    drivers,
+    vehicles,
+    loading,
+    error,
+    refreshError,
+    removeRoute,
+  } = useRequestedRides();
 
   // Per-row selections keyed by routeId — store display labels for BogDropdown
   const [driverLabels, setDriverLabels] = useState<Record<string, string>>({});
@@ -39,49 +42,6 @@ export default function RidesTable() {
   const [canceling, setCanceling] = useState<Set<string>>(new Set());
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [routesRes, driversRes, vehiclesRes] = await Promise.all([
-          fetch("/api/routes"),
-          fetch("/api/users?type=Driver"),
-          fetch("/api/vehicles"),
-        ]);
-
-        if (!routesRes.ok) throw new Error(`Routes API ${routesRes.status}`);
-        if (!driversRes.ok) throw new Error(`Drivers API ${driversRes.status}`);
-        if (!vehiclesRes.ok)
-          throw new Error(`Vehicles API ${vehiclesRes.status}`);
-
-        const [routesData, driversData, vehiclesData] = await Promise.all([
-          routesRes.json(),
-          driversRes.json(),
-          vehiclesRes.json(),
-        ]);
-
-        const requested = Array.isArray(routesData)
-          ? routesData.filter((r: RouteEntry) => r.status === "Requested")
-          : [];
-
-        if (cancelled) return;
-        setRoutes(requested);
-        setDrivers(Array.isArray(driversData) ? driversData : []);
-        setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load rides.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleAssign = async (routeId: string) => {
     const driverLabel = driverLabels[routeId];
@@ -113,7 +73,7 @@ export default function RidesTable() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+      removeRoute(routeId);
     } catch (e) {
       setAssignErrors((prev) => ({
         ...prev,
@@ -146,7 +106,7 @@ export default function RidesTable() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+      removeRoute(routeId);
     } catch (e) {
       setCancelErrors((prev) => ({
         ...prev,
@@ -273,8 +233,19 @@ export default function RidesTable() {
         {error}
       </p>
     );
+  const refreshNotice = refreshError && (
+    <p className="mb-4 text-sm text-amber-700" role="status">
+      {refreshError}
+    </p>
+  );
+
   if (routes.length === 0)
-    return <p className="text-gray-600">No requested rides.</p>;
+    return (
+      <>
+        {refreshNotice}
+        <p className="text-gray-600">No requested rides.</p>
+      </>
+    );
 
   const pendingCancelRoute = pendingCancelId
     ? routes.find((r) => r.id === pendingCancelId)
@@ -282,6 +253,7 @@ export default function RidesTable() {
 
   return (
     <>
+      {refreshNotice}
       <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
       <ConfirmActionModal
         open={pendingCancelId !== null}

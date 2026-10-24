@@ -715,6 +715,12 @@
   margin: 0;
 }
 
+.refreshError {
+  font-size: 1.4rem;
+  color: var(--color-status-red-text);
+  margin: 0 0 1.6rem;
+}
+
 .loadingText {
   font-size: 1.6rem;
   color: var(--color-grey-text-weak);

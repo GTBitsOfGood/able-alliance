@@ -19,6 +19,7 @@ import {
 } from "@/utils/dateEst";
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
+import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 
 async function sendEmailSafely(label: string, send: () => Promise<void>) {
   try {
@@ -69,7 +70,7 @@ export async function createRoute(data: CreateRouteInput) {
     input.scheduledPickupTime,
   );
   try {
-    return await db.route.create({
+    const route = await db.route.create({
       data: {
         pickupLocation: input.pickupLocation,
         dropoffLocation: input.dropoffLocation,
@@ -85,6 +86,8 @@ export async function createRoute(data: CreateRouteInput) {
       },
       include: studentRouteInclude,
     });
+    emitRouteUpdate(route);
+    return route;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002")
@@ -107,10 +110,12 @@ export async function getRouteById(id: string, role: UserType) {
 }
 export async function deleteRoute(id: string) {
   try {
-    return await db.route.delete({
+    const route = await db.route.delete({
       where: { id: id.toLowerCase() },
       include: adminRouteInclude,
     });
+    emitRouteUpdate(route);
+    return route;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025") throw new NotFoundError("Route not found");
@@ -296,6 +301,7 @@ export async function scheduleRoute(
 ) {
   const assigned = await assignRoute(routeId, driverId, vehicleId);
   const { route, driver } = assigned;
+  emitRouteUpdate(route);
 
   const studentUser = route.student;
   if (studentUser?.settings?.driverAssigned) {
@@ -410,7 +416,7 @@ export async function transitionRoute(
   status: RouteStatus,
 ) {
   routeId = routeId.toLowerCase();
-  return db.$transaction(async (tx) => {
+  const route = await db.$transaction(async (tx) => {
     const { count } = await tx.route.updateMany({
       where: {
         id: routeId,
@@ -432,4 +438,6 @@ export async function transitionRoute(
     });
     return updated;
   });
+  emitRouteUpdate(route);
+  return route;
 }

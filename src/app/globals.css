@@ -27,3 +27,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-paragraph);
 }
+
+/* Keep react-toast notifications below the sticky navbar (~89px tall). */
+.toastContainer.top-right {
+  top: 10.4rem;
+  z-index: 1100;
+}

@@ -80,6 +80,23 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   expect(scheduledResponse.status).toBe("Scheduled");
   expect(scheduledResponse.driver).toHaveProperty("shifts");
 
+  // The live admin table relies on server-side status filtering.
+  const requestedList = await admin.get("/api/routes?status=Requested");
+  expect(requestedList.status()).toBe(200);
+  const requestedRoutes = asRoutes(await requestedList.json());
+  expect(requestedRoutes.every((route) => route.status === "Requested")).toBe(
+    true,
+  );
+  expect(requestedRoutes.some((route) => route.id === routeId)).toBe(false);
+  const scheduledList = await admin.get("/api/routes?status=Scheduled");
+  expect(scheduledList.status()).toBe(200);
+  expect(
+    asRoutes(await scheduledList.json()).some((route) => route.id === routeId),
+  ).toBe(true);
+  expect((await admin.get("/api/routes?status=not-a-status")).status()).toBe(
+    400,
+  );
+
   const driverList = await driver.get(
     `/api/routes?driver=${PERSONAS.driver.id}`,
   );

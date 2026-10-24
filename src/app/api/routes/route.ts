@@ -8,6 +8,7 @@ import {
   getRoutes,
 } from "@/server/db/actions/RouteAction";
 import { createRouteSchema } from "@/utils/types";
+import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -59,10 +60,11 @@ export async function GET(req: NextRequest) {
     const userType = session.user.type;
     const loggedInUserId = session.user.userId;
 
-    // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?start_time=<time> | ?end_time=<time>
+    // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?status=<RouteStatus> | ?start_time=<time> | ?end_time=<time>
     const studentParam = searchParams.get("student");
     const driver = searchParams.get("driver");
     const vehicleParam = searchParams.get("vehicle");
+    const statusParam = searchParams.get("status");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
@@ -103,6 +105,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    if (
+      statusParam &&
+      !(Object.values(RouteStatus) as string[]).includes(statusParam)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid status" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+
     let startDate: Date | undefined;
     let endDate: Date | undefined;
     if (startTime) {
@@ -129,6 +141,7 @@ export async function GET(req: NextRequest) {
         student: studentFilter,
         driver: driver ?? undefined,
         vehicle: vehicleParam ?? undefined,
+        status: (statusParam as RouteStatus | null) ?? undefined,
         start_time: startDate,
         end_time: endDate,
       },

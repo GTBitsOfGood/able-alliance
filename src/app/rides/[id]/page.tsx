@@ -14,6 +14,8 @@ import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 import type {
   RouteDetailResponse as RouteData,
   ChatMessageResponse,
@@ -93,6 +95,8 @@ export default function RideDetailPage({
   const [route, setRoute] = useState<RouteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // A failed background refresh keeps the ride visible and only shows this.
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingRide, setCancellingRide] = useState(false);
 
@@ -152,26 +156,39 @@ export default function RideDetailPage({
     });
   }, [params]);
 
-  // Fetch route data
-  useEffect(() => {
-    if (!routeId || sessionStatus !== "authenticated" || !session?.user?.userId)
-      return;
+  const beginRequest = useLatestRequest();
 
-    const fetchRoute = async () => {
+  // Fetch route data. A `silent` (background) refresh that fails transiently
+  // keeps the ride on screen; losing the ride or access to it still doesn't.
+  const fetchRoute = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (
+        !routeId ||
+        sessionStatus !== "authenticated" ||
+        !session?.user?.userId
+      )
+        return;
+      const isLatest = beginRequest();
+      let unavailable = false;
+
       try {
         const res = await fetch(`/api/routes/${routeId}`);
 
         if (!res.ok) {
           if (res.status === 404) {
+            unavailable = true;
             throw new Error("Route not found");
           } else if (res.status === 403) {
+            unavailable = true;
             throw new Error("You do not have access to this route");
           }
           throw new Error("Failed to fetch route");
         }
 
         const routeData: RouteData = await res.json();
+        if (!isLatest()) return;
 
+        unavailable = true;
         if (session.user.type === "Student") {
           const studentId = getStudentId(routeData.student);
           if (studentId !== session.user.userId) {
@@ -189,16 +206,37 @@ export default function RideDetailPage({
 
         setRoute(routeData);
         setError(null);
+        setRefreshError(null);
       } catch (e) {
+        if (!isLatest()) return;
+        if (options?.silent && !unavailable) {
+          setRefreshError(
+            "Couldn't refresh this ride. Showing the last loaded details.",
+          );
+          return;
+        }
         setError(e instanceof Error ? e.message : "Failed to fetch route");
         setRoute(null);
       } finally {
-        setLoading(false);
+        if (isLatest()) setLoading(false);
       }
-    };
+    },
+    [routeId, session, sessionStatus, router, beginRequest],
+  );
 
-    fetchRoute();
-  }, [routeId, session, sessionStatus, router]);
+  useEffect(() => {
+    // This effect starts an asynchronous API request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchRoute();
+  }, [fetchRoute]);
+
+  // Refetch when this route changes elsewhere (status, driver, cancellation).
+  useRouteUpdates(
+    () => {
+      void fetchRoute({ silent: true });
+    },
+    { routeId },
+  );
 
   // Initialize and update Mapbox map
   useEffect(() => {
@@ -655,6 +693,12 @@ export default function RideDetailPage({
     );
   }
 
+  const refreshNotice = refreshError && (
+    <p className={styles.refreshError} role="status">
+      {refreshError}
+    </p>
+  );
+
   const pickupLocationName = route.pickup.name;
   const dropoffLocationName = route.dropoff.name;
   const driverName = getDriverName(route.driver);
@@ -843,6 +887,7 @@ export default function RideDetailPage({
               <span>Back to rides</span>
             </Link>
           </header>
+          {refreshNotice}
 
           <div className={styles.titleRow}>
             <h1 className={styles.pageTitle}>Ride Details</h1>
@@ -1040,6 +1085,7 @@ export default function RideDetailPage({
             <span>Back to rides</span>
           </Link>
         </header>
+        {refreshNotice}
 
         {/* Title row */}
         <div className={styles.titleRow}>

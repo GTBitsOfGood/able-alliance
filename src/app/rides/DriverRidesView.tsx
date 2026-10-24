@@ -12,6 +12,8 @@ import {
   formatEstDate,
 } from "@/utils/dateEst";
 import type { Shift } from "@/utils/types/user";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
 import type { DriverRouteResponse as DriverRoute } from "@/utils/types/api";
 
@@ -88,7 +90,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     setMounted(true);
   }, []);
 
+  const beginRequest = useLatestRequest();
+
   const fetchRoutes = useCallback(async () => {
+    const isLatest = beginRequest();
     try {
       const range = activeTab === "today" ? todayRange : tomorrowRange;
       const params = new URLSearchParams({
@@ -104,20 +109,25 @@ export default function DriverRidesView({ userId }: { userId: string }) {
       if (!routesRes.ok) throw new Error("Failed to fetch routes");
 
       const routesData: DriverRoute[] = await routesRes.json();
+      const shiftsData: Shift[] = driverRes?.ok
+        ? ((await driverRes.json()).shifts ?? [])
+        : [];
+      if (!isLatest()) return;
       setRoutes(
         routesData.toSorted((a, b) =>
           a.scheduledPickupTime.localeCompare(b.scheduledPickupTime),
         ),
       );
       // Missing shift information must not hide assigned rides.
-      setShifts(driverRes?.ok ? ((await driverRes.json()).shifts ?? []) : []);
+      setShifts(shiftsData);
       setError(null);
     } catch (e) {
+      if (!isLatest()) return;
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [userId, activeTab, todayRange, tomorrowRange]);
+  }, [userId, activeTab, todayRange, tomorrowRange, beginRequest]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -126,6 +136,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     setLoading(true);
     void fetchRoutes();
   }, [mounted, fetchRoutes]);
+
+  useRouteUpdates(() => {
+    if (mounted) void fetchRoutes();
+  });
 
   const activeDayRange = useMemo(
     () => (activeTab === "today" ? todayRange : tomorrowRange),
