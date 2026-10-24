@@ -72,12 +72,10 @@ async function materializeSeries(
     try {
       const result = await db.$transaction(
         async (tx) => {
-          // PostgreSQL releases this row lock automatically on commit or rollback.
-          // Read the watermark only after the lock, so concurrent workers see the
-          // previous worker's committed progress before choosing an occurrence.
+          // Lock the row
           await tx.$queryRaw(Prisma.sql`
-          SELECT "id" FROM "RideSeries" WHERE "id" = ${seriesId}::uuid FOR UPDATE
-        `);
+            SELECT "id" FROM "RideSeries" WHERE "id" = ${seriesId}::uuid FOR UPDATE
+          `);
           const series = await tx.rideSeries.findUnique({
             where: { id: seriesId },
           });
@@ -92,6 +90,15 @@ async function materializeSeries(
           );
           const next = occurrenceAt(series.firstPickupTime, weeksDone + 1);
           if (next > horizon) return null;
+          // Missed occurrences are processed permanently, without creating old
+          // requests or asking Mapbox for travel estimates in the past.
+          if (next <= new Date()) {
+            await tx.rideSeries.update({
+              where: { id: seriesId },
+              data: { materializedThrough: next },
+            });
+            return { route: null };
+          }
 
           const conflict = await tx.route.findUnique({
             where: {
@@ -183,6 +190,9 @@ export async function createRideSeries(
 ) {
   data = createRouteSchema.parse(data);
   recurrence = recurrenceRequestSchema.parse(recurrence);
+  if (data.scheduledPickupTime <= new Date()) {
+    throw new ArgumentError("First recurring pickup must be in the future");
+  }
   const windowStartOffset =
     data.pickupWindowStart.getTime() - data.scheduledPickupTime.getTime();
   const windowEndOffset =
@@ -203,8 +213,9 @@ export async function createRideSeries(
 
   // The template and first ride become visible together. A failed first ride
   // rolls back the template, so the cron cannot generate orphaned future rides.
-  const { series, firstRoute } = await db
-    .$transaction(
+  let created;
+  try {
+    created = await db.$transaction(
       async (tx) => {
         const series = await tx.rideSeries.create({
           data: {
@@ -222,16 +233,18 @@ export async function createRideSeries(
         return { series, firstRoute };
       },
       { timeout: 60000 },
-    )
-    .catch((error: unknown) => {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2003"
-      ) {
-        throw new ArgumentError("Referenced location or student not found");
-      }
-      throw error;
-    });
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    ) {
+      throw new ArgumentError("Referenced location or student not found");
+    }
+    throw error;
+  }
+  const { series, firstRoute } = created;
+
   emitRouteUpdate(firstRoute);
 
   // Fill forward now; a transient failure is retried by the scheduled job.

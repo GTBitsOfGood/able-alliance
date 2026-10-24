@@ -51,7 +51,7 @@ async function runOnce(): Promise<void> {
       return;
     }
 
-    const body = (await response.json().catch(() => null)) as {
+    const body = (await response.json()) as {
       seriesProcessed?: number;
       ridesCreated?: number;
       ridesSkipped?: number;
@@ -81,7 +81,7 @@ export function startRideSeriesCron(): () => void {
   }, STARTUP_DELAY_MS);
   startupTimer.unref?.();
 
-  console.log("[rideSeriesCron] scheduled daily (every 24 hours)");
+  debugLog("[rideSeriesCron] scheduled daily (every 24 hours)");
 
   return () => {
     clearTimeout(startupTimer);

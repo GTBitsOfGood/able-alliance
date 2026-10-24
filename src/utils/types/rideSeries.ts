@@ -18,27 +18,29 @@ export const recurrenceRequestSchema = z
 
 export type RecurrenceRequest = z.infer<typeof recurrenceRequestSchema>;
 
-export const rideSeriesSchema = z.object({
-  student: idSchema,
-  pickupLocation: idSchema,
-  dropoffLocation: idSchema,
-  frequency: recurrenceFrequencyEnum,
-  /** Pickup instant of the very first ride; every occurrence is derived from it. */
-  firstPickupTime: z.coerce.date(),
-  /**
-   * Pickup window stored as offsets from the pickup instant rather than absolute
-   * times, so the window keeps the same shape on every occurrence (and across
-   * a DST boundary) instead of drifting by an hour.
-   */
-  pickupWindowStartOffsetMs: z.number().int(),
-  pickupWindowEndOffsetMs: z.number().int(),
-  /**
-   * Latest occurrence already processed. Moves forward only, which is what makes
-   * the job idempotent and stops a cancelled ride from being recreated.
-   */
-  materializedThrough: z.coerce.date(),
-  active: z.boolean().default(true),
-});
+export const rideSeriesSchema = z
+  .object({
+    student: idSchema,
+    pickupLocation: idSchema,
+    dropoffLocation: idSchema,
+    frequency: recurrenceFrequencyEnum,
+    /** Pickup instant of the very first ride; every occurrence is derived from it. */
+    firstPickupTime: z.coerce.date(),
+    /**
+     * Pickup window stored as offsets from the pickup instant rather than absolute
+     * times, so the window keeps the same shape on every occurrence (and across
+     * a DST boundary) instead of drifting by an hour.
+     */
+    pickupWindowStartOffsetMs: z.number().int(),
+    pickupWindowEndOffsetMs: z.number().int(),
+    /**
+     * Latest occurrence already processed. Moves forward only, which is what makes
+     * the job idempotent and stops a cancelled ride from being recreated.
+     */
+    materializedThrough: z.coerce.date(),
+    active: z.boolean().default(true),
+  })
+  .strict();
 
 export type RideSeriesInput = z.infer<typeof rideSeriesSchema>;
 
