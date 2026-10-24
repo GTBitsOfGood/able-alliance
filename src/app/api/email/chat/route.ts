@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import connectMongoDB from "@/server/db/mongodb";
-import RouteModel from "@/server/db/models/RouteModel";
+import { idSchema } from "@/utils/ids";
+import { getEmailRoute } from "@/server/db/actions/EmailAction";
 import { EmailClient } from "@/server/email/EmailClient";
 
 const requestSchema = z.object({
-  routeId: z.string().regex(/^[a-f\d]{24}$/i),
-  messageId: z.string().regex(/^[a-f\d]{24}$/i),
+  routeId: idSchema,
+  messageId: idSchema,
 });
 
 export async function POST(req: NextRequest) {
@@ -34,9 +34,8 @@ export async function POST(req: NextRequest) {
   const { routeId, messageId } = body.data;
 
   try {
-    await connectMongoDB();
-    const route = await RouteModel.findById(routeId).lean();
-    if (route?.driver?._id.toString() !== userId) {
+    const route = await getEmailRoute(routeId);
+    if (route?.driverId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     await EmailClient.newMessageFromDriver(routeId, messageId);

@@ -20,29 +20,7 @@ import {
   isEstToday,
 } from "@/utils/dateEst";
 
-export type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
-export type RouteUser = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-};
-export type Route = {
-  _id: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  student: string | RouteUser;
-  driver?: string | RouteUser;
-  vehicle?: string;
-  scheduledPickupTime: string;
-  pickupWindowEnd?: string;
-  estimatedDropoffTime?: string;
-  status: string;
-};
+import type { RouteResponse as Route } from "@/utils/types/api";
 
 function formatWeekRangeHeader(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
@@ -97,7 +75,6 @@ export default function RidesPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -115,19 +92,15 @@ export default function RidesPage() {
     if (!session?.user?.userId) return;
     const isLatest = beginRequest();
     try {
-      const [routesRes, locationsRes] = await Promise.all([
-        fetch(`/api/routes?student=${session.user.userId}`),
-        fetch("/api/locations"),
-      ]);
+      const routesRes = await fetch(
+        `/api/routes?student=${session.user.userId}`,
+      );
       if (!routesRes.ok) throw new Error("Failed to fetch routes");
-      if (!locationsRes.ok) throw new Error("Failed to fetch locations");
       const routesData = await routesRes.json();
-      const locationsData = await locationsRes.json();
       if (!isLatest()) return;
       setRoutes(
-        routesData.filter((r: Route) => r.status !== "Cancelled by Student"),
+        routesData.filter((r: Route) => r.status !== "CancelledByStudent"),
       );
-      setLocations(locationsData);
       setError(null);
     } catch (e) {
       if (!isLatest()) return;
@@ -161,7 +134,7 @@ export default function RidesPage() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      setRoutes((prev) => prev.filter((r) => r.id !== routeId));
       setCancelTargetId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cancellation failed.");
@@ -169,14 +142,6 @@ export default function RidesPage() {
       setCancellingId(null);
     }
   }, []);
-
-  const locationIdToName: Record<string, string> = locations.reduce(
-    (acc, loc) => {
-      acc[loc._id] = loc.name;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
 
   const thisWeekRange = React.useMemo(
     () =>
@@ -260,12 +225,11 @@ export default function RidesPage() {
             <div className={styles.dateGroupCards}>
               {routesByDate[dateKey].map((route) => (
                 <RideCard
-                  key={route._id}
+                  key={route.id}
                   route={route}
-                  locationIdToName={locationIdToName}
-                  href={`/rides/${route._id}`}
+                  href={`/rides/${route.id}`}
                   onCancel={(id) => setCancelTargetId(id)}
-                  cancelling={cancellingId === route._id}
+                  cancelling={cancellingId === route.id}
                 />
               ))}
             </div>

@@ -10,7 +10,7 @@ import { createServer, type RequestListener } from "node:http";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { Server } from "socket.io";
-import mongoose from "mongoose";
+import { connectDatabase } from "./actions.js";
 import { registerHttpRoutes } from "./httpRoutes.js";
 import { authenticateSocket, authenticateNotificationSocket } from "./auth.js";
 import { handleConnection } from "./handlers/connection.js";
@@ -42,10 +42,8 @@ export async function startServer(requestHandler?: RequestListener) {
   });
 
   try {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) throw new Error("MONGODB_URI is required");
-    await mongoose.connect(uri);
-    console.log("Websocket server connected to MongoDB");
+    await connectDatabase();
+    console.log("Websocket server connected to PostgreSQL");
 
     io.use(authenticateSocket);
     io.on("connection", (socket) => handleConnection(io, socket));
@@ -93,7 +91,7 @@ export async function startServer(requestHandler?: RequestListener) {
     return server;
   } catch (error) {
     console.error(
-      "Failed to connect to MongoDB",
+      "Failed to connect to PostgreSQL",
       error instanceof Error ? error.message : error,
     );
     process.exit(1);

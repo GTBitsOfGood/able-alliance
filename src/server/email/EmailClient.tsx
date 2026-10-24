@@ -1,17 +1,13 @@
-import mongoose from "mongoose";
-import connectMongoDB from "@/server/db/mongodb";
-import RouteModel from "@/server/db/models/RouteModel";
-import LocationModel from "@/server/db/models/LocationModel";
-import UserModel from "@/server/db/models/UserModel";
-import Chatlog from "@/server/db/models/ChatlogModel";
-import { formatEstDate, formatEstTime } from "@/utils/dateEst";
-import { EmailFailedToSendException } from "@/utils/exceptions/email";
-import { junoEmailClient } from "@/server/juno/init";
 import { render, toPlainText } from "react-email";
 import type { ComponentProps } from "react";
+import { junoEmailClient } from "@/server/juno/init";
+import { formatEstDate, formatEstTime } from "@/utils/dateEst";
+import { EmailFailedToSendException } from "@/utils/exceptions/email";
 import NewMessageFromDriverEmail from "../../../emails/NewMessageFromDriver";
 import RideConfirmationEmail from "../../../emails/RideConfirmed";
 import RideDelayedEmail from "../../../emails/RideDelayed";
+import { getEmailRoute } from "@/server/db/actions/EmailAction";
+import { getRouteMessage } from "@/server/db/actions/MessageAction";
 
 export async function sendEmail({
   to,
@@ -188,16 +184,8 @@ export const EmailClient = {
   newMessageFromDriver: async (routeId: string, messageId: string) => {
     const context = await getRideEmailContext(routeId, "newMessageFromDriver");
     if (!context) return;
-    const chat = await Chatlog.findOne(
-      { routeId, "messages._id": new mongoose.Types.ObjectId(messageId) },
-      {
-        messages: {
-          $elemMatch: { _id: new mongoose.Types.ObjectId(messageId) },
-        },
-      },
-    ).lean();
-    const message = chat?.messages[0];
-    if (!message || message.senderType !== "driver") return;
+    const message = await getRouteMessage(routeId, messageId);
+    if (!message || message.senderId !== context.driverId) return;
 
     const { to, props } = context;
     const html = await render(
@@ -252,19 +240,15 @@ async function getRideEmailContext(
   routeId: string,
   preference: "driverAssigned" | "newMessageFromDriver" | "rideDelayed",
 ) {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId).lean();
+  const route = await getEmailRoute(routeId);
   if (!route) return null;
-  const student = await UserModel.findById(route.student._id).lean();
-  if (!student?.settings?.notifications?.[preference]) return null;
+  const { student, driver, vehicle, pickup, dropoff } = route;
+  if (!student.settings?.[preference]) return null;
 
-  const [pickup, dropoff] = await Promise.all([
-    LocationModel.findById(route.pickupLocation).lean(),
-    LocationModel.findById(route.dropoffLocation).lean(),
-  ]);
-  const rideUrl = new URL(`/rides/${route._id}`, process.env.DEPLOY_PRIME_URL!)
+  const rideUrl = new URL(`/rides/${route.id}`, process.env.DEPLOY_PRIME_URL!)
     .href;
   return {
+    driverId: route.driverId,
     to: student.email,
     props: {
       name: student.preferredName ?? `${student.firstName} ${student.lastName}`,
@@ -277,15 +261,15 @@ async function getRideEmailContext(
       dropoffTime: route.estimatedDropoffTime
         ? formatEstTime(route.estimatedDropoffTime)
         : "Not yet estimated",
-      pickupLocation: pickup?.name ?? "Pickup location unavailable",
-      destination: dropoff?.name ?? "Destination unavailable",
+      pickupLocation: pickup.name,
+      destination: dropoff.name,
       driverDetails:
-        route.driver && route.vehicle
+        driver && vehicle
           ? {
-              name: `${route.driver.firstName} ${route.driver.lastName}`,
-              vehicleId: route.vehicle.vehicleId ?? route.vehicle.name,
-              licensePlate: route.vehicle.licensePlate,
-              description: route.vehicle.description ?? "",
+              name: `${driver.firstName} ${driver.lastName}`,
+              vehicleId: vehicle.vehicleId ?? vehicle.name,
+              licensePlate: vehicle.licensePlate,
+              description: vehicle.description ?? "",
             }
           : undefined,
       rideUrl,

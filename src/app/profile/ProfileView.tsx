@@ -12,51 +12,7 @@ import BogSwitch from "@/components/BogSwitch/BogSwitch";
 
 type ProfileTab = "profile" | "rides";
 
-export type AccessibilityNeed = string;
-
-export type ProfileUser = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  preferredName?: string | null;
-  email: string;
-  type: UserType;
-  settings?: {
-    notifications?: {
-      dailySummary?: boolean;
-      driverAssigned?: boolean;
-      driverEnRoute?: boolean;
-      rideCancelled?: boolean;
-      rideAssigned?: boolean;
-      rideCompleted?: boolean;
-      rideDelayed?: boolean;
-      newMessageFromDriver?: boolean;
-    };
-  };
-  studentInfo?: {
-    notes?: string | null;
-    accessibilityNeeds?: AccessibilityNeed[] | null;
-  } | null;
-  shifts?: Array<{
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-  }>;
-};
-
-function roleLabel(type: UserType): string {
-  switch (type) {
-    case "Student":
-      return "Rider";
-    case "Driver":
-      return "Driver";
-    case "Admin":
-    case "SuperAdmin":
-      return "Admin";
-    default:
-      return type;
-  }
-}
+import type { UserResponse } from "@/utils/types/api";
 
 function avatarClass(type: UserType): string {
   switch (type) {
@@ -79,7 +35,7 @@ export function ProfileView({
   isOwnProfile = false,
   canDelete = false,
 }: {
-  user: ProfileUser;
+  user: UserResponse;
   canEdit?: boolean;
   viewerType?: UserType;
   isOwnProfile?: boolean;
@@ -98,9 +54,9 @@ export function ProfileView({
     user.preferredName ?? "",
   );
   const [draftNotes, setDraftNotes] = useState(user.studentInfo?.notes ?? "");
-  const [draftAccessibility, setDraftAccessibility] = useState<
-    AccessibilityNeed[]
-  >(user.studentInfo?.accessibilityNeeds ?? []);
+  const [draftAccessibility, setDraftAccessibility] = useState<string[]>(
+    user.studentInfo?.accessibilityNeeds.map(({ label }) => label) ?? [],
+  );
 
   const [displayUser, setDisplayUser] = useState(user);
   const [accommodationOptions, setAccommodationOptions] = useState<string[]>(
@@ -108,15 +64,14 @@ export function ProfileView({
   );
 
   const [notifications, setNotifications] = useState({
-    dailySummary: user.settings?.notifications?.dailySummary ?? false,
-    driverAssigned: user.settings?.notifications?.driverAssigned ?? false,
-    driverEnRoute: user.settings?.notifications?.driverEnRoute ?? false,
-    rideCancelled: user.settings?.notifications?.rideCancelled ?? false,
-    rideAssigned: user.settings?.notifications?.rideAssigned ?? false,
-    rideCompleted: user.settings?.notifications?.rideCompleted ?? false,
-    rideDelayed: user.settings?.notifications?.rideDelayed ?? false,
-    newMessageFromDriver:
-      user.settings?.notifications?.newMessageFromDriver ?? false,
+    dailySummary: user.settings?.dailySummary ?? false,
+    driverAssigned: user.settings?.driverAssigned ?? false,
+    driverEnRoute: user.settings?.driverEnRoute ?? false,
+    rideCancelled: user.settings?.rideCancelled ?? false,
+    rideAssigned: user.settings?.rideAssigned ?? false,
+    rideCompleted: user.settings?.rideCompleted ?? false,
+    rideDelayed: user.settings?.rideDelayed ?? false,
+    newMessageFromDriver: user.settings?.newMessageFromDriver ?? false,
   });
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
@@ -147,7 +102,10 @@ export function ProfileView({
   function handleEdit() {
     setDraftPreferredName(displayUser.preferredName ?? "");
     setDraftNotes(displayUser.studentInfo?.notes ?? "");
-    setDraftAccessibility(displayUser.studentInfo?.accessibilityNeeds ?? []);
+    setDraftAccessibility(
+      displayUser.studentInfo?.accessibilityNeeds.map(({ label }) => label) ??
+        [],
+    );
     setSaveError(null);
     fetchAccommodations();
     setEditing(true);
@@ -198,17 +156,8 @@ export function ProfileView({
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error ?? "Failed to save changes");
       }
-      setDisplayUser((prev) => ({
-        ...prev,
-        preferredName: draftPreferredName.trim() || null,
-        studentInfo: showAccommodations
-          ? {
-              notes: draftNotes.trim() || null,
-              accessibilityNeeds:
-                draftAccessibility.length > 0 ? draftAccessibility : null,
-            }
-          : prev.studentInfo,
-      }));
+      const updated: UserResponse = await res.json();
+      setDisplayUser(updated);
       setEditing(false);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save changes");
@@ -233,7 +182,7 @@ export function ProfileView({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          settings: { notifications: draftNotifications },
+          settings: draftNotifications,
         }),
       });
 
@@ -242,6 +191,8 @@ export function ProfileView({
         throw new Error(err?.error ?? "Failed to update notification settings");
       }
 
+      const updated: UserResponse = await res.json();
+      setDisplayUser(updated);
       setNotifications(draftNotifications);
     } catch (e) {
       setSaveError(
@@ -267,9 +218,7 @@ export function ProfileView({
           </div>
           <div className={styles.profileNameBlock}>
             <h1 className={styles.profileDisplayName}>{displayName}</h1>
-            <span className={styles.profileRole}>
-              {roleLabel(displayUser.type)}
-            </span>
+            <span className={styles.profileRole}>{displayUser.type}</span>
           </div>
         </header>
 
@@ -564,8 +513,11 @@ export function ProfileView({
                           (
                             displayUser.studentInfo?.accessibilityNeeds ?? []
                           ).map((need) => (
-                            <span key={need} className={styles.sectionRowValue}>
-                              {need}
+                            <span
+                              key={need.id}
+                              className={styles.sectionRowValue}
+                            >
+                              {need.label}
                             </span>
                           ))
                         ) : (
@@ -702,9 +654,7 @@ export function ProfileView({
             user={displayUser}
             canEdit={canEdit}
             viewerType={viewerType}
-            onUpdate={(shifts) => {
-              setDisplayUser((prev) => ({ ...prev, shifts }));
-            }}
+            onUpdate={setDisplayUser}
           />
         )}
 

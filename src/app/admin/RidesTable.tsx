@@ -26,7 +26,6 @@ export default function RidesTable() {
     routes,
     drivers,
     vehicles,
-    locationMap,
     loading,
     error,
     refreshError,
@@ -66,8 +65,8 @@ export default function RidesTable() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           routeId,
-          driverId: driver._id,
-          vehicleId: vehicle._id,
+          driverId: driver.id,
+          vehicleId: vehicle.id,
         }),
       });
       if (!res.ok) {
@@ -127,10 +126,8 @@ export default function RidesTable() {
 
   const rows: TableRow[] = routes.map((route) => {
     const studentName = `${route.student.firstName} ${route.student.lastName}`;
-    const pickupName =
-      locationMap[route.pickupLocation] ?? route.pickupLocation;
-    const dropoffName =
-      locationMap[route.dropoffLocation] ?? route.dropoffLocation;
+    const pickupName = route.pickup.name;
+    const dropoffName = route.dropoff.name;
     const pickupDate = route.scheduledPickupTime
       ? new Date(route.scheduledPickupTime).toLocaleDateString("en-US", {
           timeZone: "America/New_York",
@@ -145,13 +142,13 @@ export default function RidesTable() {
         })
       : "—";
 
-    const selectedDriver = driverLabels[route._id] ?? "";
-    const selectedVehicle = vehicleLabels[route._id] ?? "";
+    const selectedDriver = driverLabels[route.id] ?? "";
+    const selectedVehicle = vehicleLabels[route.id] ?? "";
     const bothSelected = !!selectedDriver && !!selectedVehicle;
-    const isAssigning = assigning.has(route._id);
-    const isCanceling = canceling.has(route._id);
-    const assignError = assignErrors[route._id];
-    const cancelError = cancelErrors[route._id];
+    const isAssigning = assigning.has(route.id);
+    const isCanceling = canceling.has(route.id);
+    const assignError = assignErrors[route.id];
+    const cancelError = cancelErrors[route.id];
     const activeError = assignError ?? cancelError;
 
     return {
@@ -160,13 +157,13 @@ export default function RidesTable() {
         {
           content: (
             <BogDropdown
-              name={`driver-${route._id}`}
+              name={`driver-${route.id}`}
               options={driverOptions}
               placeholder="Select driver"
               value={selectedDriver}
               onSelectionChange={(v) => {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
-                setDriverLabels((prev) => ({ ...prev, [route._id]: label }));
+                setDriverLabels((prev) => ({ ...prev, [route.id]: label }));
               }}
               style={{ fontSize: "1em" }}
             />
@@ -175,13 +172,13 @@ export default function RidesTable() {
         {
           content: (
             <BogDropdown
-              name={`vehicle-${route._id}`}
+              name={`vehicle-${route.id}`}
               options={vehicleOptions}
               placeholder="Select vehicle"
               value={selectedVehicle}
               onSelectionChange={(v) => {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
-                setVehicleLabels((prev) => ({ ...prev, [route._id]: label }));
+                setVehicleLabels((prev) => ({ ...prev, [route.id]: label }));
               }}
               style={{ fontSize: "1em" }}
             />
@@ -199,7 +196,7 @@ export default function RidesTable() {
                   variant="primary"
                   size="small"
                   disabled={isAssigning || isCanceling || !bothSelected}
-                  onClick={() => handleAssign(route._id)}
+                  onClick={() => handleAssign(route.id)}
                   style={
                     !bothSelected
                       ? {
@@ -214,7 +211,7 @@ export default function RidesTable() {
                   variant="secondary"
                   size="small"
                   disabled={isCanceling || isAssigning}
-                  onClick={() => setPendingCancelId(route._id)}
+                  onClick={() => setPendingCancelId(route.id)}
                 >
                   {isCanceling ? "Canceling…" : "Cancel"}
                 </BogButton>
@@ -251,7 +248,7 @@ export default function RidesTable() {
     );
 
   const pendingCancelRoute = pendingCancelId
-    ? routes.find((r) => r._id === pendingCancelId)
+    ? routes.find((r) => r.id === pendingCancelId)
     : undefined;
 
   return (

@@ -5,8 +5,8 @@ import {
 } from "@/server/db/actions/LocationAction";
 import { locationSchema } from "@/utils/types";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { LocationAlreadyExistsException } from "@/utils/exceptions/location";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 // GET /api/locations
 // Retrieves all locations
@@ -23,14 +23,8 @@ export async function GET() {
     const locations = await getLocations();
 
     return NextResponse.json(locations, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    if (e instanceof LocationAlreadyExistsException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -46,14 +40,16 @@ export async function POST(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
   }
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => {
+      throw new ArgumentError("Invalid JSON body");
+    });
     const parsed = locationSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(parsed.error.format(), {
@@ -62,20 +58,8 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await createLocation(parsed.data);
-    const createdObj = created as Record<string, unknown> & {
-      _id: { toString(): string };
-    };
-    return NextResponse.json(
-      { ...createdObj, _id: createdObj._id.toString() },
-      { status: HTTP_STATUS_CODE.CREATED },
-    );
+    return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (e) {
-    if (e instanceof LocationAlreadyExistsException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    return errorResponse(e);
   }
 }
