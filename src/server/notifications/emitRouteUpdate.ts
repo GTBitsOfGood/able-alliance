@@ -1,8 +1,8 @@
 type RouteRef = {
-  _id: { toString(): string };
+  id: { toString(): string };
   status: string;
-  student?: { _id?: { toString(): string } } | null;
-  driver?: { _id?: { toString(): string } } | null;
+  student?: { id?: { toString(): string } } | null;
+  driver?: { id?: { toString(): string } } | null;
 };
 
 /**
@@ -28,13 +28,13 @@ export function emitRouteUpdate(
   const userIds = [
     ...new Set(
       [
-        route.student?._id?.toString(),
-        route.driver?._id?.toString(),
+        route.student?.id?.toString(),
+        route.driver?.id?.toString(),
         ...extraUserIds,
       ].filter((id): id is string => !!id),
     ),
   ];
-  const routeId = route._id.toString();
+  const routeId = route.id.toString();
 
   void postRouteUpdate(url, secret, {
     event: "routeUpdated",

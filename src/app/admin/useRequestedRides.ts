@@ -6,18 +6,12 @@ import {
   type RouteChanges,
 } from "@/components/NotificationProvider/useRouteUpdates";
 
-export type RouteEntry = {
-  _id: string;
-  student: { firstName: string; lastName: string };
-  pickupLocation: string;
-  dropoffLocation: string;
-  scheduledPickupTime: string;
-  status: string;
-};
-
-export type DriverEntry = { _id: string; firstName: string; lastName: string };
-export type VehicleEntry = { _id: string; name: string; licensePlate: string };
-type LocationEntry = { _id: string; name: string };
+import type {
+  RouteResponse as RouteEntry,
+  UserResponse as DriverEntry,
+} from "@/utils/types/api";
+import type { Vehicle as VehicleEntry } from "@db/generated/browser";
+export type { DriverEntry, VehicleEntry };
 
 const REQUESTED = "Requested";
 
@@ -54,9 +48,9 @@ function mergeRows(
   const keep = (r: RouteEntry | null | undefined): r is RouteEntry =>
     r?.status === REQUESTED;
   const next = prev
-    .map((r) => (fetched.has(r._id) ? fetched.get(r._id) : r))
+    .map((r) => (fetched.has(r.id) ? fetched.get(r.id) : r))
     .filter(keep);
-  const present = new Set(prev.map((r) => r._id));
+  const present = new Set(prev.map((r) => r.id));
   for (const [id, r] of fetched) {
     if (!present.has(id) && keep(r)) next.push(r);
   }
@@ -65,7 +59,7 @@ function mergeRows(
 
 /**
  * Loads the requested rides for the admin table, plus the drivers, vehicles
- * and locations it needs, and keeps the rides current from real-time events:
+ * it needs, and keeps the rides current from real-time events:
  * changed rows are refetched one by one, and the full list is only reloaded
  * after a (re)connect.
  */
@@ -73,7 +67,6 @@ export function useRequestedRides() {
   const [routes, setRoutes] = useState<RouteEntry[]>([]);
   const [drivers, setDrivers] = useState<DriverEntry[]>([]);
   const [vehicles, setVehicles] = useState<VehicleEntry[]>([]);
-  const [locationMap, setLocationMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   // Blocks the table: nothing has loaded successfully yet.
   const [error, setError] = useState<string | null>(null);
@@ -105,20 +98,13 @@ export function useRequestedRides() {
         if (!aliveRef.current) return;
         setRoutes(asArray(routesData));
       } else {
-        const [routesData, locationsData, driversData, vehiclesData] =
-          await Promise.all([
-            fetchJson(`/api/routes?status=${REQUESTED}`, "Routes"),
-            fetchJson("/api/locations", "Locations"),
-            fetchJson("/api/users?type=Driver", "Drivers"),
-            fetchJson("/api/vehicles", "Vehicles"),
-          ]);
+        const [routesData, driversData, vehiclesData] = await Promise.all([
+          fetchJson(`/api/routes?status=${REQUESTED}`, "Routes"),
+          fetchJson("/api/users?type=Driver", "Drivers"),
+          fetchJson("/api/vehicles", "Vehicles"),
+        ]);
         if (!aliveRef.current) return;
-        const locMap: Record<string, string> = {};
-        for (const loc of asArray<LocationEntry>(locationsData)) {
-          locMap[String(loc._id)] = String(loc.name);
-        }
         setRoutes(asArray(routesData));
-        setLocationMap(locMap);
         setDrivers(asArray(driversData));
         setVehicles(asArray(vehiclesData));
         loadedRef.current = true;
@@ -183,14 +169,13 @@ export function useRequestedRides() {
   // Drops a row right away after this admin assigns or cancels it, without
   // waiting for the real-time event.
   const removeRoute = useCallback((routeId: string) => {
-    setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+    setRoutes((prev) => prev.filter((r) => r.id !== routeId));
   }, []);
 
   return {
     routes,
     drivers,
     vehicles,
-    locationMap,
     loading,
     error,
     refreshError,
