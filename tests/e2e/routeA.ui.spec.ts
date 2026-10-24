@@ -66,7 +66,7 @@ test("route A: student creates, admin schedules (UI)", async ({
   await student.getByRole("button", { name: "Submit" }).click();
   const createRes = await created;
   expect(createRes.status(), await createRes.text()).toBe(201);
-  const { _id: routeId } = (await createRes.json()) as { _id: string };
+  const { id: routeId } = (await createRes.json()) as { id: string };
   await expect(student).toHaveURL(/\/rides$/);
 
   // Weeks start Sunday; a lower weekday means the ride is in next week.

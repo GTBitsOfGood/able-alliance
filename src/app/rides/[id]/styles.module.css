@@ -618,6 +618,19 @@
   }
 }
 
+.adminMessageBubble {
+  border: 1px solid #9bb8ed;
+}
+
+.adminMessageLabel {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: #183777;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .chatInputContainer {
   display: flex;
   align-items: center;
@@ -700,6 +713,12 @@
   color: var(--color-status-red-text);
   text-align: center;
   margin: 0;
+}
+
+.refreshError {
+  font-size: 1.4rem;
+  color: var(--color-status-red-text);
+  margin: 0 0 1.6rem;
 }
 
 .loadingText {

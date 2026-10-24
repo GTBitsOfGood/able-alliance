@@ -6,9 +6,9 @@ export const E2E = {
   baseURL: env("E2E_BASE_URL", "http://localhost:3100"),
   /** Dedicated database.
    * The seed refuses to wipe a name without "e2e"/"test" unless E2E_ALLOW_ANY_DB=1. */
-  mongodbUri: env(
-    "E2E_MONGODB_URI",
-    "mongodb://localhost:27017/able-alliance-e2e",
+  databaseUrl: env(
+    "E2E_DATABASE_URL",
+    "postgresql://able:able@localhost:5432/able_alliance_e2e",
   ),
   /** Must match the app under test — session cookies are minted with it. */
   nextAuthSecret: env("E2E_NEXTAUTH_SECRET", "dev-secret-change-in-production"),
@@ -27,7 +27,7 @@ export function appServerEnv(): Record<string, string> {
   return {
     ...inherited,
     PORT: new URL(E2E.baseURL).port || "3000",
-    MONGODB_URI: E2E.mongodbUri,
+    DATABASE_URL: E2E.databaseUrl,
     NEXTAUTH_SECRET: E2E.nextAuthSecret,
     DEPLOY_PRIME_URL: E2E.baseURL,
     // Production Auth.js rejects unknown hosts (dev trusts all); localhost must be trusted.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
 import { ToastContainer, toast } from "react-toast";
@@ -10,20 +10,28 @@ type ToastNotification = {
   message: string;
 };
 
+// The per-user /notifications socket, shared so pages can listen for
+// real-time data events (see useRouteUpdates). Null until connected.
+const RealtimeSocketContext = createContext<Socket | null>(null);
+
+export function useRealtimeSocket() {
+  return useContext(RealtimeSocketContext);
+}
+
 export default function NotificationProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { data: session } = useSession();
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
     const accessToken = session?.user?.accessToken;
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-    if (!accessToken || !wsUrl || socketRef.current) return;
+    if (!accessToken || !wsUrl) return;
 
-    const socket = io(`${wsUrl}/notifications`, {
+    const newSocket = io(`${wsUrl}/notifications`, {
       auth: { token: accessToken },
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -31,22 +39,26 @@ export default function NotificationProvider({
       reconnectionDelayMax: 30000,
       reconnectionAttempts: 20,
     });
-    socketRef.current = socket;
 
-    socket.on("notification", ({ type, message }: ToastNotification) => {
+    newSocket.on("notification", ({ type, message }: ToastNotification) => {
       toast[type](message);
     });
 
+    // Publishing the socket from inside the effect is what lets consumers
+    // subscribe; it is replaced whenever the access token changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSocket(newSocket);
+
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      newSocket.disconnect();
+      setSocket(null);
     };
   }, [session?.user?.accessToken]);
 
   return (
-    <>
+    <RealtimeSocketContext.Provider value={socket}>
       <ToastContainer position="top-right" />
       {children}
-    </>
+    </RealtimeSocketContext.Provider>
   );
 }

@@ -24,7 +24,7 @@ test("route C: student cancellation requires confirmation (UI)", async ({
     dropoffLocation: LOCATIONS.exhibitionHall.id,
     hoursFromNow: 55,
   });
-  const routeId = created._id;
+  const routeId = created.id;
   const pickupTime = formatEstTime(created.scheduledPickupTime);
 
   const admin = await pageAs("admin");
@@ -77,7 +77,7 @@ test("route C: student cancellation requires confirmation (UI)", async ({
 
   await admin.reload();
   await expect(adminRow).toHaveCount(0);
-  await expectRouteStatus(adminApi, routeId, "Cancelled by Student", "admin");
+  await expectRouteStatus(adminApi, routeId, "CancelledByStudent", "admin");
 
   expect(diag.apiFailures, diag.summary()).toHaveLength(0);
 });

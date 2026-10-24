@@ -13,12 +13,7 @@ import styles from "./styles.module.css";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
+import type { Location } from "@db/generated/browser";
 
 function PickupWindowErrorIcon({ className }: { className?: string }) {
   return (
@@ -332,7 +327,7 @@ export default function CreateRidePage() {
   }));
   const nameToId = locations.reduce(
     (acc, loc) => {
-      acc[loc.name] = loc._id;
+      acc[loc.name] = loc.id;
       return acc;
     },
     {} as Record<string, string>,

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import { SignJWT } from "jose";
+import type { UserType } from "@db/generated/browser";
 
 // NextAuth reads NEXTAUTH_URL for redirects/URLs; use DEPLOY_PRIME_URL as single source of truth.
 if (process.env.DEPLOY_PRIME_URL) {
@@ -86,7 +87,7 @@ export const authConfig = {
     session({ session, token }) {
       if (session.user) {
         session.user.userId = token.userId as string;
-        session.user.type = token.type as string;
+        session.user.type = token.type as UserType;
         session.user.username = token.username as string;
         session.user.email = token.email as string;
         session.user.firstName = token.firstName as string;

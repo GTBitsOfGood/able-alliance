@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-/** 24-char hex string for MongoDB ObjectId refs */
-const objectIdString = z
-  .string()
-  .length(24)
-  .regex(/^[a-f0-9]{24}$/i);
+import { idSchema } from "../ids";
 
 /**
  * Only weekly recurrence exists for now. Kept as an enum so adding
@@ -23,9 +19,9 @@ export const recurrenceRequestSchema = z
 export type RecurrenceRequest = z.infer<typeof recurrenceRequestSchema>;
 
 export const rideSeriesSchema = z.object({
-  student: objectIdString,
-  pickupLocation: objectIdString,
-  dropoffLocation: objectIdString,
+  student: idSchema,
+  pickupLocation: idSchema,
+  dropoffLocation: idSchema,
   frequency: recurrenceFrequencyEnum,
   /** Pickup instant of the very first ride; every occurrence is derived from it. */
   firstPickupTime: z.coerce.date(),

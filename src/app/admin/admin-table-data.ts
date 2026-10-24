@@ -1,3 +1,4 @@
+import type { Location, Vehicle } from "@db/generated/browser";
 import type { ColumnHeaderCellContent } from "@/components/BogTable/BogTable";
 
 /** Raw row shape for Students table (aligns with API). */
@@ -15,25 +16,16 @@ export type DriverRowRaw = {
 };
 
 /** Raw row shape for Admins table. */
-export type AdminRowRaw = {
-  name: string;
-  email: string;
-};
+export type AdminRowRaw = DriverRowRaw;
 
 /** Raw row shape for Vehicles table. */
-export type VehicleRowRaw = {
-  licensePlate: string;
+export type VehicleRowRaw = Pick<Vehicle, "licensePlate" | "seatCount"> & {
   makeModel: string;
   accessibilityFeatures: string;
-  seatCount: number;
 };
 
 /** Raw row shape for Locations table */
-export type LocationRowRaw = {
-  name: string;
-  latitude: number;
-  longitude: number;
-};
+export type LocationRowRaw = Pick<Location, "name" | "latitude" | "longitude">;
 
 export const STUDENT_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Name", datatype: "string" },

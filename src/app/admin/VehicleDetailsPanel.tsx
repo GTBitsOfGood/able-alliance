@@ -6,19 +6,13 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogTextInput from "@/components/BogTextInput/BogTextInput";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import { ProfileRidesTab } from "@/app/profile/ProfileRidesTab";
-import ConfirmActionModal from "./ConfirmActionModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
-const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
+import { VehicleAccessibility } from "@db/generated/browser";
 
-type Vehicle = {
-  _id: string;
-  vehicleId?: string;
-  name: string;
-  licensePlate: string;
-  description?: string;
-  accessibility: "None" | "Wheelchair";
-  seatCount: number;
-};
+const VEHICLE_ACCESSIBILITY_OPTIONS = Object.values(VehicleAccessibility);
+
+import type { Vehicle } from "@db/generated/browser";
 
 interface VehicleDetailsPanelProps {
   vehicleId: string;
@@ -42,9 +36,8 @@ export default function VehicleDetailsPanel({
   const [licensePlate, setLicensePlate] = useState("");
   const [description, setDescription] = useState("");
   const [seatCount, setSeatCount] = useState("");
-  const [accessibility, setAccessibility] = useState<"None" | "Wheelchair">(
-    "None",
-  );
+  const [accessibility, setAccessibility] =
+    useState<Vehicle["accessibility"]>("None");
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -288,8 +281,8 @@ export default function VehicleDetailsPanel({
                 onSelectionChange={(v) =>
                   setAccessibility(
                     typeof v === "string"
-                      ? (v as "None" | "Wheelchair")
-                      : ((v[0] ?? "None") as "None" | "Wheelchair"),
+                      ? (v as Vehicle["accessibility"])
+                      : ((v[0] ?? "None") as Vehicle["accessibility"]),
                   )
                 }
                 className="flex-1 basis-[20rem] max-w-[35rem]"

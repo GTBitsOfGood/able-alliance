@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { materializeDueSeries } from "@/server/db/actions/RideSeriesAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { internalErrorPayload } from "@/utils/apiError";
+import { errorResponse } from "@/utils/errors";
 
 /**
  * Internal trigger for the recurring-ride materializer, called by the cron on the
@@ -10,7 +10,7 @@ import { internalErrorPayload } from "@/utils/apiError";
  *
  * Not reachable by browsers: it carries no user session and is gated on the same
  * shared secret as the Next -> websocket /notify hop. The work itself is
- * idempotent and lock-guarded, so an extra call is harmless.
+ * idempotent and transaction-protected, so an extra call is harmless.
  */
 function isAuthorized(req: NextRequest): boolean {
   const expected = process.env.WEBSOCKET_INTERNAL_SECRET;
@@ -41,9 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
     console.error("[RideSeries] materialize failed:", e);
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+    return errorResponse(e);
   }
 }
 

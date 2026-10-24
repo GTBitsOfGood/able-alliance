@@ -3,14 +3,11 @@ import { debugLog } from "../utils/logger.js";
 /**
  * Scheduled trigger for recurring-ride generation.
  *
- * This process deliberately does no ride-building of its own: it doesn't share
- * the Next app's Mongoose models (see utils/db.ts), and duplicating route
- * creation — location lookups, the student snapshot, Mapbox duration, emails —
- * would mean two implementations to keep in sync. Instead it pokes an internal
- * endpoint and lets RouteAction stay the single source of truth.
+ * Route creation stays in the Next app so API requests and scheduled generation
+ * use the same PostgreSQL validation, travel estimates, and real-time events.
  *
- * Safe to fire more often than needed: the endpoint takes a database lease and
- * the generation itself is idempotent, so an extra tick is a no-op.
+ * Safe to fire more often than needed: PostgreSQL transactions serialize each
+ * series, and generation is idempotent, so an extra tick is a no-op.
  */
 
 /** How often to poke the materializer. */

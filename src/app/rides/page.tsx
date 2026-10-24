@@ -9,7 +9,9 @@ import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
-import { CancelRideModal } from "./CancelRideModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 import {
   estDateKey,
   estDayRange,
@@ -18,29 +20,7 @@ import {
   isEstToday,
 } from "@/utils/dateEst";
 
-export type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
-export type RouteUser = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-};
-export type Route = {
-  _id: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  student: string | RouteUser;
-  driver?: string | RouteUser;
-  vehicle?: string;
-  scheduledPickupTime: string;
-  pickupWindowEnd?: string;
-  estimatedDropoffTime?: string;
-  status: string;
-};
+import type { RouteResponse as Route } from "@/utils/types/api";
 
 function formatWeekRangeHeader(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
@@ -95,7 +75,6 @@ export default function RidesPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -107,28 +86,29 @@ export default function RidesPage() {
     setMounted(true);
   }, []);
 
+  const beginRequest = useLatestRequest();
+
   const fetchRides = useCallback(async () => {
     if (!session?.user?.userId) return;
+    const isLatest = beginRequest();
     try {
-      const [routesRes, locationsRes] = await Promise.all([
-        fetch(`/api/routes?student=${session.user.userId}`),
-        fetch("/api/locations"),
-      ]);
-      if (!routesRes.ok) throw new Error("Failed to fetch routes");
-      if (!locationsRes.ok) throw new Error("Failed to fetch locations");
-      const routesData = await routesRes.json();
-      const locationsData = await locationsRes.json();
-      setRoutes(
-        routesData.filter((r: Route) => r.status !== "Cancelled by Student"),
+      const routesRes = await fetch(
+        `/api/routes?student=${session.user.userId}`,
       );
-      setLocations(locationsData);
+      if (!routesRes.ok) throw new Error("Failed to fetch routes");
+      const routesData = await routesRes.json();
+      if (!isLatest()) return;
+      setRoutes(
+        routesData.filter((r: Route) => r.status !== "CancelledByStudent"),
+      );
       setError(null);
     } catch (e) {
+      if (!isLatest()) return;
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [session]);
+  }, [session, beginRequest]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -136,6 +116,11 @@ export default function RidesPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchRides();
   }, [mounted, fetchRides]);
+
+  // Drivers get their own subscription inside DriverRidesView.
+  useRouteUpdates(() => {
+    if (mounted && session?.user?.type === "Student") void fetchRides();
+  });
 
   const handleCancel = useCallback(async (routeId: string) => {
     setCancellingId(routeId);
@@ -149,7 +134,7 @@ export default function RidesPage() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      setRoutes((prev) => prev.filter((r) => r.id !== routeId));
       setCancelTargetId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cancellation failed.");
@@ -157,14 +142,6 @@ export default function RidesPage() {
       setCancellingId(null);
     }
   }, []);
-
-  const locationIdToName: Record<string, string> = locations.reduce(
-    (acc, loc) => {
-      acc[loc._id] = loc.name;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
 
   const thisWeekRange = React.useMemo(
     () =>
@@ -248,12 +225,11 @@ export default function RidesPage() {
             <div className={styles.dateGroupCards}>
               {routesByDate[dateKey].map((route) => (
                 <RideCard
-                  key={route._id}
+                  key={route.id}
                   route={route}
-                  locationIdToName={locationIdToName}
-                  href={`/rides/${route._id}`}
+                  href={`/rides/${route.id}`}
                   onCancel={(id) => setCancelTargetId(id)}
-                  cancelling={cancellingId === route._id}
+                  cancelling={cancellingId === route.id}
                 />
               ))}
             </div>
@@ -290,14 +266,20 @@ export default function RidesPage() {
 
   return (
     <div className={styles.ridesPage}>
-      <CancelRideModal
+      <ConfirmActionModal
         open={cancelTargetId !== null}
         onOpenChange={(open) => {
           if (!open) setCancelTargetId(null);
         }}
-        onConfirmCancel={() => {
+        onConfirm={() => {
           if (cancelTargetId) void handleCancel(cancelTargetId);
         }}
+        variant="destructive"
+        title="Cancel Ride?"
+        description="Are you sure you want to cancel this ride?"
+        confirmLabel="Cancel ride"
+        confirmingLabel="Cancelling…"
+        cancelLabel="Nevermind"
         confirming={cancelTargetId !== null && cancellingId === cancelTargetId}
       />
       <main className={styles.main}>

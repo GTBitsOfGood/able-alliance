@@ -1,183 +1,139 @@
-import connectMongoDB from "../mongodb";
-import UserModel, { StudentModel, DriverModel } from "../models/UserModel";
-import type { BaseUserInput, StudentInput, Shift } from "@/utils/types/user";
-import {
-  UserAlreadyExistsException,
-  UserNotFoundException,
-} from "@/utils/exceptions/user";
+import { db } from "@db";
+import { userInclude } from "@/server/db/queries";
+import { Prisma, type UserSettings } from "@db/generated/client";
+import type { UserType } from "@db/generated/enums";
+import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 
-type UserSettings = BaseUserInput["settings"];
-type NotificationSettingsUpdate = Partial<UserSettings["notifications"]>;
-
-export async function createUser(data: BaseUserInput | StudentInput) {
-  await connectMongoDB();
-
-  const existing = await UserModel.findOne({
-    $or: [{ username: data.username }, { email: data.email }],
+export async function getUsers(type?: UserType) {
+  return db.user.findMany({
+    where: type ? { type } : {},
+    include: userInclude,
   });
-  if (existing) {
-    throw new UserAlreadyExistsException(
-      existing.email === data.email
-        ? "User with this email already exists"
-        : "User with this username already exists",
-    );
-  }
-
-  if (data.type === "Student") {
-    const studentData = data as StudentInput;
-    const user = await StudentModel.create(studentData);
-    return user.toObject();
-  }
-
-  const user = await UserModel.create(data);
-  return user.toObject();
-}
-
-export async function getUserByEmail(email: string) {
-  await connectMongoDB();
-  const user = await UserModel.findOne({ email }).lean();
-  return user;
-}
-
-/**
- * Look up an existing user by their GT Account username — the CAS `cas:user`
- * value, and the only identity CAS guarantees on every successful validation.
- *
- * Users are never auto-provisioned from CAS: a successful CAS login for
- * someone with no record here is a failed login.
- */
-export async function getProvisionedUserFromCAS(username: string) {
-  await connectMongoDB();
-
-  const existing = await UserModel.findOne({ username }).lean();
-  if (existing) {
-    return existing;
-  }
-
-  throw new UserNotFoundException(
-    `No provisioned user found for username: ${username}`,
-  );
-}
-
-export async function getUsers(
-  type?: "Student" | "Driver" | "Admin" | "SuperAdmin",
-) {
-  await connectMongoDB();
-  const query = type ? { type } : {};
-  const users = await UserModel.find(query).lean();
-  return users;
 }
 
 export async function getUserById(id: string) {
-  await connectMongoDB();
-  const user = await UserModel.findById(id).lean();
+  const user = await db.user.findUnique({
+    where: { id: id.toLowerCase() },
+    include: userInclude,
+  });
+  if (!user) throw new NotFoundError("User not found");
   return user;
 }
 
-export async function deleteUser(id: string) {
-  await connectMongoDB();
-  const deleted = await UserModel.findByIdAndDelete(id).lean();
-  return deleted;
-}
+export const getProvisionedUserFromCAS = (username: string) =>
+  db.user.findUnique({ where: { username }, include: userInclude });
 
-export async function updatePreferredName(
-  id: string,
-  preferredName: string | null,
-) {
-  await connectMongoDB();
-
-  const user = await UserModel.findById(id);
-  if (!user) {
-    return null;
+export async function createUser(data: Prisma.UserCreateInput) {
+  try {
+    return await db.user.create({ data, include: userInclude });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002")
+        throw new ConflictError(
+          "A user with this username or email already exists",
+        );
+      if (error.code === "P2025" || error.code === "P2003")
+        throw new ArgumentError("Invalid referenced record");
+    }
+    throw error;
   }
-
-  (user as unknown as { preferredName?: string | null }).preferredName =
-    preferredName ?? undefined;
-
-  const saved = await user.save();
-  return saved.toObject();
 }
 
-export async function updateStudentInfo(
+export async function deleteUser(id: string) {
+  try {
+    return await db.user.delete({
+      where: { id: id.toLowerCase() },
+      include: userInclude,
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") throw new NotFoundError("User not found");
+      if (error.code === "P2003")
+        throw new ConflictError(
+          "User has ride or message history and cannot be deleted",
+        );
+    }
+    throw error;
+  }
+}
+
+export async function updateUser(
   id: string,
-  update: {
+  type: UserType,
+  patch: {
+    preferredName?: string | null;
     notes?: string | null;
     accessibilityNeeds?: string[] | null;
+    shifts?: import("@/utils/types/user").Shift[];
+    settings?: Partial<Omit<UserSettings, "userId">>;
   },
 ) {
-  await connectMongoDB();
-
-  const student = await StudentModel.findById(id);
-  if (!student) {
-    return null;
+  const data: Prisma.UserUpdateInput = {};
+  if (patch.preferredName !== undefined)
+    data.preferredName = patch.preferredName;
+  if (patch.settings !== undefined) {
+    data.settings = {
+      upsert: { create: patch.settings, update: patch.settings },
+    };
   }
-
-  const currentInfo =
-    (
-      student as unknown as {
-        studentInfo?: { notes?: string; accessibilityNeeds?: string[] };
-      }
-    ).studentInfo ?? {};
-
-  const nextInfo = {
-    ...currentInfo,
-    ...(update.notes !== undefined ? { notes: update.notes ?? "" } : {}),
-    ...(update.accessibilityNeeds !== undefined
-      ? { accessibilityNeeds: update.accessibilityNeeds ?? undefined }
-      : {}),
-  };
-
-  (student as unknown as { studentInfo?: typeof nextInfo }).studentInfo =
-    nextInfo;
-
-  const saved = await student.save();
-  return saved.toObject();
-}
-
-export async function updateDriverShifts(id: string, shifts: Shift[]) {
-  await connectMongoDB();
-
-  const driver = await DriverModel.findById(id);
-  if (!driver) {
-    return null;
+  if (
+    type === "Student" &&
+    (patch.notes !== undefined || patch.accessibilityNeeds !== undefined)
+  ) {
+    const notes = patch.notes === undefined ? {} : { notes: patch.notes };
+    const labels =
+      patch.accessibilityNeeds === undefined
+        ? undefined
+        : (patch.accessibilityNeeds ?? []);
+    data.studentInfo = {
+      upsert: {
+        create: {
+          ...notes,
+          ...(labels
+            ? {
+                accessibilityNeeds: {
+                  connect: labels.map((label) => ({ label })),
+                },
+              }
+            : {}),
+        },
+        update: {
+          ...notes,
+          ...(labels
+            ? {
+                accessibilityNeeds: { set: labels.map((label) => ({ label })) },
+              }
+            : {}),
+        },
+      },
+    };
   }
-
-  (driver as unknown as { shifts: Shift[] }).shifts = shifts;
-
-  const saved = await driver.save();
-  return saved.toObject();
-}
-
-export async function updateNotificationSettings(
-  id: string,
-  settings: {
-    notifications?: NotificationSettingsUpdate;
-  },
-) {
-  await connectMongoDB();
-
-  const user = await UserModel.findById(id);
-  if (!user) {
-    return null;
+  if (type === "Driver" && patch.shifts !== undefined) {
+    data.shifts = { deleteMany: {}, create: patch.shifts };
   }
-
-  const theUser = user as unknown as { settings?: UserSettings };
-  theUser.settings = {
-    ...theUser.settings,
-    notifications: {
-      dailySummary: false,
-      driverAssigned: false,
-      driverEnRoute: false,
-      rideCancelled: false,
-      rideAssigned: false,
-      rideCompleted: false,
-      rideDelayed: false,
-      newMessageFromDriver: false,
-      ...theUser.settings?.notifications,
-      ...settings.notifications,
-    },
-  };
-
-  const saved = await user.save();
-  return saved.toObject();
+  try {
+    return await db.user.update({
+      where: { id: id.toLowerCase(), type },
+      data,
+      include: userInclude,
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      const user = await db.user.findUnique({
+        where: { id: id.toLowerCase(), type },
+        select: { id: true },
+      });
+      if (!user) throw new NotFoundError("User not found");
+      throw new ArgumentError("Invalid accommodation");
+    }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2003"
+    )
+      throw new ArgumentError("Invalid accommodation");
+    throw error;
+  }
 }

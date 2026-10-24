@@ -31,8 +31,8 @@ test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
     },
   });
   expect(create.status(), await create.text()).toBe(201);
-  const { _id: routeId, status } = (await create.json()) as {
-    _id: string;
+  const { id: routeId, status } = (await create.json()) as {
+    id: string;
     status: string;
   };
   expect(status).toBe("Requested");
@@ -48,13 +48,17 @@ test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
     expect(((await res.json()) as { status: string }).status).toBe(expected);
   };
 
-  await step(
-    admin,
-    "/api/routes/schedule",
-    { routeId, driverId: PERSONAS.driver.id, vehicleId: VEHICLE.id },
+  const scheduled = await admin.post("/api/routes/schedule", {
+    data: { routeId, driverId: PERSONAS.driver.id, vehicleId: VEHICLE.id },
+  });
+  expect(
+    scheduled.status(),
+    `/api/routes/schedule: ${await scheduled.text()}`,
+  ).toBe(200);
+  expect(((await scheduled.json()) as { status: string }).status).toBe(
     "Scheduled",
   );
-  await step(driver, "/api/routes/start", { routeId }, "En-route");
+  await step(driver, "/api/routes/start", { routeId }, "EnRoute");
   await step(driver, "/api/routes/pickup", { routeId }, "Pickedup");
   await step(driver, "/api/routes/complete", { routeId }, "Completed");
 

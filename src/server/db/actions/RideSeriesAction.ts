@@ -8,9 +8,8 @@
  *
  *  - **No duplicates across runs/restarts/overlap.** Each series carries a
  *    `materializedThrough` watermark that only moves forward. Rides are created
- *    before the watermark advances, so a crash in between retries the create —
- *    which the unique `(seriesId, scheduledPickupTime)` index then rejects, and
- *    we treat that rejection as "already done".
+ *    together with the watermark in a transaction that locks the series row.
+ *    Concurrent workers serialize per series, and a crash rolls back both writes.
  *  - **Edits and cancellations stick.** Because the watermark never moves back,
  *    an occurrence that has already been generated is never reconsidered. Editing
  *    or cancelling a ride can't resurrect it.
@@ -19,28 +18,22 @@
  *    pickup *windows* are not a conflict — only an identical pickup time is.
  */
 
-import mongoose from "mongoose";
+import { db } from "@db";
+import { Prisma } from "@db/generated/client";
+import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 import { addDays, addWeeks, endOfDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
-import connectMongoDB from "../mongodb";
-import RideSeriesModel from "../models/RideSeriesModel";
-import RouteModel from "../models/RouteModel";
-import JobLockModel from "../models/JobLockModel";
 import { createRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/utils/types/rideSeries";
 import type { RecurrenceRequest } from "@/utils/types/rideSeries";
-import type { CreateRouteInput } from "@/utils/types";
-import { RideSeriesInvalidException } from "@/utils/exceptions/rideSeries";
-import { RouteAlreadyExistsException } from "@/utils/exceptions/route";
+import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
+import { ArgumentError, ConflictError } from "@/utils/errors";
+import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
 
 const TZ = "America/New_York";
 
 /** How far ahead rides are kept scheduled, in Eastern calendar days. */
 export const SCHEDULING_HORIZON_DAYS = 28;
-
-const LOCK_NAME = "rideSeriesMaterializer";
-/** Lease length. Long enough for a slow pass, short enough to recover from a crash. */
-const LOCK_TTL_MS = 5 * 60 * 1000;
 
 /**
  * The pickup instant of occurrence `weeks` after the first ride.
@@ -67,201 +60,114 @@ export function schedulingHorizon(now = new Date()): Date {
   return fromZonedTime(endOfDay(zonedTarget), TZ);
 }
 
-/** True when the student already has a ride at exactly this pickup instant. */
-async function hasConflictingRide(
-  studentId: mongoose.Types.ObjectId,
-  pickupTime: Date,
-): Promise<boolean> {
-  const existing = await RouteModel.findOne({
-    "student._id": studentId,
-    scheduledPickupTime: pickupTime,
-  })
-    .select("_id")
-    .lean();
-  return existing !== null;
-}
-
-function isDuplicateKeyError(e: unknown): boolean {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    (e as { code?: number }).code === 11000
-  );
-}
-
-/**
- * Generate every occurrence of one series that is due but not yet materialized.
- * Safe to call concurrently with itself — see the module comment.
- */
+/** Generate occurrences using one transaction per occurrence. */
 async function materializeSeries(
-  seriesId: mongoose.Types.ObjectId,
+  seriesId: string,
   horizon: Date,
 ): Promise<{ created: number; skipped: number }> {
   let created = 0;
   let skipped = 0;
 
-  // Re-read inside the loop: another pass may have advanced the watermark.
   for (;;) {
-    const series = await RideSeriesModel.findById(seriesId).lean();
-    if (!series || !series.active) {
-      break;
-    }
+    try {
+      const result = await db.$transaction(
+        async (tx) => {
+          // PostgreSQL releases this row lock automatically on commit or rollback.
+          // Read the watermark only after the lock, so concurrent workers see the
+          // previous worker's committed progress before choosing an occurrence.
+          await tx.$queryRaw(Prisma.sql`
+          SELECT "id" FROM "RideSeries" WHERE "id" = ${seriesId}::uuid FOR UPDATE
+        `);
+          const series = await tx.rideSeries.findUnique({
+            where: { id: seriesId },
+          });
+          if (!series?.active) return null;
 
-    // Walk forward from the watermark to the next unmaterialized occurrence.
-    const elapsedMs =
-      series.materializedThrough.getTime() - series.firstPickupTime.getTime();
-    const weeksDone = Math.max(0, Math.round(elapsedMs / (7 * 86400 * 1000)));
-    const next = occurrenceAt(series.firstPickupTime, weeksDone + 1);
+          const elapsedMs =
+            series.materializedThrough.getTime() -
+            series.firstPickupTime.getTime();
+          const weeksDone = Math.max(
+            0,
+            Math.round(elapsedMs / (7 * 86400 * 1000)),
+          );
+          const next = occurrenceAt(series.firstPickupTime, weeksDone + 1);
+          if (next > horizon) return null;
 
-    if (next > horizon) {
-      break;
-    }
+          const conflict = await tx.route.findUnique({
+            where: {
+              studentId_scheduledPickupTime: {
+                studentId: series.studentId,
+                scheduledPickupTime: next,
+              },
+            },
+            select: { id: true },
+          });
+          const route = conflict
+            ? null
+            : await createRoute(
+                {
+                  pickupLocation: series.pickupLocation,
+                  dropoffLocation: series.dropoffLocation,
+                  student: series.studentId,
+                  scheduledPickupTime: next,
+                  pickupWindowStart: new Date(
+                    next.getTime() + series.pickupWindowStartOffsetMs,
+                  ),
+                  pickupWindowEnd: new Date(
+                    next.getTime() + series.pickupWindowEndOffsetMs,
+                  ),
+                },
+                { seriesId, tx },
+              );
+          await tx.rideSeries.update({
+            where: { id: seriesId },
+            data: { materializedThrough: next },
+          });
+          return { route };
+        },
+        { timeout: 60000 },
+      );
 
-    const conflict = await hasConflictingRide(series.student, next);
-    if (!conflict) {
-      try {
-        await createRoute(
-          {
-            pickupLocation: String(series.pickupLocation),
-            dropoffLocation: String(series.dropoffLocation),
-            student: String(series.student),
-            scheduledPickupTime: next,
-            pickupWindowStart: new Date(
-              next.getTime() + series.pickupWindowStartOffsetMs,
-            ),
-            pickupWindowEnd: new Date(
-              next.getTime() + series.pickupWindowEndOffsetMs,
-            ),
-          } as CreateRouteInput,
-          { seriesId: String(seriesId) },
-        );
+      if (!result) break;
+      if (result.route) {
         created++;
-      } catch (e) {
-        if (
-          isDuplicateKeyError(e) ||
-          e instanceof RouteAlreadyExistsException
-        ) {
-          // Lost a race: either a concurrent pass created this occurrence, or the
-          // student booked that slot between our conflict check and the insert.
-          // Either way the desired end state holds, so fall through and advance
-          // the watermark rather than retrying this occurrence forever.
-          skipped++;
-        } else {
-          throw e;
-        }
+        emitRouteUpdate(result.route);
+      } else {
+        skipped++;
       }
-    } else {
-      skipped++;
-    }
-
-    // Advance only from the watermark we read, so a concurrent pass that already
-    // moved it wins and we re-read rather than double-advancing.
-    const advanced = await RideSeriesModel.findOneAndUpdate(
-      { _id: seriesId, materializedThrough: series.materializedThrough },
-      { $set: { materializedThrough: next } },
-    ).lean();
-
-    if (!advanced) {
-      // Someone else moved it. Loop re-reads and continues from the new position.
-      continue;
+    } catch (error) {
+      // A one-off request or another series can book the same student/time
+      // concurrently. Retry in a new transaction after the unique violation
+      // rolled back; it will see the conflicting ride and advance safely.
+      if (error instanceof ConflictError) continue;
+      throw error;
     }
   }
-
   return { created, skipped };
 }
 
-/**
- * Try to take the job lease. Returns false when another run already holds it.
- *
- * The upsert either matches an expired/absent lock and takes it, or fails the
- * unique _id constraint because a live lock exists — which is the signal to bow out.
- */
-async function acquireLock(now: Date): Promise<string | null> {
-  // Identifies this run so release can verify it still owns the lease.
-  const token = new mongoose.Types.ObjectId().toHexString();
-  try {
-    await JobLockModel.findOneAndUpdate(
-      { _id: LOCK_NAME, lockedUntil: { $lte: now } },
-      {
-        $set: {
-          lockedUntil: new Date(now.getTime() + LOCK_TTL_MS),
-          lockedAt: now,
-          token,
-        },
-      },
-      { upsert: true },
-    );
-    return token;
-  } catch (e) {
-    if (isDuplicateKeyError(e)) {
-      return null;
-    }
-    throw e;
-  }
-}
-
-/**
- * Release only if we still hold the lease.
- *
- * A run that overran its TTL has already lost the lock to someone else; clearing
- * it unconditionally would hand a second run's lease away mid-pass and let a
- * third run in alongside it.
- */
-async function releaseLock(token: string): Promise<void> {
-  await JobLockModel.updateOne(
-    { _id: LOCK_NAME, token },
-    { $set: { lockedUntil: new Date(0) } },
-  );
-}
-
-/**
- * One scheduled pass: bring every active series up to the 28-day horizon.
- * Returns zeroed counts (and does nothing) if another run holds the lease.
- */
+/** Bring all active series up to the horizon; concurrent passes are safe. */
 export async function materializeDueSeries(
   now = new Date(),
 ): Promise<MaterializeResult> {
-  await connectMongoDB();
-
-  const empty: MaterializeResult = {
-    seriesProcessed: 0,
-    ridesCreated: 0,
-    ridesSkipped: 0,
-  };
-
-  const lockToken = await acquireLock(now);
-  if (!lockToken) {
-    console.log("[RideSeries] another run holds the lock; skipping this pass");
-    return empty;
-  }
-
-  try {
-    const horizon = schedulingHorizon(now);
-    const due = await RideSeriesModel.find({
-      active: true,
-      materializedThrough: { $lt: horizon },
-    })
-      .select("_id")
-      .lean();
-
-    let ridesCreated = 0;
-    let ridesSkipped = 0;
-
-    for (const series of due) {
-      try {
-        const result = await materializeSeries(series._id, horizon);
-        ridesCreated += result.created;
-        ridesSkipped += result.skipped;
-      } catch (e) {
-        // One bad series (deleted location, etc.) must not stall the rest.
-        console.error(`[RideSeries] series ${series._id} failed:`, e);
-      }
+  const horizon = schedulingHorizon(now);
+  const due = await db.rideSeries.findMany({
+    where: { active: true, materializedThrough: { lt: horizon } },
+    select: { id: true },
+  });
+  let ridesCreated = 0;
+  let ridesSkipped = 0;
+  for (const series of due) {
+    try {
+      const result = await materializeSeries(series.id, horizon);
+      ridesCreated += result.created;
+      ridesSkipped += result.skipped;
+    } catch (error) {
+      // One failing series must not stall the rest.
+      console.error(`[RideSeries] series ${series.id} failed:`, error);
     }
-
-    return { seriesProcessed: due.length, ridesCreated, ridesSkipped };
-  } finally {
-    await releaseLock(lockToken);
   }
+  return { seriesProcessed: due.length, ridesCreated, ridesSkipped };
 }
 
 /**
@@ -275,66 +181,74 @@ export async function createRideSeries(
   data: CreateRouteInput,
   recurrence: RecurrenceRequest,
 ) {
-  await connectMongoDB();
-
+  data = createRouteSchema.parse(data);
+  recurrence = recurrenceRequestSchema.parse(recurrence);
   const windowStartOffset =
     data.pickupWindowStart.getTime() - data.scheduledPickupTime.getTime();
   const windowEndOffset =
     data.pickupWindowEnd.getTime() - data.scheduledPickupTime.getTime();
 
   if (windowEndOffset < windowStartOffset) {
-    throw new RideSeriesInvalidException(
+    throw new ArgumentError(
       "Pickup window end must not be before pickup window start",
     );
   }
-
-  // Created inactive so the hourly job can't pick it up and generate future
-  // rides while the first ride is still in flight — if that first ride then
-  // fails and we delete the series, those rides would be orphaned.
-  const series = await RideSeriesModel.create({
-    student: data.student,
-    pickupLocation: data.pickupLocation,
-    dropoffLocation: data.dropoffLocation,
-    frequency: recurrence.frequency,
-    firstPickupTime: data.scheduledPickupTime,
-    pickupWindowStartOffsetMs: windowStartOffset,
-    pickupWindowEndOffsetMs: windowEndOffset,
-    // The first ride is created below, so the watermark starts there.
-    materializedThrough: data.scheduledPickupTime,
-    active: false,
-  });
-
-  let firstRoute;
-  try {
-    firstRoute = await createRoute(data, { seriesId: String(series._id) });
-  } catch (e) {
-    // Nothing else can have referenced it yet: it was never active.
-    await RideSeriesModel.findByIdAndDelete(series._id);
-    throw e;
+  if (
+    [windowStartOffset, windowEndOffset].some(
+      (offset) => offset < -2147483648 || offset > 2147483647,
+    )
+  ) {
+    throw new ArgumentError("Pickup window offsets are out of range");
   }
 
-  // Safe to publish now that the first ride exists.
-  await RideSeriesModel.findByIdAndUpdate(series._id, {
-    $set: { active: true },
-  });
+  // The template and first ride become visible together. A failed first ride
+  // rolls back the template, so the cron cannot generate orphaned future rides.
+  const { series, firstRoute } = await db
+    .$transaction(
+      async (tx) => {
+        const series = await tx.rideSeries.create({
+          data: {
+            studentId: data.student.toLowerCase(),
+            pickupLocation: data.pickupLocation.toLowerCase(),
+            dropoffLocation: data.dropoffLocation.toLowerCase(),
+            frequency: recurrence.frequency,
+            firstPickupTime: data.scheduledPickupTime,
+            pickupWindowStartOffsetMs: windowStartOffset,
+            pickupWindowEndOffsetMs: windowEndOffset,
+            materializedThrough: data.scheduledPickupTime,
+          },
+        });
+        const firstRoute = await createRoute(data, { seriesId: series.id, tx });
+        return { series, firstRoute };
+      },
+      { timeout: 60000 },
+    )
+    .catch((error: unknown) => {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ArgumentError("Referenced location or student not found");
+      }
+      throw error;
+    });
+  emitRouteUpdate(firstRoute);
 
-  // Fill out the rest of the horizon now rather than on the next tick.
-  const horizon = schedulingHorizon();
+  // Fill forward now; a transient failure is retried by the scheduled job.
   try {
-    await materializeSeries(series._id, horizon);
-  } catch (e) {
-    // The cron will pick this up; the student already has their first ride.
-    console.error("[RideSeries] initial fill-forward failed:", e);
+    await materializeSeries(series.id, schedulingHorizon());
+  } catch (error) {
+    console.error("[RideSeries] initial fill-forward failed:", error);
   }
 
-  return { series: series.toObject(), firstRoute };
+  return { series, firstRoute };
 }
 
 /** Stop future generation for a series without touching rides already created. */
 export async function deactivateRideSeries(seriesId: string): Promise<boolean> {
-  await connectMongoDB();
-  const updated = await RideSeriesModel.findByIdAndUpdate(seriesId, {
-    $set: { active: false },
-  }).lean();
-  return updated !== null;
+  const { count } = await db.rideSeries.updateMany({
+    where: { id: seriesId.toLowerCase() },
+    data: { active: false },
+  });
+  return count !== 0;
 }
