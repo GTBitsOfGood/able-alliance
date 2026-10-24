@@ -20,6 +20,12 @@ import type {
 } from "@/utils/types/api";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
+const CLOSED_CHAT_STATUSES = new Set([
+  "Completed",
+  "Missing",
+  "CancelledByStudent",
+  "CancelledByAdmin",
+]);
 
 function createCustomPin(
   labelText: string,
@@ -58,12 +64,6 @@ function coordsOverlap(
   return (
     Math.abs(a[0] - b[0]) < thresholdDeg && Math.abs(a[1] - b[1]) < thresholdDeg
   );
-}
-
-function isToday(iso: string): boolean {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
-  return fmt(new Date(iso)) === fmt(new Date());
 }
 
 function getStudentId(student: RouteData["student"]): string {
@@ -121,15 +121,18 @@ export default function RideDetailPage({
   const [chatError, setChatError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [isChatEligible, setIsChatEligible] = useState(false);
 
-  // Open the chat deep link once route eligibility is known.
+  // Open the chat deep link once the ride is loaded and its chat is open.
   useEffect(() => {
-    if (searchParams.get("chat") === "1" && isChatEligible && route) {
+    if (
+      searchParams.get("chat") === "1" &&
+      route &&
+      !CLOSED_CHAT_STATUSES.has(route.status)
+    ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowChatModal(true);
     }
-  }, [searchParams, isChatEligible, route]);
+  }, [searchParams, route]);
 
   // Driver-specific state
   const [markingMissing, setMarkingMissing] = useState(false);
@@ -186,10 +189,6 @@ export default function RideDetailPage({
 
         setRoute(routeData);
         setError(null);
-
-        // Determine if chat is eligible (ride is today)
-        const chatEligible = isToday(routeData.scheduledPickupTime);
-        setIsChatEligible(chatEligible);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to fetch route");
         setRoute(null);
@@ -310,29 +309,33 @@ export default function RideDetailPage({
   // the socket stays alive across status / modal changes — the unmount effect
   // below is the only place that actually disconnects.
   //
-  // Connection is established when:
-  //   • Driver: isChatEligible (ride is today)
-  //   • Student: isChatEligible AND (status is En-route OR chat modal is open)
+  // Keep participant chat available for the full lifetime of an open ride,
+  // regardless of its scheduled date. The server enforces terminal statuses.
   //
   useEffect(() => {
     const isDriver = session?.user?.type === "Driver";
     const isStudent = session?.user?.type === "Student";
 
     const shouldConnect =
-      isChatEligible &&
+      !!route &&
+      !CLOSED_CHAT_STATUSES.has(route.status) &&
       !!routeId &&
       !!session?.user?.accessToken &&
-      (isDriver ||
-        (isStudent &&
-          ![
-            "Missing",
-            "Completed",
-            "CancelledByStudent",
-            "CancelledByAdmin",
-          ].includes(route?.status ?? "") &&
-          (route?.status === "EnRoute" || showChatModal)));
+      (isDriver || isStudent);
 
-    if (!shouldConnect || socketRef.current) return;
+    if (!shouldConnect) {
+      if (
+        route &&
+        CLOSED_CHAT_STATUSES.has(route.status) &&
+        socketRef.current
+      ) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocket(null);
+      }
+      return;
+    }
+    if (socketRef.current) return;
 
     if (!wsUrl) return;
 
@@ -381,6 +384,13 @@ export default function RideDetailPage({
       setMessages(history);
     });
 
+    newSocket.on("routeClosed", () => {
+      setChatError("This ride has ended. The chat is now read-only.");
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    });
+
     newSocket.on("receiveChatMessage", (message: ChatMessageResponse) => {
       setMessages((prev) => [...prev, message]);
     });
@@ -393,7 +403,7 @@ export default function RideDetailPage({
     );
 
     newSocket.on("chatError", (msg: string) => setChatError(msg));
-  }, [isChatEligible, route?.status, routeId, session, showChatModal, wsUrl]);
+  }, [route, routeId, session, wsUrl]);
 
   // Disconnect only on unmount — not on dep changes
   useEffect(() => {
@@ -733,6 +743,9 @@ export default function RideDetailPage({
             )}
             {messages.map((msg, idx) => {
               const isUser = msg.senderId === session?.user.userId;
+              const isAdminMessage =
+                msg.senderId !== route.student.id &&
+                msg.senderId !== route.driver?.id;
               const prevIsOther =
                 !isUser &&
                 idx > 0 &&
@@ -752,7 +765,14 @@ export default function RideDetailPage({
                         <BogIcon name="user" size={18} />
                       </div>
                     ))}
-                  <div className={styles.messageBubble}>
+                  <div
+                    className={`${styles.messageBubble} ${
+                      isAdminMessage ? styles.adminMessageBubble : ""
+                    }`}
+                  >
+                    {isAdminMessage && (
+                      <span className={styles.adminMessageLabel}>Admin</span>
+                    )}
                     <p className={styles.messageText}>{msg.text}</p>
                   </div>
                 </div>
@@ -888,25 +908,11 @@ export default function RideDetailPage({
               </div>
 
               <div className={styles.chatButtonWrapper}>
-                {!isChatEligible && (
-                  <span className={styles.chatTooltip}>
-                    Chat is only available on the day of the ride
-                  </span>
-                )}
                 <button
                   type="button"
                   className={styles.chatButton}
-                  onClick={() => isChatEligible && setShowChatModal(true)}
-                  disabled={
-                    !isChatEligible ||
-                    [
-                      "Pickedup",
-                      "Completed",
-                      "Missing",
-                      "CancelledByStudent",
-                      "CancelledByAdmin",
-                    ].includes(route.status)
-                  }
+                  onClick={() => setShowChatModal(true)}
+                  disabled={CLOSED_CHAT_STATUSES.has(route.status)}
                 >
                   <BogIcon name="chats" size={18} />
                   <span>Chat with student</span>
@@ -1133,16 +1139,8 @@ export default function RideDetailPage({
             <button
               type="button"
               className={styles.chatButton}
-              onClick={() => isChatEligible && setShowChatModal(true)}
-              disabled={
-                !isChatEligible ||
-                [
-                  "Missing",
-                  "Completed",
-                  "CancelledByStudent",
-                  "CancelledByAdmin",
-                ].includes(route.status)
-              }
+              onClick={() => setShowChatModal(true)}
+              disabled={CLOSED_CHAT_STATUSES.has(route.status)}
             >
               <BogIcon name="chats" size={18} />
               <span>Chat with driver</span>
@@ -1221,6 +1219,9 @@ export default function RideDetailPage({
               )}
               {messages.map((msg, idx) => {
                 const isUser = msg.senderId === session?.user.userId;
+                const isAdminMessage =
+                  msg.senderId !== route.student.id &&
+                  msg.senderId !== route.driver?.id;
                 const prevIsOther =
                   !isUser &&
                   idx > 0 &&
@@ -1240,7 +1241,14 @@ export default function RideDetailPage({
                           <BogIcon name="user" size={18} />
                         </div>
                       ))}
-                    <div className={styles.messageBubble}>
+                    <div
+                      className={`${styles.messageBubble} ${
+                        isAdminMessage ? styles.adminMessageBubble : ""
+                      }`}
+                    >
+                      {isAdminMessage && (
+                        <span className={styles.adminMessageLabel}>Admin</span>
+                      )}
                       <p className={styles.messageText}>{msg.text}</p>
                     </div>
                   </div>

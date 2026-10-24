@@ -111,7 +111,7 @@ npx prisma generate
 
 Commit the generated migration alongside the schema change. Run `migrate dev` deliberately during development; startup and CI only apply existing migrations with `migrate deploy`.
 
-To seed the database with sample users, locations, vehicles, and routes, run:
+To seed the database, run:
 
 ```sh
 npm run seed -- "postgresql://able:able@localhost:5432/able_alliance"

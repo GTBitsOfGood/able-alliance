@@ -235,7 +235,7 @@ async function seed() {
     "driver: Austin Evans",
   );
 
-  await seedUser(
+  const adminUser = await seedUser(
     { username: "adminuser" },
     {
       firstName: "Admin",
@@ -539,6 +539,74 @@ async function seed() {
   console.log(
     `\n– Routes: created ${created}, existing ${skippedExisting}, conflicting slots skipped ${skippedConflicts}`,
   );
+
+  // ---------- Chat messages ----------
+  // Add a small conversation to a seeded ride so the admin chat view has
+  // real relational messages to display. Select today's active ride when
+  // possible so the websocket chat can also be exercised locally.
+  const chatRoutes = await db.route.findMany({
+    where: { studentId: { in: students.map((student) => student.id) } },
+    orderBy: { scheduledPickupTime: "asc" },
+  });
+  const todayActiveRoute = chatRoutes.find(
+    (route) =>
+      formatInTimeZone(
+        route.scheduledPickupTime,
+        "America/New_York",
+        "yyyy-MM-dd",
+      ) === today &&
+      ["Scheduled", "EnRoute", "Pickedup"].includes(route.status),
+  );
+  const chatRoute =
+    todayActiveRoute ??
+    chatRoutes.find((route) =>
+      ["Scheduled", "EnRoute", "Pickedup"].includes(route.status),
+    );
+
+  if (chatRoute) {
+    const examples = [
+      {
+        senderId: chatRoute.studentId,
+        text: "Hi, I’m ready for my ride. I’ll be at the pickup location.",
+      },
+      {
+        senderId: adminUser.id,
+        text: "Thanks for letting us know. Your ride is scheduled.",
+      },
+      ...(chatRoute.driverId
+        ? [
+            {
+              senderId: chatRoute.driverId,
+              text: "I’m on my way to the pickup location.",
+            },
+          ]
+        : []),
+    ];
+
+    for (const [index, example] of examples.entries()) {
+      const exists = await db.message.findFirst({
+        where: {
+          routeId: chatRoute.id,
+          senderId: example.senderId,
+          text: example.text,
+        },
+      });
+      if (exists) continue;
+
+      await db.message.create({
+        data: {
+          routeId: chatRoute.id,
+          senderId: example.senderId,
+          text: example.text,
+          time: new Date(Date.now() - (examples.length - index) * 60_000),
+        },
+      });
+    }
+    console.log(`✓ Seeded chat messages for route ${chatRoute.id}`);
+  } else {
+    console.log("– No active seeded route available for chat messages");
+  }
+
   console.log("\nSeed complete!");
 }
 

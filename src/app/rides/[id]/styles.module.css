@@ -618,6 +618,19 @@
   }
 }
 
+.adminMessageBubble {
+  border: 1px solid #9bb8ed;
+}
+
+.adminMessageLabel {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: #183777;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .chatInputContainer {
   display: flex;
   align-items: center;
