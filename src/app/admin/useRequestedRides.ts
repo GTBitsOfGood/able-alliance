@@ -61,7 +61,7 @@ function mergeRows(
  * Loads the requested rides for the admin table, plus the drivers, vehicles
  * it needs, and keeps the rides current from real-time events:
  * changed rows are refetched one by one, and the full list is only reloaded
- * after a (re)connect.
+ * after a (re)connect or a failed refresh.
  */
 export function useRequestedRides() {
   const [routes, setRoutes] = useState<RouteEntry[]>([]);
@@ -80,11 +80,14 @@ export function useRequestedRides() {
   // and handled by the next run.
   const pendingRef = useRef<Job | null>(null);
   const runningRef = useRef(false);
+  const needsReloadRef = useRef(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryDelayRef = useRef(1000);
 
   const run = useCallback(async ({ routeIds }: Job) => {
     try {
       // Rows can only be patched into a list that has loaded once.
-      if (routeIds && loadedRef.current) {
+      if (routeIds && loadedRef.current && !needsReloadRef.current) {
         const ids = [...routeIds];
         const rows = await Promise.all(ids.map(fetchRoute));
         if (!aliveRef.current) return;
@@ -109,10 +112,15 @@ export function useRequestedRides() {
         setVehicles(asArray(vehiclesData));
         loadedRef.current = true;
       }
+      needsReloadRef.current = false;
       setError(null);
       setRefreshError(null);
+      return true;
     } catch (e) {
       if (!aliveRef.current) return;
+      // A later partial success cannot repair rows missed by this job.
+      // Keep requiring a full reload until one succeeds.
+      needsReloadRef.current = true;
       const message = e instanceof Error ? e.message : "Failed to load rides.";
       if (loadedRef.current) {
         setRefreshError(
@@ -121,13 +129,14 @@ export function useRequestedRides() {
       } else {
         setError(message);
       }
+      return false;
     } finally {
       if (aliveRef.current) setLoading(false);
     }
   }, []);
 
   const enqueue = useCallback(
-    (job: Job) => {
+    function enqueueJob(job: Job) {
       const pending = pendingRef.current;
       if (!pending) {
         pendingRef.current = job;
@@ -141,10 +150,27 @@ export function useRequestedRides() {
       runningRef.current = true;
       void (async () => {
         try {
-          while (pendingRef.current) {
+          while (pendingRef.current && aliveRef.current) {
             const next = pendingRef.current;
             pendingRef.current = null;
-            await run(next);
+            const succeeded = await run(next);
+            if (retryTimerRef.current !== null) {
+              clearTimeout(retryTimerRef.current);
+              retryTimerRef.current = null;
+            }
+            if (succeeded) {
+              retryDelayRef.current = 1000;
+            } else if (aliveRef.current) {
+              // Retry even if no more events arrive, with capped backoff.
+              retryTimerRef.current = setTimeout(() => {
+                retryTimerRef.current = null;
+                enqueueJob({ routeIds: null });
+              }, retryDelayRef.current);
+              retryDelayRef.current = Math.min(
+                retryDelayRef.current * 2,
+                30000,
+              );
+            }
           }
         } finally {
           runningRef.current = false;
@@ -159,6 +185,10 @@ export function useRequestedRides() {
     enqueue({ routeIds: null });
     return () => {
       aliveRef.current = false;
+      if (retryTimerRef.current !== null) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
     };
   }, [enqueue]);
 
