@@ -1,5 +1,8 @@
 "use client";
 
+import type { UserResponse } from "@/utils/types/api";
+import type { Vehicle, Location } from "@db/generated/browser";
+
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import type {
@@ -116,19 +119,16 @@ function combineFullName(firstName: unknown, lastName: unknown): string {
 /** Adapt API user list to StudentRowRaw (students only). */
 function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
   if (!Array.isArray(data)) return [];
-  return data.map((u: Record<string, unknown>) => {
-    const studentInfo = (u.studentInfo ?? {}) as {
-      notes?: string;
-      accessibilityNeeds?: string | string[];
-    };
-    const accessibilityNeeds = studentInfo.accessibilityNeeds;
+  return (data as UserResponse[]).map((u) => {
+    const studentInfo = u.studentInfo;
+    const accessibilityNeeds = studentInfo?.accessibilityNeeds;
     return {
       name: String(combineFullName(u.firstName, u.lastName) ?? ""),
       email: String(u.email ?? ""),
       accessibilityNeeds: Array.isArray(accessibilityNeeds)
-        ? accessibilityNeeds.join(", ")
+        ? accessibilityNeeds.map(({ label }) => label).join(", ")
         : (accessibilityNeeds ?? ""),
-      additionalComments: String(studentInfo.notes ?? ""),
+      additionalComments: String(studentInfo?.notes ?? ""),
     };
   });
 }
@@ -136,7 +136,7 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
 /** Adapt API user list to DriverRowRaw (drivers only). */
 function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
   if (!Array.isArray(data)) return [];
-  return data.map((u: Record<string, unknown>) => ({
+  return (data as UserResponse[]).map((u) => ({
     name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
   }));
@@ -145,7 +145,7 @@ function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
 /** Adapt API user list to AdminRowRaw (admins only). */
 function adaptUsersToAdminRows(data: unknown): AdminRowRaw[] {
   if (!Array.isArray(data)) return [];
-  return data.map((u: Record<string, unknown>) => ({
+  return (data as UserResponse[]).map((u) => ({
     name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
   }));
@@ -154,7 +154,7 @@ function adaptUsersToAdminRows(data: unknown): AdminRowRaw[] {
 /** Adapt API location list to LocationRowRaw. */
 function adaptLocationsToRows(data: unknown): LocationRowRaw[] {
   if (!Array.isArray(data)) return [];
-  return data.map((l: Record<string, unknown>) => ({
+  return (data as Location[]).map((l) => ({
     name: String(l.name ?? ""),
     latitude: Number(l.latitude ?? 0),
     longitude: Number(l.longitude ?? 0),
@@ -164,14 +164,12 @@ function adaptLocationsToRows(data: unknown): LocationRowRaw[] {
 /** Adapt API vehicle list to VehicleRowRaw. */
 function adaptVehiclesToRows(data: unknown): VehicleRowRaw[] {
   if (!Array.isArray(data)) return [];
-  return data.map((v: Record<string, unknown>) => {
-    const seatCount = Number((v as { seatCount?: number }).seatCount);
+  return (data as Vehicle[]).map((v) => {
+    const seatCount = Number(v.seatCount);
     return {
       licensePlate: String(v.licensePlate ?? ""),
       makeModel: String(v.description ?? v.name ?? "—"),
-      accessibilityFeatures: String(
-        (v as { accessibility?: string }).accessibility ?? "—",
-      ),
+      accessibilityFeatures: String(v.accessibility ?? "—"),
       seatCount: Number.isFinite(seatCount) && seatCount >= 0 ? seatCount : 0,
     };
   });
@@ -199,7 +197,7 @@ export function useAdminTableData(tableType: AdminTableType) {
 
       const extractIds = (data: unknown): string[] => {
         if (!Array.isArray(data)) return [];
-        return data.map((d: Record<string, unknown>) => String(d._id ?? ""));
+        return data.map((d: Record<string, unknown>) => String(d.id ?? ""));
       };
 
       try {

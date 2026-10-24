@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { VehicleAccessibility } from "@db/generated/enums";
 
-export const accessibilityEnum = z.enum(["None", "Wheelchair"]);
+export const accessibilityEnum = z.enum(VehicleAccessibility);
 
 export const vehicleSchema = z.object({
   vehicleId: z.string().min(1, "Vehicle ID is required"),

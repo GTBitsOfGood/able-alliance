@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { vehicleSchema } from "@/utils/types/vehicle";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { createVehicle, getVehicles } from "@/server/db/actions/VehicleAction";
-import { VehicleAlreadyExistsException } from "@/utils/exceptions/vehicle";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function POST(req: NextRequest) {
   let user;
@@ -15,14 +15,16 @@ export async function POST(req: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+  if (!isAdmin(user.type)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
     );
   }
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => {
+      throw new ArgumentError("Invalid JSON body");
+    });
     const parsed = vehicleSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -30,23 +32,10 @@ export async function POST(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    try {
-      const vehicle = await createVehicle(parsed.data);
-      return NextResponse.json(vehicle, { status: HTTP_STATUS_CODE.CREATED });
-    } catch (err) {
-      if (err instanceof VehicleAlreadyExistsException) {
-        return NextResponse.json({ error: err.message }, { status: err.code });
-      }
-      return NextResponse.json(
-        { error: "Internal server error" },
-        { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-      );
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+    const vehicle = await createVehicle(parsed.data);
+    return NextResponse.json(vehicle, { status: HTTP_STATUS_CODE.CREATED });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -62,10 +51,7 @@ export async function GET() {
   try {
     const vehicles = await getVehicles();
     return NextResponse.json(vehicles);
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
-    );
+  } catch (error) {
+    return errorResponse(error);
   }
 }

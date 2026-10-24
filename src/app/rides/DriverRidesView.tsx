@@ -12,33 +12,10 @@ import {
   formatEstDate,
 } from "@/utils/dateEst";
 import type { Shift } from "@/utils/types/user";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
-type Location = {
-  _id: string;
-  name: string;
-};
-
-type EmbeddedVehicle = {
-  _id: string;
-  vehicleId?: string;
-  name: string;
-  licensePlate: string;
-  description?: string;
-  accessibility: "None" | "Wheelchair";
-  seatCount: number;
-};
-
-type DriverRoute = {
-  _id: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  scheduledPickupTime: string;
-  estimatedDropoffTime?: string;
-  status: string;
-  vehicle?: EmbeddedVehicle;
-  driver?: { _id: string };
-  student?: { firstName: string; lastName: string };
-};
+import type { DriverRouteResponse as DriverRoute } from "@/utils/types/api";
 
 function formatDayRangeHeading(range: [Date, Date]) {
   return formatEstDate(range[0], {
@@ -90,7 +67,6 @@ function groupRidesByShift(rides: DriverRoute[], shifts: Shift[], day: Date) {
 export default function DriverRidesView({ userId }: { userId: string }) {
   const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +90,10 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     setMounted(true);
   }, []);
 
+  const beginRequest = useLatestRequest();
+
   const fetchRoutes = useCallback(async () => {
+    const isLatest = beginRequest();
     try {
       const range = activeTab === "today" ? todayRange : tomorrowRange;
       const params = new URLSearchParams({
@@ -123,31 +102,32 @@ export default function DriverRidesView({ userId }: { userId: string }) {
         end_time: range[1].toISOString(),
       });
 
-      const [routesRes, locationsRes, driverRes] = await Promise.all([
+      const [routesRes, driverRes] = await Promise.all([
         fetch(`/api/routes?${params}`),
-        fetch("/api/locations"),
         fetch(`/api/users/${userId}`).catch(() => null),
       ]);
       if (!routesRes.ok) throw new Error("Failed to fetch routes");
-      if (!locationsRes.ok) throw new Error("Failed to fetch locations");
 
       const routesData: DriverRoute[] = await routesRes.json();
-      const locationsData: Location[] = await locationsRes.json();
+      const shiftsData: Shift[] = driverRes?.ok
+        ? ((await driverRes.json()).shifts ?? [])
+        : [];
+      if (!isLatest()) return;
       setRoutes(
         routesData.toSorted((a, b) =>
           a.scheduledPickupTime.localeCompare(b.scheduledPickupTime),
         ),
       );
-      setLocations(locationsData);
       // Missing shift information must not hide assigned rides.
-      setShifts(driverRes?.ok ? ((await driverRes.json()).shifts ?? []) : []);
+      setShifts(shiftsData);
       setError(null);
     } catch (e) {
+      if (!isLatest()) return;
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [userId, activeTab, todayRange, tomorrowRange]);
+  }, [userId, activeTab, todayRange, tomorrowRange, beginRequest]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -157,17 +137,9 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     void fetchRoutes();
   }, [mounted, fetchRoutes]);
 
-  const locationIdToName = useMemo(
-    () =>
-      locations.reduce(
-        (acc, loc) => {
-          acc[loc._id] = loc.name;
-          return acc;
-        },
-        {} as Record<string, string>,
-      ),
-    [locations],
-  );
+  useRouteUpdates(() => {
+    if (mounted) void fetchRoutes();
+  });
 
   const activeDayRange = useMemo(
     () => (activeTab === "today" ? todayRange : tomorrowRange),
@@ -243,16 +215,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
           )}
           {shiftGroup.rides.map((route) => (
             <RideCard
-              key={route._id}
-              route={{
-                ...route,
-                driver: route.driver?._id,
-              }}
-              locationIdToName={locationIdToName}
+              key={route.id}
+              route={route}
               isDriverCard
-              href={`/rides/${route._id}`}
-              onStart={() => handleStart(route._id)}
-              startBusy={busyRoutes.has(route._id)}
+              href={`/rides/${route.id}`}
+              onStart={() => handleStart(route.id)}
+              startBusy={busyRoutes.has(route.id)}
             />
           ))}
         </div>

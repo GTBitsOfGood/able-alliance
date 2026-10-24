@@ -12,15 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      mongo:
-        image: mongo:4.0
-        ports: ["27017:27017"]
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: able
+          POSTGRES_PASSWORD: able
+          POSTGRES_DB: able_alliance_e2e
+        ports: ["5432:5432"]
         options: >-
-          --health-cmd "mongo --eval 'db.adminCommand({ ping: 1 })' --quiet"
+          --health-cmd "pg_isready -U able -d able_alliance_e2e"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       CI: "true"
       TZ: America/New_York
+      DATABASE_URL: postgresql://able:able@127.0.0.1:5432/able_alliance_e2e
       # Required by email imports; test rides must not use a real email service.
       JUNO_API_KEY: e2e-placeholder
       JUNO_BASE_URL: http://127.0.0.1:9
@@ -31,6 +36,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Apply PostgreSQL Migrations
+        run: npx prisma migrate deploy
       - run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: API layer (backend)
         run: npm run test:e2e:api

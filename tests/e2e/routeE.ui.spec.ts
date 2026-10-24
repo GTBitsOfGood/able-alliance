@@ -26,7 +26,7 @@ test("route E: driver marks student as no-show (UI)", async ({
     dropoffLocation: LOCATIONS.studentCenter.id,
     hoursFromNow: 57,
   });
-  const routeId = created._id;
+  const routeId = created.id;
   await scheduleRide(adminApi, routeId);
 
   const driver = await pageAs("driver");

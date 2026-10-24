@@ -9,12 +9,13 @@ app:
   build:
     flavor: none
   relationships:
-    mongodb: mongodb:mongodb
+    postgresql: postgresql:postgresql
   hooks:
     build: |
       set -eu
       HUSKY=0 npm ci --include=dev
       npm --prefix websocket-server ci --include=dev
+      npx prisma generate
       npm run build
       npm --prefix websocket-server prune --omit=dev
   mounts:
@@ -23,7 +24,7 @@ app:
       source_path: next-cache
   web:
     commands:
-      start: npm run start:upsun
+      start: npx prisma migrate deploy && exec npm run start:upsun
     locations:
       /:
         root: ""

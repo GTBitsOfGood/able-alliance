@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { encode } from "next-auth/jwt";
 import { getProvisionedUserFromCAS } from "@/server/db/actions/UserAction";
-import { UserNotFoundException } from "@/utils/exceptions/user";
 import { authConfig } from "@/auth";
 import {
   casServiceUrl,
@@ -83,20 +82,15 @@ export async function GET(request: NextRequest) {
     const { username } = result;
 
     // Look up the user by username (do not auto-provision from CAS).
-    let user;
-    try {
-      user = await getProvisionedUserFromCAS(username);
-    } catch (error) {
-      if (error instanceof UserNotFoundException) {
-        console.error(
-          `[CAS Callback] CAS user "${username}" is not provisioned in the app database`,
-        );
-        return loginErrorRedirect(request, "user_not_found", appUrl);
-      }
-      throw error;
+    const user = await getProvisionedUserFromCAS(username);
+    if (!user) {
+      console.error(
+        `[CAS Callback] CAS user "${username}" is not provisioned in the app database`,
+      );
+      return loginErrorRedirect(request, "user_not_found", appUrl);
     }
 
-    const userId = (user._id as object).toString();
+    const userId = user.id;
 
     const displayName =
       user.preferredName || `${user.firstName} ${user.lastName}`;

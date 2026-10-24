@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
-import { scheduleRoute } from "@/server/db/actions/RouteAction";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
+import { isValidId } from "@/utils/ids";
 import {
-  RouteReferenceNotFoundException,
-  DriverNotAvailableException,
-  BookingConflictException,
-  SchedulingBusyException,
-} from "@/utils/exceptions/route";
+  BookingConflictError,
+  scheduleRoute,
+} from "@/server/db/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { internalErrorPayload } from "@/utils/apiError";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function POST(request: NextRequest) {
   let user;
@@ -22,7 +19,14 @@ export async function POST(request: NextRequest) {
     );
   }
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => {
+      throw new ArgumentError("Malformed request body");
+    });
+    if (typeof body !== "object" || body === null || Array.isArray(body))
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
     const { routeId, driverId, vehicleId } = body;
     if (!routeId || !driverId || !vehicleId) {
       return NextResponse.json(
@@ -30,57 +34,27 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    if (
-      !mongoose.Types.ObjectId.isValid(routeId) ||
-      !mongoose.Types.ObjectId.isValid(driverId) ||
-      !mongoose.Types.ObjectId.isValid(vehicleId)
-    ) {
+    if (!isValidId(routeId) || !isValidId(driverId) || !isValidId(vehicleId)) {
       return NextResponse.json(
-        { error: "Invalid ObjectId(s)" },
+        { error: "Invalid UUID(s)" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
     // Only allow: Admin, SuperAdmin
-    if (user.type !== "Admin" && user.type !== "SuperAdmin") {
+    if (!isAdmin(user.type)) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
     const updated = await scheduleRoute(routeId, driverId, vehicleId);
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Route not found or not in Requested state" },
-        { status: HTTP_STATUS_CODE.NOT_FOUND },
-      );
-    }
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    if (e instanceof RouteReferenceNotFoundException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
-    if (e instanceof DriverNotAvailableException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
-    if (e instanceof BookingConflictException) {
+  } catch (error) {
+    if (error instanceof BookingConflictError)
       return NextResponse.json(
-        { error: e.message, details: e.details },
-        { status: e.code },
+        { error: error.message, details: error.details },
+        { status: error.statusCode },
       );
-    }
-    if (e instanceof SchedulingBusyException) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
-    if (e instanceof SyntaxError || e instanceof TypeError) {
-      console.error("[POST /api/routes/schedule] Malformed request body:", e);
-      return NextResponse.json(
-        { error: "Malformed request body" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    console.error("[POST /api/routes/schedule] Unexpected error:", e);
-    return NextResponse.json(internalErrorPayload(e), {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+    return errorResponse(error);
   }
 }

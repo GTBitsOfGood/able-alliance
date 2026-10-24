@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/utils/authUser";
-import mongoose from "mongoose";
+import { getUserFromRequest, isAdmin } from "@/utils/authUser";
+import { isValidId } from "@/utils/ids";
 import { auth } from "@/auth";
 import {
   createRoute,
   getRouteById,
   getRoutes,
 } from "@/server/db/actions/RouteAction";
+import { createRideSeries } from "@/server/db/actions/RideSeriesAction";
 import { createRouteSchema } from "@/utils/types";
+import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
+import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import {
-  RouteAlreadyExistsException,
-  RouteReferenceNotFoundException,
-} from "@/utils/exceptions/route";
-import { internalErrorPayload } from "@/utils/apiError";
+import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function GET(req: NextRequest) {
   let user;
@@ -31,30 +30,18 @@ export async function GET(req: NextRequest) {
 
     // Get specific route by ID
     if (id) {
-      if (!mongoose.Types.ObjectId.isValid(id)) {
+      if (!isValidId(id)) {
         return NextResponse.json(
           { error: "Invalid route ID" },
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
         );
       }
-      const route = await getRouteById(id);
-      if (!route) {
-        return NextResponse.json(
-          { error: "Route not found" },
-          { status: HTTP_STATUS_CODE.NOT_FOUND },
-        );
-      }
-      // Only allow: Admin/SuperAdmin, or owner (student._id or driver._id matches userId)
+      const route = await getRouteById(id, user.type);
+      // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
       if (
-        user.type === "Admin" ||
-        user.type === "SuperAdmin" ||
-        (route.student &&
-          (
-            route.student as { _id?: { toString(): string } }
-          )._id?.toString() === user.userId) ||
-        (route.driver &&
-          (route.driver as { _id?: { toString(): string } })._id?.toString() ===
-            user.userId)
+        isAdmin(user.type) ||
+        (route.student && route.student.id === user.userId) ||
+        (route.driver && route.driver.id === user.userId)
       ) {
         return NextResponse.json(route, { status: HTTP_STATUS_CODE.OK });
       }
@@ -75,10 +62,11 @@ export async function GET(req: NextRequest) {
     const userType = session.user.type;
     const loggedInUserId = session.user.userId;
 
-    // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?start_time=<time> | ?end_time=<time>
+    // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?status=<RouteStatus> | ?start_time=<time> | ?end_time=<time>
     const studentParam = searchParams.get("student");
     const driver = searchParams.get("driver");
     const vehicleParam = searchParams.get("vehicle");
+    const statusParam = searchParams.get("status");
     const startTime = searchParams.get("start_time");
     const endTime = searchParams.get("end_time");
 
@@ -86,7 +74,7 @@ export async function GET(req: NextRequest) {
 
     if (userType === "Student") {
       // actual Student check that makes it so they only see THEIR rides
-      if (!mongoose.Types.ObjectId.isValid(loggedInUserId)) {
+      if (!isValidId(loggedInUserId)) {
         return NextResponse.json(
           { error: "Invalid student ID" },
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -95,7 +83,7 @@ export async function GET(req: NextRequest) {
       studentFilter = loggedInUserId;
     } else if (studentParam) {
       // Admins / Drivers may filter by an explicit student id
-      if (!mongoose.Types.ObjectId.isValid(studentParam)) {
+      if (!isValidId(studentParam)) {
         return NextResponse.json(
           { error: "Invalid student ID" },
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -106,15 +94,25 @@ export async function GET(req: NextRequest) {
       // Admins / Drivers without ?student can see all matching routes
       studentFilter = undefined;
     }
-    if (driver && !mongoose.Types.ObjectId.isValid(driver)) {
+    if (driver && !isValidId(driver)) {
       return NextResponse.json(
         { error: "Invalid driver ID" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    if (vehicleParam && !mongoose.Types.ObjectId.isValid(vehicleParam)) {
+    if (vehicleParam && !isValidId(vehicleParam)) {
       return NextResponse.json(
         { error: "Invalid vehicle ID" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+
+    if (
+      statusParam &&
+      !(Object.values(RouteStatus) as string[]).includes(statusParam)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid status" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
@@ -140,25 +138,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const routes = await getRoutes({
-      student: studentFilter,
-      driver: driver ?? undefined,
-      vehicle: vehicleParam ?? undefined,
-      start_time: startDate,
-      end_time: endDate,
-    });
-    return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
-  } catch (e) {
-    if (
-      e instanceof RouteAlreadyExistsException ||
-      e instanceof RouteReferenceNotFoundException
-    ) {
-      return NextResponse.json({ error: e.message }, { status: e.code });
-    }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR },
+    const routes = await getRoutes(
+      {
+        student: studentFilter,
+        driver: driver ?? undefined,
+        vehicle: vehicleParam ?? undefined,
+        status: (statusParam as RouteStatus | null) ?? undefined,
+        start_time: startDate,
+        end_time: endDate,
+      },
+      user.type,
     );
+    return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
+  } catch (error) {
+    return errorResponse(error);
   }
 }
 
@@ -182,11 +175,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => {
+      throw new ArgumentError("Malformed request body");
+    });
+    if (typeof body !== "object" || body === null || Array.isArray(body))
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+
+    // `recurring` is a sibling of the route fields, not part of them —
+    // createRouteSchema is strict, so split it off before parsing.
+    const { recurring, ...routeFields } = body ?? {};
 
     // Add the student ID from the session
     const routeData = {
-      ...body,
+      ...routeFields,
       student: session.user.userId,
     };
 
@@ -203,6 +207,13 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
+    // seriesId is assigned by the recurring-ride job, never by a client.
+    if (body.seriesId != null) {
+      return NextResponse.json(
+        { error: "seriesId cannot be set when creating a route" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
     // Driver and vehicle must not be set on create; use POST /api/routes/schedule instead.
     if (body.driver != null || body.vehicle != null) {
       return NextResponse.json(
@@ -214,33 +225,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = await createRoute(parsed.data);
-    const createdObj = created as unknown as Record<string, unknown> & {
-      _id: { toString(): string };
-    };
-    return NextResponse.json(
-      { ...createdObj, _id: createdObj._id.toString() },
-      { status: HTTP_STATUS_CODE.CREATED },
-    );
-  } catch (e) {
-    if (
-      e instanceof RouteAlreadyExistsException ||
-      e instanceof RouteReferenceNotFoundException
-    ) {
-      console.error("[POST /api/routes]", e.message);
-      return NextResponse.json({ error: e.message }, { status: e.code });
+    let created;
+    if (recurring != null) {
+      const recurrence = recurrenceRequestSchema.safeParse(recurring);
+      if (!recurrence.success) {
+        return NextResponse.json(recurrence.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      created = (await createRideSeries(parsed.data, recurrence.data))
+        .firstRoute;
+    } else {
+      created = await createRoute(parsed.data);
     }
-    if (e instanceof SyntaxError || e instanceof TypeError) {
-      console.error("[POST /api/routes] Malformed request body:", e);
-      return NextResponse.json(
-        { error: "Malformed request body" },
-        { status: HTTP_STATUS_CODE.BAD_REQUEST },
-      );
-    }
-    console.error("[POST /api/routes] Unexpected error:", e);
-    const payload = internalErrorPayload(e);
-    return NextResponse.json(payload, {
-      status: HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    });
+    return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
+  } catch (error) {
+    return errorResponse(error);
   }
 }

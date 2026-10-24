@@ -1,25 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import BogTable from "@/components/BogTable/BogTable";
 import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import BogButton from "@/components/BogButton/BogButton";
 import { RIDE_COLUMNS } from "./admin-table-data";
 import type { TableRow } from "@/components/BogTable/BogTable";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
-
-type RouteEntry = {
-  _id: string;
-  student: { firstName: string; lastName: string };
-  pickupLocation: string;
-  dropoffLocation: string;
-  scheduledPickupTime: string;
-  status: string;
-};
-
-type DriverEntry = { _id: string; firstName: string; lastName: string };
-type VehicleEntry = { _id: string; name: string; licensePlate: string };
-type LocationEntry = { _id: string; name: string };
+import {
+  useRequestedRides,
+  type DriverEntry,
+  type VehicleEntry,
+} from "./useRequestedRides";
 
 function makeDriverLabel(d: DriverEntry) {
   return `${d.lastName}, ${d.firstName}`;
@@ -30,12 +22,15 @@ function makeVehicleLabel(v: VehicleEntry) {
 }
 
 export default function RidesTable() {
-  const [routes, setRoutes] = useState<RouteEntry[]>([]);
-  const [drivers, setDrivers] = useState<DriverEntry[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleEntry[]>([]);
-  const [locationMap, setLocationMap] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    routes,
+    drivers,
+    vehicles,
+    loading,
+    error,
+    refreshError,
+    removeRoute,
+  } = useRequestedRides();
 
   // Per-row selections keyed by routeId — store display labels for BogDropdown
   const [driverLabels, setDriverLabels] = useState<Record<string, string>>({});
@@ -47,62 +42,6 @@ export default function RidesTable() {
   const [canceling, setCanceling] = useState<Set<string>>(new Set());
   const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [routesRes, locationsRes, driversRes, vehiclesRes] =
-          await Promise.all([
-            fetch("/api/routes"),
-            fetch("/api/locations"),
-            fetch("/api/users?type=Driver"),
-            fetch("/api/vehicles"),
-          ]);
-
-        if (!routesRes.ok) throw new Error(`Routes API ${routesRes.status}`);
-        if (!locationsRes.ok)
-          throw new Error(`Locations API ${locationsRes.status}`);
-        if (!driversRes.ok) throw new Error(`Drivers API ${driversRes.status}`);
-        if (!vehiclesRes.ok)
-          throw new Error(`Vehicles API ${vehiclesRes.status}`);
-
-        const [routesData, locationsData, driversData, vehiclesData] =
-          await Promise.all([
-            routesRes.json(),
-            locationsRes.json(),
-            driversRes.json(),
-            vehiclesRes.json(),
-          ]);
-
-        const requested = Array.isArray(routesData)
-          ? routesData.filter((r: RouteEntry) => r.status === "Requested")
-          : [];
-
-        const locMap: Record<string, string> = {};
-        if (Array.isArray(locationsData)) {
-          for (const loc of locationsData as LocationEntry[]) {
-            locMap[String(loc._id)] = String(loc.name);
-          }
-        }
-        if (cancelled) return;
-        setRoutes(requested);
-        setLocationMap(locMap);
-        setDrivers(Array.isArray(driversData) ? driversData : []);
-        setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load rides.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleAssign = async (routeId: string) => {
     const driverLabel = driverLabels[routeId];
@@ -126,15 +65,15 @@ export default function RidesTable() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           routeId,
-          driverId: driver._id,
-          vehicleId: vehicle._id,
+          driverId: driver.id,
+          vehicleId: vehicle.id,
         }),
       });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      removeRoute(routeId);
     } catch (e) {
       setAssignErrors((prev) => ({
         ...prev,
@@ -167,7 +106,7 @@ export default function RidesTable() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+      removeRoute(routeId);
     } catch (e) {
       setCancelErrors((prev) => ({
         ...prev,
@@ -187,10 +126,8 @@ export default function RidesTable() {
 
   const rows: TableRow[] = routes.map((route) => {
     const studentName = `${route.student.firstName} ${route.student.lastName}`;
-    const pickupName =
-      locationMap[route.pickupLocation] ?? route.pickupLocation;
-    const dropoffName =
-      locationMap[route.dropoffLocation] ?? route.dropoffLocation;
+    const pickupName = route.pickup.name;
+    const dropoffName = route.dropoff.name;
     const pickupDate = route.scheduledPickupTime
       ? new Date(route.scheduledPickupTime).toLocaleDateString("en-US", {
           timeZone: "America/New_York",
@@ -205,13 +142,13 @@ export default function RidesTable() {
         })
       : "—";
 
-    const selectedDriver = driverLabels[route._id] ?? "";
-    const selectedVehicle = vehicleLabels[route._id] ?? "";
+    const selectedDriver = driverLabels[route.id] ?? "";
+    const selectedVehicle = vehicleLabels[route.id] ?? "";
     const bothSelected = !!selectedDriver && !!selectedVehicle;
-    const isAssigning = assigning.has(route._id);
-    const isCanceling = canceling.has(route._id);
-    const assignError = assignErrors[route._id];
-    const cancelError = cancelErrors[route._id];
+    const isAssigning = assigning.has(route.id);
+    const isCanceling = canceling.has(route.id);
+    const assignError = assignErrors[route.id];
+    const cancelError = cancelErrors[route.id];
     const activeError = assignError ?? cancelError;
 
     return {
@@ -220,13 +157,13 @@ export default function RidesTable() {
         {
           content: (
             <BogDropdown
-              name={`driver-${route._id}`}
+              name={`driver-${route.id}`}
               options={driverOptions}
               placeholder="Select driver"
               value={selectedDriver}
               onSelectionChange={(v) => {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
-                setDriverLabels((prev) => ({ ...prev, [route._id]: label }));
+                setDriverLabels((prev) => ({ ...prev, [route.id]: label }));
               }}
               style={{ fontSize: "1em" }}
             />
@@ -235,13 +172,13 @@ export default function RidesTable() {
         {
           content: (
             <BogDropdown
-              name={`vehicle-${route._id}`}
+              name={`vehicle-${route.id}`}
               options={vehicleOptions}
               placeholder="Select vehicle"
               value={selectedVehicle}
               onSelectionChange={(v) => {
                 const label = typeof v === "string" ? v : (v[0] ?? "");
-                setVehicleLabels((prev) => ({ ...prev, [route._id]: label }));
+                setVehicleLabels((prev) => ({ ...prev, [route.id]: label }));
               }}
               style={{ fontSize: "1em" }}
             />
@@ -259,7 +196,7 @@ export default function RidesTable() {
                   variant="primary"
                   size="small"
                   disabled={isAssigning || isCanceling || !bothSelected}
-                  onClick={() => handleAssign(route._id)}
+                  onClick={() => handleAssign(route.id)}
                   style={
                     !bothSelected
                       ? {
@@ -274,7 +211,7 @@ export default function RidesTable() {
                   variant="secondary"
                   size="small"
                   disabled={isCanceling || isAssigning}
-                  onClick={() => setPendingCancelId(route._id)}
+                  onClick={() => setPendingCancelId(route.id)}
                 >
                   {isCanceling ? "Canceling…" : "Cancel"}
                 </BogButton>
@@ -296,15 +233,27 @@ export default function RidesTable() {
         {error}
       </p>
     );
+  const refreshNotice = refreshError && (
+    <p className="mb-4 text-sm text-amber-700" role="status">
+      {refreshError}
+    </p>
+  );
+
   if (routes.length === 0)
-    return <p className="text-gray-600">No requested rides.</p>;
+    return (
+      <>
+        {refreshNotice}
+        <p className="text-gray-600">No requested rides.</p>
+      </>
+    );
 
   const pendingCancelRoute = pendingCancelId
-    ? routes.find((r) => r._id === pendingCancelId)
+    ? routes.find((r) => r.id === pendingCancelId)
     : undefined;
 
   return (
     <>
+      {refreshNotice}
       <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
       <ConfirmActionModal
         open={pendingCancelId !== null}

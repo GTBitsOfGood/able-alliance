@@ -1,5 +1,6 @@
 "use client";
 
+import { routeStatusLabels } from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
@@ -13,50 +14,20 @@ import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
+import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
+import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import type {
+  RouteDetailResponse as RouteData,
+  ChatMessageResponse,
+} from "@/utils/types/api";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
-
-type RouteUser = {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  studentInfo?: {
-    accessibilityNeeds?: string[];
-    notes?: string;
-  };
-};
-
-type RouteData = {
-  _id: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  student: string | RouteUser;
-  driver?: string | RouteUser;
-  vehicle?: {
-    _id: string;
-    name: string;
-    licensePlate: string;
-    description?: string;
-    accessibility: string;
-    seatCount: number;
-  };
-  scheduledPickupTime: string;
-  estimatedDropoffTime?: string;
-  status: string;
-};
-
-type Location = {
-  _id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
-
-type ChatMessage = {
-  sender: "user" | "other";
-  text: string;
-  timestamp: Date;
-};
+const CLOSED_CHAT_STATUSES = new Set([
+  "Completed",
+  "Missing",
+  "CancelledByStudent",
+  "CancelledByAdmin",
+]);
 
 function createCustomPin(
   labelText: string,
@@ -97,27 +68,17 @@ function coordsOverlap(
   );
 }
 
-function isToday(iso: string): boolean {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
-  return fmt(new Date(iso)) === fmt(new Date());
+function getStudentId(student: RouteData["student"]): string {
+  return student.id;
 }
 
-function getStudentId(student: string | RouteUser): string {
-  if (typeof student === "string") return student;
-  return student._id;
-}
-
-function getDriverName(driver: string | RouteUser | undefined): string | null {
+function getDriverName(driver: RouteData["driver"]): string | null {
   if (!driver) return null;
-  if (typeof driver === "string") return null;
   return `${driver.firstName} ${driver.lastName}`.trim() || null;
 }
 
-function getDriverId(driver: string | RouteUser | undefined): string | null {
-  if (!driver) return null;
-  if (typeof driver === "string") return driver;
-  return driver._id;
+function getDriverId(driver: RouteData["driver"]): string | null {
+  return driver?.id ?? null;
 }
 
 export default function RideDetailPage({
@@ -132,9 +93,10 @@ export default function RideDetailPage({
   const searchParams = useSearchParams();
   const [routeId, setRouteId] = useState<string>("");
   const [route, setRoute] = useState<RouteData | null>(null);
-  const [locations, setLocations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // A failed background refresh keeps the ride visible and only shows this.
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingRide, setCancellingRide] = useState(false);
 
@@ -157,21 +119,24 @@ export default function RideDetailPage({
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [chatInput, setChatInput] = useState("");
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [isChatEligible, setIsChatEligible] = useState(false);
 
-  // Open the chat deep link once route eligibility is known.
+  // Open the chat deep link once the ride is loaded and its chat is open.
   useEffect(() => {
-    if (searchParams.get("chat") === "1" && isChatEligible && route) {
+    if (
+      searchParams.get("chat") === "1" &&
+      route &&
+      !CLOSED_CHAT_STATUSES.has(route.status)
+    ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowChatModal(true);
     }
-  }, [searchParams, isChatEligible, route]);
+  }, [searchParams, route]);
 
   // Driver-specific state
   const [markingMissing, setMarkingMissing] = useState(false);
@@ -191,26 +156,39 @@ export default function RideDetailPage({
     });
   }, [params]);
 
-  // Fetch route data
-  useEffect(() => {
-    if (!routeId || sessionStatus !== "authenticated" || !session?.user?.userId)
-      return;
+  const beginRequest = useLatestRequest();
 
-    const fetchRoute = async () => {
+  // Fetch route data. A `silent` (background) refresh that fails transiently
+  // keeps the ride on screen; losing the ride or access to it still doesn't.
+  const fetchRoute = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (
+        !routeId ||
+        sessionStatus !== "authenticated" ||
+        !session?.user?.userId
+      )
+        return;
+      const isLatest = beginRequest();
+      let unavailable = false;
+
       try {
         const res = await fetch(`/api/routes/${routeId}`);
 
         if (!res.ok) {
           if (res.status === 404) {
+            unavailable = true;
             throw new Error("Route not found");
           } else if (res.status === 403) {
+            unavailable = true;
             throw new Error("You do not have access to this route");
           }
           throw new Error("Failed to fetch route");
         }
 
         const routeData: RouteData = await res.json();
+        if (!isLatest()) return;
 
+        unavailable = true;
         if (session.user.type === "Student") {
           const studentId = getStudentId(routeData.student);
           if (studentId !== session.user.userId) {
@@ -228,46 +206,41 @@ export default function RideDetailPage({
 
         setRoute(routeData);
         setError(null);
-
-        // Determine if chat is eligible (ride is today)
-        const chatEligible = isToday(routeData.scheduledPickupTime);
-        setIsChatEligible(chatEligible);
+        setRefreshError(null);
       } catch (e) {
+        if (!isLatest()) return;
+        if (options?.silent && !unavailable) {
+          setRefreshError(
+            "Couldn't refresh this ride. Showing the last loaded details.",
+          );
+          return;
+        }
         setError(e instanceof Error ? e.message : "Failed to fetch route");
         setRoute(null);
       } finally {
-        setLoading(false);
+        if (isLatest()) setLoading(false);
       }
-    };
+    },
+    [routeId, session, sessionStatus, router, beginRequest],
+  );
 
-    fetchRoute();
-  }, [routeId, session, sessionStatus, router]);
-
-  // Fetch locations
   useEffect(() => {
-    if (!route) return;
+    // This effect starts an asynchronous API request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchRoute();
+  }, [fetchRoute]);
 
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch("/api/locations");
-        if (!res.ok) throw new Error("Failed to fetch locations");
-        const locationsData: Location[] = await res.json();
-        const locationMap: Record<string, string> = {};
-        for (const loc of locationsData) {
-          locationMap[loc._id] = loc.name;
-        }
-        setLocations(locationMap);
-      } catch (e) {
-        console.error("Failed to fetch locations:", e);
-      }
-    };
-
-    fetchLocations();
-  }, [route]);
+  // Refetch when this route changes elsewhere (status, driver, cancellation).
+  useRouteUpdates(
+    () => {
+      void fetchRoute({ silent: true });
+    },
+    { routeId },
+  );
 
   // Initialize and update Mapbox map
   useEffect(() => {
-    if (!route || !locations[route.pickupLocation]) {
+    if (!route) {
       return;
     }
 
@@ -276,25 +249,8 @@ export default function RideDetailPage({
       const container = mapContainerRef.current;
       if (!container || !token) return;
 
-      // Get location coordinates from the locations object (fetched from API)
-      const pickupLocationName = locations[route.pickupLocation] || "Pickup";
-      const dropoffLocationName = locations[route.dropoffLocation] || "Dropoff";
-
-      // Default GT campus coordinates for fallback
-      const defaultPickup = { latitude: 33.7756, longitude: -84.4027 };
-      const defaultDropoff = { latitude: 33.7767, longitude: -84.3891 };
-
-      const pickup = {
-        name: pickupLocationName,
-        latitude: defaultPickup.latitude,
-        longitude: defaultPickup.longitude,
-      };
-
-      const dropoff = {
-        name: dropoffLocationName,
-        latitude: defaultDropoff.latitude,
-        longitude: defaultDropoff.longitude,
-      };
+      const pickup = route.pickup;
+      const dropoff = route.dropoff;
 
       const defaultCenter: [number, number] = [-84.3988077, 33.7760948];
 
@@ -366,7 +322,7 @@ export default function RideDetailPage({
     };
 
     initializeMap();
-  }, [route, locations]);
+  }, [route]);
 
   useEffect(() => {
     return () => {
@@ -385,57 +341,39 @@ export default function RideDetailPage({
     };
   }, []);
 
-  // Fetch locations (original - keep for backward compatibility)
-  useEffect(() => {
-    if (!route) return;
-
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch("/api/locations");
-        if (!res.ok) throw new Error("Failed to fetch locations");
-        const locationsData: Location[] = await res.json();
-        const locationMap: Record<string, string> = {};
-        for (const loc of locationsData) {
-          locationMap[loc._id] = loc.name;
-        }
-        setLocations(locationMap);
-      } catch (e) {
-        console.error("Failed to fetch locations:", e);
-      }
-    };
-
-    fetchLocations();
-  }, [route]);
-
   // ── WebSocket lifecycle ─────────────────────────────────────────────────────
   //
   // Single connection effect.  Intentionally returns no cleanup function so
   // the socket stays alive across status / modal changes — the unmount effect
   // below is the only place that actually disconnects.
   //
-  // Connection is established when:
-  //   • Driver: isChatEligible (ride is today)
-  //   • Student: isChatEligible AND (status is En-route OR chat modal is open)
+  // Keep participant chat available for the full lifetime of an open ride,
+  // regardless of its scheduled date. The server enforces terminal statuses.
   //
   useEffect(() => {
     const isDriver = session?.user?.type === "Driver";
     const isStudent = session?.user?.type === "Student";
 
     const shouldConnect =
-      isChatEligible &&
+      !!route &&
+      !CLOSED_CHAT_STATUSES.has(route.status) &&
       !!routeId &&
       !!session?.user?.accessToken &&
-      (isDriver ||
-        (isStudent &&
-          ![
-            "Missing",
-            "Completed",
-            "Cancelled by Student",
-            "Cancelled by Admin",
-          ].includes(route?.status ?? "") &&
-          (route?.status === "En-route" || showChatModal)));
+      (isDriver || isStudent);
 
-    if (!shouldConnect || socketRef.current) return;
+    if (!shouldConnect) {
+      if (
+        route &&
+        CLOSED_CHAT_STATUSES.has(route.status) &&
+        socketRef.current
+      ) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocket(null);
+      }
+      return;
+    }
+    if (socketRef.current) return;
 
     if (!wsUrl) return;
 
@@ -480,35 +418,20 @@ export default function RideDetailPage({
       setSocket(null);
     });
 
-    // Server sends { senderType, text, time } objects
-    const userType = session.user.type;
-    newSocket.on(
-      "chatHistory",
-      (history: { senderType: string; text: string; time: string }[]) => {
-        setMessages(
-          history.map((m) => ({
-            sender: m.senderType === userType.toLowerCase() ? "user" : "other",
-            text: m.text,
-            timestamp: new Date(m.time),
-          })),
-        );
-      },
-    );
+    newSocket.on("chatHistory", (history: ChatMessageResponse[]) => {
+      setMessages(history);
+    });
 
-    newSocket.on(
-      "receiveChatMessage",
-      (message: { senderType: string; text: string; time: string }) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender:
-              message.senderType === userType.toLowerCase() ? "user" : "other",
-            text: message.text,
-            timestamp: new Date(message.time),
-          },
-        ]);
-      },
-    );
+    newSocket.on("routeClosed", () => {
+      setChatError("This ride has ended. The chat is now read-only.");
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+    });
+
+    newSocket.on("receiveChatMessage", (message: ChatMessageResponse) => {
+      setMessages((prev) => [...prev, message]);
+    });
 
     newSocket.on(
       "broadcastLocation",
@@ -518,7 +441,7 @@ export default function RideDetailPage({
     );
 
     newSocket.on("chatError", (msg: string) => setChatError(msg));
-  }, [isChatEligible, route?.status, routeId, session, showChatModal, wsUrl]);
+  }, [route, routeId, session, wsUrl]);
 
   // Disconnect only on unmount — not on dep changes
   useEffect(() => {
@@ -573,7 +496,7 @@ export default function RideDetailPage({
           longitude: pos.coords.longitude,
         });
         if (
-          routeStatusRef.current === "En-route" &&
+          routeStatusRef.current === "EnRoute" &&
           socketRef.current?.connected
         ) {
           socketRef.current.emit("updateLocation", {
@@ -770,10 +693,14 @@ export default function RideDetailPage({
     );
   }
 
-  const pickupLocationName =
-    locations[route.pickupLocation] ?? route.pickupLocation;
-  const dropoffLocationName =
-    locations[route.dropoffLocation] ?? route.dropoffLocation;
+  const refreshNotice = refreshError && (
+    <p className={styles.refreshError} role="status">
+      {refreshError}
+    </p>
+  );
+
+  const pickupLocationName = route.pickup.name;
+  const dropoffLocationName = route.dropoff.name;
   const driverName = getDriverName(route.driver);
   const hasDriver = !!driverName;
 
@@ -820,15 +747,14 @@ export default function RideDetailPage({
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.type === "Driver") {
-    const studentObj =
-      route.student && typeof route.student !== "string"
-        ? (route.student as RouteUser)
-        : null;
+    const studentObj = route.student;
     const studentName = studentObj
       ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
       : "—";
     const accommodations =
-      studentObj?.studentInfo?.accessibilityNeeds?.join(", ") || "—";
+      studentObj?.studentInfo?.accessibilityNeeds
+        .map(({ label }) => label)
+        .join(", ") || "—";
     const additionalComments = studentObj?.studentInfo?.notes || "—";
 
     const chatModal = showChatModal && (
@@ -860,12 +786,17 @@ export default function RideDetailPage({
               </div>
             )}
             {messages.map((msg, idx) => {
-              const isUser = msg.sender === "user";
+              const isUser = msg.senderId === session?.user.userId;
+              const isAdminMessage =
+                msg.senderId !== route.student.id &&
+                msg.senderId !== route.driver?.id;
               const prevIsOther =
-                !isUser && idx > 0 && messages[idx - 1].sender === "other";
+                !isUser &&
+                idx > 0 &&
+                messages[idx - 1].senderId === msg.senderId;
               return (
                 <div
-                  key={idx}
+                  key={msg.id}
                   className={`${styles.messageRow} ${
                     isUser ? styles.messageRowUser : styles.messageRowOther
                   }`}
@@ -878,7 +809,14 @@ export default function RideDetailPage({
                         <BogIcon name="user" size={18} />
                       </div>
                     ))}
-                  <div className={styles.messageBubble}>
+                  <div
+                    className={`${styles.messageBubble} ${
+                      isAdminMessage ? styles.adminMessageBubble : ""
+                    }`}
+                  >
+                    {isAdminMessage && (
+                      <span className={styles.adminMessageLabel}>Admin</span>
+                    )}
                     <p className={styles.messageText}>{msg.text}</p>
                   </div>
                 </div>
@@ -949,11 +887,12 @@ export default function RideDetailPage({
               <span>Back to rides</span>
             </Link>
           </header>
+          {refreshNotice}
 
           <div className={styles.titleRow}>
             <h1 className={styles.pageTitle}>Ride Details</h1>
             <span className={styles.statusChip} style={statusChipStyle}>
-              {route.status}
+              {routeStatusLabels[route.status]}
             </span>
           </div>
 
@@ -1014,25 +953,11 @@ export default function RideDetailPage({
               </div>
 
               <div className={styles.chatButtonWrapper}>
-                {!isChatEligible && (
-                  <span className={styles.chatTooltip}>
-                    Chat is only available on the day of the ride
-                  </span>
-                )}
                 <button
                   type="button"
                   className={styles.chatButton}
-                  onClick={() => isChatEligible && setShowChatModal(true)}
-                  disabled={
-                    !isChatEligible ||
-                    [
-                      "Pickedup",
-                      "Completed",
-                      "Missing",
-                      "Cancelled by Student",
-                      "Cancelled by Admin",
-                    ].includes(route.status)
-                  }
+                  onClick={() => setShowChatModal(true)}
+                  disabled={CLOSED_CHAT_STATUSES.has(route.status)}
                 >
                   <BogIcon name="chats" size={18} />
                   <span>Chat with student</span>
@@ -1052,7 +977,7 @@ export default function RideDetailPage({
               )}
 
               {/* En-route: Student picked up + Student no-show */}
-              {route.status === "En-route" && (
+              {route.status === "EnRoute" && (
                 <div className={styles.enRouteActions}>
                   <button
                     type="button"
@@ -1160,12 +1085,13 @@ export default function RideDetailPage({
             <span>Back to rides</span>
           </Link>
         </header>
+        {refreshNotice}
 
         {/* Title row */}
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>Ride Details</h1>
           <span className={styles.statusChip} style={statusChipStyle}>
-            {route.status}
+            {routeStatusLabels[route.status]}
           </span>
         </div>
 
@@ -1259,16 +1185,8 @@ export default function RideDetailPage({
             <button
               type="button"
               className={styles.chatButton}
-              onClick={() => isChatEligible && setShowChatModal(true)}
-              disabled={
-                !isChatEligible ||
-                [
-                  "Missing",
-                  "Completed",
-                  "Cancelled by Student",
-                  "Cancelled by Admin",
-                ].includes(route.status)
-              }
+              onClick={() => setShowChatModal(true)}
+              disabled={CLOSED_CHAT_STATUSES.has(route.status)}
             >
               <BogIcon name="chats" size={18} />
               <span>Chat with driver</span>
@@ -1346,12 +1264,17 @@ export default function RideDetailPage({
                 </div>
               )}
               {messages.map((msg, idx) => {
-                const isUser = msg.sender === "user";
+                const isUser = msg.senderId === session?.user.userId;
+                const isAdminMessage =
+                  msg.senderId !== route.student.id &&
+                  msg.senderId !== route.driver?.id;
                 const prevIsOther =
-                  !isUser && idx > 0 && messages[idx - 1].sender === "other";
+                  !isUser &&
+                  idx > 0 &&
+                  messages[idx - 1].senderId === msg.senderId;
                 return (
                   <div
-                    key={idx}
+                    key={msg.id}
                     className={`${styles.messageRow} ${
                       isUser ? styles.messageRowUser : styles.messageRowOther
                     }`}
@@ -1364,7 +1287,14 @@ export default function RideDetailPage({
                           <BogIcon name="user" size={18} />
                         </div>
                       ))}
-                    <div className={styles.messageBubble}>
+                    <div
+                      className={`${styles.messageBubble} ${
+                        isAdminMessage ? styles.adminMessageBubble : ""
+                      }`}
+                    >
+                      {isAdminMessage && (
+                        <span className={styles.adminMessageLabel}>Admin</span>
+                      )}
                       <p className={styles.messageText}>{msg.text}</p>
                     </div>
                   </div>

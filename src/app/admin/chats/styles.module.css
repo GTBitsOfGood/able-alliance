@@ -1,0 +1,81 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-width: 0;
+  padding: var(--layout-content-pad-y) var(--layout-admin-pad-x);
+}
+
+.title {
+  margin: 0;
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-heading);
+  font-size: var(--text-desktop-display);
+  line-height: var(--text-desktop-display--line-height);
+}
+
+.tableWrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.viewChat {
+  color: var(--color-brand-text);
+  font: inherit;
+  font-weight: 600;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.empty,
+.error {
+  margin: 0;
+  font-size: var(--text-desktop-paragraph-2);
+}
+
+.empty {
+  color: var(--color-grey-text-weak);
+}
+
+.error {
+  color: var(--color-status-red-text);
+}
+
+.drawerLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawerBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(34 7 11 / 24%);
+  cursor: default;
+}
+
+.drawer {
+  position: relative;
+  width: min(48rem, 100vw);
+  height: 100%;
+  overflow-y: auto;
+  padding: 2.4rem;
+  background: var(--color-solid-bg-base);
+  box-shadow: -0.8rem 0 2.4rem rgb(34 7 11 / 12%);
+}
+
+.drawer > section {
+  margin-top: 0;
+  border: 0;
+  padding: 0;
+}
+
+@media (width < 640px) {
+  .drawer {
+    padding: 2rem;
+  }
+}
