@@ -1,10 +1,8 @@
 import type loadHighs from "highs";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
-import connectMongoDB from "../db/mongodb";
-import RouteModel, { RouteStatus } from "../db/models/RouteModel";
-import { DriverModel, StudentModel } from "../db/models/UserModel";
-import VehicleModel from "../db/models/VehicleModel";
-import LocationModel from "../db/models/LocationModel";
+import { db } from "@db";
+import { RouteStatus, type Prisma } from "@db/generated/client";
+import { adminRouteInclude } from "@/server/db/queries";
 import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 
 const TZ = "America/New_York";
@@ -200,70 +198,48 @@ function bookingProblems(
   return problems;
 }
 
-async function loadDay(date: string) {
-  await connectMongoDB();
+async function loadDay(date: string, client: Prisma.TransactionClient = db) {
   const dayStart = fromZonedTime(`${date}T00:00:00`, TZ);
   const dayEnd = fromZonedTime(`${date}T23:59:59.999`, TZ);
   const dayOfWeek = toZonedTime(dayStart, TZ).getDay();
 
   // Bookings from the neighbouring days can run across midnight into this one.
   const [vehicles, routes] = await Promise.all([
-    VehicleModel.find().lean(),
-    RouteModel.find({
-      $or: [
-        {
-          status: RouteStatus.Requested,
-          scheduledPickupTime: { $gte: dayStart, $lte: dayEnd },
-        },
-        {
-          status: { $in: BUSY_STATUSES },
-          scheduledPickupTime: {
-            $gte: new Date(dayStart.getTime() - DAY_MS),
-            $lte: new Date(dayEnd.getTime() + DAY_MS),
+    client.vehicle.findMany(),
+    client.route.findMany({
+      where: {
+        OR: [
+          {
+            status: RouteStatus.Requested,
+            scheduledPickupTime: { gte: dayStart, lte: dayEnd },
           },
-        },
-      ],
-    }).lean(),
+          {
+            status: { in: BUSY_STATUSES },
+            scheduledPickupTime: {
+              gte: new Date(dayStart.getTime() - DAY_MS),
+              lte: new Date(dayEnd.getTime() + DAY_MS),
+            },
+          },
+        ],
+      },
+      include: adminRouteInclude,
+    }),
   ]);
-  const bookedDriverIds = routes.flatMap((r) => r.driver?._id ?? []);
-  const [drivers, students] = await Promise.all([
-    DriverModel.find({
-      $or: [
-        { "shifts.dayOfWeek": dayOfWeek },
-        { _id: { $in: bookedDriverIds } },
+  const bookedDriverIds = routes.flatMap((r) => r.driverId ?? []);
+  const drivers = await client.user.findMany({
+    where: {
+      type: "Driver",
+      OR: [
+        { shifts: { some: { dayOfWeek } } },
+        { id: { in: bookedDriverIds } },
       ],
-    }).lean(),
-    StudentModel.find(
-      { _id: { $in: routes.map((r) => r.student._id) } },
-      { studentInfo: 1 },
-    ).lean(),
-  ]);
-  // The ride embeds a copy of the student; profile edits only reach this one.
-  const needsByStudent = new Map(
-    students.map((st) => [
-      st._id.toString(),
-      st.studentInfo?.accessibilityNeeds ?? [],
-    ]),
-  );
-
-  const locationIds = new Set(
-    routes.flatMap((r) => [
-      r.pickupLocation.toString(),
-      r.dropoffLocation.toString(),
-    ]),
-  );
-  const locations = new Map(
-    (await LocationModel.find({ _id: { $in: [...locationIds] } }).lean()).map(
-      (l) => [l._id.toString(), l],
-    ),
-  );
+    },
+    include: { shifts: true },
+  });
 
   const toRide = (r: (typeof routes)[number]): Ride => {
     const accommodations =
-      needsByStudent.get(r.student._id.toString()) ??
-      (r.student as { studentInfo?: { accessibilityNeeds?: string[] } })
-        .studentInfo?.accessibilityNeeds ??
-      [];
+      r.student.studentInfo?.accessibilityNeeds.map((a) => a.label) ?? [];
     const needsWheelchair = accommodations.some((a) =>
       a.toLowerCase().includes("wheelchair"),
     );
@@ -273,8 +249,8 @@ async function loadDay(date: string) {
         : OTHER_ACCOMMODATION_BOARDING_MIN
       : 0;
     const start = minutesFromDay(r.scheduledPickupTime, date);
-    const pickupLoc = locations.get(r.pickupLocation.toString());
-    const dropoffLoc = locations.get(r.dropoffLocation.toString());
+    const pickupLoc = r.pickup;
+    const dropoffLoc = r.dropoff;
     const estimatedDropoff = r.estimatedDropoffTime
       ? minutesFromDay(r.estimatedDropoffTime, date)
       : null;
@@ -282,7 +258,7 @@ async function loadDay(date: string) {
       estimatedDropoff ??
       start + travelMinutes(pickupLoc ?? null, dropoffLoc ?? null);
     return {
-      id: r._id.toString(),
+      id: r.id,
       studentName: `${r.student.firstName} ${r.student.lastName}`,
       accommodations,
       needsWheelchair,
@@ -295,8 +271,8 @@ async function loadDay(date: string) {
       dropoff: dropoffLoc ?? null,
       pickupName: pickupLoc?.name ?? "",
       dropoffName: dropoffLoc?.name ?? "",
-      driverId: r.driver?._id.toString(),
-      vehicleId: (r.vehicle as { _id?: unknown } | undefined)?._id?.toString(),
+      driverId: r.driverId ?? undefined,
+      vehicleId: r.vehicleId ?? undefined,
       vehicleLabel: r.vehicle?.vehicleId || r.vehicle?.name,
     };
   };
@@ -311,7 +287,7 @@ async function loadDay(date: string) {
 
   return {
     drivers: drivers.map((d) => ({
-      id: d._id.toString(),
+      id: d.id,
       name: `${d.firstName} ${d.lastName}`,
       shifts: (d.shifts ?? [])
         .filter((s) => s.dayOfWeek === dayOfWeek)
@@ -321,7 +297,7 @@ async function loadDay(date: string) {
         })),
     })),
     vehicles: vehicles.map((v) => ({
-      id: v._id.toString(),
+      id: v.id,
       label: v.vehicleId || v.name,
       wheelchair: v.accessibility === "Wheelchair",
     })),
@@ -401,8 +377,9 @@ function diagnoseAssignment(
 export async function planDay(
   date: string,
   fixed?: { rideId: string; driverId: string; vehicleId: string }[],
+  client: Prisma.TransactionClient = db,
 ): Promise<AutoSchedulePlan> {
-  const { drivers, vehicles, requested, busy } = await loadDay(date);
+  const { drivers, vehicles, requested, busy } = await loadDay(date, client);
   const fixedKeys = fixed
     ? new Set(fixed.map((f) => `${f.rideId}|${f.driverId}|${f.vehicleId}`))
     : null;
@@ -701,14 +678,16 @@ export async function findBookingConflicts(
   routeId: string,
   driverId: string,
   vehicleId: string,
+  client: Prisma.TransactionClient = db,
 ): Promise<string[]> {
-  await connectMongoDB();
-  const route = await RouteModel.findById(routeId, {
-    scheduledPickupTime: 1,
-  }).lean();
+  const route = await client.route.findUnique({
+    where: { id: routeId },
+    select: { scheduledPickupTime: true },
+  });
   if (!route) return [];
   const { drivers, vehicles, requested, busy } = await loadDay(
     formatInTimeZone(route.scheduledPickupTime, TZ, "yyyy-MM-dd"),
+    client,
   );
   const ride = requested.find((r) => r.id === routeId);
   const vehicle = vehicles.find((v) => v.id === vehicleId);
