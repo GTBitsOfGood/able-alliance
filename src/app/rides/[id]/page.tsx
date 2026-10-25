@@ -20,6 +20,7 @@ import type {
   RouteDetailResponse as RouteData,
   ChatMessageResponse,
 } from "@/utils/types/api";
+import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
 const CLOSED_CHAT_STATUSES = new Set([
@@ -145,9 +146,11 @@ export default function RideDetailPage({
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
+  const [markDelay, setMarkDelay] = useState(false);
+  const [delayActionBusy, setDelayActionBusy] = useState(false);
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
-  const delayActionBusy = false;
+  const [showDelayModal, setShowDelayModal] = useState(false);
 
   // Extract ID from params
   useEffect(() => {
@@ -563,8 +566,8 @@ export default function RideDetailPage({
   };
 
   const handleDelayRide = useCallback(async () => {
-    // TODO
-  }, []);
+    if (!routeId) return;
+  }, [routeId]);
 
   const handleCancelRide = useCallback(async () => {
     if (!routeId) return;
@@ -662,6 +665,32 @@ export default function RideDetailPage({
       setMarkingMissing(false);
     }
   }, [routeId]);
+
+  const handleMarkDelay = useCallback(
+    async (minutes: number) => {
+      if (!routeId) return;
+      setDelayActionBusy(true);
+      // setDelayActionError(null);
+      try {
+        const res = await fetch("/api/routes/delay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId, delayMinutes: minutes }),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? res.statusText);
+        }
+      } catch (e) {
+        // setDelayActionError(
+        //   e instanceof Error ? e.message : "Failed to mark as delayed.",
+        // );
+      } finally {
+        setDelayActionBusy(false);
+      }
+    },
+    [routeId],
+  );
 
   if (sessionStatus === "loading" || loading) {
     return (
@@ -879,6 +908,16 @@ export default function RideDetailPage({
           cancelLabel="Cancel"
           confirming={markingMissing}
         />
+        <DelayRideModal
+          open={showDelayModal}
+          onOpenChange={setShowDelayModal}
+          onConfirm={async (minutes) => {
+            await handleMarkDelay(minutes);
+            setShowDelayModal(false);
+          }}
+          confirming={driverActionBusy}
+        />
+
         <main className={styles.main}>
           <header className={styles.header}>
             <Link href="/rides" className={styles.backLink}>
@@ -983,7 +1022,7 @@ export default function RideDetailPage({
                     className={
                       styles.outlineButton + " " + styles.redOutlineButton
                     }
-                    onClick={() => void handleDelayRide()}
+                    onClick={() => void setShowDelayModal(true)}
                     disabled={delayActionBusy}
                   >
                     {delayActionBusy ? "Delaying..." : "Delay Ride"}
