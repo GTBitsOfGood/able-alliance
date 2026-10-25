@@ -42,6 +42,19 @@ export async function startServer(requestHandler?: RequestListener) {
     transports: ["websocket", "polling"],
   });
 
+  io.engine.on("connection_error", (error) => {
+    console.error("Socket.IO transport connection failed", {
+      code: error.code,
+      message: error.message,
+      context: error.context,
+      transport: error.req._query.transport,
+      hasSessionId: Boolean(error.req._query.sid),
+      method: error.req.method,
+      upgrade: error.req.headers.upgrade,
+      connection: error.req.headers.connection,
+    });
+  });
+
   try {
     await connectDatabase();
     console.log("Websocket server connected to PostgreSQL");

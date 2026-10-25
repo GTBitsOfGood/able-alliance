@@ -33,7 +33,6 @@ export default function NotificationProvider({
 
     const newSocket = io(`${wsUrl}/notifications`, {
       auth: { token: accessToken },
-      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,

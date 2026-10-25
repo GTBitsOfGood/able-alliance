@@ -379,7 +379,6 @@ export default function RideDetailPage({
 
     const newSocket = io(wsUrl, {
       auth: { routeId, token: session.user.accessToken },
-      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,

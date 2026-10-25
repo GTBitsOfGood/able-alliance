@@ -94,7 +94,6 @@ export default function AdminChatView({
     if (!token || !wsUrl || chatlog?.status !== "active") return;
 
     const nextSocket = io(wsUrl, {
-      transports: ["websocket", "polling"],
       auth: { routeId, token },
     });
     socketRef.current = nextSocket;
