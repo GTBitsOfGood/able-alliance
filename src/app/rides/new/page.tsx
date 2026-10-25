@@ -259,44 +259,50 @@ export default function CreateRidePage() {
         Math.abs(pickupLngLat[0] - dropoffLngLat[0]) < 0.0003 &&
         Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
 
-      // Add a dot for every non-selected campus location.
-      for (const loc of locations) {
-        const isPickup = loc.name === pickupLocationName;
-        const isDropoff = loc.name === dropoffLocationName;
-        if (!isPickup && !isDropoff) {
-          const dotMarker = new mapboxgl.Marker({
-            element: createLocationDot(loc.name),
-            anchor: "center",
-          })
-            .setLngLat([loc.longitude, loc.latitude])
-            .addTo(mapRef.current);
-          dotMarkerRefs.current.push(dotMarker);
+      const map = mapRef.current;
+      const addMarkers = () => {
+        // Add a dot for every non-selected campus location.
+        for (const loc of locations) {
+          const isPickup = loc.name === pickupLocationName;
+          const isDropoff = loc.name === dropoffLocationName;
+          if (!isPickup && !isDropoff) {
+            const dotMarker = new mapboxgl.Marker({
+              element: createLocationDot(loc.name),
+              anchor: "center",
+            })
+              .setLngLat([loc.longitude, loc.latitude])
+              .addTo(map);
+            dotMarkerRefs.current.push(dotMarker);
+          }
         }
-      }
 
-      if (pickup && pickupLngLat) {
-        const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`),
-          anchor: "bottom",
-        })
-          .setLngLat(pickupLngLat)
-          .addTo(mapRef.current);
-        markerRefs.current.push(pickupMarker);
-      }
+        if (pickup && pickupLngLat) {
+          const pickupMarker = new mapboxgl.Marker({
+            element: createCustomPin(`Pickup: ${pickup.name}`),
+            anchor: "bottom",
+          })
+            .setLngLat(pickupLngLat)
+            .addTo(map);
+          markerRefs.current.push(pickupMarker);
+        }
 
-      if (dropoff && dropoffLngLat) {
-        // Raise dropoff pin above pickup when they share the same location
-        const dropoffMarker = new mapboxgl.Marker({
-          element: createCustomPin(
-            `Dropoff: ${dropoff.name}`,
-            overlap ? 50 : 0,
-          ),
-          anchor: "bottom",
-        })
-          .setLngLat(dropoffLngLat)
-          .addTo(mapRef.current);
-        markerRefs.current.push(dropoffMarker);
-      }
+        if (dropoff && dropoffLngLat) {
+          // Raise dropoff pin above pickup when they share the same location
+          const dropoffMarker = new mapboxgl.Marker({
+            element: createCustomPin(
+              `Dropoff: ${dropoff.name}`,
+              overlap ? 50 : 0,
+            ),
+            anchor: "bottom",
+          })
+            .setLngLat(dropoffLngLat)
+            .addTo(map);
+          markerRefs.current.push(dropoffMarker);
+        }
+      };
+
+      if (map.loaded()) addMarkers();
+      else map.once("load", addMarkers);
     } catch (e) {
       // Surface failures from the external map API to the user.
       // eslint-disable-next-line react-hooks/set-state-in-effect

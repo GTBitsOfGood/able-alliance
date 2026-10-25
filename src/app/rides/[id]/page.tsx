@@ -270,42 +270,37 @@ export default function RideDetailPage({
           center: defaultCenter,
           zoom: 13,
         });
-        mapRef.current.on("load", () => {
-          mapRef.current?.resize();
-          fitToBounds(mapRef.current!);
-        });
-      } else {
-        fitToBounds(mapRef.current);
       }
 
-      markerRefs.current.forEach((marker) => marker.remove());
-      markerRefs.current = [];
+      const map = mapRef.current;
+      const updateMap = () => {
+        map.resize();
+        fitToBounds(map);
+        markerRefs.current.forEach((marker) => marker.remove());
+        markerRefs.current = [];
 
-      const pinColor = "#183777";
-      const pickupLngLat: [number, number] = [
-        pickup.longitude,
-        pickup.latitude,
-      ];
-      const dropoffLngLat: [number, number] = [
-        dropoff.longitude,
-        dropoff.latitude,
-      ];
-      const overlap = coordsOverlap(pickupLngLat, dropoffLngLat);
+        const pinColor = "#183777";
+        const pickupLngLat: [number, number] = [
+          pickup.longitude,
+          pickup.latitude,
+        ];
+        const dropoffLngLat: [number, number] = [
+          dropoff.longitude,
+          dropoff.latitude,
+        ];
+        const overlap = coordsOverlap(pickupLngLat, dropoffLngLat);
 
-      // Store static pin coords so the self-marker effect can check for overlap
-      staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
+        // Store static pin coords so the self-marker effect can check for overlap
+        staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
 
-      if (pickup && mapRef.current) {
         const pickupMarker = new mapboxgl.Marker({
           element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
-          .addTo(mapRef.current);
+          .addTo(map);
         markerRefs.current.push(pickupMarker);
-      }
 
-      if (dropoff && mapRef.current) {
         // If pickup/dropoff overlap, raise the dropoff pin one label-height above
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
@@ -316,9 +311,12 @@ export default function RideDetailPage({
           anchor: "bottom",
         })
           .setLngLat(dropoffLngLat)
-          .addTo(mapRef.current);
+          .addTo(map);
         markerRefs.current.push(dropoffMarker);
-      }
+      };
+
+      if (map.loaded()) updateMap();
+      else map.once("load", updateMap);
     };
 
     initializeMap();
