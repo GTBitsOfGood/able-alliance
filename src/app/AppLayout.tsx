@@ -1,11 +1,17 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import AppNavbar from "@/components/AppNavbar";
 import AdminSidebar from "@/components/AdminSidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
+
+  // The login page is outside the authenticated check, including for
+  // signed-in users while its redirect is resolving
+  if (pathname === "/login") return <>{children}</>;
 
   const userType = session?.user?.type;
   const isAdmin =
