@@ -24,6 +24,7 @@ export interface ServerEvents {
   closeRouteRoomError: (message: string) => void;
   notification: (payload: { type: string; message: string }) => void;
   routeUpdated: (payload: { routeId: string; status: string }) => void;
+  locationsUpdated: () => void;
 }
 
 export interface SocketData {

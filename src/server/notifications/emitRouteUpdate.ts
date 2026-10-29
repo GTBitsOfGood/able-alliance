@@ -1,3 +1,5 @@
+import { postEvent } from "./postEvent";
+
 type RouteRef = {
   id: { toString(): string };
   status: string;
@@ -16,15 +18,6 @@ export function emitRouteUpdate(
   route: RouteRef,
   extraUserIds: string[] = [],
 ): void {
-  const url = process.env.WEBSOCKET_INTERNAL_URL;
-  const secret = process.env.WEBSOCKET_INTERNAL_SECRET;
-  if (!url || !secret) {
-    console.error(
-      "emitRouteUpdate: WEBSOCKET_INTERNAL_URL/SECRET not configured",
-    );
-    return;
-  }
-
   const userIds = [
     ...new Set(
       [
@@ -36,32 +29,10 @@ export function emitRouteUpdate(
   ];
   const routeId = route.id.toString();
 
-  void postRouteUpdate(url, secret, {
+  postEvent({
     event: "routeUpdated",
     userIds,
     toAdmins: true,
     payload: { routeId, status: route.status },
   });
-}
-
-async function postRouteUpdate(
-  url: string,
-  secret: string,
-  body: Record<string, unknown>,
-): Promise<void> {
-  try {
-    const res = await fetch(`${url}/events`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": secret,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      console.error(`emitRouteUpdate: events failed with status ${res.status}`);
-    }
-  } catch (error) {
-    console.error("emitRouteUpdate: failed to reach websocket server", error);
-  }
 }

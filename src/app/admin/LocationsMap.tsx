@@ -75,6 +75,7 @@ export default function LocationsMap({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const dotMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const pinMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const framedRef = useRef(false);
   const onSelectRef = useRef(onSelect);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -121,6 +122,7 @@ export default function LocationsMap({
       dotMarkersRef.current = [];
       pinMarkerRef.current?.remove();
       pinMarkerRef.current = null;
+      framedRef.current = false;
       map.remove();
       mapRef.current = null;
     };
@@ -132,7 +134,8 @@ export default function LocationsMap({
     map.getCanvas().style.cursor = selectable ? "crosshair" : "";
   }, [mapLoaded, selectable]);
 
-  // Draw a dot for every location and frame them all in view.
+  // Draw a dot for every location. Frame them all in view only the first
+  // time, so real-time updates don't move the camera out from under the user.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
@@ -147,12 +150,14 @@ export default function LocationsMap({
         .addTo(map),
     );
 
+    if (framedRef.current || locations.length === 0) return;
+    framedRef.current = true;
     if (locations.length === 1) {
       map.jumpTo({
         center: [locations[0].longitude, locations[0].latitude],
         zoom: DEFAULT_ZOOM,
       });
-    } else if (locations.length > 1) {
+    } else {
       const bounds = new mapboxgl.LngLatBounds();
       for (const loc of locations) bounds.extend([loc.longitude, loc.latitude]);
       map.fitBounds(bounds, {

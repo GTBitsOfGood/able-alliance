@@ -50,6 +50,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Selection is by row index, so drop it whenever the rows are replaced
+  // (e.g. a real-time update) to avoid acting on a different row.
+  const [selectionRowIds, setSelectionRowIds] = useState(rowIds);
+  if (selectionRowIds !== rowIds) {
+    setSelectionRowIds(rowIds);
+    setSelectedRows(new Set());
+    if (!deleting) setShowDeleteConfirm(false);
+  }
   const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] = useState<
     string[]
   >([]);

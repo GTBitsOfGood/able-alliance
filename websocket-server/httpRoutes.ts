@@ -45,8 +45,9 @@ export function registerHttpRoutes(
     res.status(200).json({ ok: true, delivered });
   });
 
-  // Internal endpoint: the Next.js app calls this after a route changes so
-  // open clients (the route's users and all admins) can refetch.
+  // Internal endpoint: the Next.js app calls this after a route or location
+  // changes so open clients can refetch. Route updates go to the route's users
+  // and all admins; location updates go to every connected user.
   app.post("/events", (req, res) => {
     const secret = req.headers["x-internal-secret"];
     if (
@@ -57,6 +58,14 @@ export function registerHttpRoutes(
     }
 
     const { event, userIds, toAdmins, payload } = req.body ?? {};
+
+    if (event === "locationsUpdated") {
+      const recipients = notificationsNsp.sockets.size;
+      debugLog(`/events: ${event} sockets=${recipients}`);
+      notificationsNsp.emit("locationsUpdated");
+      return res.status(200).json({ ok: true, recipients });
+    }
+
     if (
       event !== "routeUpdated" ||
       !Array.isArray(userIds) ||
