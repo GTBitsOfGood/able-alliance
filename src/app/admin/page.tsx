@@ -11,6 +11,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect, Suspense } from "react";
 import AccommodationsPanel from "./AccommodationsPanel";
 import VehicleDetailsPanel from "./VehicleDetailsPanel";
+import LocationsMap, { type LngLat } from "./LocationsMap";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
@@ -35,8 +36,17 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     null,
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { columns, rows, rowIds, loading, error, deleteRows, refetch } =
-    useAdminTableData(table);
+  const {
+    columns,
+    rows,
+    rowIds,
+    locations,
+    loading,
+    error,
+    deleteRows,
+    refetch,
+  } = useAdminTableData(table);
+  const [newLocationPoint, setNewLocationPoint] = useState<LngLat | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -361,21 +371,16 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     const name = (
       form.elements.namedItem("name") as HTMLInputElement
     ).value.trim();
-    const latitude = parseFloat(
-      (form.elements.namedItem("latitude") as HTMLInputElement).value,
-    );
-    const longitude = parseFloat(
-      (form.elements.namedItem("longitude") as HTMLInputElement).value,
-    );
 
     if (!name) {
       setSubmitError("Location name is required.");
       return;
     }
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      setSubmitError("Latitude and longitude must be valid numbers.");
+    if (!newLocationPoint) {
+      setSubmitError("Click the map to place the location.");
       return;
     }
+    const { latitude, longitude } = newLocationPoint;
 
     fetch("/api/locations", {
       method: "POST",
@@ -393,6 +398,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
             );
         refetch();
         setShowForm(false);
+        setNewLocationPoint(null);
         form.reset();
       })
       .catch((err: Error) =>
@@ -753,18 +759,22 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
           placeholder="e.g. Campus Recreation Center"
           required
         />
-        <BogTextInput
-          name="latitude"
-          label="Latitude"
-          placeholder="e.g. 33.7756"
-          required
-        />
-        <BogTextInput
-          name="longitude"
-          label="Longitude"
-          placeholder="e.g. -84.3963"
-          required
-        />
+        <div className="flex flex-col gap-3 w-full max-w-[80rem]">
+          <span className="text-paragraph-1 text-[var(--color-grey-text-strong)]">
+            Click the map to place the location. Existing locations are shown as
+            dots.
+          </span>
+          <LocationsMap
+            locations={locations}
+            selected={newLocationPoint}
+            onSelect={setNewLocationPoint}
+          />
+          <span className="text-paragraph-2 text-[var(--color-grey-text-weak)]">
+            {newLocationPoint
+              ? `Selected: ${newLocationPoint.latitude.toFixed(6)}, ${newLocationPoint.longitude.toFixed(6)}`
+              : "No point selected"}
+          </span>
+        </div>
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : (
@@ -860,6 +870,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                   setSubmitError(null);
                   setStudentAccessibilityNeeds([]);
                   setVehicleAccessibility("None");
+                  setNewLocationPoint(null);
                 }}
               >
                 <BogIcon name="arrow-left" size={20} />
@@ -894,6 +905,9 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                 <p className="mb-4 text-sm text-amber-700" role="status">
                   {error}
                 </p>
+              )}
+              {table === "Locations" && !loading && (
+                <LocationsMap locations={locations} className="mb-[2.4rem]" />
               )}
               {loading ? (
                 <p className="text-gray-600">Loading…</p>

@@ -182,6 +182,7 @@ export function useAdminTableData(tableType: AdminTableType) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rowIds, setRowIds] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const refresh = useCallback(() => {
@@ -247,6 +248,7 @@ export function useAdminTableData(tableType: AdminTableType) {
           setColumns(LOCATION_COLUMNS);
           setRows(locationRawToTableRows(raw));
           setRowIds(extractIds(data));
+          setLocations(Array.isArray(data) ? (data as Location[]) : []);
           setLoading(false);
         } else if (tableType === "Rides") {
           if (cancelled) return;
@@ -313,6 +315,7 @@ export function useAdminTableData(tableType: AdminTableType) {
     columns,
     rows,
     rowIds,
+    locations,
     loading,
     error,
     deleteRows,
