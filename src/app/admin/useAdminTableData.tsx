@@ -3,7 +3,8 @@
 import type { UserResponse } from "@/utils/types/api";
 import type { Vehicle, Location } from "@db/generated/browser";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useLocationUpdates } from "@/components/NotificationProvider/useLocationUpdates";
 import Link from "next/link";
 import type {
   ColumnHeaderCellContent,
@@ -182,18 +183,35 @@ export function useAdminTableData(tableType: AdminTableType) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rowIds, setRowIds] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // A silent refresh keeps the current rows on screen instead of showing the
+  // loading state, so real-time updates don't remount the table and map.
+  const silentRefreshRef = useRef(false);
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
 
+  useLocationUpdates(
+    () => {
+      silentRefreshRef.current = true;
+      refresh();
+    },
+    { enabled: tableType === "Locations" },
+  );
+
   useEffect(() => {
     let cancelled = false;
+    const silent = silentRefreshRef.current;
+    silentRefreshRef.current = false;
 
     const loadData = async () => {
-      setLoading(true);
-      setError(null);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
 
       const extractIds = (data: unknown): string[] => {
         if (!Array.isArray(data)) return [];
@@ -247,6 +265,8 @@ export function useAdminTableData(tableType: AdminTableType) {
           setColumns(LOCATION_COLUMNS);
           setRows(locationRawToTableRows(raw));
           setRowIds(extractIds(data));
+          setLocations(Array.isArray(data) ? (data as Location[]) : []);
+          setError(null);
           setLoading(false);
         } else if (tableType === "Rides") {
           if (cancelled) return;
@@ -274,6 +294,7 @@ export function useAdminTableData(tableType: AdminTableType) {
             ? err.message
             : `Failed to load ${tableType.toLowerCase()}.`,
         );
+        if (silent) return;
         setRows([]);
         setRowIds([]);
         setLoading(false);
@@ -313,6 +334,7 @@ export function useAdminTableData(tableType: AdminTableType) {
     columns,
     rows,
     rowIds,
+    locations,
     loading,
     error,
     deleteRows,

@@ -105,6 +105,9 @@ export default function RideDetailPage({
   const socketRef = useRef<Socket | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  // map.loaded() is false whenever the camera is moving or tiles are loading,
+  // and "load" fires only once, so track the initial load ourselves.
+  const mapLoadedRef = useRef(false);
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
   const otherPartyMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const selfMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -270,6 +273,9 @@ export default function RideDetailPage({
           center: defaultCenter,
           zoom: 13,
         });
+        mapRef.current.on("load", () => {
+          mapLoadedRef.current = true;
+        });
       }
 
       const map = mapRef.current;
@@ -315,7 +321,7 @@ export default function RideDetailPage({
         markerRefs.current.push(dropoffMarker);
       };
 
-      if (map.loaded()) updateMap();
+      if (mapLoadedRef.current) updateMap();
       else map.once("load", updateMap);
     };
 
@@ -336,6 +342,7 @@ export default function RideDetailPage({
       }
       mapRef.current?.remove();
       mapRef.current = null;
+      mapLoadedRef.current = false;
     };
   }, []);
 

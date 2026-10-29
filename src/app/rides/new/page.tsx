@@ -8,6 +8,7 @@ import Link from "next/link";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import { SearchableSelect } from "@/components/SearchableSelect/SearchableSelect";
 import BogIcon from "@/components/BogIcon/BogIcon";
+import { useLocationUpdates } from "@/components/NotificationProvider/useLocationUpdates";
 import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import styles from "./styles.module.css";
 
@@ -73,6 +74,9 @@ export default function CreateRidePage() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  // map.loaded() is false whenever the camera is moving or tiles are loading,
+  // and "load" fires only once, so track the initial load ourselves.
+  const mapLoadedRef = useRef(false);
   const focusSelectedLocationsRef = useRef<
     (map: mapboxgl.Map, duration: number) => void
   >(() => {});
@@ -119,6 +123,21 @@ export default function CreateRidePage() {
 
     fetchLocations();
   }, []);
+
+  // Pick up locations added or removed by an admin while this page is open.
+  useLocationUpdates(async () => {
+    try {
+      const res = await fetch("/api/locations");
+      if (!res.ok) return;
+      const data = (await res.json()) as Location[];
+      const names = new Set(data.map((l) => l.name));
+      setLocations(data);
+      setPickupLocationName((name) => (names.has(name) ? name : ""));
+      setDropoffLocationName((name) => (names.has(name) ? name : ""));
+    } catch {
+      // Keep showing the last known locations.
+    }
+  });
 
   useEffect(() => {
     try {
@@ -192,11 +211,12 @@ export default function CreateRidePage() {
           zoom: defaultZoom,
         });
         mapRef.current.on("load", () => {
+          mapLoadedRef.current = true;
           if (!mapRef.current) return;
           mapRef.current.resize();
           focusSelectedLocationsRef.current(mapRef.current, 0);
         });
-      } else if (mapRef.current.loaded()) {
+      } else if (mapLoadedRef.current) {
         focusSelectedLocations(mapRef.current, 700);
       }
 
@@ -301,7 +321,7 @@ export default function CreateRidePage() {
         }
       };
 
-      if (map.loaded()) addMarkers();
+      if (mapLoadedRef.current) addMarkers();
       else map.once("load", addMarkers);
     } catch (e) {
       // Surface failures from the external map API to the user.
@@ -321,6 +341,7 @@ export default function CreateRidePage() {
       dotMarkerRefs.current = [];
       mapRef.current?.remove();
       mapRef.current = null;
+      mapLoadedRef.current = false;
     };
   }, []);
 
