@@ -422,10 +422,10 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
 
   const deleteLabel =
     table === "Locations"
-      ? "Delete location"
+      ? "Archive location"
       : table === "Vehicles"
-        ? "Delete vehicle"
-        : "Delete user";
+        ? "Archive vehicle"
+        : "Archive user";
 
   const formContent =
     table === "Students" ? (
@@ -955,7 +955,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                             } as React.CSSProperties
                           }
                         >
-                          {deleting ? "Deleting…" : deleteLabel}
+                          {deleting ? "Archiving…" : deleteLabel}
                         </BogButton>
                       )}
                       <BogButton
@@ -991,14 +991,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
           if (!o) setShowDeleteConfirm(false);
         }}
         onConfirm={handleDelete}
-        title={`Delete ${deleteNoun}${selectedRows.size === 1 ? "" : "s"}?`}
+        title={`Archive ${deleteNoun}${selectedRows.size === 1 ? "" : "s"}?`}
         description={
           selectedRows.size === 1
-            ? `Are you sure you want to delete this ${deleteNoun}? This action cannot be undone.`
-            : `Are you sure you want to delete these ${selectedRows.size} ${deleteNoun}s? This action cannot be undone.`
+            ? `Are you sure you want to archive this ${deleteNoun}? It will be hidden from all lists and dropdowns, and this cannot be undone yet.`
+            : `Are you sure you want to archive these ${selectedRows.size} ${deleteNoun}s? They will be hidden from all lists and dropdowns, and this cannot be undone yet.`
         }
         confirmLabel={deleteLabel}
-        confirmingLabel="Deleting…"
+        confirmingLabel="Archiving…"
         confirming={deleting}
       />
     </div>

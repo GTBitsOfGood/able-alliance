@@ -57,18 +57,21 @@ export const LOCATIONS = {
     name: "Exhibition Hall",
     latitude: 33.7756,
     longitude: -84.4027,
+    status: "active",
   },
   techSquare: {
     id: fixtureId("b002"),
     name: "Tech Square Eastbound",
     latitude: 33.7767,
     longitude: -84.3891,
+    status: "active",
   },
   studentCenter: {
     id: fixtureId("b003"),
     name: "Student Center",
     latitude: 33.7739,
     longitude: -84.3983,
+    status: "active",
   },
 } as const;
 

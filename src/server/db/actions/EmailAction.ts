@@ -12,6 +12,7 @@ export const getDailySummaryUsers = () =>
   db.user.findMany({
     where: {
       type: { in: ["Student", "Driver"] },
+      status: "active",
       settings: { is: { dailySummary: true } },
     },
   });
