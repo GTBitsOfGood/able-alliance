@@ -435,7 +435,11 @@ async function assignRoute(
     });
     if (!driverRow || driverRow.type !== "Driver")
       throw new ArgumentError("Driver not found or not a driver");
+    if (driverRow.status === "archived")
+      throw new ArgumentError("Driver is archived and cannot be assigned");
     if (!vehicleRow) throw new ArgumentError("Vehicle not found");
+    if (vehicleRow.status === "archived")
+      throw new ArgumentError("Vehicle is archived and cannot be assigned");
     const driver = driverRow;
     const startTime = estTimeStr(route.scheduledPickupTime);
     const day = estDayOfWeek(route.scheduledPickupTime);

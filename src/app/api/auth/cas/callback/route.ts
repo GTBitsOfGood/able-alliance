@@ -90,6 +90,13 @@ export async function GET(request: NextRequest) {
       return loginErrorRedirect(request, "user_not_found", appUrl);
     }
 
+    if (user.status === "archived") {
+      console.error(
+        `[CAS Callback] CAS user "${username}" is archived and cannot log in`,
+      );
+      return loginErrorRedirect(request, "account_archived", appUrl);
+    }
+
     const userId = user.id;
 
     const displayName =
