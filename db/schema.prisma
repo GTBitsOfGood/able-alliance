@@ -122,6 +122,7 @@ model Route {
   pickupWindowStart    DateTime    @db.Timestamptz(3)
   pickupWindowEnd      DateTime    @db.Timestamptz(3)
   estimatedDropoffTime DateTime?   @db.Timestamptz(3)
+  delayMinutes         Int         @default(0)
   status               RouteStatus @default(Requested)
   seriesId             String?     @db.Uuid
   series               RideSeries? @relation(fields: [seriesId], references: [id], onDelete: Restrict)
