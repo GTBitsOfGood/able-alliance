@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import { MAX_DELAY_MINUTES } from "@/utils/consts";
 
 const PRESET_MINUTES = [2, 5, 10] as const;
-const MAX_DELAY_MINUTES = 120;
 
 type DelayRideModalProps = {
   open: boolean;
@@ -96,22 +96,31 @@ export default function DelayRideModal({
             {value} minutes
           </button>
         ))}
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={MAX_DELAY_MINUTES}
-          step={1}
-          placeholder="Other"
-          aria-label="Custom delay in minutes"
-          disabled={confirming}
-          value={custom}
-          className={`${optionClass(preset === null && minutes !== null)} outline-none focus:border-[var(--color-brand-stroke-strong)]`}
-          onChange={(e) => {
-            setCustom(e.target.value);
-            setPreset(null);
-          }}
-        />
+        <label
+          className={`${optionClass(preset === null && minutes !== null)} flex cursor-text items-center gap-[0.4rem] focus-within:border-[var(--color-brand-stroke-strong)]`}
+        >
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={MAX_DELAY_MINUTES}
+            step={1}
+            placeholder="Custom"
+            aria-label="Custom delay in minutes"
+            disabled={confirming}
+            value={custom}
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:italic [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            onChange={(e) => {
+              setCustom(e.target.value);
+              setPreset(null);
+            }}
+          />
+          {custom && (
+            <span aria-hidden className="shrink-0">
+              minutes
+            </span>
+          )}
+        </label>
       </div>
     </ConfirmActionModal>
   );

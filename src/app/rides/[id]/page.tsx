@@ -668,7 +668,6 @@ export default function RideDetailPage({
     async (minutes: number) => {
       if (!routeId) return;
       setDelayActionBusy(true);
-      // setDelayActionError(null);
       try {
         const res = await fetch("/api/routes/delay", {
           method: "POST",
@@ -680,9 +679,9 @@ export default function RideDetailPage({
           throw new Error(body.error ?? res.statusText);
         }
       } catch (e) {
-        // setDelayActionError(
-        //   e instanceof Error ? e.message : "Failed to mark as delayed.",
-        // );
+        setDriverActionError(
+          e instanceof Error ? e.message : "Failed to mark as delayed.",
+        );
       } finally {
         setDelayActionBusy(false);
       }

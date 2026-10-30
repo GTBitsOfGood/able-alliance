@@ -256,6 +256,68 @@ export async function cancelRoute(
 
   return route;
 }
+export async function delayRoute(routeId: string, minutes: number) {
+  routeId = routeId.toLowerCase();
+  const route = await db.$transaction(async (tx) => {
+    // Only allow delay if route is Scheduled or EnRoute. Checking status in the same query
+    // ensures that the route is not modified by another transaction like pickup or cancel
+    const { count } = await tx.route.updateMany({
+      where: {
+        id: routeId,
+        status: { in: [RouteStatus.Scheduled, RouteStatus.EnRoute] },
+      },
+      data: { delayMinutes: { increment: minutes } },
+    });
+
+    if (count === 0) {
+      const current = await tx.route.findUnique({
+        where: { id: routeId },
+        select: { id: true, status: true },
+      });
+      if (!current) {
+        throw new NotFoundError("Route not found");
+      }
+      throw new ConflictError(
+        "This ride can no longer be delayed. Current status: " + current.status,
+      );
+    }
+
+    return await tx.route.findUniqueOrThrow({
+      where: { id: routeId },
+      include: adminRouteInclude,
+    });
+  });
+  emitRouteUpdate(route);
+
+  const shift = (date: Date) =>
+    new Date(date.getTime() + route.delayMinutes * 60 * 1000);
+  const tasks = [
+    sendEmailSafely("rideDelayed", () =>
+      EmailClient.rideDelayed(route.id, {
+        delay: `${route.delayMinutes} minutes`,
+        oldPickupTime: formatEstTime(route.scheduledPickupTime),
+        newPickupTime: formatEstTime(shift(route.scheduledPickupTime)),
+        oldDropoffTime: route.estimatedDropoffTime
+          ? formatEstTime(route.estimatedDropoffTime)
+          : "N/A",
+        newDropoffTime: route.estimatedDropoffTime
+          ? formatEstTime(shift(route.estimatedDropoffTime))
+          : "N/A",
+      }),
+    ),
+  ];
+  if (route.student) {
+    tasks.push(
+      emitToast(route.student.id.toString(), {
+        type: "info",
+        message: `Your ride has been delayed by ${route.delayMinutes} minutes.`,
+      }),
+    );
+  }
+  dispatchNotifications(tasks);
+
+  return route;
+}
 
 export async function startRoute(routeId: string) {
   const route = await transitionRoute(
