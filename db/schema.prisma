@@ -30,6 +30,11 @@ enum RouteStatus {
   CancelledByAdmin
 }
 
+enum Status {
+  active
+  archived
+}
+
 model User {
   id            String          @id @default(uuid()) @db.Uuid
   firstName     String
@@ -38,6 +43,7 @@ model User {
   username      String          @unique
   email         String          @unique
   type          UserType
+  status        Status          @default(active)
   settings      UserSettings?
   studentInfo   StudentProfile?
   shifts        Shift[]
@@ -45,6 +51,8 @@ model User {
   driverRoutes  Route[]         @relation("DriverRoutes")
   rideSeries    RideSeries[]
   sentMessages  Message[]
+
+  @@index([type, status])
 }
 
 model UserSettings {
@@ -83,10 +91,13 @@ model Location {
   name           String       @unique
   latitude       Float
   longitude      Float
+  status         Status       @default(active)
   pickups        Route[]      @relation("PickupLocation")
   dropoffs       Route[]      @relation("DropoffLocation")
   seriesPickups  RideSeries[] @relation("SeriesPickupLocation")
   seriesDropoffs RideSeries[] @relation("SeriesDropoffLocation")
+
+  @@index([status])
 }
 
 model Vehicle {
@@ -97,7 +108,10 @@ model Vehicle {
   description   String?
   accessibility VehicleAccessibility
   seatCount     Int
+  status        Status               @default(active)
   routes        Route[]
+
+  @@index([status])
 }
 
 model Accommodation {

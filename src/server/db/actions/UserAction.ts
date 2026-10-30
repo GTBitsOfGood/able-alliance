@@ -6,7 +6,7 @@ import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 
 export async function getUsers(type?: UserType) {
   return db.user.findMany({
-    where: type ? { type } : {},
+    where: type ? { type, status: "active" } : { status: "active" },
     include: userInclude,
   });
 }
@@ -39,22 +39,13 @@ export async function createUser(data: Prisma.UserCreateInput) {
   }
 }
 
-export async function deleteUser(id: string) {
-  try {
-    return await db.user.delete({
-      where: { id: id.toLowerCase() },
-      include: userInclude,
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") throw new NotFoundError("User not found");
-      if (error.code === "P2003")
-        throw new ConflictError(
-          "User has ride or message history and cannot be deleted",
-        );
-    }
-    throw error;
-  }
+export async function archiveUser(id: string) {
+  await getUserById(id);
+  return db.user.update({
+    where: { id: id.toLowerCase() },
+    data: { status: "archived" },
+    include: userInclude,
+  });
 }
 
 export async function updateUser(

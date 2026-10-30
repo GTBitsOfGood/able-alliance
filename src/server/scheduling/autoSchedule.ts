@@ -205,7 +205,7 @@ async function loadDay(date: string, client: Prisma.TransactionClient = db) {
 
   // Bookings from the neighbouring days can run across midnight into this one.
   const [vehicles, routes] = await Promise.all([
-    client.vehicle.findMany(),
+    client.vehicle.findMany({ where: { status: "active" } }),
     client.route.findMany({
       where: {
         OR: [
@@ -289,6 +289,7 @@ async function loadDay(date: string, client: Prisma.TransactionClient = db) {
     drivers: drivers.map((d) => ({
       id: d.id,
       name: `${d.firstName} ${d.lastName}`,
+      active: d.status === "active",
       shifts: (d.shifts ?? [])
         .filter((s) => s.dayOfWeek === dayOfWeek)
         .map((s) => ({
@@ -400,8 +401,10 @@ export async function planDay(
   requested.forEach((ride, ri) => {
     const onShift = drivers
       .map((d, di) => ({ d, di }))
-      .filter(({ d }) =>
-        d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end),
+      .filter(
+        ({ d }) =>
+          d.active &&
+          d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end),
       );
     const freeDrivers = onShift.filter(({ d }) =>
       (busyByDriver.get(d.id) ?? []).every((b) => compatible(b, ride)),

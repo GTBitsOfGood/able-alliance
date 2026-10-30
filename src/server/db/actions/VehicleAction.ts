@@ -14,7 +14,8 @@ export async function createVehicle(data: VehicleInput) {
     throw error;
   }
 }
-export const getVehicles = () => db.vehicle.findMany();
+export const getVehicles = () =>
+  db.vehicle.findMany({ where: { status: "active" } });
 export async function getVehicleById(id: string) {
   const vehicle = await db.vehicle.findUnique({
     where: { id: id.toLowerCase() },
@@ -22,19 +23,12 @@ export async function getVehicleById(id: string) {
   if (!vehicle) throw new NotFoundError("Vehicle not found");
   return vehicle;
 }
-export async function deleteVehicle(id: string) {
-  try {
-    return await db.vehicle.delete({ where: { id: id.toLowerCase() } });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") throw new NotFoundError("Vehicle not found");
-      if (error.code === "P2003")
-        throw new ConflictError(
-          "Vehicle is referenced by a ride and cannot be deleted",
-        );
-    }
-    throw error;
-  }
+export async function archiveVehicle(id: string) {
+  await getVehicleById(id);
+  return db.vehicle.update({
+    where: { id: id.toLowerCase() },
+    data: { status: "archived" },
+  });
 }
 export async function updateVehicle(id: string, data: Partial<VehicleInput>) {
   try {
