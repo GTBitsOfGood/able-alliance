@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidId } from "@/utils/ids";
-import { auth } from "@/auth";
+import { getUserFromRequest } from "@/utils/authUser";
 import { getRouteById, startRoute } from "@/server/db/actions/RouteAction";
 import { routeResponseForRole } from "@/server/db/queries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function POST(request: NextRequest) {
+  let user;
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
-      );
-    }
-
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+    );
+  }
+  try {
     const body = await request.json().catch(() => {
       throw new ArgumentError("Malformed request body");
     });
@@ -38,11 +39,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const route = await getRouteById(routeId, session.user.type);
+    const route = await getRouteById(routeId, user.type);
 
     const driverId = route.driver?.id;
 
-    if (!driverId || driverId !== session.user.userId) {
+    if (!driverId || driverId !== user.userId) {
       return NextResponse.json(
         { error: "Forbidden: you are not the assigned driver for this route" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await startRoute(routeId);
-    return NextResponse.json(routeResponseForRole(updated, session.user.type), {
+    return NextResponse.json(routeResponseForRole(updated, user.type), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {
