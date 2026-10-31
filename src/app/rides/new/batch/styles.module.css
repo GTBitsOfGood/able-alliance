@@ -1,0 +1,262 @@
+.container {
+  min-height: calc(100vh - 8rem);
+  background: var(--color-solid-bg-base);
+}
+
+.main {
+  max-width: 107.4rem;
+  margin: 0 auto;
+  padding: 6.4rem 0 8rem;
+}
+
+.backButton {
+  color: #201014;
+  text-decoration: none;
+  font-size: 1.6rem;
+  line-height: 2.4rem;
+}
+
+.pageTitle {
+  margin: 1.6rem 0 3.2rem;
+  color: #210d13;
+  font-family: var(--font-heading);
+  font-size: 3.8rem;
+  line-height: 4.8rem;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+
+.card {
+  border-bottom: 0.1rem solid #dedbdd;
+  padding-bottom: 1.6rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4.8rem;
+  padding: 0 1.2rem;
+  background: #efeded;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  color: #210d13;
+  font: 600 1.8rem var(--font-paragraph);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 10.6rem 10.7rem 24.4rem 19.1rem 19.1rem 7.5rem;
+  gap: 3.2rem;
+  align-items: end;
+  padding-top: 1.2rem;
+}
+
+.fields label,
+.recurrenceFields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  color: #30191e;
+  font-size: 1.6rem;
+  line-height: 2rem;
+}
+
+.fields input,
+.fields select,
+.recurrenceFields input,
+.recurrenceFields select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.4rem;
+  padding: 0 0.8rem;
+  border: 0.1rem solid #dedbdd;
+  border-radius: 0.4rem;
+  background: #fafafa;
+  color: #7d7072;
+  font: inherit;
+}
+
+.windowLabel {
+  min-width: 0;
+}
+
+.window {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.window > * {
+  min-width: 0;
+  flex: 1;
+}
+
+.window > span {
+  flex: 0 0 auto;
+}
+
+.infoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 0.1rem solid #887b7e;
+  border-radius: 50%;
+  color: #887b7e;
+  font-size: 1rem;
+}
+
+.toggle {
+  align-items: flex-start;
+}
+
+.toggle > span {
+  font-size: 1.6rem;
+  line-height: 2rem;
+}
+
+.toggle input {
+  width: 5rem !important;
+  height: 2.8rem;
+  min-height: 2.8rem !important;
+  margin-top: 0.2rem;
+  accent-color: #1f438b;
+}
+
+.removeButton,
+.addButton {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 1.6rem var(--font-paragraph);
+}
+
+.removeButton {
+  color: #d82c32;
+}
+
+.addButton {
+  margin-top: 2.4rem;
+  padding: 1rem 1.6rem;
+  border: 0.1rem solid #1f438b;
+  border-radius: 0.4rem;
+  color: #1f438b;
+  font-weight: 600;
+}
+
+.recurrenceFields {
+  display: grid;
+  grid-template-columns: 31.4rem 39.8rem 10.7rem;
+  gap: 3.2rem;
+  align-items: end;
+  padding-top: 1.2rem;
+}
+
+.recurrenceFields fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.recurrenceFields legend {
+  margin-bottom: 0.8rem;
+  color: #30191e;
+  font-size: 1.6rem;
+  line-height: 2rem;
+}
+
+.dayButtons {
+  display: flex;
+  gap: 1.2rem;
+}
+
+.dayButton,
+.dayButtonSelected {
+  width: 7rem;
+  height: 4.4rem;
+  border: 0.1rem solid #dedbdd;
+  border-radius: 0.4rem;
+  background: #fafafa;
+  color: #7d7072;
+  cursor: pointer;
+  font: 1.6rem var(--font-paragraph);
+}
+
+.dayButtonSelected {
+  border-color: #1f438b;
+  background: #1f438b;
+  color: white;
+}
+
+.submitRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3.2rem;
+  margin-top: 11.2rem;
+  color: #796c6e;
+  font-size: 1.6rem;
+}
+
+.submitButton {
+  width: 22.3rem;
+  height: 4.8rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: #1f438b;
+  color: white;
+  cursor: pointer;
+  font: 600 1.8rem var(--font-paragraph);
+}
+
+.submitButton:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.errorBanner {
+  padding: 1.2rem 2rem;
+  background: #fde8e8;
+  color: #c73a3a;
+}
+
+@media (max-width: 900px) {
+  .main {
+    padding: 2.4rem 1.6rem 6rem;
+  }
+
+  .fields,
+  .recurrenceFields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .windowLabel {
+    grid-column: span 2;
+  }
+
+  .recurrenceFields fieldset {
+    grid-column: span 2;
+  }
+
+  .dayButtons {
+    flex-wrap: wrap;
+  }
+
+  .submitRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.2rem;
+  }
+
+  .submitButton {
+    width: 100%;
+  }
+}
