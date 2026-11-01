@@ -21,7 +21,7 @@ export async function PATCH(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -63,7 +63,7 @@ export async function DELETE(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },

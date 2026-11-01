@@ -192,12 +192,12 @@ export default function RideDetailPage({
         if (!isLatest()) return;
 
         unavailable = true;
-        if (session.user.type === "Student") {
+        if (session.user.activeType === "Student") {
           const studentId = getStudentId(routeData.student);
           if (studentId !== session.user.userId) {
             throw new Error("You are not the student for this route");
           }
-        } else if (session.user.type === "Driver") {
+        } else if (session.user.activeType === "Driver") {
           const driverId = getDriverId(routeData.driver);
           if (driverId !== session.user.userId) {
             router.push("/rides");
@@ -356,8 +356,8 @@ export default function RideDetailPage({
   // regardless of its scheduled date. The server enforces terminal statuses.
   //
   useEffect(() => {
-    const isDriver = session?.user?.type === "Driver";
-    const isStudent = session?.user?.type === "Student";
+    const isDriver = session?.user?.activeType === "Driver";
+    const isStudent = session?.user?.activeType === "Student";
 
     const shouldConnect =
       !!route &&
@@ -466,8 +466,9 @@ export default function RideDetailPage({
   useEffect(() => {
     if (!otherPartyLocation || !mapRef.current) return;
 
-    const label = session?.user?.type === "Driver" ? "Student" : "Driver";
-    const color = session?.user?.type === "Driver" ? "#ea580c" : "#16a34a";
+    const label = session?.user?.activeType === "Driver" ? "Student" : "Driver";
+    const color =
+      session?.user?.activeType === "Driver" ? "#ea580c" : "#16a34a";
 
     if (!otherPartyMarkerRef.current) {
       otherPartyMarkerRef.current = new mapboxgl.Marker({
@@ -487,7 +488,7 @@ export default function RideDetailPage({
       [otherPartyLocation.longitude, otherPartyLocation.latitude],
       { duration: 800 },
     );
-  }, [otherPartyLocation, session?.user?.type]);
+  }, [otherPartyLocation, session?.user?.activeType]);
 
   // Watch own GPS position — updates selfLocation state and emits location to socket when En-route
   useEffect(() => {
@@ -750,7 +751,7 @@ export default function RideDetailPage({
   const statusChipStyle = getStudentStatusChipStyle(route.status);
 
   // ── Driver view ────────────────────────────────────────────────────────────
-  if (session?.user?.type === "Driver") {
+  if (session?.user?.activeType === "Driver") {
     const studentObj = route.student;
     const studentName = studentObj
       ? `${studentObj.firstName} ${studentObj.lastName}`.trim()

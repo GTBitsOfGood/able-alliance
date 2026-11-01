@@ -26,7 +26,7 @@ test("expected database failures use stable HTTP statuses", async ({
       lastName: "Accommodation",
       username: `badaccommodation${Date.now()}`,
       email: `badaccommodation${Date.now()}@example.edu`,
-      type: "Student",
+      types: ["Student"],
       studentInfo: { accessibilityNeeds: ["not-provisioned"] },
     },
   });
@@ -41,7 +41,7 @@ test("expected database failures use stable HTTP statuses", async ({
       lastName: "Student",
       username: PERSONAS.student.username,
       email: "duplicate-check@example.edu",
-      type: "Student",
+      types: ["Student"],
       studentInfo: {},
     },
   });

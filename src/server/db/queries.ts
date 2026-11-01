@@ -32,7 +32,7 @@ export const studentRouteInclude = {
       firstName: true,
       lastName: true,
       preferredName: true,
-      type: true,
+      types: true,
     },
   },
   driver: {
@@ -41,7 +41,7 @@ export const studentRouteInclude = {
       firstName: true,
       lastName: true,
       preferredName: true,
-      type: true,
+      types: true,
     },
   },
   vehicle: true,
@@ -57,7 +57,7 @@ export const driverRouteInclude = {
       firstName: true,
       lastName: true,
       preferredName: true,
-      type: true,
+      types: true,
       studentInfo: {
         select: {
           notes: true,
@@ -79,7 +79,7 @@ export function routeResponseForRole(route: FullRoute, role: UserType) {
     firstName: user.firstName,
     lastName: user.lastName,
     preferredName: user.preferredName,
-    type: user.type,
+    types: user.types,
   });
 
   const response = {

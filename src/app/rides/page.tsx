@@ -121,7 +121,7 @@ export default function RidesPage() {
 
   // Drivers get their own subscription inside DriverRidesView.
   useRouteUpdates(() => {
-    if (mounted && session?.user?.type === "Student") void fetchRides();
+    if (mounted && session?.user?.activeType === "Student") void fetchRides();
   });
 
   const handleCancel = useCallback(async (routeId: string) => {
@@ -190,7 +190,7 @@ export default function RidesPage() {
     );
   }
 
-  if (session?.user?.type === "Driver") {
+  if (session?.user?.activeType === "Driver") {
     return (
       <div className={styles.ridesPage}>
         <DriverRidesView userId={session.user.userId} />
