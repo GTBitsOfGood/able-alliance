@@ -48,11 +48,14 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    // Admins assign a requested ride and reassign a scheduled one here.
-    const updated = await scheduleRoute(routeId, driverId, vehicleId, [
-      RouteStatus.Requested,
-      RouteStatus.Scheduled,
-    ]);
+    // Admins may edit a ride in any status from here, so every status is
+    // accepted. Bulk and automatic scheduling keep the Requested-only default.
+    const updated = await scheduleRoute(
+      routeId,
+      driverId,
+      vehicleId,
+      Object.values(RouteStatus),
+    );
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     if (error instanceof BookingConflictError)

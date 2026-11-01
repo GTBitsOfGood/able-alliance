@@ -43,10 +43,9 @@ type SortOption = (typeof SORT_OPTIONS)[number];
 const ALL_STATUSES = "All statuses";
 const requestedLabel = routeStatusLabels.Requested;
 
-// Editing is reassignment: it belongs to a ride that already has a driver, so
-// it is offered on scheduled rides only. Cancelling mirrors what cancelRoute
-// accepts — anything already completed, missing or cancelled would just 409.
-const EDITABLE_STATUSES = new Set<string>(["Scheduled"]);
+// Admins may edit a ride in any status; the server accepts the same set.
+// Cancelling still mirrors what cancelRoute accepts — anything already
+// completed, missing or cancelled would just 409.
 const CANCELLABLE_STATUSES = new Set<string>([
   "Requested",
   "Scheduled",
@@ -162,7 +161,6 @@ export default function RidesTable() {
   };
 
   const rows: TableRow[] = visibleRoutes.map((route) => {
-    const canEdit = EDITABLE_STATUSES.has(route.status);
     const canCancel = CANCELLABLE_STATUSES.has(route.status);
 
     return {
@@ -181,12 +179,6 @@ export default function RidesTable() {
               <button
                 type="button"
                 className={styles.actionButton}
-                disabled={!canEdit}
-                title={
-                  canEdit
-                    ? undefined
-                    : `A ${statusLabel(route.status).toLowerCase()} ride can't be edited`
-                }
                 aria-label={`Edit ride for ${fullName(route.student)}`}
                 onClick={() => setAssignRoute(route)}
               >
