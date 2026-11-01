@@ -1,4 +1,4 @@
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { addDays } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { expect } from "./fixtures";
@@ -23,6 +23,48 @@ export function nextServiceDate(): Date {
     date = estDateDaysFromNow(++offset);
   }
   return date;
+}
+
+type LocationField = "Pickup location" | "Dropoff location";
+
+/**
+ * The location fields are SearchableSelects that hide whatever the other field
+ * has selected, so clear both defaults before choosing specific locations.
+ */
+export async function clearLocations(page: Page) {
+  for (const field of ["Pickup location", "Dropoff location"] as const) {
+    const clear = page.getByRole("button", {
+      name: `Clear ${field.toLowerCase()}`,
+    });
+    if (await clear.isVisible()) await clear.click();
+    await expect(
+      page.getByRole("textbox", { name: field, exact: true }),
+    ).toHaveValue("");
+  }
+}
+
+/** Type to filter a location SearchableSelect, then click the matching option. */
+export async function selectLocation(
+  page: Page,
+  field: LocationField,
+  name: string,
+) {
+  const input = page.getByRole("textbox", { name: field, exact: true });
+  await input.fill(name);
+  await page.getByRole("option", { name, exact: true }).click();
+  await expect(input).toHaveValue(name);
+}
+
+/**
+ * The calendar opens on the default ride date's month, which may already be
+ * next month, so only advance when the target month isn't shown.
+ */
+export async function showCalendarMonth(page: Page, date: Date) {
+  const month = date.toLocaleString("en-US", { month: "long" });
+  if (!(await page.getByText(month, { exact: true }).isVisible())) {
+    await page.getByRole("button", { name: "Next month" }).click();
+  }
+  await expect(page.getByText(month, { exact: true })).toBeVisible();
 }
 
 export function formatEstTime(iso: string): string {

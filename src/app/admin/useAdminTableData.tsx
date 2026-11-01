@@ -6,6 +6,8 @@ import type { Vehicle, Location } from "@db/generated/browser";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useLocationUpdates } from "@/components/NotificationProvider/useLocationUpdates";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { hasUserType, isAdmin } from "@/utils/userTypes";
 import type {
   ColumnHeaderCellContent,
   TableRow,
@@ -17,6 +19,7 @@ import {
   ADMIN_COLUMNS,
   LOCATION_COLUMNS,
   RIDE_COLUMNS,
+  ADMIN_TYPE_LABELS,
   type StudentRowRaw,
   type DriverRowRaw,
   type VehicleRowRaw,
@@ -85,6 +88,7 @@ function adminRawToTableRows(rows: AdminRowRaw[], ids: string[]): TableRow[] {
     cells: [
       { content: nameLink(row.name, ids[i] ?? "") },
       { content: row.email },
+      { content: row.adminType },
     ],
   }));
 }
@@ -143,12 +147,14 @@ function adaptUsersToDriverRows(data: unknown): DriverRowRaw[] {
   }));
 }
 
-/** Adapt API user list to AdminRowRaw (admins only). */
+/** Adapt API user list to AdminRowRaw (admins and super admins). */
 function adaptUsersToAdminRows(data: unknown): AdminRowRaw[] {
   if (!Array.isArray(data)) return [];
   return (data as UserResponse[]).map((u) => ({
     name: String(combineFullName(u.firstName, u.lastName) ?? ""),
     email: String(u.email ?? ""),
+    adminType:
+      ADMIN_TYPE_LABELS[hasUserType(u, "SuperAdmin") ? "SuperAdmin" : "Admin"],
   }));
 }
 
@@ -177,12 +183,16 @@ function adaptVehiclesToRows(data: unknown): VehicleRowRaw[] {
 }
 
 export function useAdminTableData(tableType: AdminTableType) {
+  const { data: session, status } = useSession();
+  const activeType = session?.user?.activeType;
   const [columns, setColumns] =
     useState<ColumnHeaderCellContent[]>(STUDENT_COLUMNS);
   const [rows, setRows] = useState<TableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rowIds, setRowIds] = useState<string[]>([]);
+  // Rows that cannot be archived (super admins).
+  const [protectedIds, setProtectedIds] = useState<Set<string>>(new Set());
   const [locations, setLocations] = useState<Location[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -199,10 +209,12 @@ export function useAdminTableData(tableType: AdminTableType) {
       silentRefreshRef.current = true;
       refresh();
     },
-    { enabled: tableType === "Locations" },
+    { enabled: tableType === "Locations" && isAdmin(activeType) },
   );
 
   useEffect(() => {
+    if (status === "loading" || !isAdmin(activeType)) return;
+
     let cancelled = false;
     const silent = silentRefreshRef.current;
     silentRefreshRef.current = false;
@@ -211,11 +223,20 @@ export function useAdminTableData(tableType: AdminTableType) {
       if (!silent) {
         setLoading(true);
         setError(null);
+        setProtectedIds(new Set());
       }
 
       const extractIds = (data: unknown): string[] => {
         if (!Array.isArray(data)) return [];
         return data.map((d: Record<string, unknown>) => String(d.id ?? ""));
+      };
+
+      const protectSuperAdmins = (data: UserResponse[]) => {
+        setProtectedIds(
+          new Set(
+            data.filter((u) => hasUserType(u, "SuperAdmin")).map((u) => u.id),
+          ),
+        );
       };
 
       try {
@@ -227,6 +248,7 @@ export function useAdminTableData(tableType: AdminTableType) {
 
           const ids = extractIds(data);
           const raw = adaptUsersToStudentRows(data);
+          protectSuperAdmins(data);
           setColumns(STUDENT_COLUMNS);
           setRows(studentRawToTableRows(raw, ids));
           setRowIds(ids);
@@ -239,14 +261,22 @@ export function useAdminTableData(tableType: AdminTableType) {
 
           const ids = extractIds(data);
           const raw = adaptUsersToDriverRows(data);
+          protectSuperAdmins(data);
           setColumns(DRIVER_COLUMNS);
           setRows(driverRawToTableRows(raw, ids));
           setRowIds(ids);
           setLoading(false);
         } else if (tableType === "Admins") {
-          const res = await fetch("/api/users?type=Admin");
-          if (!res.ok) throw new Error(`API ${res.status}`);
-          const data = await res.json();
+          const responses = await Promise.all([
+            fetch("/api/users?type=SuperAdmin"),
+            fetch("/api/users?type=Admin"),
+          ]);
+          const failed = responses.find((r) => !r.ok);
+          if (failed) throw new Error(`API ${failed.status}`);
+          const users: UserResponse[] = (
+            await Promise.all(responses.map((r) => r.json()))
+          ).flat();
+          const data = [...new Map(users.map((u) => [u.id, u])).values()];
           if (cancelled) return;
 
           const ids = extractIds(data);
@@ -254,6 +284,7 @@ export function useAdminTableData(tableType: AdminTableType) {
           setColumns(ADMIN_COLUMNS);
           setRows(adminRawToTableRows(raw, ids));
           setRowIds(ids);
+          protectSuperAdmins(data);
           setLoading(false);
         } else if (tableType === "Locations") {
           const res = await fetch("/api/locations");
@@ -306,9 +337,10 @@ export function useAdminTableData(tableType: AdminTableType) {
     return () => {
       cancelled = true;
     };
-  }, [tableType, refreshKey]);
+  }, [tableType, refreshKey, activeType, status]);
 
   const deleteRows = async (indices: Set<number>): Promise<number> => {
+    if (!isAdmin(activeType)) return 0;
     const endpoint =
       tableType === "Vehicles"
         ? "/api/vehicles"
@@ -318,7 +350,7 @@ export function useAdminTableData(tableType: AdminTableType) {
     let deleted = 0;
     for (const idx of indices) {
       const id = rowIds[idx];
-      if (!id) continue;
+      if (!id || protectedIds.has(id)) continue;
       try {
         const res = await fetch(`${endpoint}/${id}`, { method: "DELETE" });
         if (res.ok) deleted++;
@@ -334,6 +366,7 @@ export function useAdminTableData(tableType: AdminTableType) {
     columns,
     rows,
     rowIds,
+    protectedIds,
     locations,
     loading,
     error,

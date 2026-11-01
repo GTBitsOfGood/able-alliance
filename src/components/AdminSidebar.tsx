@@ -83,6 +83,14 @@ function AdminSidebarContent() {
             <span>Auto-Schedule</span>
           </Link>
 
+          <Link
+            href="/admin/audit-log"
+            className={`${styles.navItem} ${pathname.startsWith("/admin/audit-log") ? styles.active : ""}`}
+          >
+            <Image src="/folder.svg" alt="" width={20} height={20} />
+            <span>Audit Log</span>
+          </Link>
+
           {/* Directory */}
           <div>
             <button

@@ -121,6 +121,7 @@ export async function PATCH(
         id,
         isSelf ? viewer.activeType : user.types[0],
         settingsPatch.data,
+        viewerId,
       );
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     }
@@ -155,7 +156,7 @@ export async function PATCH(
           );
         }
       }
-      const updated = await updateUser(id, "Student", parsed.data);
+      const updated = await updateUser(id, "Student", parsed.data, viewerId);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else if (profileRole === "Driver") {
       // For drivers, only admins can update shifts
@@ -176,7 +177,7 @@ export async function PATCH(
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      const updated = await updateUser(id, "Driver", parsed.data);
+      const updated = await updateUser(id, "Driver", parsed.data, viewerId);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else {
       if (!viewerIsAdmin)
@@ -189,7 +190,12 @@ export async function PATCH(
         return NextResponse.json(adminParsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
-      const updated = await updateUser(id, profileRole, adminParsed.data);
+      const updated = await updateUser(
+        id,
+        profileRole,
+        adminParsed.data,
+        viewerId,
+      );
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     }
   } catch (error) {
@@ -228,7 +234,13 @@ export async function DELETE(
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    await archiveUser(id);
+    if (hasUserType(user, "SuperAdmin")) {
+      return NextResponse.json(
+        { error: "Super admins cannot be archived" },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      );
+    }
+    await archiveUser(id, authUser.userId);
     return NextResponse.json(
       { message: "User archived" },
       { status: HTTP_STATUS_CODE.OK },

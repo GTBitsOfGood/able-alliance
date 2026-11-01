@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    const vehicle = await createVehicle(parsed.data);
+    const vehicle = await createVehicle(parsed.data, user.userId);
     return NextResponse.json(vehicle, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {
     return errorResponse(error);

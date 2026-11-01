@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./styles.module.css";
+import BogIcon from "../BogIcon/BogIcon";
 
 export type SearchableSelectOption = { value: string; label: string };
 
@@ -65,6 +66,12 @@ export function SearchableSelect({
     },
     [onChange],
   );
+
+  const handleClear = () => {
+    onChange("");
+    setDraft("");
+    setHighlighted(0);
+  };
 
   const handleFocus = () => {
     setDraft("");
@@ -130,6 +137,20 @@ export function SearchableSelect({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
+      {value && (
+        <button
+          type="button"
+          className={styles.clearButton}
+          aria-label={
+            ariaLabel ? `Clear ${ariaLabel.toLowerCase()}` : "Clear selection"
+          }
+          // Keep focus where it is so the input's blur handler doesn't fire
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleClear}
+        >
+          <BogIcon name="x" size={14} />
+        </button>
+      )}
       {open && filtered.length > 0 && (
         <ul ref={listRef} className={styles.dropdown} role="listbox">
           {filtered.map((option, i) => (
