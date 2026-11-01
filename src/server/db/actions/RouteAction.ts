@@ -22,6 +22,37 @@ import {
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
+import { recordAudit } from "@db/audit";
+
+function routeAuditSnapshot(route: {
+  id: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  studentId: string;
+  driverId: string | null;
+  vehicleId: string | null;
+  scheduledPickupTime: Date;
+  pickupWindowStart: Date;
+  pickupWindowEnd: Date;
+  estimatedDropoffTime: Date | null;
+  status: RouteStatus;
+  seriesId: string | null;
+}) {
+  return {
+    id: route.id,
+    pickupLocation: route.pickupLocation,
+    dropoffLocation: route.dropoffLocation,
+    studentId: route.studentId,
+    driverId: route.driverId,
+    vehicleId: route.vehicleId,
+    scheduledPickupTime: route.scheduledPickupTime,
+    pickupWindowStart: route.pickupWindowStart,
+    pickupWindowEnd: route.pickupWindowEnd,
+    estimatedDropoffTime: route.estimatedDropoffTime,
+    status: route.status,
+    seriesId: route.seriesId,
+  };
+}
 
 async function sendEmailSafely(label: string, send: () => Promise<void>) {
   try {
@@ -39,7 +70,11 @@ function dispatchNotifications(tasks: Promise<void>[]) {
 
 export async function createRoute(
   data: CreateRouteInput,
-  options?: { seriesId?: string; tx?: Prisma.TransactionClient },
+  options?: {
+    seriesId?: string;
+    tx?: Prisma.TransactionClient;
+    actorId?: string | null;
+  },
 ) {
   const client = options?.tx ?? db;
   const parsed = createRouteSchema.parse(data);
@@ -75,8 +110,8 @@ export async function createRoute(
     dropoff.longitude,
     input.scheduledPickupTime,
   );
-  try {
-    const route = await client.route.create({
+  const persist = async (tx: Prisma.TransactionClient) => {
+    const route = await tx.route.create({
       data: {
         pickupLocation: input.pickupLocation,
         dropoffLocation: input.dropoffLocation,
@@ -93,6 +128,19 @@ export async function createRoute(
       },
       include: studentRouteInclude,
     });
+    await recordAudit(tx, {
+      actorId: options?.actorId,
+      entityType: "Route",
+      entityId: route.id,
+      action: "Create",
+      after: routeAuditSnapshot(route),
+    });
+    return route;
+  };
+  try {
+    const route = options?.tx
+      ? await persist(options.tx)
+      : await db.$transaction(persist);
     if (!options?.tx) emitRouteUpdate(route);
     return route;
   } catch (error) {
@@ -115,11 +163,21 @@ export async function getRouteById(id: string, role: UserType) {
   if (!route) throw new NotFoundError("Route not found");
   return route;
 }
-export async function deleteRoute(id: string) {
+export async function deleteRoute(id: string, actorId: string) {
   try {
-    const route = await db.route.delete({
-      where: { id: id.toLowerCase() },
-      include: adminRouteInclude,
+    const route = await db.$transaction(async (tx) => {
+      const removed = await tx.route.delete({
+        where: { id: id.toLowerCase() },
+        include: adminRouteInclude,
+      });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Route",
+        entityId: removed.id,
+        action: "Delete",
+        before: routeAuditSnapshot(removed),
+      });
+      return removed;
     });
     emitRouteUpdate(route);
     return route;
@@ -161,11 +219,12 @@ export async function getRoutes(
     : db.route.findMany({ include: studentRouteInclude, where });
 }
 
-export async function completeRoute(routeId: string) {
+export async function completeRoute(routeId: string, actorId: string) {
   const route = await transitionRoute(
     routeId,
     [RouteStatus.Pickedup],
     RouteStatus.Completed,
+    actorId,
   );
 
   const studentUser = route.student;
@@ -193,8 +252,8 @@ export async function completeRoute(routeId: string) {
 export async function cancelRoute(
   routeId: string,
   status:
-    | typeof RouteStatus.CancelledByStudent
-    | typeof RouteStatus.CancelledByAdmin = RouteStatus.CancelledByStudent,
+    typeof RouteStatus.CancelledByStudent | typeof RouteStatus.CancelledByAdmin,
+  actorId: string,
 ) {
   if (
     status !== RouteStatus.CancelledByStudent &&
@@ -210,6 +269,7 @@ export async function cancelRoute(
       RouteStatus.Pickedup,
     ],
     status,
+    actorId,
   );
   const studentUser = route.student;
   if (studentUser && studentUser.settings?.rideCancelled) {
@@ -258,11 +318,12 @@ export async function cancelRoute(
   return route;
 }
 
-export async function startRoute(routeId: string) {
+export async function startRoute(routeId: string, actorId: string) {
   const route = await transitionRoute(
     routeId,
     [RouteStatus.Scheduled],
     RouteStatus.EnRoute,
+    actorId,
   );
   const studentUser = route.student;
   if (studentUser && studentUser.settings?.driverEnRoute) {
@@ -291,14 +352,20 @@ export async function startRoute(routeId: string) {
   return route;
 }
 
-export const pickupStudent = (routeId: string) =>
-  transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Pickedup);
+export const pickupStudent = (routeId: string, actorId: string) =>
+  transitionRoute(
+    routeId,
+    [RouteStatus.EnRoute],
+    RouteStatus.Pickedup,
+    actorId,
+  );
 
-export const markRouteMissing = (routeId: string) =>
+export const markRouteMissing = (routeId: string, actorId: string) =>
   transitionRoute(
     routeId,
     [RouteStatus.Scheduled, RouteStatus.EnRoute],
     RouteStatus.Missing,
+    actorId,
   );
 
 const LOCK_WAIT_MS = 10_000;
@@ -354,11 +421,19 @@ export async function scheduleRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
+  actorId: string,
 ) {
   return withSchedulingLock(
     schedulingLockKeys([{ driverId, vehicleId }]),
     (tx, afterCommit) =>
-      scheduleRouteWhileLocked(routeId, driverId, vehicleId, tx, afterCommit),
+      scheduleRouteWhileLocked(
+        routeId,
+        driverId,
+        vehicleId,
+        tx,
+        afterCommit,
+        actorId,
+      ),
   );
 }
 
@@ -369,8 +444,9 @@ export async function scheduleRouteWhileLocked(
   vehicleId: string,
   tx: Prisma.TransactionClient,
   afterCommit: (() => void)[],
+  actorId: string,
 ) {
-  const assigned = await assignRoute(routeId, driverId, vehicleId, tx);
+  const assigned = await assignRoute(routeId, driverId, vehicleId, tx, actorId);
   const { route, driver } = assigned;
   afterCommit.push(() => {
     emitRouteUpdate(route);
@@ -418,6 +494,7 @@ async function assignRoute(
   driverId: string,
   vehicleId: string,
   tx: Prisma.TransactionClient,
+  actorId: string,
 ) {
   routeId = routeId.toLowerCase();
   driverId = driverId.toLowerCase();
@@ -482,6 +559,14 @@ async function assignRoute(
       where: { id: routeId },
       include: adminRouteInclude,
     });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "Route",
+      entityId: updated.id,
+      action: "Update",
+      before: routeAuditSnapshot(route),
+      after: routeAuditSnapshot(updated),
+    });
     return { route: updated, driver };
   } catch (error) {
     if (
@@ -496,9 +581,12 @@ export async function transitionRoute(
   routeId: string,
   expected: RouteStatus[],
   status: RouteStatus,
+  actorId: string,
 ) {
   routeId = routeId.toLowerCase();
   const route = await db.$transaction(async (tx) => {
+    const before = await tx.route.findUnique({ where: { id: routeId } });
+    if (!before) throw new NotFoundError("Route not found");
     const { count } = await tx.route.updateMany({
       where: {
         id: routeId,
@@ -517,6 +605,14 @@ export async function transitionRoute(
     const updated = await tx.route.findUniqueOrThrow({
       where: { id: routeId },
       include: adminRouteInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "Route",
+      entityId: updated.id,
+      action: "Update",
+      before: routeAuditSnapshot(before),
+      after: routeAuditSnapshot(updated),
     });
     return updated;
   });

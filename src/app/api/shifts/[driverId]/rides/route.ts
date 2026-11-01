@@ -82,7 +82,7 @@ export async function POST(
 
     for (const { rideId, vehicleId } of parsedBody.data.rides) {
       try {
-        await scheduleRoute(rideId, driverId, vehicleId);
+        await scheduleRoute(rideId, driverId, vehicleId, user.userId);
         results.push({ rideId, success: true });
       } catch (error) {
         if (!(error instanceof HttpError) || error.statusCode >= 500)

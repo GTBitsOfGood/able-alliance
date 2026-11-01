@@ -82,6 +82,26 @@ test("expected database failures use stable HTTP statuses", async ({
   });
   expect(created.status(), await created.text()).toBe(201);
   const tempVehicle = (await created.json()) as { id: string };
+  const auditResponse = await admin.get(
+    "/api/audit-entries?entityType=Vehicle&action=Create",
+  );
+  expect(auditResponse.status(), await auditResponse.text()).toBe(200);
+  const audit = (await auditResponse.json()) as {
+    entries: Array<{
+      entityId: string;
+      actor: { id: string } | null;
+      changes: Record<string, { before: unknown; after: unknown }>;
+    }>;
+  };
+  const createEntry = audit.entries.find(
+    (entry) => entry.entityId === tempVehicle.id,
+  );
+  expect(createEntry).toBeTruthy();
+  expect(createEntry?.actor?.id).toBe(PERSONAS.admin.id);
+  expect(createEntry?.changes.vehicleId).toEqual({
+    before: null,
+    after: "e2e-temp-vehicle",
+  });
   try {
     const duplicateIdUpdate = await admin.patch(
       `/api/vehicles/${tempVehicle.id}`,

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       type === "Student"
         ? RouteStatus.CancelledByStudent
         : RouteStatus.CancelledByAdmin;
-    const updated = await cancelRoute(routeId, cancelStatus);
+    const updated = await cancelRoute(routeId, cancelStatus, userId);
     return NextResponse.json(routeResponseForRole(updated, type), {
       status: HTTP_STATUS_CODE.OK,
     });

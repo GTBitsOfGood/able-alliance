@@ -35,6 +35,12 @@ enum Status {
   archived
 }
 
+enum AuditAction {
+  Create
+  Update
+  Delete
+}
+
 model User {
   id            String          @id @default(uuid()) @db.Uuid
   firstName     String
@@ -51,9 +57,29 @@ model User {
   driverRoutes  Route[]         @relation("DriverRoutes")
   rideSeries    RideSeries[]
   sentMessages  Message[]
+  auditEntries  AuditEntry[]    @relation("AuditActor")
+  subjectAudits AuditEntry[]    @relation("AuditSubjectUser")
 
   @@index([types], type: Gin)
   @@index([status])
+}
+
+model AuditEntry {
+  id            String      @id @default(uuid()) @db.Uuid
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+  actorId       String?     @db.Uuid
+  actor         User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+  subjectUserId String?     @db.Uuid
+  subjectUser   User?       @relation("AuditSubjectUser", fields: [subjectUserId], references: [id], onDelete: Restrict)
+  entityType    String
+  entityId      String      @db.Uuid
+  action        AuditAction
+  changes       Json
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@index([createdAt])
 }
 
 model UserSettings {

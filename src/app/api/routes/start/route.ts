@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updated = await startRoute(routeId);
+    const updated = await startRoute(routeId, user.userId);
     return NextResponse.json(routeResponseForRole(updated, user.activeType), {
       status: HTTP_STATUS_CODE.OK,
     });
