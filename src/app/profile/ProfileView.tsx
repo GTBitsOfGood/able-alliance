@@ -1,15 +1,17 @@
 "use client";
 
+import { hasUserType, userTypeLabel } from "@/utils/userTypes";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import { Shifts } from "./Shifts";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import { ProfileRidesTab } from "./ProfileRidesTab";
 import styles from "./profile.module.css";
 import type { UserType } from "@/utils/authUser";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
 
-type ProfileTab = "profile" | "shifts" | "settings";
+type ProfileTab = "profile" | "rides" | "shifts" | "settings";
 
 import type { UserResponse } from "@/utils/types/api";
 
@@ -81,7 +83,7 @@ export function ProfileView({
   >(null);
 
   const fetchAccommodations = useCallback(() => {
-    if (user.type === "Student") {
+    if (hasUserType(user, "Student")) {
       fetch("/api/accommodations")
         .then((r) => r.json())
         .then((data: { label: string }[]) =>
@@ -89,7 +91,7 @@ export function ProfileView({
         )
         .catch(() => {});
     }
-  }, [user.type]);
+  }, [user]);
 
   useEffect(() => {
     fetchAccommodations();
@@ -100,7 +102,7 @@ export function ProfileView({
   const displayName =
     [displayUser.firstName, displayUser.lastName].filter(Boolean).join(" ") ||
     displayUser.email;
-  const showAccommodations = displayUser.type === "Student";
+  const showAccommodations = hasUserType(displayUser, "Student");
 
   function handleEdit() {
     setDraftPreferredName(displayUser.preferredName ?? "");
@@ -223,8 +225,12 @@ export function ProfileView({
 
   const showSettingsTab =
     canEdit &&
-    (displayUser.type === "Student" || displayUser.type === "Driver");
-  const showShiftsTab = displayUser.type === "Driver";
+    (hasUserType(displayUser, "Student") || hasUserType(displayUser, "Driver"));
+  const showShiftsTab = hasUserType(displayUser, "Driver");
+  const showRidesTab =
+    (hasUserType(displayUser, "Student") ||
+      hasUserType(displayUser, "Driver")) &&
+    (viewerType === "Admin" || viewerType === "SuperAdmin");
 
   return (
     <div className={styles.profilePage}>
@@ -232,13 +238,15 @@ export function ProfileView({
         {/* Header */}
         <header className={styles.profileHeader}>
           <div
-            className={`${styles.profileAvatar} ${avatarClass(displayUser.type)}`}
+            className={`${styles.profileAvatar} ${avatarClass(isOwnProfile ? viewerType : displayUser.types[0])}`}
           >
             {avatarLetter}
           </div>
           <div className={styles.profileNameBlock}>
             <h1 className={styles.profileDisplayName}>{displayName}</h1>
-            <span className={styles.profileRole}>{displayUser.type}</span>
+            <span className={styles.profileRole}>
+              {displayUser.types.map(userTypeLabel).join(" · ")}
+            </span>
           </div>
         </header>
 
@@ -251,6 +259,15 @@ export function ProfileView({
           >
             Profile
           </button>
+          {showRidesTab && (
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === "rides" ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab("rides")}
+            >
+              Rides
+            </button>
+          )}
           {showShiftsTab && (
             <button
               type="button"
@@ -270,6 +287,16 @@ export function ProfileView({
             </button>
           )}
         </div>
+
+        {/* Rides tab */}
+        {activeTab === "rides" && showRidesTab && (
+          <ProfileRidesTab
+            userId={displayUser.id}
+            userType={
+              hasUserType(displayUser, "Student") ? "Student" : "Driver"
+            }
+          />
+        )}
 
         {/* Card */}
         {activeTab === "profile" && (
@@ -609,7 +636,7 @@ export function ProfileView({
             )}
 
             <div className={styles.notificationSettings}>
-              {displayUser.type === "Student" && (
+              {hasUserType(displayUser, "Student") && (
                 <>
                   <BogSwitch
                     checked={draftNotifications.dailySummary}
@@ -670,7 +697,7 @@ export function ProfileView({
                 </>
               )}
 
-              {displayUser.type === "Driver" && (
+              {hasUserType(displayUser, "Driver") && (
                 <>
                   <BogSwitch
                     checked={draftNotifications.dailySummary}

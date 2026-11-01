@@ -1,3 +1,4 @@
+import { hasAdminType } from "@/utils/userTypes";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getUserById } from "@/server/db/actions/UserAction";
@@ -17,7 +18,7 @@ export default async function ProfilePage({
 
   const { id: targetId } = await params;
   const viewerId = session.user.userId;
-  const viewerType = session.user.type;
+  const viewerType = session.user.activeType;
 
   const canView =
     viewerId === targetId || viewerType === "Driver" || isAdmin(viewerType);
@@ -38,12 +39,10 @@ export default async function ProfilePage({
   const user = data;
 
   const isOwnProfile = viewerId === targetId;
-  const targetType = user.type;
+  const targetIsAdmin = hasAdminType(data);
   const canDelete =
     !isOwnProfile &&
-    (viewerType === "SuperAdmin" ||
-      (isAdmin(viewerType) &&
-        (targetType === "Student" || targetType === "Driver")));
+    (viewerType === "SuperAdmin" || (isAdmin(viewerType) && !targetIsAdmin));
 
   return (
     <ProfileView

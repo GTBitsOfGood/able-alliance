@@ -1,3 +1,4 @@
+import { userTypeFilter } from "@/utils/userTypes";
 import { db } from "@db";
 import { userInclude } from "@/server/db/queries";
 import { Prisma, type UserSettings } from "@db/generated/client";
@@ -6,7 +7,9 @@ import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 
 export async function getUsers(type?: UserType) {
   return db.user.findMany({
-    where: type ? { type, status: "active" } : { status: "active" },
+    where: type
+      ? { ...userTypeFilter(type), status: "active" }
+      : { status: "active" },
     include: userInclude,
   });
 }
@@ -25,7 +28,10 @@ export const getProvisionedUserFromCAS = (username: string) =>
 
 export async function createUser(data: Prisma.UserCreateInput) {
   try {
-    return await db.user.create({ data, include: userInclude });
+    return await db.user.create({
+      data,
+      include: userInclude,
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002")
@@ -104,7 +110,7 @@ export async function updateUser(
   }
   try {
     return await db.user.update({
-      where: { id: id.toLowerCase(), type },
+      where: { id: id.toLowerCase(), ...userTypeFilter(type) },
       data,
       include: userInclude,
     });
@@ -114,7 +120,7 @@ export async function updateUser(
       error.code === "P2025"
     ) {
       const user = await db.user.findUnique({
-        where: { id: id.toLowerCase(), type },
+        where: { id: id.toLowerCase(), ...userTypeFilter(type) },
         select: { id: true },
       });
       if (!user) throw new NotFoundError("User not found");

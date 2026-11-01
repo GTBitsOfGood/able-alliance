@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import RoleSwitcher from "./RoleSwitcher";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, usePathname } from "next/navigation";
@@ -24,7 +25,7 @@ function AdminSidebarContent() {
   const [directoryOpen, setDirectoryOpen] = useState(true);
   const [configOpen, setConfigOpen] = useState(true);
 
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
   const isSuperAdmin = userType === "SuperAdmin";
   const userId = session?.user?.userId;
   const fullName =
@@ -152,6 +153,7 @@ function AdminSidebarContent() {
       </div>
 
       <div className={styles.bottom}>
+        <RoleSwitcher />
         <Link href={`/profile/${userId}`} className={styles.userCard}>
           <div className={styles.avatar}>{avatarLetter}</div>
           <div className={styles.userInfo}>

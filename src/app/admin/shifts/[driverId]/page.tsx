@@ -68,7 +68,7 @@ export default function ShiftDetailPage({
   }, [params]);
 
   // Auth guard
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
   useEffect(() => {
     if (
       sessionStatus !== "loading" &&

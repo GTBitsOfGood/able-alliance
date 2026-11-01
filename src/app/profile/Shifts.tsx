@@ -1,5 +1,7 @@
 "use client";
 
+import { hasUserType } from "@/utils/userTypes";
+
 import React, { useState } from "react";
 import BogButton from "@/components/BogButton/BogButton";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
@@ -209,7 +211,7 @@ export function Shifts({
   };
 
   // Only show for drivers
-  if (user.type !== "Driver") {
+  if (!hasUserType(user, "Driver")) {
     return null;
   }
 

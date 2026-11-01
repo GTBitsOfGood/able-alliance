@@ -28,9 +28,9 @@ export async function GET(
   }
   const routeId = id.toLowerCase();
   try {
-    const route = await getRouteById(routeId, user.type);
+    const route = await getRouteById(routeId, user.activeType);
     if (
-      !isAdmin(user.type) &&
+      !isAdmin(user.activeType) &&
       route.student?.id !== user.userId &&
       route.driver?.id !== user.userId
     ) {

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromRequest();
     userId = user.userId;
-    type = user.type;
+    type = user.activeType;
   } catch {
     return NextResponse.json(
       { error: "Unauthorized" },
