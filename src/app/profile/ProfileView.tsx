@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import { Shifts } from "./Shifts";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
-import { ProfileRidesTab } from "./ProfileRidesTab";
 import styles from "./profile.module.css";
 import type { UserType } from "@/utils/authUser";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
 
-type ProfileTab = "profile" | "rides";
+type ProfileTab = "profile" | "shifts" | "settings";
 
 import type { UserResponse } from "@/utils/types/api";
 
@@ -75,7 +74,11 @@ export function ProfileView({
   });
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
+  const [editingNotifications, setEditingNotifications] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
+  const [notificationSaveError, setNotificationSaveError] = useState<
+    string | null
+  >(null);
 
   const fetchAccommodations = useCallback(() => {
     if (user.type === "Student") {
@@ -173,9 +176,21 @@ export function ProfileView({
     setDraftNotifications((prev) => ({ ...prev, [key]: value }));
   }
 
+  function handleEditNotifications() {
+    setDraftNotifications(notifications);
+    setNotificationSaveError(null);
+    setEditingNotifications(true);
+  }
+
+  function handleCancelNotifications() {
+    setDraftNotifications(notifications);
+    setNotificationSaveError(null);
+    setEditingNotifications(false);
+  }
+
   async function handleSaveNotifications() {
     setSavingNotifications(true);
-    setSaveError(null);
+    setNotificationSaveError(null);
 
     try {
       const res = await fetch(`/api/users/${displayUser.id}`, {
@@ -194,17 +209,22 @@ export function ProfileView({
       const updated: UserResponse = await res.json();
       setDisplayUser(updated);
       setNotifications(draftNotifications);
+      setEditingNotifications(false);
     } catch (e) {
-      setSaveError(
+      setNotificationSaveError(
         e instanceof Error
           ? e.message
           : "Failed to update notification settings",
       );
-      setDraftNotifications(notifications);
     } finally {
       setSavingNotifications(false);
     }
   }
+
+  const showSettingsTab =
+    canEdit &&
+    (displayUser.type === "Student" || displayUser.type === "Driver");
+  const showShiftsTab = displayUser.type === "Driver";
 
   return (
     <div className={styles.profilePage}>
@@ -223,37 +243,33 @@ export function ProfileView({
         </header>
 
         {/* Tabs */}
-        {(() => {
-          const showRidesTab =
-            (displayUser.type === "Student" || displayUser.type === "Driver") &&
-            (viewerType === "Admin" || viewerType === "SuperAdmin");
-          return (
-            <div className={styles.tabBar}>
-              <button
-                className={`${styles.tab} ${activeTab === "profile" ? styles.tabActive : ""}`}
-                onClick={() => setActiveTab("profile")}
-              >
-                Profile
-              </button>
-              {showRidesTab && (
-                <button
-                  className={`${styles.tab} ${activeTab === "rides" ? styles.tabActive : ""}`}
-                  onClick={() => setActiveTab("rides")}
-                >
-                  Rides
-                </button>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Rides tab */}
-        {activeTab === "rides" && (
-          <ProfileRidesTab
-            userId={displayUser.id}
-            userType={displayUser.type as "Student" | "Driver"}
-          />
-        )}
+        <div className={styles.tabBar}>
+          <button
+            type="button"
+            className={`${styles.tab} ${activeTab === "profile" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("profile")}
+          >
+            Profile
+          </button>
+          {showShiftsTab && (
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === "shifts" ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab("shifts")}
+            >
+              Shifts
+            </button>
+          )}
+          {showSettingsTab && (
+            <button
+              type="button"
+              className={`${styles.tab} ${activeTab === "settings" ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab("settings")}
+            >
+              Settings
+            </button>
+          )}
+        </div>
 
         {/* Card */}
         {activeTab === "profile" && (
@@ -549,107 +565,144 @@ export function ProfileView({
                 </div>
               </section>
             )}
-            {isOwnProfile &&
-              (displayUser.type === "Student" ||
-                displayUser.type === "Driver") && (
-                <section className={styles.profileSection}>
-                  <h3 className={styles.sectionSubtitle}>Notifications</h3>
-                  <div style={{ display: "grid", gap: "0.8rem" }}>
-                    {displayUser.type === "Student" && (
-                      <>
-                        <BogSwitch
-                          checked={draftNotifications.dailySummary}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("dailySummary", e)
-                          }
-                          label="Daily Summary"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.driverAssigned}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("driverAssigned", e)
-                          }
-                          label="Ride Confirmed / Driver Assigned"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.driverEnRoute}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("driverEnRoute", e)
-                          }
-                          label="Driver is En Route"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.rideCancelled}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("rideCancelled", e)
-                          }
-                          label="Ride Cancelled"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.rideCompleted}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("rideCompleted", e)
-                          }
-                          label="Ride Completed"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.rideDelayed}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("rideDelayed", e)
-                          }
-                          label="Ride Delayed"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.newMessageFromDriver}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("newMessageFromDriver", e)
-                          }
-                          label="New Message from Driver"
-                        />
-                      </>
-                    )}
-
-                    {displayUser.type === "Driver" && (
-                      <>
-                        <BogSwitch
-                          checked={draftNotifications.dailySummary}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("dailySummary", e)
-                          }
-                          label="Daily Summary"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.rideAssigned}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("rideAssigned", e)
-                          }
-                          label="Ride Assigned"
-                        />
-                        <BogSwitch
-                          checked={draftNotifications.rideCancelled}
-                          onCheckedChange={(e) =>
-                            handleNotificationToggle("rideCancelled", e)
-                          }
-                          label="Ride Cancelled"
-                        />
-                      </>
-                    )}
-
-                    <BogButton
-                      variant="primary"
-                      size="medium"
-                      onClick={() => void handleSaveNotifications()}
-                      disabled={savingNotifications}
-                    >
-                      {savingNotifications ? "Saving…" : "Save notifications"}
-                    </BogButton>
-                  </div>
-                </section>
-              )}
           </section>
         )}
 
-        {activeTab === "profile" && (
+        {activeTab === "settings" && showSettingsTab && (
+          <section className={styles.profileCard}>
+            <div className={styles.profileCardHeader}>
+              <h2 className={styles.sectionTitle}>Notifications</h2>
+              {editingNotifications ? (
+                <div className={styles.editActions}>
+                  <BogButton
+                    variant="secondary"
+                    size="medium"
+                    onClick={handleCancelNotifications}
+                    disabled={savingNotifications}
+                  >
+                    Cancel
+                  </BogButton>
+                  <BogButton
+                    variant="primary"
+                    size="medium"
+                    onClick={() => void handleSaveNotifications()}
+                    disabled={savingNotifications}
+                  >
+                    {savingNotifications ? "Saving…" : "Save changes"}
+                  </BogButton>
+                </div>
+              ) : (
+                <BogButton
+                  variant="secondary"
+                  size="medium"
+                  onClick={handleEditNotifications}
+                >
+                  Edit notifications
+                </BogButton>
+              )}
+            </div>
+
+            {notificationSaveError && (
+              <p className={styles.saveError} role="alert">
+                {notificationSaveError}
+              </p>
+            )}
+
+            <div className={styles.notificationSettings}>
+              {displayUser.type === "Student" && (
+                <>
+                  <BogSwitch
+                    checked={draftNotifications.dailySummary}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("dailySummary", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Daily Summary"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.driverAssigned}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("driverAssigned", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Ride Confirmed / Driver Assigned"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.driverEnRoute}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("driverEnRoute", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Driver is En Route"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.rideCancelled}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("rideCancelled", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Ride Cancelled"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.rideCompleted}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("rideCompleted", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Ride Completed"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.rideDelayed}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("rideDelayed", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Ride Delayed"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.newMessageFromDriver}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("newMessageFromDriver", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="New Message from Driver"
+                  />
+                </>
+              )}
+
+              {displayUser.type === "Driver" && (
+                <>
+                  <BogSwitch
+                    checked={draftNotifications.dailySummary}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("dailySummary", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Daily Summary"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.rideAssigned}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("rideAssigned", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Ride Assigned"
+                  />
+                  <BogSwitch
+                    checked={draftNotifications.rideCancelled}
+                    onCheckedChange={(value) =>
+                      handleNotificationToggle("rideCancelled", value)
+                    }
+                    disabled={!editingNotifications}
+                    label="Ride Cancelled"
+                  />
+                </>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "shifts" && showShiftsTab && (
           <Shifts
             user={displayUser}
             canEdit={canEdit}
@@ -658,7 +711,7 @@ export function ProfileView({
           />
         )}
 
-        {activeTab === "profile" && isOwnProfile && (
+        {isOwnProfile && (
           // eslint-disable-next-line @next/next/no-html-link-for-pages
           <a href="/api/auth/cas/logout" className={styles.logoutButton}>
             <svg

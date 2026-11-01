@@ -218,7 +218,7 @@ export function Shifts({
     canEdit && (viewerType === "Admin" || viewerType === "SuperAdmin");
 
   return (
-    <section className={styles.shiftCard}>
+    <section className={styles.profileCard}>
       <div className={styles.profileCardHeader}>
         <h2 className={styles.sectionTitle}>Driver Shifts</h2>
         {editing ? (
