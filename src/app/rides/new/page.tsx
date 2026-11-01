@@ -17,6 +17,36 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 import type { Location } from "@db/generated/browser";
 
+type LineStringGeometry = {
+  type: "LineString";
+  coordinates: [number, number][];
+};
+
+async function getDirectionsGeometry(
+  pickup: [number, number],
+  dropoff: [number, number],
+  token: string,
+): Promise<LineStringGeometry | null> {
+  const coordinates = `${pickup.join(",")};${dropoff.join(",")}`;
+  const query = new URLSearchParams({
+    overview: "full",
+    geometries: "geojson",
+    access_token: token,
+  });
+  const response = await fetch(
+    `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coordinates}?${query}`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`Directions API responded with ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    routes?: Array<{ geometry?: LineStringGeometry }>;
+  };
+  return data.routes?.[0]?.geometry ?? null;
+}
+
 function PickupWindowErrorIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -282,6 +312,69 @@ export default function CreateRidePage() {
         Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
 
       const map = mapRef.current;
+      let cancelled = false;
+      const clearRoute = () => {
+        if (map.getLayer("ride-route-line")) {
+          map.removeLayer("ride-route-line");
+        }
+        if (map.getSource("ride-route")) {
+          map.removeSource("ride-route");
+        }
+      };
+      const updateRoute = async () => {
+        if (!pickupLngLat || !dropoffLngLat) {
+          clearRoute();
+          return;
+        }
+
+        try {
+          const geometry = await getDirectionsGeometry(
+            pickupLngLat,
+            dropoffLngLat,
+            token,
+          );
+          if (cancelled) return;
+          if (!geometry) {
+            clearRoute();
+            return;
+          }
+
+          const source = map.getSource("ride-route");
+          const data = {
+            type: "Feature" as const,
+            properties: {},
+            geometry,
+          };
+          if (source && "setData" in source) {
+            source.setData(data);
+            return;
+          }
+
+          map.addSource("ride-route", {
+            type: "geojson",
+            data,
+          });
+          map.addLayer({
+            id: "ride-route-line",
+            type: "line",
+            source: "ride-route",
+            layout: {
+              "line-cap": "round",
+              "line-join": "round",
+            },
+            paint: {
+              "line-color": "#2563eb",
+              "line-width": 5,
+              "line-opacity": 0.8,
+            },
+          });
+        } catch (error) {
+          if (!cancelled) {
+            console.warn("[mapbox] Unable to load ride route:", error);
+            clearRoute();
+          }
+        }
+      };
       const addMarkers = () => {
         // Add a dot for every non-selected campus location.
         for (const loc of locations) {
@@ -324,8 +417,17 @@ export default function CreateRidePage() {
         }
       };
 
-      if (mapLoadedRef.current) addMarkers();
-      else map.once("load", addMarkers);
+      const addMapContent = () => {
+        addMarkers();
+        void updateRoute();
+      };
+
+      if (mapLoadedRef.current) addMapContent();
+      else map.once("load", addMapContent);
+
+      return () => {
+        cancelled = true;
+      };
     } catch (e) {
       // Surface failures from the external map API to the user.
       // eslint-disable-next-line react-hooks/set-state-in-effect
