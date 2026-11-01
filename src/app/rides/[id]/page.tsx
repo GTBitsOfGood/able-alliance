@@ -12,6 +12,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import StopTime from "./StopTime";
 import { getStudentStatusChipStyle } from "../RideCard";
 import styles from "./styles.module.css";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
@@ -21,6 +22,7 @@ import type {
   ChatMessageResponse,
 } from "@/utils/types/api";
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
+import { withDelay } from "@/utils/dateEst";
 
 const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
 const CLOSED_CHAT_STATUSES = new Set([
@@ -146,8 +148,8 @@ export default function RideDetailPage({
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
-  const [markDelay, setMarkDelay] = useState(false);
   const [delayActionBusy, setDelayActionBusy] = useState(false);
+  const [delayActionError, setDelayActionError] = useState<string | null>(null);
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [showDelayModal, setShowDelayModal] = useState(false);
@@ -668,6 +670,7 @@ export default function RideDetailPage({
     async (minutes: number) => {
       if (!routeId) return;
       setDelayActionBusy(true);
+      setDelayActionError(null);
       try {
         const res = await fetch("/api/routes/delay", {
           method: "POST",
@@ -679,7 +682,7 @@ export default function RideDetailPage({
           throw new Error(body.error ?? res.statusText);
         }
       } catch (e) {
-        setDriverActionError(
+        setDelayActionError(
           e instanceof Error ? e.message : "Failed to mark as delayed.",
         );
       } finally {
@@ -729,7 +732,17 @@ export default function RideDetailPage({
   const driverName = getDriverName(route.driver);
   const hasDriver = !!driverName;
 
-  const scheduledDate = new Date(route.scheduledPickupTime);
+  const delayMinutes = route.delayMinutes ?? 0;
+  const isDelayed = delayMinutes > 0;
+  const scheduledPickup = new Date(route.scheduledPickupTime);
+  const delayedPickup = withDelay(scheduledPickup, delayMinutes);
+
+  const originalDropoff = route.estimatedDropoffTime
+    ? new Date(route.estimatedDropoffTime)
+    : null;
+  const delayedDropoff = originalDropoff
+    ? withDelay(originalDropoff, delayMinutes)
+    : null;
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("en-US", {
@@ -738,10 +751,6 @@ export default function RideDetailPage({
       minute: "2-digit",
       hour12: true,
     });
-
-  const dropoffTimeDisplay = route.estimatedDropoffTime
-    ? formatTime(new Date(route.estimatedDropoffTime))
-    : "N/A";
 
   const formatDateLabel = (d: Date) => {
     const tz = "America/New_York";
@@ -907,10 +916,14 @@ export default function RideDetailPage({
         />
         <DelayRideModal
           open={showDelayModal}
-          onOpenChange={setShowDelayModal}
+          onOpenChange={(open) => {
+            setShowDelayModal(open);
+            if (!open) {
+              setDelayActionError(null);
+            }
+          }}
           onConfirm={async (minutes) => {
-            await handleMarkDelay(minutes);
-            setShowDelayModal(false);
+            const result = await handleMarkDelay(minutes);
           }}
           confirming={delayActionBusy}
         />
@@ -933,14 +946,17 @@ export default function RideDetailPage({
 
           <div className={styles.rideSummaryCard}>
             <p className={styles.rideDateLabel}>
-              {formatDateLabel(scheduledDate)}
+              {formatDateLabel(scheduledPickup)}
             </p>
             <div className={styles.pickupDropoffRow}>
               <div className={styles.stopBlock}>
                 <span className={styles.stopLabel}>Pickup</span>
-                <span className={styles.stopTime}>
-                  {formatTime(scheduledDate)}
-                </span>
+                <StopTime
+                  time={formatTime(delayedPickup)}
+                  originalTime={
+                    isDelayed ? formatTime(scheduledPickup) : undefined
+                  }
+                />
                 <span className={styles.stopLocation}>
                   {pickupLocationName}
                 </span>
@@ -948,7 +964,15 @@ export default function RideDetailPage({
               <div className={styles.stopDivider} />
               <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
                 <span className={styles.stopLabel}>Dropoff</span>
-                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <StopTime
+                  time={delayedDropoff ? formatTime(delayedDropoff) : "N/A"}
+                  originalTime={
+                    isDelayed && originalDropoff
+                      ? formatTime(originalDropoff)
+                      : undefined
+                  }
+                />
+
                 <span className={styles.stopLocationRight}>
                   {dropoffLocationName}
                 </span>
@@ -999,7 +1023,7 @@ export default function RideDetailPage({
                 </button>
               </div>
 
-              <div>
+              {(route.status === "Scheduled" || route.status === "EnRoute") && (
                 <button
                   type="button"
                   className={
@@ -1010,7 +1034,7 @@ export default function RideDetailPage({
                 >
                   {delayActionBusy ? "Delaying..." : "Delay Ride"}
                 </button>
-              </div>
+              )}
 
               {/* Scheduled: Start ride */}
               {route.status === "Scheduled" && (
@@ -1066,7 +1090,7 @@ export default function RideDetailPage({
                 </button>
               )}
 
-              {(missingError || driverActionError) && (
+              {(missingError || delayActionError || driverActionError) && (
                 <p
                   style={{
                     color: "var(--color-status-red-text)",
@@ -1074,7 +1098,7 @@ export default function RideDetailPage({
                     margin: 0,
                   }}
                 >
-                  {missingError || driverActionError}
+                  {missingError || delayActionError || driverActionError}
                 </p>
               )}
             </div>
@@ -1136,7 +1160,7 @@ export default function RideDetailPage({
         {/* Ride summary card — full width */}
         <div className={styles.rideSummaryCard}>
           <p className={styles.rideDateLabel}>
-            {formatDateLabel(scheduledDate)}
+            {formatDateLabel(scheduledPickup)}
           </p>
           {isMobileLayout ? (
             <div className={styles.pickupDropoffStack}>
@@ -1145,11 +1169,23 @@ export default function RideDetailPage({
                 <span className={styles.stopLabel}>Dropoff</span>
               </div>
               <div className={styles.stopTimesRow}>
-                <span className={styles.stopTime}>
-                  {formatTime(scheduledDate)}
-                </span>
+                <StopTime
+                  time={formatTime(delayedPickup)}
+                  originalTime={
+                    isDelayed ? formatTime(scheduledPickup) : undefined
+                  }
+                />
                 <div className={styles.stopDivider} aria-hidden />
-                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <div className={styles.stopTimeStack}>
+                  <StopTime
+                    time={delayedDropoff ? formatTime(delayedDropoff) : "N/A"}
+                    originalTime={
+                      isDelayed && originalDropoff
+                        ? formatTime(originalDropoff)
+                        : undefined
+                    }
+                  />
+                </div>
               </div>
               <div className={styles.stopLocationsRow}>
                 <span className={styles.stopLocation}>
@@ -1164,9 +1200,14 @@ export default function RideDetailPage({
             <div className={styles.pickupDropoffRow}>
               <div className={styles.stopBlock}>
                 <span className={styles.stopLabel}>Pickup</span>
-                <span className={styles.stopTime}>
-                  {formatTime(scheduledDate)}
-                </span>
+                <div className={styles.stopTimeStack}>
+                  <StopTime
+                    time={formatTime(delayedPickup)}
+                    originalTime={
+                      isDelayed ? formatTime(scheduledPickup) : undefined
+                    }
+                  />
+                </div>
                 <span className={styles.stopLocation}>
                   {pickupLocationName}
                 </span>
@@ -1174,7 +1215,15 @@ export default function RideDetailPage({
               <div className={styles.stopDivider} />
               <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
                 <span className={styles.stopLabel}>Dropoff</span>
-                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <StopTime
+                  time={delayedDropoff ? formatTime(delayedDropoff) : "N/A"}
+                  originalTime={
+                    isDelayed && originalDropoff
+                      ? formatTime(originalDropoff)
+                      : undefined
+                  }
+                />
+
                 <span className={styles.stopLocationRight}>
                   {dropoffLocationName}
                 </span>

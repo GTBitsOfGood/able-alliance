@@ -625,6 +625,18 @@
   color: var(--color-grey-text-strong);
 }
 
+.stopTimeDelayed {
+  color: var(--color-status-red-text);
+}
+
+.stopTimeOriginal {
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  color: var(--color-grey-text-weak);
+  text-decoration: line-through;
+  font-family: var(--font-paragraph);
+}
+
 .driverStatusPill {
   display: inline-flex;
   align-items: center;
@@ -1067,6 +1079,18 @@
   .rideCardTimeValue {
     font-size: var(--text-mobile-heading-3);
     line-height: var(--text-mobile-heading-3--line-height);
+  }
+
+  .stopTimeDelayed {
+    color: var(--color-status-red-text);
+  }
+
+  .stopTimeOriginal {
+    font-size: var(--text-desktop-paragraph-2);
+    line-height: var(--text-desktop-paragraph-2--line-height);
+    color: var(--color-grey-text-weak);
+    text-decoration: line-through;
+    font-family: var(--font-paragraph);
   }
 
   .driverStatusPill {
