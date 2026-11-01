@@ -43,6 +43,17 @@ type SortOption = (typeof SORT_OPTIONS)[number];
 const ALL_STATUSES = "All statuses";
 const requestedLabel = routeStatusLabels.Requested;
 
+// Mirror what the server accepts: scheduleRoute only moves a ride out of
+// Requested, and cancelRoute refuses anything already completed, missing or
+// cancelled. Offering either action on those rides would just 409.
+const ASSIGNABLE_STATUSES = new Set<string>(["Requested"]);
+const CANCELLABLE_STATUSES = new Set<string>([
+  "Requested",
+  "Scheduled",
+  "EnRoute",
+  "Pickedup",
+]);
+
 function fullName(user: { firstName: string; lastName: string } | null) {
   return user ? `${user.firstName} ${user.lastName}` : "—";
 }
@@ -150,66 +161,83 @@ export default function RidesTable() {
     }
   };
 
-  const rows: TableRow[] = visibleRoutes.map((route) => ({
-    key: route.id,
-    cells: [
-      { content: fullName(route.student) },
-      { content: fullName(route.driver) },
-      { content: route.vehicle?.name ?? "—" },
-      { content: <RideStatusChip status={route.status} /> },
-      { content: formatEstDate(new Date(route.scheduledPickupTime)) },
-      { content: timeAt(route.scheduledPickupTime, route.pickup?.name) },
-      { content: timeAt(route.estimatedDropoffTime, route.dropoff?.name) },
-      {
-        content: (
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.actionButton}
-              aria-label={`Edit ride for ${fullName(route.student)}`}
-              onClick={() => setAssignRoute(route)}
-            >
-              <Image
-                src="/ride-action-edit.svg"
-                alt=""
-                width={18}
-                height={18}
-              />
-            </button>
-            <button
-              type="button"
-              className={styles.actionButton}
-              aria-label={`Open chat for ${fullName(route.student)}`}
-              onClick={() => setChatRoute(route)}
-            >
-              <Image
-                src="/ride-action-chat.svg"
-                alt=""
-                width={21}
-                height={20}
-              />
-            </button>
-            <button
-              type="button"
-              className={styles.actionButton}
-              aria-label={`Cancel ride for ${fullName(route.student)}`}
-              onClick={() => {
-                setCancelError(null);
-                setPendingCancel(route);
-              }}
-            >
-              <Image
-                src="/ride-action-cancel.svg"
-                alt=""
-                width={18}
-                height={18}
-              />
-            </button>
-          </div>
-        ),
-      },
-    ],
-  }));
+  const rows: TableRow[] = visibleRoutes.map((route) => {
+    const canAssign = ASSIGNABLE_STATUSES.has(route.status);
+    const canCancel = CANCELLABLE_STATUSES.has(route.status);
+
+    return {
+      key: route.id,
+      cells: [
+        { content: fullName(route.student) },
+        { content: fullName(route.driver) },
+        { content: route.vehicle?.name ?? "—" },
+        { content: <RideStatusChip status={route.status} /> },
+        { content: formatEstDate(new Date(route.scheduledPickupTime)) },
+        { content: timeAt(route.scheduledPickupTime, route.pickup?.name) },
+        { content: timeAt(route.estimatedDropoffTime, route.dropoff?.name) },
+        {
+          content: (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.actionButton}
+                disabled={!canAssign}
+                title={
+                  canAssign
+                    ? undefined
+                    : `A ${statusLabel(route.status).toLowerCase()} ride can't be edited`
+                }
+                aria-label={`Edit ride for ${fullName(route.student)}`}
+                onClick={() => setAssignRoute(route)}
+              >
+                <Image
+                  src="/ride-action-edit.svg"
+                  alt=""
+                  width={18}
+                  height={18}
+                />
+              </button>
+              <button
+                type="button"
+                className={styles.actionButton}
+                aria-label={`Open chat for ${fullName(route.student)}`}
+                onClick={() => setChatRoute(route)}
+              >
+                <Image
+                  src="/ride-action-chat.svg"
+                  alt=""
+                  width={21}
+                  height={20}
+                />
+              </button>
+              <button
+                type="button"
+                className={styles.actionButton}
+                disabled={!canCancel}
+                title={
+                  canCancel
+                    ? undefined
+                    : `A ${statusLabel(route.status).toLowerCase()} ride can't be cancelled`
+                }
+                aria-label={`Cancel ride for ${fullName(route.student)}`}
+                onClick={() => {
+                  setCancelError(null);
+                  setPendingCancel(route);
+                }}
+              >
+                <Image
+                  src="/ride-action-cancel.svg"
+                  alt=""
+                  width={18}
+                  height={18}
+                />
+              </button>
+            </div>
+          ),
+        },
+      ],
+    };
+  });
 
   if (loading) return <p className={styles.notice}>Loading…</p>;
   if (error)
