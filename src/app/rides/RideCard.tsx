@@ -100,7 +100,7 @@ export function RideCard({
 
   if (isDriverCard) {
     const studentName =
-      `${route.student.firstName} ${route.student.lastName}`.trim();
+      `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
 
     const dropoffTimeDisplay = route.estimatedDropoffTime
       ? formatTime(route.estimatedDropoffTime)
