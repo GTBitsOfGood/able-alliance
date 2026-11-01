@@ -116,7 +116,8 @@ export async function GET(request: NextRequest) {
       token: {
         sub: userId,
         userId,
-        type: user.type,
+        activeType: user.types[0],
+        types: user.types,
         username,
         email: user.email,
         name: displayName,

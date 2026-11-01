@@ -1,3 +1,4 @@
+import { userTypeFilter } from "@/utils/userTypes";
 import type loadHighs from "highs";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import { db } from "@db";
@@ -228,7 +229,7 @@ async function loadDay(date: string, client: Prisma.TransactionClient = db) {
   const bookedDriverIds = routes.flatMap((r) => r.driverId ?? []);
   const drivers = await client.user.findMany({
     where: {
-      type: "Driver",
+      AND: [userTypeFilter("Driver")],
       OR: [
         { shifts: { some: { dayOfWeek } } },
         { id: { in: bookedDriverIds } },

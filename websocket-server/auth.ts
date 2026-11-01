@@ -1,3 +1,4 @@
+import { db } from "@db";
 import type { AppSocket, AuthNext } from "./types.js";
 import jwt from "jsonwebtoken";
 import { debugLog } from "./utils/logger.js";
@@ -23,7 +24,7 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
       if (
         typeof payload === "string" ||
         typeof payload.userId !== "string" ||
-        typeof payload.type !== "string"
+        typeof payload.activeType !== "string"
       ) {
         throw new Error("Invalid JWT payload");
       }
@@ -37,6 +38,14 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
       return next(new Error("Invalid JWT token"));
     }
 
+    const account = await db.user.findUnique({ where: { id: decoded.userId } });
+    if (
+      !account ||
+      account.status !== "active" ||
+      !account.types.some((role) => role === decoded.activeType)
+    ) {
+      return next(new Error("Role is no longer assigned"));
+    }
     const userId = decoded.userId;
     debugLog("User ID from token:", userId);
 
@@ -45,10 +54,12 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
       return next(new Error("Route not found"));
     }
 
-    const isStudent = route.student?.id === userId;
-    const isDriver = route.driver?.id === userId;
-    const isAdmin = decoded.type === "Admin";
-    const isSuperAdmin = decoded.type === "SuperAdmin";
+    const isStudent =
+      decoded.activeType === "Student" && route.student?.id === userId;
+    const isDriver =
+      decoded.activeType === "Driver" && route.driver?.id === userId;
+    const isAdmin = decoded.activeType === "Admin";
+    const isSuperAdmin = decoded.activeType === "SuperAdmin";
 
     if (!isStudent && !isDriver && !isSuperAdmin && !isAdmin) {
       return next(new Error("User not authorized for this route"));
@@ -56,7 +67,7 @@ export async function authenticateSocket(socket: AppSocket, next: AuthNext) {
 
     socket.data.routeId = routeId;
     socket.data.user = userId;
-    socket.data.userType = decoded.type;
+    socket.data.userType = decoded.activeType;
     socket.data.routeStudent = route.student;
     socket.data.routeDriver = route.driver;
     next();
@@ -88,7 +99,7 @@ export async function authenticateNotificationSocket(
       if (
         typeof payload === "string" ||
         typeof payload.userId !== "string" ||
-        typeof payload.type !== "string"
+        typeof payload.activeType !== "string"
       ) {
         throw new Error("Invalid JWT payload");
       }
@@ -105,8 +116,16 @@ export async function authenticateNotificationSocket(
       return next(new Error("Token missing userId"));
     }
 
+    const account = await db.user.findUnique({ where: { id: decoded.userId } });
+    if (
+      !account ||
+      account.status !== "active" ||
+      !account.types.some((role) => role === decoded.activeType)
+    ) {
+      return next(new Error("Role is no longer assigned"));
+    }
     socket.data.user = decoded.userId;
-    socket.data.userType = decoded.type;
+    socket.data.userType = decoded.activeType;
     next();
   } catch (error) {
     console.error("Notification auth error:", error);
