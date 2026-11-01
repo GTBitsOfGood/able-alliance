@@ -15,7 +15,6 @@ import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionMod
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
-import { ADMIN_TYPE_LABELS } from "./admin-table-data";
 import RidesTable from "./RidesTable";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
@@ -337,7 +336,6 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                   setShowForm(false);
                   setSubmitError(null);
                   setVehicleAccessibility("None");
-                  setAdminType("Admin");
                   setNewLocationPoint(null);
                 }}
               >
