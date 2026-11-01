@@ -19,7 +19,7 @@ type RideDraft = {
   pickup: string;
   dropoff: string;
   recurring: boolean;
-  repeatsOn: string[];
+  repeatsOn: number[];
   ends: string;
 };
 
@@ -44,11 +44,24 @@ function toEstUtc(date: string, time: string): Date {
   );
 }
 
-function isWeekday(date: string) {
+function weekdayOf(date: string) {
   const [year, month, day] = date.split("-").map(Number);
-  const weekday = new Date(year, month - 1, day).getDay();
+  return new Date(year, month - 1, day).getDay();
+}
+
+function isWeekday(date: string) {
+  const weekday = weekdayOf(date);
   return weekday >= 1 && weekday <= 5;
 }
+
+/** "Repeats on" buttons, keyed by Date#getDay() weekday number. */
+const REPEAT_DAYS = [
+  { label: "M", weekday: 1 },
+  { label: "Tu", weekday: 2 },
+  { label: "W", weekday: 3 },
+  { label: "Th", weekday: 4 },
+  { label: "F", weekday: 5 },
+];
 
 export default function BatchRidePage() {
   const router = useRouter();
@@ -85,7 +98,7 @@ export default function BatchRidePage() {
     );
   }
 
-  function toggleDay(index: number, day: string) {
+  function toggleDay(index: number, day: number) {
     const ride = rides[index];
     updateRide(index, {
       repeatsOn: ride.repeatsOn.includes(day)
@@ -140,6 +153,18 @@ export default function BatchRidePage() {
         setError(`Ride #${index + 1} must be within service hours.`);
         return;
       }
+      if (ride.recurring) {
+        if (!ride.repeatsOn.includes(weekdayOf(ride.date))) {
+          setError(
+            `Ride #${index + 1} must repeat on the day of its first ride.`,
+          );
+          return;
+        }
+        if (ride.ends && ride.ends < ride.date) {
+          setError(`Ride #${index + 1} must end on or after its first ride.`);
+          return;
+        }
+      }
     }
 
     setSubmitting(true);
@@ -163,7 +188,15 @@ export default function BatchRidePage() {
                 ride.windowFrom,
               ).toISOString(),
               pickupWindowEnd: toEstUtc(ride.date, ride.windowTo).toISOString(),
-              ...(ride.recurring ? { recurring: { frequency: "weekly" } } : {}),
+              ...(ride.recurring
+                ? {
+                    recurring: {
+                      frequency: "weekly",
+                      daysOfWeek: ride.repeatsOn,
+                      ...(ride.ends ? { endsOn: ride.ends } : {}),
+                    },
+                  }
+                : {}),
             };
           }),
         }),
@@ -317,18 +350,18 @@ export default function BatchRidePage() {
                     <fieldset>
                       <legend>Repeats on</legend>
                       <div className={styles.dayButtons}>
-                        {["M", "Tu", "W", "Th", "F"].map((day) => (
+                        {REPEAT_DAYS.map(({ label, weekday }) => (
                           <BogButton
-                            key={day}
+                            key={weekday}
                             type="button"
                             className={
-                              ride.repeatsOn.includes(day)
+                              ride.repeatsOn.includes(weekday)
                                 ? styles.dayButtonSelected
                                 : styles.dayButton
                             }
-                            onClick={() => toggleDay(index, day)}
+                            onClick={() => toggleDay(index, weekday)}
                           >
-                            {day}
+                            {label}
                           </BogButton>
                         ))}
                       </div>

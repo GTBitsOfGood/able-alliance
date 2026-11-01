@@ -177,7 +177,11 @@ model RideSeries {
   pickup                    Location            @relation("SeriesPickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
   dropoff                   Location            @relation("SeriesDropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
   frequency                 RecurrenceFrequency @default(weekly)
+  /// Eastern weekdays a ride is scheduled on, 0 = Sunday … 6 = Saturday.
+  daysOfWeek                Int[]
   firstPickupTime           DateTime            @db.Timestamptz(3)
+  /// End of the last Eastern day a ride may be scheduled on; null repeats until deactivated.
+  endsAt                    DateTime?           @db.Timestamptz(3)
   pickupWindowStartOffsetMs Int
   pickupWindowEndOffsetMs   Int
   materializedThrough       DateTime            @db.Timestamptz(3)
