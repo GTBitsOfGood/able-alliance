@@ -13,7 +13,12 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-import { estDateDaysFromNow, nextServiceDate } from "./routeTestHelpers";
+import {
+  clearLocations,
+  nextServiceDate,
+  selectLocation,
+  showCalendarMonth,
+} from "./routeTestHelpers";
 
 /** TimeInput is a text box with a listbox; typing then Enter commits the first match. */
 async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
@@ -36,11 +41,8 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     student.getByRole("heading", { name: "Request Ride" }),
   ).toBeVisible();
 
-  const today = estDateDaysFromNow(0);
   const rideDate = nextServiceDate();
-  if (rideDate.getMonth() !== today.getMonth()) {
-    await student.getByRole("button", { name: "Next month" }).click();
-  }
+  await showCalendarMonth(student, rideDate);
   await student
     .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
@@ -50,12 +52,13 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   await pickTime(student.locator("#pickup-window-from"), "9:30 AM");
   await pickTime(student.locator("#pickup-window-to"), "10:30 AM");
 
-  await student
-    .getByRole("combobox", { name: "Pickup location" })
-    .selectOption({ label: LOCATIONS.exhibitionHall.name });
-  await student
-    .getByRole("combobox", { name: "Dropoff location" })
-    .selectOption({ label: LOCATIONS.techSquare.name });
+  await clearLocations(student);
+  await selectLocation(
+    student,
+    "Pickup location",
+    LOCATIONS.exhibitionHall.name,
+  );
+  await selectLocation(student, "Dropoff location", LOCATIONS.techSquare.name);
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",

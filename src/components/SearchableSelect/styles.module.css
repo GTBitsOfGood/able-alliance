@@ -1,10 +1,31 @@
 .wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .input {
+  flex: 1;
+  min-width: 0;
   width: 100%;
   box-sizing: border-box;
+}
+
+.clearButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-grey-text-weak);
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  color: var(--color-grey-text-strong);
 }
 
 .dropdown {

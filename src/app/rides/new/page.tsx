@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { fromZonedTime } from "date-fns-tz";
+import { estNowWallClock } from "@/utils/dateEst";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
@@ -41,8 +42,10 @@ function isServiceDay(date: Date): boolean {
   return day >= 1 && day <= 5;
 }
 
+// Calendar dates on this page are New York days (see toEstUtc in handleSubmit),
+// so "today" and "now" come from the New York clock, not the browser's.
 function startOfToday(): Date {
-  const now = new Date();
+  const now = estNowWallClock();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
@@ -74,10 +77,10 @@ function clampTime(time: string, min: string, max: string): string {
 // 15-minute slot for today, or the start of service for later days.
 // Returns null when no slots remain within service hours.
 function getEarliestPickupTime(date: Date): string | null {
-  if (date.toDateString() !== new Date().toDateString()) {
+  const now = estNowWallClock();
+  if (date.toDateString() !== now.toDateString()) {
     return SERVICE_START_TIME;
   }
-  const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes() + 1;
   const nextSlot =
     Math.ceil(nowMinutes / TIME_SLOT_MINUTES) * TIME_SLOT_MINUTES;
@@ -692,7 +695,7 @@ export default function CreateRidePage() {
       day,
     );
     const isSelected = selectedDate?.toDateString() === date.toDateString();
-    const isToday = new Date().toDateString() === date.toDateString();
+    const isToday = startOfToday().toDateString() === date.toDateString();
     const isPast = isPastDay(date) || !getEarliestPickupTime(date);
     const isAvailable = isServiceDay(date) && !isPast;
 
