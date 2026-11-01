@@ -285,7 +285,8 @@ export default function RideDetailPage({
         markerRefs.current.forEach((marker) => marker.remove());
         markerRefs.current = [];
 
-        const pinColor = "#183777";
+        const pickupPinColor = "#eb2525";
+        const dropoffPinColor = "#16a34a";
         const pickupLngLat: [number, number] = [
           pickup.longitude,
           pickup.latitude,
@@ -300,7 +301,7 @@ export default function RideDetailPage({
         staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
 
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
+          element: createCustomPin(`Pickup: ${pickup.name}`, pickupPinColor),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
@@ -311,7 +312,7 @@ export default function RideDetailPage({
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
             `Dropoff: ${dropoff.name}`,
-            pinColor,
+            dropoffPinColor,
             overlap ? 50 : 0,
           ),
           anchor: "bottom",
