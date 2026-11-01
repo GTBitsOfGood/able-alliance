@@ -111,29 +111,32 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    const created = await createUser({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      preferredName: data.preferredName,
-      username: data.username,
-      email: data.email,
-      type: data.type,
-      settings: { create: data.settings ?? {} },
-      ...(studentInfo
-        ? {
-            studentInfo: {
-              create: {
-                notes: studentInfo.notes,
-                accessibilityNeeds: {
-                  connect: (studentInfo.accessibilityNeeds ?? []).map(
-                    (label) => ({ label }),
-                  ),
+    const created = await createUser(
+      {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        preferredName: data.preferredName,
+        username: data.username,
+        email: data.email,
+        type: data.type,
+        settings: { create: data.settings ?? {} },
+        ...(studentInfo
+          ? {
+              studentInfo: {
+                create: {
+                  notes: studentInfo.notes,
+                  accessibilityNeeds: {
+                    connect: (studentInfo.accessibilityNeeds ?? []).map(
+                      (label) => ({ label }),
+                    ),
+                  },
                 },
               },
-            },
-          }
-        : {}),
-    });
+            }
+          : {}),
+      },
+      user.userId,
+    );
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {
     return errorResponse(error);

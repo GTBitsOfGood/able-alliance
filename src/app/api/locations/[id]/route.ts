@@ -65,7 +65,7 @@ export async function DELETE(
     );
   }
   try {
-    await archiveLocation(id);
+    await archiveLocation(id, user.userId);
     emitLocationsUpdate();
     return NextResponse.json(
       { message: "Location archived" },

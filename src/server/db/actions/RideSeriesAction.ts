@@ -29,8 +29,39 @@ import type { RecurrenceRequest } from "@/utils/types/rideSeries";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import { ArgumentError, ConflictError } from "@/utils/errors";
 import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
+import { recordAudit } from "@db/audit";
 
 const TZ = "America/New_York";
+
+function seriesAuditSnapshot(series: {
+  id: string;
+  studentId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  frequency: string;
+  firstPickupTime: Date;
+  pickupWindowStartOffsetMs: number;
+  pickupWindowEndOffsetMs: number;
+  materializedThrough: Date;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: series.id,
+    studentId: series.studentId,
+    pickupLocation: series.pickupLocation,
+    dropoffLocation: series.dropoffLocation,
+    frequency: series.frequency,
+    firstPickupTime: series.firstPickupTime,
+    pickupWindowStartOffsetMs: series.pickupWindowStartOffsetMs,
+    pickupWindowEndOffsetMs: series.pickupWindowEndOffsetMs,
+    materializedThrough: series.materializedThrough,
+    active: series.active,
+    createdAt: series.createdAt,
+    updatedAt: series.updatedAt,
+  };
+}
 
 /** How far ahead rides are kept scheduled, in Eastern calendar days. */
 export const SCHEDULING_HORIZON_DAYS = 28;
@@ -104,9 +135,16 @@ async function materializeSeries(
           // Missed occurrences are processed permanently, without creating old
           // requests or asking Mapbox for travel estimates in the past.
           if (next <= new Date()) {
-            await tx.rideSeries.update({
+            const updated = await tx.rideSeries.update({
               where: { id: seriesId },
               data: { materializedThrough: next },
+            });
+            await recordAudit(tx, {
+              entityType: "RideSeries",
+              entityId: updated.id,
+              action: "Update",
+              before: seriesAuditSnapshot(series),
+              after: seriesAuditSnapshot(updated),
             });
             return { route: null };
           }
@@ -135,11 +173,18 @@ async function materializeSeries(
                     next.getTime() + series.pickupWindowEndOffsetMs,
                   ),
                 },
-                { seriesId, tx },
+                { seriesId, tx, actorId: null },
               );
-          await tx.rideSeries.update({
+          const updatedSeries = await tx.rideSeries.update({
             where: { id: seriesId },
             data: { materializedThrough: next },
+          });
+          await recordAudit(tx, {
+            entityType: "RideSeries",
+            entityId: updatedSeries.id,
+            action: "Update",
+            before: seriesAuditSnapshot(series),
+            after: seriesAuditSnapshot(updatedSeries),
           });
           return { route };
         },
@@ -198,6 +243,7 @@ export async function materializeDueSeries(
 export async function createRideSeries(
   data: CreateRouteInput,
   recurrence: RecurrenceRequest,
+  actorId: string,
 ) {
   data = createRouteSchema.parse(data);
   recurrence = recurrenceRequestSchema.parse(recurrence);
@@ -240,7 +286,18 @@ export async function createRideSeries(
             materializedThrough: data.scheduledPickupTime,
           },
         });
-        const firstRoute = await createRoute(data, { seriesId: series.id, tx });
+        await recordAudit(tx, {
+          actorId,
+          entityType: "RideSeries",
+          entityId: series.id,
+          action: "Create",
+          after: seriesAuditSnapshot(series),
+        });
+        const firstRoute = await createRoute(data, {
+          seriesId: series.id,
+          tx,
+          actorId,
+        });
         return { series, firstRoute };
       },
       { timeout: 60000 },
@@ -269,10 +326,28 @@ export async function createRideSeries(
 }
 
 /** Stop future generation for a series without touching rides already created. */
-export async function deactivateRideSeries(seriesId: string): Promise<boolean> {
-  const { count } = await db.rideSeries.updateMany({
-    where: { id: seriesId.toLowerCase() },
-    data: { active: false },
+export async function deactivateRideSeries(
+  seriesId: string,
+  actorId: string | null = null,
+): Promise<boolean> {
+  const changed = await db.$transaction(async (tx) => {
+    const before = await tx.rideSeries.findUnique({
+      where: { id: seriesId.toLowerCase() },
+    });
+    if (!before) return false;
+    const updated = await tx.rideSeries.update({
+      where: { id: before.id },
+      data: { active: false },
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "RideSeries",
+      entityId: updated.id,
+      action: "Update",
+      before: seriesAuditSnapshot(before),
+      after: seriesAuditSnapshot(updated),
+    });
+    return true;
   });
-  return count !== 0;
+  return changed;
 }

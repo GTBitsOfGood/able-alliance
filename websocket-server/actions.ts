@@ -1,6 +1,7 @@
 import { db } from "@db";
 import { RouteStatus } from "@db/generated/client";
 import { z } from "zod";
+import { recordAudit } from "@db/audit";
 
 const routeIdSchema = z.uuid();
 
@@ -46,12 +47,22 @@ export async function appendMessage(
     throw new Error("Chat is closed for this route");
   }
 
-  return db.message.create({
-    data: {
-      route: { connect: { id: routeId } },
-      sender: { connect: { id: senderId } },
-      text,
-      time: new Date(),
-    },
+  return db.$transaction(async (tx) => {
+    const message = await tx.message.create({
+      data: {
+        route: { connect: { id: routeId } },
+        sender: { connect: { id: senderId } },
+        text,
+        time: new Date(),
+      },
+    });
+    await recordAudit(tx, {
+      actorId: senderId,
+      entityType: "Message",
+      entityId: message.id,
+      action: "Create",
+      after: message,
+    });
+    return message;
   });
 }

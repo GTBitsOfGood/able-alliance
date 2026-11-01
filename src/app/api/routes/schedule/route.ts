@@ -47,7 +47,12 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    const updated = await scheduleRoute(routeId, driverId, vehicleId);
+    const updated = await scheduleRoute(
+      routeId,
+      driverId,
+      vehicleId,
+      user.userId,
+    );
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     if (error instanceof BookingConflictError)

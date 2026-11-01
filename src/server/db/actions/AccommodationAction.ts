@@ -1,12 +1,23 @@
 import { db } from "@db";
 import { Prisma } from "@db/generated/client";
 import { ConflictError, NotFoundError } from "@/utils/errors";
+import { recordAudit } from "@db/audit";
 
 export const getAccommodations = () => db.accommodation.findMany();
 
-export async function createAccommodation(label: string) {
+export async function createAccommodation(label: string, actorId: string) {
   try {
-    return await db.accommodation.create({ data: { label } });
+    return await db.$transaction(async (tx) => {
+      const created = await tx.accommodation.create({ data: { label } });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Accommodation",
+        entityId: created.id,
+        action: "Create",
+        after: created,
+      });
+      return created;
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -17,9 +28,21 @@ export async function createAccommodation(label: string) {
   }
 }
 
-export async function deleteAccommodation(id: string) {
+export async function deleteAccommodation(id: string, actorId: string) {
   try {
-    return await db.accommodation.delete({ where: { id: id.toLowerCase() } });
+    return await db.$transaction(async (tx) => {
+      const removed = await tx.accommodation.delete({
+        where: { id: id.toLowerCase() },
+      });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Accommodation",
+        entityId: removed.id,
+        action: "Delete",
+        before: removed,
+      });
+      return removed;
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025")
@@ -31,11 +54,30 @@ export async function deleteAccommodation(id: string) {
   }
 }
 
-export async function renameAccommodation(id: string, label: string) {
+export async function renameAccommodation(
+  id: string,
+  label: string,
+  actorId: string,
+) {
   try {
-    return await db.accommodation.update({
-      where: { id: id.toLowerCase() },
-      data: { label },
+    return await db.$transaction(async (tx) => {
+      const before = await tx.accommodation.findUnique({
+        where: { id: id.toLowerCase() },
+      });
+      if (!before) throw new NotFoundError("Accommodation not found");
+      const updated = await tx.accommodation.update({
+        where: { id: before.id },
+        data: { label },
+      });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Accommodation",
+        entityId: updated.id,
+        action: "Update",
+        before,
+        after: updated,
+      });
+      return updated;
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

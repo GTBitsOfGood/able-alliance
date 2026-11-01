@@ -133,7 +133,7 @@ export async function PATCH(
           );
         }
       }
-      const updated = await updateUser(id, "Student", parsed.data);
+      const updated = await updateUser(id, "Student", parsed.data, viewerId);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else if (user.type === "Driver") {
       // For drivers, only admins can update shifts
@@ -154,7 +154,7 @@ export async function PATCH(
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      const updated = await updateUser(id, "Driver", parsed.data);
+      const updated = await updateUser(id, "Driver", parsed.data, viewerId);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     } else {
       if (!viewerIsAdmin)
@@ -167,7 +167,12 @@ export async function PATCH(
         return NextResponse.json(adminParsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
-      const updated = await updateUser(id, user.type, adminParsed.data);
+      const updated = await updateUser(
+        id,
+        user.type,
+        adminParsed.data,
+        viewerId,
+      );
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     }
   } catch (error) {
@@ -206,7 +211,7 @@ export async function DELETE(
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    await archiveUser(id);
+    await archiveUser(id, authUser.userId);
     return NextResponse.json(
       { message: "User archived" },
       { status: HTTP_STATUS_CODE.OK },

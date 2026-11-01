@@ -71,7 +71,7 @@ export async function DELETE(
     );
   }
   try {
-    await deleteRoute(id);
+    await deleteRoute(id, user.userId);
     return NextResponse.json(
       { message: "Route deleted" },
       { status: HTTP_STATUS_CODE.OK },

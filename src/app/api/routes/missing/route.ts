@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updated = await markRouteMissing(routeId);
+    const updated = await markRouteMissing(routeId, user.userId);
     return NextResponse.json(routeResponseForRole(updated, user.type), {
       status: HTTP_STATUS_CODE.OK,
     });

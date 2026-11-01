@@ -103,6 +103,7 @@ function describeScheduleError(e: unknown) {
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
+  const actor = await getUserFromRequest();
 
   let body: unknown;
   try {
@@ -127,7 +128,8 @@ export async function POST(req: NextRequest) {
     // manual bookings can't slip a conflicting ride in between.
     const results = await withSchedulingLock(
       schedulingLockKeys(assignments),
-      (tx, afterCommit) => applyAssignments(date, assignments, tx, afterCommit),
+      (tx, afterCommit) =>
+        applyAssignments(date, assignments, tx, afterCommit, actor.userId),
     );
     return NextResponse.json(
       { results },
@@ -153,6 +155,7 @@ async function applyAssignments(
   assignments: Assignment[],
   tx: Prisma.TransactionClient,
   afterCommit: (() => void)[],
+  actorId: string,
 ) {
   const plan = await planDay(date, assignments, tx);
   const info = new Map(
@@ -180,6 +183,7 @@ async function applyAssignments(
         a.vehicleId,
         tx,
         afterCommit,
+        actorId,
       );
       results.push({
         ...summary,

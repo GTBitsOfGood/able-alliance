@@ -43,7 +43,7 @@ export async function PATCH(
     );
   }
   try {
-    const updated = await renameAccommodation(id, newLabel);
+    const updated = await renameAccommodation(id, newLabel, user.userId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     return errorResponse(error);
@@ -77,7 +77,7 @@ export async function DELETE(
     );
   }
   try {
-    await deleteAccommodation(id);
+    await deleteAccommodation(id, user.userId);
     return NextResponse.json(
       { message: "Accommodation deleted" },
       { status: HTTP_STATUS_CODE.OK },

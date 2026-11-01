@@ -64,7 +64,7 @@ export async function DELETE(
     );
   }
   try {
-    await archiveVehicle(id);
+    await archiveVehicle(id, user.userId);
     return NextResponse.json(
       { message: "Vehicle archived" },
       { status: HTTP_STATUS_CODE.OK },
@@ -111,7 +111,7 @@ export async function PATCH(
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    const updated = await updateVehicle(id, parsed.data);
+    const updated = await updateVehicle(id, parsed.data, user.userId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     return errorResponse(error);
