@@ -8,7 +8,7 @@ import {
   getRoutes,
 } from "@/server/db/actions/RouteAction";
 import { createRideSeries } from "@/server/db/actions/RideSeriesAction";
-import { createRouteSchema } from "@/utils/types";
+import { batchRideRequestSchema, createRouteSchema } from "@/utils/types";
 import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
 import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -183,6 +183,48 @@ export async function POST(request: NextRequest) {
         { error: "Invalid request body" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
+
+    if ("rides" in body) {
+      const batch = batchRideRequestSchema.safeParse(body);
+      if (!batch.success) {
+        return NextResponse.json(batch.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      if (user.type !== "Student" || user.userId !== session.user.userId) {
+        return NextResponse.json(
+          { error: "Forbidden" },
+          {
+            status: HTTP_STATUS_CODE.FORBIDDEN,
+          },
+        );
+      }
+
+      const created = [];
+      for (const ride of batch.data.rides) {
+        const routeData = {
+          pickupLocation: ride.pickupLocation,
+          dropoffLocation: ride.dropoffLocation,
+          student: session.user.userId,
+          scheduledPickupTime: ride.scheduledPickupTime,
+          pickupWindowStart: ride.pickupWindowStart,
+          pickupWindowEnd: ride.pickupWindowEnd,
+        };
+        const parsedRoute = createRouteSchema.safeParse(routeData);
+        if (!parsedRoute.success) {
+          return NextResponse.json(parsedRoute.error.format(), {
+            status: HTTP_STATUS_CODE.BAD_REQUEST,
+          });
+        }
+        created.push(
+          ride.recurring
+            ? (await createRideSeries(parsedRoute.data, ride.recurring))
+                .firstRoute
+            : await createRoute(parsedRoute.data),
+        );
+      }
+      return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
+    }
 
     // `recurring` is a sibling of the route fields, not part of them —
     // createRouteSchema is strict, so split it off before parsing.

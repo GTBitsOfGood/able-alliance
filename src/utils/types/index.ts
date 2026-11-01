@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { idSchema } from "../ids";
+import { recurrenceRequestSchema } from "./rideSeries";
 
 export const locationSchema = z.object({
   name: z.string().min(1),
@@ -22,3 +23,25 @@ export const createRouteSchema = z
   .strict();
 
 export type CreateRouteInput = z.infer<typeof createRouteSchema>;
+
+export const batchRideRequestSchema = z
+  .object({
+    rides: z
+      .array(
+        z
+          .object({
+            pickupLocation: idSchema,
+            dropoffLocation: idSchema,
+            scheduledPickupTime: z.coerce.date(),
+            pickupWindowStart: z.coerce.date(),
+            pickupWindowEnd: z.coerce.date(),
+            recurring: recurrenceRequestSchema.optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(25),
+  })
+  .strict();
+
+export type BatchRideRequest = z.infer<typeof batchRideRequestSchema>;
