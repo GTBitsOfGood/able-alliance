@@ -5,6 +5,7 @@ import {
   BookingConflictError,
   scheduleRoute,
 } from "@/server/db/actions/RouteAction";
+import { RouteStatus } from "@db/generated/enums";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -47,7 +48,11 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    const updated = await scheduleRoute(routeId, driverId, vehicleId);
+    // Admins assign a requested ride and reassign a scheduled one here.
+    const updated = await scheduleRoute(routeId, driverId, vehicleId, [
+      RouteStatus.Requested,
+      RouteStatus.Scheduled,
+    ]);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     if (error instanceof BookingConflictError)
