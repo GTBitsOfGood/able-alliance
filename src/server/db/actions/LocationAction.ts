@@ -14,7 +14,8 @@ export async function createLocation(data: LocationInput) {
     throw error;
   }
 }
-export const getLocations = () => db.location.findMany();
+export const getLocations = () =>
+  db.location.findMany({ where: { status: "active" } });
 export async function getLocationById(id: string) {
   const location = await db.location.findUnique({
     where: { id: id.toLowerCase() },
@@ -22,17 +23,10 @@ export async function getLocationById(id: string) {
   if (!location) throw new NotFoundError("Location not found");
   return location;
 }
-export async function deleteLocation(id: string) {
-  try {
-    return await db.location.delete({ where: { id: id.toLowerCase() } });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") throw new NotFoundError("Location not found");
-      if (error.code === "P2003")
-        throw new ConflictError(
-          "Location is referenced by a ride and cannot be deleted",
-        );
-    }
-    throw error;
-  }
+export async function archiveLocation(id: string) {
+  await getLocationById(id);
+  return db.location.update({
+    where: { id: id.toLowerCase() },
+    data: { status: "archived" },
+  });
 }

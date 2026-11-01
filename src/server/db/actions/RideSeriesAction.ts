@@ -78,8 +78,19 @@ async function materializeSeries(
           `);
           const series = await tx.rideSeries.findUnique({
             where: { id: seriesId },
+            include: {
+              student: { select: { status: true } },
+              pickup: { select: { status: true } },
+              dropoff: { select: { status: true } },
+            },
           });
           if (!series?.active) return null;
+          if (
+            series.student.status === "archived" ||
+            series.pickup.status === "archived" ||
+            series.dropoff.status === "archived"
+          )
+            return null;
 
           const elapsedMs =
             series.materializedThrough.getTime() -

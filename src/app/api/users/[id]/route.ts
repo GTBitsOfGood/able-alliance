@@ -3,7 +3,7 @@ import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import {
   getUserById,
-  deleteUser,
+  archiveUser,
   updateUser,
 } from "@/server/db/actions/UserAction";
 import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
@@ -206,9 +206,9 @@ export async function DELETE(
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    await deleteUser(id);
+    await archiveUser(id);
     return NextResponse.json(
-      { message: "User deleted" },
+      { message: "User archived" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  deleteLocation,
+  archiveLocation,
   getLocationById,
 } from "@/server/db/actions/LocationAction";
 import { isValidId } from "@/utils/ids";
@@ -65,10 +65,10 @@ export async function DELETE(
     );
   }
   try {
-    await deleteLocation(id);
+    await archiveLocation(id);
     emitLocationsUpdate();
     return NextResponse.json(
-      { message: "Location deleted successfully" },
+      { message: "Location archived" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {

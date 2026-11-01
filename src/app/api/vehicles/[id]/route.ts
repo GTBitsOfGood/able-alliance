@@ -4,7 +4,7 @@ import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { vehicleSchema } from "@/utils/types/vehicle";
 import {
-  deleteVehicle,
+  archiveVehicle,
   getVehicleById,
   updateVehicle,
 } from "@/server/db/actions/VehicleAction";
@@ -64,9 +64,9 @@ export async function DELETE(
     );
   }
   try {
-    await deleteVehicle(id);
+    await archiveVehicle(id);
     return NextResponse.json(
-      { message: "Vehicle deleted" },
+      { message: "Vehicle archived" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {

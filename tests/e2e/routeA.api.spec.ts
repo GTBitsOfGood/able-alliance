@@ -142,16 +142,6 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   expect(adminShiftRoute!.driver?.id).toBe(studentView.driver?.id);
   expect(adminShiftRoute!.vehicle?.id).toBe(studentView.vehicle?.id);
 
-  // Foreign keys preserve the referenced users, vehicle, and locations.
-  for (const path of [
-    `/api/users/${PERSONAS.student.id}`,
-    `/api/users/${PERSONAS.driver.id}`,
-    `/api/vehicles/${VEHICLE.id}`,
-    `/api/locations/${LOCATIONS.exhibitionHall.id}`,
-  ]) {
-    const deleted = await admin.delete(path);
-    expect(deleted.status(), `${path}: ${await deleted.text()}`).toBe(409);
-  }
   const messages = await student.get(`/api/routes/${routeId}/messages`);
   expect(messages.status(), await messages.text()).toBe(200);
   expect(await messages.json()).toEqual([]);

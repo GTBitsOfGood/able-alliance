@@ -28,9 +28,9 @@ type ConfirmActionModalProps = {
 };
 
 /**
- * Confirmation dialog for destructive admin actions (ride cancellation,
- * user/vehicle deletion). Built on BogModal with the standard palette:
- * navy dismiss button, red confirm button.
+ * Confirmation dialog for destructive or hard-to-reverse admin actions
+ * (ride cancellation, user/vehicle/location archiving). Built on BogModal
+ * with the standard palette: navy dismiss button, red confirm button.
  */
 export default function ConfirmActionModal({
   open,
