@@ -80,20 +80,20 @@ export default function AuditLogPage() {
   }, [action, entityType, page]);
 
   return (
-    <div className="flex min-h-full flex-1 flex-col px-[var(--layout-admin-pad-x)] py-[var(--layout-content-pad-y)]">
-      <div className="mb-[2.4rem]">
+    <div className="flex min-h-full flex-1 flex-col gap-6 px-[var(--layout-admin-pad-x)] py-[var(--layout-content-pad-y)]">
+      <div className="flex flex-col gap-2">
         <h1 className="text-display">Audit Log</h1>
-        <p className="mt-[0.8rem] text-paragraph-1 text-[var(--color-grey-text-weak)]">
+        <p className="text-paragraph-1 text-[var(--color-grey-text-weak)]">
           Permanent history of database changes made by users and background
           processes.
         </p>
       </div>
 
-      <div className="mb-[2.4rem] flex flex-wrap gap-[1.6rem]">
-        <label className="flex flex-col gap-[0.6rem] text-paragraph-2">
+      <div className="flex flex-wrap gap-4">
+        <label className="flex flex-col gap-2 text-paragraph-2">
           Entity
           <select
-            className="min-w-[18rem] rounded-[0.4rem] border border-[var(--color-grey-stroke-weak)] bg-white px-[1.2rem] py-[0.8rem]"
+            className="min-w-72 rounded border border-[var(--color-grey-stroke-weak)] bg-white px-3 py-2"
             value={entityType}
             onChange={(event) => {
               setLoading(true);
@@ -110,10 +110,10 @@ export default function AuditLogPage() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-[0.6rem] text-paragraph-2">
+        <label className="flex flex-col gap-2 text-paragraph-2">
           Action
           <select
-            className="min-w-[16rem] rounded-[0.4rem] border border-[var(--color-grey-stroke-weak)] bg-white px-[1.2rem] py-[0.8rem]"
+            className="min-w-64 rounded border border-[var(--color-grey-stroke-weak)] bg-white px-3 py-2"
             value={action}
             onChange={(event) => {
               setLoading(true);
@@ -137,8 +137,8 @@ export default function AuditLogPage() {
       ) : loading ? (
         <p className="text-paragraph-1">Loading…</p>
       ) : (
-        <>
-          <div className="overflow-x-auto rounded-[0.8rem] border border-[var(--color-grey-stroke-weak)] bg-white">
+        <div className="flex flex-col gap-4">
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-grey-stroke-weak)] bg-white">
             <table className="w-full border-collapse text-left text-paragraph-2">
               <thead className="bg-[var(--color-solid-bg-sunken)]">
                 <tr>
@@ -146,7 +146,7 @@ export default function AuditLogPage() {
                     (heading) => (
                       <th
                         key={heading}
-                        className="border-b border-[var(--color-grey-stroke-weak)] px-[1.6rem] py-[1.2rem] font-semibold"
+                        className="border-b border-[var(--color-grey-stroke-weak)] px-4 py-3 font-semibold"
                       >
                         {heading}
                       </th>
@@ -160,13 +160,13 @@ export default function AuditLogPage() {
                     key={entry.id}
                     className="border-b border-[var(--color-grey-stroke-weak)] align-top last:border-b-0"
                   >
-                    <td className="whitespace-nowrap px-[1.6rem] py-[1.4rem]">
+                    <td className="whitespace-nowrap px-4 py-3">
                       {new Intl.DateTimeFormat(undefined, {
                         dateStyle: "medium",
                         timeStyle: "short",
                       }).format(new Date(entry.createdAt))}
                     </td>
-                    <td className="px-[1.6rem] py-[1.4rem]">
+                    <td className="px-4 py-3">
                       <div>{actorName(entry)}</div>
                       {entry.actor && (
                         <div className="text-[var(--color-grey-text-weak)]">
@@ -174,29 +174,27 @@ export default function AuditLogPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-[1.6rem] py-[1.4rem]">{entry.action}</td>
-                    <td className="px-[1.6rem] py-[1.4rem]">
+                    <td className="px-4 py-3">{entry.action}</td>
+                    <td className="px-4 py-3">
                       <div className="font-semibold">{entry.entityType}</div>
-                      <code className="text-[1.2rem] text-[var(--color-grey-text-weak)]">
+                      <code className="text-small text-[var(--color-grey-text-weak)]">
                         {entry.entityId}
                       </code>
                     </td>
-                    <td className="min-w-[34rem] px-[1.6rem] py-[1.4rem]">
+                    <td className="min-w-lg px-4 py-3">
                       <details>
                         <summary className="cursor-pointer">
                           {Object.keys(entry.changes).length} field
                           {Object.keys(entry.changes).length === 1 ? "" : "s"}
                         </summary>
-                        <div className="mt-[1rem] flex flex-col gap-[0.8rem]">
+                        <div className="flex flex-col gap-2 pt-2">
                           {Object.entries(entry.changes).map(
                             ([field, change]) => (
                               <div
                                 key={field}
-                                className="rounded-[0.4rem] bg-[var(--color-solid-bg-sunken)] p-[1rem]"
+                                className="flex flex-col gap-1 rounded bg-[var(--color-solid-bg-sunken)] p-2"
                               >
-                                <div className="mb-[0.4rem] font-semibold">
-                                  {field}
-                                </div>
+                                <div className="font-semibold">{field}</div>
                                 <div className="break-all">
                                   <span className="text-[var(--color-grey-text-weak)]">
                                     Before:{" "}
@@ -221,7 +219,7 @@ export default function AuditLogPage() {
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-[1.6rem] py-[3.2rem] text-center text-[var(--color-grey-text-weak)]"
+                      className="px-4 py-8 text-center text-[var(--color-grey-text-weak)]"
                     >
                       No audit entries match these filters.
                     </td>
@@ -231,11 +229,11 @@ export default function AuditLogPage() {
             </table>
           </div>
 
-          <div className="mt-[1.6rem] flex items-center justify-between text-paragraph-2">
+          <div className="flex items-center justify-between text-paragraph-2">
             <span>{data?.total ?? 0} total entries</span>
-            <div className="flex items-center gap-[1.2rem]">
+            <div className="flex items-center gap-3">
               <button
-                className="rounded-[0.4rem] border border-[var(--color-grey-stroke-weak)] px-[1.2rem] py-[0.8rem] disabled:opacity-50"
+                className="rounded border border-[var(--color-grey-stroke-weak)] px-3 py-2 disabled:opacity-50"
                 disabled={page <= 1}
                 onClick={() => {
                   setLoading(true);
@@ -249,7 +247,7 @@ export default function AuditLogPage() {
                 Page {data?.page ?? page} of {Math.max(1, data?.pageCount ?? 1)}
               </span>
               <button
-                className="rounded-[0.4rem] border border-[var(--color-grey-stroke-weak)] px-[1.2rem] py-[0.8rem] disabled:opacity-50"
+                className="rounded border border-[var(--color-grey-stroke-weak)] px-3 py-2 disabled:opacity-50"
                 disabled={!data || page >= data.pageCount}
                 onClick={() => {
                   setLoading(true);
@@ -261,7 +259,7 @@ export default function AuditLogPage() {
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

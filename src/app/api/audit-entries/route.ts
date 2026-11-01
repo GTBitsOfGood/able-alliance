@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AuditAction, Prisma } from "@db/generated/client";
-import { db } from "@db";
+import { getAuditEntries, isAuditAction, isAuditEntityType } from "@db/audit";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
-
-const ENTITY_TYPES = [
-  "User",
-  "Vehicle",
-  "Location",
-  "Accommodation",
-  "Route",
-  "RideSeries",
-  "Message",
-] as const;
 
 export async function GET(request: NextRequest) {
   let user;
@@ -40,54 +29,29 @@ export async function GET(request: NextRequest) {
   );
   const entityType = params.get("entityType");
   const action = params.get("action");
+  const query: Parameters<typeof getAuditEntries>[0] = { page, pageSize };
 
-  if (entityType && !(ENTITY_TYPES as readonly string[]).includes(entityType)) {
-    return NextResponse.json(
-      { error: "Invalid entity type" },
-      { status: HTTP_STATUS_CODE.BAD_REQUEST },
-    );
+  if (entityType) {
+    if (!isAuditEntityType(entityType)) {
+      return NextResponse.json(
+        { error: "Invalid entity type" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+    query.entityType = entityType;
   }
-  if (action && !Object.values(AuditAction).includes(action as AuditAction)) {
-    return NextResponse.json(
-      { error: "Invalid audit action" },
-      { status: HTTP_STATUS_CODE.BAD_REQUEST },
-    );
+  if (action) {
+    if (!isAuditAction(action)) {
+      return NextResponse.json(
+        { error: "Invalid audit action" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+    query.action = action;
   }
-
-  const where: Prisma.AuditEntryWhereInput = {
-    ...(entityType ? { entityType } : {}),
-    ...(action ? { action: action as AuditAction } : {}),
-  };
 
   try {
-    const [entries, total] = await db.$transaction([
-      db.auditEntry.findMany({
-        where,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: {
-          actor: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              preferredName: true,
-              username: true,
-            },
-          },
-        },
-      }),
-      db.auditEntry.count({ where }),
-    ]);
-    return NextResponse.json({
-      entries,
-      total,
-      page,
-      pageSize,
-      pageCount: Math.ceil(total / pageSize),
-      entityTypes: ENTITY_TYPES,
-    });
+    return NextResponse.json(await getAuditEntries(query));
   } catch (error) {
     return errorResponse(error);
   }

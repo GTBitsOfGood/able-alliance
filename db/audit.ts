@@ -1,9 +1,30 @@
-import type { Prisma } from "./generated/client";
+import { db } from "@db";
+import { AuditAction, type Prisma } from "./generated/client";
 
 export type AuditActionName = "Create" | "Update" | "Delete";
 export type AuditSnapshot = Record<string, unknown>;
 
 type AuditClient = Pick<Prisma.TransactionClient, "auditEntry">;
+
+export const AUDIT_ENTITY_TYPES = [
+  "User",
+  "Vehicle",
+  "Location",
+  "Accommodation",
+  "Route",
+  "RideSeries",
+  "Message",
+] as const;
+
+type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
+
+export function isAuditEntityType(value: string): value is AuditEntityType {
+  return (AUDIT_ENTITY_TYPES as readonly string[]).includes(value);
+}
+
+export function isAuditAction(value: string): value is AuditAction {
+  return Object.values(AuditAction).includes(value as AuditAction);
+}
 
 function normalize(value: unknown): unknown {
   if (value === undefined) return null;
@@ -88,4 +109,46 @@ export async function recordAudit(
       changes,
     },
   });
+}
+
+export async function getAuditEntries(input: {
+  page: number;
+  pageSize: number;
+  entityType?: AuditEntityType;
+  action?: AuditAction;
+}) {
+  const where: Prisma.AuditEntryWhereInput = {
+    ...(input.entityType ? { entityType: input.entityType } : {}),
+    ...(input.action ? { action: input.action } : {}),
+  };
+
+  const [entries, total] = await db.$transaction([
+    db.auditEntry.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (input.page - 1) * input.pageSize,
+      take: input.pageSize,
+      include: {
+        actor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            preferredName: true,
+            username: true,
+          },
+        },
+      },
+    }),
+    db.auditEntry.count({ where }),
+  ]);
+
+  return {
+    entries,
+    total,
+    page: input.page,
+    pageSize: input.pageSize,
+    pageCount: Math.ceil(total / input.pageSize),
+    entityTypes: AUDIT_ENTITY_TYPES,
+  };
 }
