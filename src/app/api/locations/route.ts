@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const created = await createLocation(parsed.data);
+    const created = await createLocation(parsed.data, user.userId);
     emitLocationsUpdate();
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (e) {

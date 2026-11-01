@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updated = await pickupStudent(routeId);
+    const updated = await pickupStudent(routeId, user.userId);
     return NextResponse.json(routeResponseForRole(updated, user.activeType), {
       status: HTTP_STATUS_CODE.OK,
     });
