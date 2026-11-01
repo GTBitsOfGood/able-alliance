@@ -6,7 +6,7 @@
  *   student  /rides/new          fills the form            Requested
  *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
  *   driver   /rides/:id          Start ride                En-route
- *   driver   /rides/:id          Student picked up         Pickedup
+ *   driver   /rides/:id          Student picked up         Picked up
  *   driver   /rides/:id          Student dropped off       Completed
  *   student  /rides/:id          sees Completed
  */
@@ -119,7 +119,7 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     pickupDialog.getByRole("heading", { name: "Student Picked Up" }),
   ).toBeVisible();
   await pickupDialog.getByRole("button", { name: "Confirm Pickup" }).click();
-  await expect(chip).toHaveText("Pickedup");
+  await expect(chip).toHaveText("Picked up");
   await expect(
     driver.getByRole("button", { name: "Student dropped off" }),
   ).toBeVisible();
