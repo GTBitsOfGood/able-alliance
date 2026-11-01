@@ -206,6 +206,12 @@ export async function DELETE(
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
+    if (user.type === "SuperAdmin") {
+      return NextResponse.json(
+        { error: "Super admins cannot be archived" },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      );
+    }
     await archiveUser(id);
     return NextResponse.json(
       { message: "User archived" },

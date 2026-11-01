@@ -16,6 +16,7 @@ import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionMod
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
 import { useAdminTableData, type AdminTableType } from "./useAdminTableData";
+import { ADMIN_TYPE_LABELS } from "./admin-table-data";
 import RidesTable from "./RidesTable";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
@@ -40,6 +41,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     columns,
     rows,
     rowIds,
+    protectedIds,
     locations,
     loading,
     error,
@@ -63,6 +65,8 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
   >([]);
   const [vehicleAccessibility, setVehicleAccessibility] =
     useState<string>("None");
+  const [adminType, setAdminType] =
+    useState<keyof typeof ADMIN_TYPE_LABELS>("Admin");
   const [accommodationOptions, setAccommodationOptions] = useState<string[]>(
     [],
   );
@@ -111,6 +115,9 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
   };
 
   const canDelete = selectedRows.size > 0 && rowIds.length > 0;
+  const selectionHasProtected = [...selectedRows].some((idx) =>
+    protectedIds.has(rowIds[idx] ?? ""),
+  );
 
   const deleteNoun =
     table === "Vehicles"
@@ -227,7 +234,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        type: "Admin",
+        type: adminType,
         firstName,
         lastName,
         ...(preferredName && { preferredName }),
@@ -246,6 +253,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
             );
         refetch();
         setShowForm(false);
+        setAdminType("Admin");
         form.reset();
       })
       .catch((err: Error) =>
@@ -739,6 +747,25 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
             />
           </div>
           <div className="flex flex-row flex-wrap gap-[5.8rem]">
+            <BogDropdown
+              name="adminType"
+              label="Admin Type"
+              options={Object.values(ADMIN_TYPE_LABELS)}
+              value={ADMIN_TYPE_LABELS[adminType]}
+              onSelectionChange={(v) => {
+                const label = typeof v === "string" ? v : v[0];
+                const type = (
+                  Object.keys(
+                    ADMIN_TYPE_LABELS,
+                  ) as (keyof typeof ADMIN_TYPE_LABELS)[]
+                ).find((k) => ADMIN_TYPE_LABELS[k] === label);
+                setAdminType(type ?? "Admin");
+              }}
+              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
+              required
+            />
+          </div>
+          <div className="flex flex-row flex-wrap gap-[5.8rem]">
             <BogTextInput
               name="inviteMessage"
               label="Invite message"
@@ -878,6 +905,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                   setSubmitError(null);
                   setStudentAccessibilityNeeds([]);
                   setVehicleAccessibility("None");
+                  setAdminType("Admin");
                   setNewLocationPoint(null);
                 }}
               >
@@ -967,7 +995,12 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                           variant="secondary"
                           size="medium"
                           onClick={() => setShowDeleteConfirm(true)}
-                          disabled={deleting}
+                          disabled={deleting || selectionHasProtected}
+                          title={
+                            selectionHasProtected
+                              ? "Super admins cannot be archived"
+                              : undefined
+                          }
                           style={
                             {
                               "--color-brand-stroke-strong": "#C73A3A",
