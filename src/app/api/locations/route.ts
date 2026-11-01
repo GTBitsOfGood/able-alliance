@@ -5,6 +5,7 @@ import {
 } from "@/server/db/actions/LocationAction";
 import { locationSchema } from "@/utils/types";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { emitLocationsUpdate } from "@/server/notifications/emitLocationsUpdate";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await createLocation(parsed.data);
+    emitLocationsUpdate();
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (e) {
     return errorResponse(e);

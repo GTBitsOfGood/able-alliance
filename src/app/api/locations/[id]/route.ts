@@ -5,6 +5,7 @@ import {
 } from "@/server/db/actions/LocationAction";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { emitLocationsUpdate } from "@/server/notifications/emitLocationsUpdate";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { errorResponse } from "@/utils/errors";
 
@@ -65,6 +66,7 @@ export async function DELETE(
   }
   try {
     await deleteLocation(id);
+    emitLocationsUpdate();
     return NextResponse.json(
       { message: "Location deleted successfully" },
       { status: HTTP_STATUS_CODE.OK },
