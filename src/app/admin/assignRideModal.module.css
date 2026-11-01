@@ -17,6 +17,12 @@
   line-height: var(--text-desktop-paragraph-2--line-height);
 }
 
+.hint {
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-size: var(--text-mobile-paragraph-2);
+}
+
 .error {
   margin: 0;
   color: var(--color-status-red-text);

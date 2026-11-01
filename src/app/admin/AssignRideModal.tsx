@@ -142,6 +142,11 @@ export default function AssignRideModal({
           </p>
         )}
 
+        <p className={styles.hint}>
+          Saving notifies the student and the driver. A driver who loses the
+          ride is told as well.
+        </p>
+
         <div className={styles.footer}>
           <BogButton
             variant="secondary"
@@ -159,7 +164,7 @@ export default function AssignRideModal({
             onClick={() => void handleConfirm()}
             style={{ fontWeight: 600 }}
           >
-            {submitting ? "Confirming…" : "Confirm"}
+            {submitting ? "Saving…" : "Save"}
           </BogButton>
         </div>
       </div>
