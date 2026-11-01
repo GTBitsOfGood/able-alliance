@@ -134,7 +134,7 @@ export default function AuditLogPage() {
         <p className="text-paragraph-1 text-red-700" role="alert">
           {error}
         </p>
-      ) : loading && !data ? (
+      ) : loading ? (
         <p className="text-paragraph-1">Loading…</p>
       ) : (
         <>

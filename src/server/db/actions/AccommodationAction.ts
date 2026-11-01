@@ -61,8 +61,14 @@ export async function renameAccommodation(
 ) {
   try {
     return await db.$transaction(async (tx) => {
+      const accommodationId = id.toLowerCase();
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "Accommodation"
+        WHERE "id" = ${accommodationId}::uuid
+        FOR UPDATE
+      `);
       const before = await tx.accommodation.findUnique({
-        where: { id: id.toLowerCase() },
+        where: { id: accommodationId },
       });
       if (!before) throw new NotFoundError("Accommodation not found");
       const updated = await tx.accommodation.update({

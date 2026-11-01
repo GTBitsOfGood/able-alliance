@@ -20,22 +20,26 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 async function requireAdmin() {
   try {
     const user = await getUserFromRequest();
-    if (user.type === "Admin" || user.type === "SuperAdmin") return null;
-    return NextResponse.json(
-      { error: "Only admins can use auto-scheduling." },
-      { status: HTTP_STATUS_CODE.FORBIDDEN },
-    );
+    if (user.type === "Admin" || user.type === "SuperAdmin") return { user };
+    return {
+      response: NextResponse.json(
+        { error: "Only admins can use auto-scheduling." },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      ),
+    };
   } catch {
-    return NextResponse.json(
-      { error: "You must be signed in to use auto-scheduling." },
-      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
-    );
+    return {
+      response: NextResponse.json(
+        { error: "You must be signed in to use auto-scheduling." },
+        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+      ),
+    };
   }
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
 
   const date = req.nextUrl.searchParams.get("date") ?? "";
   if (!DATE_RE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
@@ -101,9 +105,8 @@ function describeScheduleError(e: unknown) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-  const actor = await getUserFromRequest();
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
 
   let body: unknown;
   try {
@@ -129,7 +132,7 @@ export async function POST(req: NextRequest) {
     const results = await withSchedulingLock(
       schedulingLockKeys(assignments),
       (tx, afterCommit) =>
-        applyAssignments(date, assignments, tx, afterCommit, actor.userId),
+        applyAssignments(date, assignments, tx, afterCommit, auth.user.userId),
     );
     return NextResponse.json(
       { results },

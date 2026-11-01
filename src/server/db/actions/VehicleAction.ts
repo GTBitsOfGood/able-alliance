@@ -37,8 +37,12 @@ export async function getVehicleById(id: string) {
 }
 export async function archiveVehicle(id: string, actorId: string) {
   return db.$transaction(async (tx) => {
+    const vehicleId = id.toLowerCase();
+    await tx.$queryRaw(Prisma.sql`
+      SELECT "id" FROM "Vehicle" WHERE "id" = ${vehicleId}::uuid FOR UPDATE
+    `);
     const before = await tx.vehicle.findUnique({
-      where: { id: id.toLowerCase() },
+      where: { id: vehicleId },
     });
     if (!before) throw new NotFoundError("Vehicle not found");
     const updated = await tx.vehicle.update({
@@ -63,8 +67,12 @@ export async function updateVehicle(
 ) {
   try {
     return await db.$transaction(async (tx) => {
+      const vehicleId = id.toLowerCase();
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "Vehicle" WHERE "id" = ${vehicleId}::uuid FOR UPDATE
+      `);
       const before = await tx.vehicle.findUnique({
-        where: { id: id.toLowerCase() },
+        where: { id: vehicleId },
       });
       if (!before) throw new NotFoundError("Vehicle not found");
       const updated = await tx.vehicle.update({

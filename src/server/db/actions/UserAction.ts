@@ -84,8 +84,12 @@ export async function createUser(
 
 export async function archiveUser(id: string, actorId: string) {
   return db.$transaction(async (tx) => {
+    const userId = id.toLowerCase();
+    await tx.$queryRaw(Prisma.sql`
+      SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE
+    `);
     const before = await tx.user.findUnique({
-      where: { id: id.toLowerCase() },
+      where: { id: userId },
       include: userInclude,
     });
     if (!before) throw new NotFoundError("User not found");
@@ -163,8 +167,12 @@ export async function updateUser(
   }
   try {
     return await db.$transaction(async (tx) => {
+      const userId = id.toLowerCase();
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE
+      `);
       const before = await tx.user.findUnique({
-        where: { id: id.toLowerCase(), type },
+        where: { id: userId, type },
         include: userInclude,
       });
       if (!before) throw new NotFoundError("User not found");
