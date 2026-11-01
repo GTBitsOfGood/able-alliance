@@ -221,9 +221,14 @@ export async function POST(request: NextRequest) {
         }
         created.push(
           ride.recurring
-            ? (await createRideSeries(parsedRoute.data, ride.recurring))
-                .firstRoute
-            : await createRoute(parsedRoute.data),
+            ? (
+                await createRideSeries(
+                  parsedRoute.data,
+                  ride.recurring,
+                  user.userId,
+                )
+              ).firstRoute
+            : await createRoute(parsedRoute.data, { actorId: user.userId }),
         );
       }
       return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
@@ -280,10 +285,11 @@ export async function POST(request: NextRequest) {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      created = (await createRideSeries(parsed.data, recurrence.data))
-        .firstRoute;
+      created = (
+        await createRideSeries(parsed.data, recurrence.data, user.userId)
+      ).firstRoute;
     } else {
-      created = await createRoute(parsed.data);
+      created = await createRoute(parsed.data, { actorId: user.userId });
     }
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {

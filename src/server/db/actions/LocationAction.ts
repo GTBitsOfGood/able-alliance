@@ -2,9 +2,21 @@ import { db } from "@db";
 import { Prisma } from "@db/generated/client";
 import type { LocationInput } from "@/utils/types";
 import { ConflictError, NotFoundError } from "@/utils/errors";
-export async function createLocation(data: LocationInput) {
+import { recordAudit } from "@db/audit";
+
+export async function createLocation(data: LocationInput, actorId: string) {
   try {
-    return await db.location.create({ data });
+    return await db.$transaction(async (tx) => {
+      const created = await tx.location.create({ data });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Location",
+        entityId: created.id,
+        action: "Create",
+        after: created,
+      });
+      return created;
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -23,10 +35,24 @@ export async function getLocationById(id: string) {
   if (!location) throw new NotFoundError("Location not found");
   return location;
 }
-export async function archiveLocation(id: string) {
-  await getLocationById(id);
-  return db.location.update({
-    where: { id: id.toLowerCase() },
-    data: { status: "archived" },
+export async function archiveLocation(id: string, actorId: string) {
+  return db.$transaction(async (tx) => {
+    const before = await tx.location.findUnique({
+      where: { id: id.toLowerCase() },
+    });
+    if (!before) throw new NotFoundError("Location not found");
+    const updated = await tx.location.update({
+      where: { id: before.id },
+      data: { status: "archived" },
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "Location",
+      entityId: updated.id,
+      action: "Update",
+      before,
+      after: updated,
+    });
+    return updated;
   });
 }

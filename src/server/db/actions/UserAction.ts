@@ -4,6 +4,36 @@ import { userInclude } from "@/server/db/queries";
 import { Prisma, type UserSettings } from "@db/generated/client";
 import type { UserType } from "@db/generated/enums";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
+import { recordAudit } from "@db/audit";
+
+type UserWithDetails = Prisma.UserGetPayload<{ include: typeof userInclude }>;
+
+function userAuditSnapshot(user: UserWithDetails) {
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    preferredName: user.preferredName,
+    username: user.username,
+    email: user.email,
+    types: user.types,
+    status: user.status,
+    settings: user.settings,
+    studentInfo: user.studentInfo
+      ? {
+          notes: user.studentInfo.notes,
+          accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
+            ({ label }) => label,
+          ),
+        }
+      : null,
+    shifts: user.shifts.map(({ dayOfWeek, startTime, endTime }) => ({
+      dayOfWeek,
+      startTime,
+      endTime,
+    })),
+  };
+}
 
 export async function getUsers(type?: UserType) {
   return db.user.findMany({
@@ -26,11 +56,21 @@ export async function getUserById(id: string) {
 export const getProvisionedUserFromCAS = (username: string) =>
   db.user.findUnique({ where: { username }, include: userInclude });
 
-export async function createUser(data: Prisma.UserCreateInput) {
+export async function createUser(
+  data: Prisma.UserCreateInput,
+  actorId: string,
+) {
   try {
-    return await db.user.create({
-      data,
-      include: userInclude,
+    return await db.$transaction(async (tx) => {
+      const created = await tx.user.create({ data, include: userInclude });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "User",
+        entityId: created.id,
+        action: "Create",
+        after: userAuditSnapshot(created),
+      });
+      return created;
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -45,12 +85,31 @@ export async function createUser(data: Prisma.UserCreateInput) {
   }
 }
 
-export async function archiveUser(id: string) {
-  await getUserById(id);
-  return db.user.update({
-    where: { id: id.toLowerCase() },
-    data: { status: "archived" },
-    include: userInclude,
+export async function archiveUser(id: string, actorId: string) {
+  return db.$transaction(async (tx) => {
+    const userId = id.toLowerCase();
+    await tx.$queryRaw(Prisma.sql`
+      SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE
+    `);
+    const before = await tx.user.findUnique({
+      where: { id: userId },
+      include: userInclude,
+    });
+    if (!before) throw new NotFoundError("User not found");
+    const updated = await tx.user.update({
+      where: { id: before.id },
+      data: { status: "archived" },
+      include: userInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "User",
+      entityId: updated.id,
+      action: "Update",
+      before: userAuditSnapshot(before),
+      after: userAuditSnapshot(updated),
+    });
+    return updated;
   });
 }
 
@@ -64,6 +123,7 @@ export async function updateUser(
     shifts?: import("@/utils/types/user").Shift[];
     settings?: Partial<Omit<UserSettings, "userId">>;
   },
+  actorId: string,
 ) {
   const data: Prisma.UserUpdateInput = {};
   if (patch.preferredName !== undefined)
@@ -109,10 +169,30 @@ export async function updateUser(
     data.shifts = { deleteMany: {}, create: patch.shifts };
   }
   try {
-    return await db.user.update({
-      where: { id: id.toLowerCase(), ...userTypeFilter(type) },
-      data,
-      include: userInclude,
+    return await db.$transaction(async (tx) => {
+      const userId = id.toLowerCase();
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE
+      `);
+      const before = await tx.user.findUnique({
+        where: { id: userId, ...userTypeFilter(type) },
+        include: userInclude,
+      });
+      if (!before) throw new NotFoundError("User not found");
+      const updated = await tx.user.update({
+        where: { id: before.id, ...userTypeFilter(type) },
+        data,
+        include: userInclude,
+      });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "User",
+        entityId: updated.id,
+        action: "Update",
+        before: userAuditSnapshot(before),
+        after: userAuditSnapshot(updated),
+      });
+      return updated;
     });
   } catch (error) {
     if (

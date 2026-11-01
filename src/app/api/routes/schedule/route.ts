@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       routeId,
       driverId,
       vehicleId,
+      user.userId,
       Object.values(RouteStatus),
     );
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
