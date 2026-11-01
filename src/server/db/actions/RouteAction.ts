@@ -349,15 +349,29 @@ export class BookingConflictError extends ConflictError {
   }
 }
 
+/**
+ * `from` lists the statuses the ride may be assigned out of. It defaults to
+ * Requested — the first assignment. Admins reassigning an already-scheduled
+ * ride pass Scheduled as well; bulk and automatic scheduling keep the default
+ * so they can never touch a ride an admin has already placed.
+ */
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
+  from: RouteStatus[] = [RouteStatus.Requested],
 ) {
   return withSchedulingLock(
     schedulingLockKeys([{ driverId, vehicleId }]),
     (tx, afterCommit) =>
-      scheduleRouteWhileLocked(routeId, driverId, vehicleId, tx, afterCommit),
+      scheduleRouteWhileLocked(
+        routeId,
+        driverId,
+        vehicleId,
+        tx,
+        afterCommit,
+        from,
+      ),
   );
 }
 
@@ -368,8 +382,9 @@ export async function scheduleRouteWhileLocked(
   vehicleId: string,
   tx: Prisma.TransactionClient,
   afterCommit: (() => void)[],
+  from: RouteStatus[] = [RouteStatus.Requested],
 ) {
-  const assigned = await assignRoute(routeId, driverId, vehicleId, tx);
+  const assigned = await assignRoute(routeId, driverId, vehicleId, tx, from);
   const { route, driver } = assigned;
   afterCommit.push(() => {
     emitRouteUpdate(route);
@@ -417,15 +432,16 @@ async function assignRoute(
   driverId: string,
   vehicleId: string,
   tx: Prisma.TransactionClient,
+  from: RouteStatus[] = [RouteStatus.Requested],
 ) {
   routeId = routeId.toLowerCase();
   driverId = driverId.toLowerCase();
   vehicleId = vehicleId.toLowerCase();
+  const expected = `Route is not in ${from.join(" or ")} status`;
   try {
     const route = await tx.route.findUnique({ where: { id: routeId } });
     if (!route) throw new NotFoundError("Route not found");
-    if (route.status !== RouteStatus.Requested)
-      throw new ConflictError("Route is no longer in Requested status");
+    if (!from.includes(route.status)) throw new ConflictError(expected);
     const driverRow = await tx.user.findUnique({
       where: { id: driverId },
       include: userInclude,
@@ -458,7 +474,7 @@ async function assignRoute(
     );
     if (conflicts.length) throw new BookingConflictError(conflicts);
     const { count } = await tx.route.updateMany({
-      where: { id: routeId, status: RouteStatus.Requested },
+      where: { id: routeId, status: { in: from } },
       data: {
         driverId,
         vehicleId,
@@ -471,7 +487,7 @@ async function assignRoute(
         select: { id: true },
       });
       if (!current) throw new NotFoundError("Route not found");
-      throw new ConflictError("Route is no longer in Requested status");
+      throw new ConflictError(expected);
     }
     const updated = await tx.route.findUniqueOrThrow({
       where: { id: routeId },

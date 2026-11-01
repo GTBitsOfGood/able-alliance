@@ -1,9 +1,24 @@
-/* Three icon buttons spanning 100px, as laid out in the design's action cell. */
+/* Three icon buttons spanning 100px, as laid out in the design's action cell.
+   Hidden until the row is hovered. Opacity rather than visibility keeps the
+   buttons in the tab order, and :focus-within reveals them for keyboard use. */
 .actions {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 2.1rem;
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+
+:global(tr):hover .actions,
+.actions:focus-within {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actions {
+    transition: none;
+  }
 }
 
 .actionButton {
