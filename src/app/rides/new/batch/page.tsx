@@ -23,8 +23,27 @@ type RideDraft = {
   ends: string;
 };
 
+function toDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function todayKey(): string {
+  return toDateKey(new Date());
+}
+
+// Today, or the following Monday if today is a weekend.
+function defaultRideDate(): string {
+  const date = new Date();
+  const day = date.getDay();
+  if (day === 6) date.setDate(date.getDate() + 2);
+  else if (day === 0) date.setDate(date.getDate() + 1);
+  return toDateKey(date);
+}
+
 const newRide = (): RideDraft => ({
-  date: "",
+  date: defaultRideDate(),
   pickupTime: "",
   windowFrom: "",
   windowTo: "",
@@ -111,6 +130,10 @@ export default function BatchRidePage() {
       }
       if (!isWeekday(ride.date)) {
         setError(`Ride #${index + 1} must be scheduled Monday through Friday.`);
+        return;
+      }
+      if (ride.date < todayKey()) {
+        setError(`Ride #${index + 1} cannot be scheduled in the past.`);
         return;
       }
       if (ride.pickup === ride.dropoff) {
@@ -226,6 +249,7 @@ export default function BatchRidePage() {
                     <input
                       type="date"
                       value={ride.date}
+                      min={todayKey()}
                       onChange={(event) =>
                         updateRide(index, { date: event.target.value })
                       }

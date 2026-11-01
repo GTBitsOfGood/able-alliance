@@ -41,6 +41,92 @@ function isServiceDay(date: Date): boolean {
   return day >= 1 && day <= 5;
 }
 
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function isPastDay(date: Date): boolean {
+  return date < startOfToday();
+}
+
+const TIME_SLOT_MINUTES = 15;
+const PICKUP_WINDOW_MAX_MINUTES = 45;
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+function clampTime(time: string, min: string, max: string): string {
+  if (time < min) return min;
+  if (time > max) return max;
+  return time;
+}
+
+// Earliest selectable pickup time on the given day: the next future
+// 15-minute slot for today, or the start of service for later days.
+// Returns null when no slots remain within service hours.
+function getEarliestPickupTime(date: Date): string | null {
+  if (date.toDateString() !== new Date().toDateString()) {
+    return SERVICE_START_TIME;
+  }
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes() + 1;
+  const nextSlot =
+    Math.ceil(nowMinutes / TIME_SLOT_MINUTES) * TIME_SLOT_MINUTES;
+  if (nextSlot >= 24 * 60) return null;
+  const earliest = minutesToTime(nextSlot);
+  if (earliest > SERVICE_END_TIME) return null;
+  return earliest < SERVICE_START_TIME ? SERVICE_START_TIME : earliest;
+}
+
+// The pickup window may extend at most 45 minutes on either side of the
+// pickup time, and must stay within service hours.
+function getPickupWindowBounds(pickupTime: string) {
+  const pickupMinutes = timeToMinutes(pickupTime);
+  return {
+    from: clampTime(
+      minutesToTime(Math.max(0, pickupMinutes - PICKUP_WINDOW_MAX_MINUTES)),
+      SERVICE_START_TIME,
+      SERVICE_END_TIME,
+    ),
+    to: clampTime(
+      minutesToTime(
+        Math.min(24 * 60 - 1, pickupMinutes + PICKUP_WINDOW_MAX_MINUTES),
+      ),
+      SERVICE_START_TIME,
+      SERVICE_END_TIME,
+    ),
+  };
+}
+
+// Today, or the next weekday if today is a weekend or service has ended.
+function getDefaultRideDate(): Date {
+  const date = startOfToday();
+  while (!isServiceDay(date) || !getEarliestPickupTime(date)) {
+    date.setDate(date.getDate() + 1);
+  }
+  return date;
+}
+
+function getDefaultRideTimes() {
+  const pickupTime =
+    getEarliestPickupTime(getDefaultRideDate()) ?? SERVICE_START_TIME;
+  const bounds = getPickupWindowBounds(pickupTime);
+  return {
+    pickupTime,
+    pickupWindowFromTime: bounds.from,
+    pickupWindowToTime: bounds.to,
+  };
+}
+
 export default function CreateRidePage() {
   const router = useRouter();
   const { width: windowWidth } = useWindowSize();
@@ -62,11 +148,18 @@ export default function CreateRidePage() {
   // Form fields
   const [pickupLocationName, setPickupLocationName] = useState("");
   const [dropoffLocationName, setDropoffLocationName] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [pickupTime, setPickupTime] = useState("13:00");
-  const [pickupWindowFromTime, setPickupWindowFromTime] = useState("12:10");
-  const [pickupWindowToTime, setPickupWindowToTime] = useState("12:45");
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    getDefaultRideDate,
+  );
+  const [defaultTimes] = useState(getDefaultRideTimes);
+  const [pickupTime, setPickupTime] = useState(defaultTimes.pickupTime);
+  const [pickupWindowFromTime, setPickupWindowFromTime] = useState(
+    defaultTimes.pickupWindowFromTime,
+  );
+  const [pickupWindowToTime, setPickupWindowToTime] = useState(
+    defaultTimes.pickupWindowToTime,
+  );
+  const [currentMonth, setCurrentMonth] = useState(getDefaultRideDate);
   const [pickupWindowErrorField, setPickupWindowErrorField] = useState<
     "from" | "to" | null
   >(null);
@@ -103,8 +196,6 @@ export default function CreateRidePage() {
           }
           if (data.length > 1) {
             setDropoffLocationName(data[1].name);
-          } else if (data.length > 0) {
-            setDropoffLocationName(data[0].name);
           }
         }
 
@@ -350,6 +441,14 @@ export default function CreateRidePage() {
     value: name,
     label: name,
   }));
+  // Hide the location chosen in the other field so pickup and drop-off
+  // can't be set to the same place.
+  const pickupLocationOptions = locationOptions.filter(
+    (o) => o.value !== dropoffLocationName,
+  );
+  const dropoffLocationOptions = locationOptions.filter(
+    (o) => o.value !== pickupLocationName,
+  );
   const nameToId = locations.reduce(
     (acc, loc) => {
       acc[loc.name] = loc.id;
@@ -381,7 +480,33 @@ export default function CreateRidePage() {
     "December",
   ];
 
+  const earliestPickupTime =
+    (selectedDate && getEarliestPickupTime(selectedDate)) ?? SERVICE_START_TIME;
+  const pickupWindowBounds = getPickupWindowBounds(pickupTime);
+
+  // Reset the pickup window to 45 minutes on either side of the new pickup
+  // time (within service hours) whenever the pickup time changes.
+  const updatePickupTime = (time: string) => {
+    const bounds = getPickupWindowBounds(time);
+    setPickupTime(time);
+    setPickupWindowFromTime(bounds.from);
+    setPickupWindowToTime(bounds.to);
+  };
+
+  const selectDate = (date: Date) => {
+    setSelectedDate(date);
+    const earliest = getEarliestPickupTime(date);
+    if (earliest && pickupTime < earliest) updatePickupTime(earliest);
+  };
+
+  const today = startOfToday();
+  const isCurrentMonthOrEarlier =
+    currentMonth.getFullYear() < today.getFullYear() ||
+    (currentMonth.getFullYear() === today.getFullYear() &&
+      currentMonth.getMonth() <= today.getMonth());
+
   const prevMonth = () => {
+    if (isCurrentMonthOrEarlier) return;
     setCurrentMonth(
       new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1),
     );
@@ -418,6 +543,11 @@ export default function CreateRidePage() {
 
     if (!isServiceDay(selectedDate)) {
       setError("Ride dates must be Monday through Friday.");
+      return;
+    }
+
+    if (isPastDay(selectedDate)) {
+      setError("Ride dates cannot be in the past.");
       return;
     }
 
@@ -476,6 +606,23 @@ export default function CreateRidePage() {
     }
 
     const scheduledPickupDate = toEstUtc(selectedDate, `${hours}:${minutes}`);
+    if (scheduledPickupDate <= new Date()) {
+      setError("Pickup time cannot be in the past.");
+      return;
+    }
+
+    const windowLimitMs = PICKUP_WINDOW_MAX_MINUTES * 60 * 1000;
+    if (
+      scheduledPickupDate.getTime() - pickupWindowStart.getTime() >
+        windowLimitMs ||
+      pickupWindowEnd.getTime() - scheduledPickupDate.getTime() > windowLimitMs
+    ) {
+      setError(
+        `Pickup window must be within ${PICKUP_WINDOW_MAX_MINUTES} minutes of the pickup time.`,
+      );
+      return;
+    }
+
     if (
       scheduledPickupDate < pickupWindowStart ||
       scheduledPickupDate > pickupWindowEnd
@@ -546,16 +693,23 @@ export default function CreateRidePage() {
     );
     const isSelected = selectedDate?.toDateString() === date.toDateString();
     const isToday = new Date().toDateString() === date.toDateString();
-    const isAvailable = isServiceDay(date);
+    const isPast = isPastDay(date) || !getEarliestPickupTime(date);
+    const isAvailable = isServiceDay(date) && !isPast;
 
     days.push(
       <button
         key={day}
         type="button"
         className={`${styles.dateCell} ${isSelected ? styles.dateSelected : ""} ${isToday ? styles.dateToday : ""}`}
-        onClick={() => setSelectedDate(date)}
+        onClick={() => selectDate(date)}
         disabled={!isAvailable}
-        title={isAvailable ? undefined : "Service is available Monday–Friday"}
+        title={
+          isAvailable
+            ? undefined
+            : isPast
+              ? "Rides cannot be scheduled in the past"
+              : "Service is available Monday–Friday"
+        }
       >
         {day}
       </button>,
@@ -611,6 +765,7 @@ export default function CreateRidePage() {
                         type="button"
                         aria-label="Previous month"
                         onClick={prevMonth}
+                        disabled={isCurrentMonthOrEarlier}
                         className={styles.calendarNav}
                       >
                         <svg
@@ -681,8 +836,8 @@ export default function CreateRidePage() {
                   >
                     <TimeInput
                       value={pickupTime}
-                      onChange={setPickupTime}
-                      min={SERVICE_START_TIME}
+                      onChange={updatePickupTime}
+                      min={earliestPickupTime}
                       max={SERVICE_END_TIME}
                       inputClassName={styles.timeInput}
                       className={styles.timeInputWrapper}
@@ -696,9 +851,8 @@ export default function CreateRidePage() {
                   <p
                     className={`${styles.fieldDescription} ${pickupWindowErrorField ? styles.fieldDescriptionError : ""}`}
                   >
-                    {isMobileLayout
-                      ? "Ensure that your pickup time is within the pickup time window. This is used to determine ride flexibility."
-                      : "(E.g. 12:15 PM - 12:45 PM)"}
+                    Ensure that your pickup time is within the pickup time
+                    window. This is used to determine ride flexibility.
                   </p>
                   <div className={styles.pickupWindowRow}>
                     <div className={styles.pickupWindowField}>
@@ -716,8 +870,8 @@ export default function CreateRidePage() {
                           id="pickup-window-from"
                           value={pickupWindowFromTime}
                           onChange={setPickupWindowFromTime}
-                          min={SERVICE_START_TIME}
-                          max={SERVICE_END_TIME}
+                          min={pickupWindowBounds.from}
+                          max={pickupWindowBounds.to}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
@@ -743,8 +897,8 @@ export default function CreateRidePage() {
                           id="pickup-window-to"
                           value={pickupWindowToTime}
                           onChange={setPickupWindowToTime}
-                          min={SERVICE_START_TIME}
-                          max={SERVICE_END_TIME}
+                          min={pickupTime}
+                          max={pickupWindowBounds.to}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
@@ -847,40 +1001,18 @@ export default function CreateRidePage() {
                         className={styles.locationIconCenter}
                       />
                     </svg>
-                    {isMobileLayout ? (
-                      <SearchableSelect
-                        id="pickup-location"
-                        aria-label="Pickup location"
-                        value={pickupLocationName}
-                        onChange={setPickupLocationName}
-                        options={locationOptions}
-                        placeholder="Enter pickup location"
-                        className={styles.locationSelectWrapper}
-                        inputClassName={styles.locationTextInput}
-                        onFocusCapture={scrollFieldIntoView}
-                        required
-                      />
-                    ) : (
-                      <select
-                        id="pickup-location"
-                        aria-label="Pickup location"
-                        value={pickupLocationName}
-                        onChange={(e) => setPickupLocationName(e.target.value)}
-                        className={styles.locationSelect}
-                        required
-                      >
-                        {!pickupLocationName && (
-                          <option value="" disabled>
-                            Select pickup location...
-                          </option>
-                        )}
-                        {locationNames.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <SearchableSelect
+                      id="pickup-location"
+                      aria-label="Pickup location"
+                      value={pickupLocationName}
+                      onChange={setPickupLocationName}
+                      options={pickupLocationOptions}
+                      placeholder="Enter pickup location"
+                      className={styles.locationSelectWrapper}
+                      inputClassName={styles.locationTextInput}
+                      onFocusCapture={scrollFieldIntoView}
+                      required
+                    />
                   </div>
                 </div>
 
@@ -911,40 +1043,18 @@ export default function CreateRidePage() {
                         className={styles.locationIconCenter}
                       />
                     </svg>
-                    {isMobileLayout ? (
-                      <SearchableSelect
-                        id="dropoff-location"
-                        aria-label="Dropoff location"
-                        value={dropoffLocationName}
-                        onChange={setDropoffLocationName}
-                        options={locationOptions}
-                        placeholder="Enter dropoff location"
-                        className={styles.locationSelectWrapper}
-                        inputClassName={styles.locationTextInput}
-                        onFocusCapture={scrollFieldIntoView}
-                        required
-                      />
-                    ) : (
-                      <select
-                        id="dropoff-location"
-                        aria-label="Dropoff location"
-                        value={dropoffLocationName}
-                        onChange={(e) => setDropoffLocationName(e.target.value)}
-                        className={styles.locationSelect}
-                        required
-                      >
-                        {!dropoffLocationName && (
-                          <option value="" disabled>
-                            Select drop-off location...
-                          </option>
-                        )}
-                        {locationNames.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <SearchableSelect
+                      id="dropoff-location"
+                      aria-label="Dropoff location"
+                      value={dropoffLocationName}
+                      onChange={setDropoffLocationName}
+                      options={dropoffLocationOptions}
+                      placeholder="Enter dropoff location"
+                      className={styles.locationSelectWrapper}
+                      inputClassName={styles.locationTextInput}
+                      onFocusCapture={scrollFieldIntoView}
+                      required
+                    />
                   </div>
                 </div>
 
