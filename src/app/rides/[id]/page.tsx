@@ -912,7 +912,7 @@ export default function RideDetailPage({
             await handleMarkDelay(minutes);
             setShowDelayModal(false);
           }}
-          confirming={driverActionBusy}
+          confirming={delayActionBusy}
         />
 
         <main className={styles.main}>
@@ -999,6 +999,19 @@ export default function RideDetailPage({
                 </button>
               </div>
 
+              <div>
+                <button
+                  type="button"
+                  className={
+                    styles.outlineButton + " " + styles.redOutlineButton
+                  }
+                  onClick={() => void setShowDelayModal(true)}
+                  disabled={delayActionBusy}
+                >
+                  {delayActionBusy ? "Delaying..." : "Delay Ride"}
+                </button>
+              </div>
+
               {/* Scheduled: Start ride */}
               {route.status === "Scheduled" && (
                 <button
@@ -1014,16 +1027,6 @@ export default function RideDetailPage({
               {/* En-route: Student picked up + Student no-show */}
               {route.status === "EnRoute" && (
                 <div className={styles.enRouteActions}>
-                  <button
-                    type="button"
-                    className={
-                      styles.outlineButton + " " + styles.redOutlineButton
-                    }
-                    onClick={() => void setShowDelayModal(true)}
-                    disabled={delayActionBusy}
-                  >
-                    {delayActionBusy ? "Delaying..." : "Delay Ride"}
-                  </button>
                   <div className={styles.pickupActions}>
                     <button
                       type="button"
