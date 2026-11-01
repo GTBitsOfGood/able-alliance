@@ -23,6 +23,7 @@
   }
 
   .searchWithIcon input {
+    height: 3.6rem !important;
     padding-right: 2.6rem !important;
     border: 1px solid #d1d5db !important;
     border-radius: 0.4rem !important;

@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2.1rem;
+  gap: 2.15rem;
   opacity: 0;
   transition: opacity 0.12s ease-in-out;
 }
@@ -47,8 +47,28 @@
   border-radius: 0.2rem;
 }
 
-.toolbarControl {
-  min-width: 10.8rem;
+/* BogDropdown's root carries `min-width: 35%`, which stretches the trigger to
+   a share of the toolbar. The design wants a fixed 108x36 button, so pin the
+   track here and restyle the trigger to match the search field beside it.
+   Doubled class names outrank the design-system rules without !important. */
+.toolbarControl.toolbarControl {
+  flex: 0 0 10.8rem;
+  min-width: 0;
+  width: 10.8rem;
+}
+
+.toolbarControl.toolbarControl > :global(button) {
+  height: 3.6rem;
+  padding: 0 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.4rem;
+  background-color: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  font-size: var(--text-mobile-paragraph-2);
+}
+
+.toolbarControl.toolbarControl > :global(button:hover) {
+  border-color: #9ca3af;
 }
 
 .requestedLink {
