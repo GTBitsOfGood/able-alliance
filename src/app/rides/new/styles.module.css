@@ -622,27 +622,29 @@
   padding: 0.45rem 1.1rem;
   border: 0.2rem solid var(--color-grey-text-strong);
   border-radius: 1.6rem;
-  background-color: var(--color-map-pin);
+  background-color: var(--pin-color);
   color: var(--color-solid-bg-base);
   font-weight: 700;
   font-size: 1.1rem;
   font-family: var(--font-paragraph);
   line-height: 1.4rem;
-  white-space: nowrap;
+  max-width: 15rem;
+  text-align: center;
+  overflow-wrap: anywhere;
   box-shadow: none;
 }
 
 .mapPinStem {
   width: 0.2rem;
   height: 2.2rem;
-  background-color: var(--color-map-pin);
+  background-color: var(--pin-color);
 }
 
 .mapPinDot {
   width: 1.4rem;
   height: 1.4rem;
   border-radius: 50%;
-  background-color: var(--color-map-pin);
+  background-color: var(--pin-color);
   border: 0.2rem solid var(--color-grey-text-strong);
   box-shadow: none;
 }

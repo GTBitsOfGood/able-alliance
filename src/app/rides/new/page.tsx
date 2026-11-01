@@ -227,10 +227,12 @@ export default function CreateRidePage() {
 
       const createCustomPin = (
         labelText: string,
+        color: string,
         extraStemPx = 0,
       ): HTMLDivElement => {
         const root = document.createElement("div");
         root.className = styles.mapPinRoot;
+        root.style.setProperty("--pin-color", color);
 
         const label = document.createElement("div");
         label.textContent = labelText;
@@ -298,7 +300,7 @@ export default function CreateRidePage() {
 
         if (pickup && pickupLngLat) {
           const pickupMarker = new mapboxgl.Marker({
-            element: createCustomPin(`Pickup: ${pickup.name}`),
+            element: createCustomPin(`Pickup: ${pickup.name}`, "#eb2525"),
             anchor: "bottom",
           })
             .setLngLat(pickupLngLat)
@@ -311,6 +313,7 @@ export default function CreateRidePage() {
           const dropoffMarker = new mapboxgl.Marker({
             element: createCustomPin(
               `Dropoff: ${dropoff.name}`,
+              "#16a34a",
               overlap ? 50 : 0,
             ),
             anchor: "bottom",
