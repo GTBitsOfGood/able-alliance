@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { routeStatusLabels } from "@/utils/route-status";
+import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
 import styles from "./profileRides.module.css";
 import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
@@ -38,18 +38,27 @@ function fmtDate(iso: string): string {
   });
 }
 
-function statusChipStyle(status: Route["status"]): React.CSSProperties {
+function statusChipStyle(
+  status: Route["status"],
+  delayed = false,
+): React.CSSProperties {
+  if (delayed) {
+    return {
+      background: "var(--color-status-yellow)",
+      color: "var(--color-status-yellow)",
+    };
+  }
   switch (status) {
     case "Scheduled":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-status-yellow)",
       };
     case "EnRoute":
     case "Pickedup":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-status-yellow)",
       };
     case "Completed":
       return {
@@ -65,7 +74,7 @@ function statusChipStyle(status: Route["status"]): React.CSSProperties {
     case "CancelledByAdmin":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-status-yellow)",
       };
     case "Missing":
       return {
@@ -272,9 +281,12 @@ export function ProfileRidesTab({
                       <td className={styles.td}>
                         <span
                           className={styles.statusChip}
-                          style={statusChipStyle(route.status)}
+                          style={statusChipStyle(
+                            route.status,
+                            isRouteDelayed(route),
+                          )}
                         >
-                          {routeStatusLabels[route.status]}
+                          {routeDisplayLabel(route)}
                         </span>
                       </td>
                     </tr>

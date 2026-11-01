@@ -1,6 +1,6 @@
 "use client";
 
-import { routeStatusLabels } from "@/utils/route-status";
+import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
 import React from "react";
 import { useWindowSize } from "react-use";
 import Link from "next/link";
@@ -41,21 +41,34 @@ function isToday(iso: string): boolean {
 
 export function getStudentStatusChipStyle(
   status: RideCardRoute["status"],
+  delayed = false,
 ): React.CSSProperties {
+  if (delayed) {
+    return {
+      background: "var(--color-status-yellow)",
+      color: "var(--color-grey-text-strong)",
+    };
+  }
   switch (status) {
     case "Scheduled":
-      return { background: "#ffd17f", color: "#22070b" };
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
+      };
     case "Requested":
       return { background: "#432c30", color: "#ffffff" };
     case "EnRoute":
     case "Pickedup":
-      return { background: "#ffd17f", color: "#22070b" };
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
+      };
     case "Completed":
       return { background: "#70cd87", color: "#22070b" };
     case "CancelledByStudent":
     case "CancelledByAdmin":
     case "Missing":
-      return { background: "#f4a0a0", color: "#22070b" };
+      return { background: "var(--color-status-pink)", color: "#22070b" };
     default:
       return { background: "#e0e0e0", color: "#22070b" };
   }
@@ -63,7 +76,11 @@ export function getStudentStatusChipStyle(
 
 function getDriverStatusChipColor(
   status: RideCardRoute["status"],
+  delayed = false,
 ): "green" | "red" | "amber" | "blue" | "gray" {
+  if (delayed) {
+    return "amber";
+  }
   switch (status) {
     case "Completed":
       return "green";
@@ -155,9 +172,9 @@ export function RideCard({
           <div className={styles.rideCardBottomRow}>
             <div className={styles.rideCardDriverChipsRow}>
               <span
-                className={`${styles.rideCardDriverChip} ${styles[`rideCardDriverChip--${getDriverStatusChipColor(route.status)}`]}`}
+                className={`${styles.rideCardDriverChip} ${styles[`rideCardDriverChip--${getDriverStatusChipColor(route.status, isRouteDelayed(route))}`]}`}
               >
-                {routeStatusLabels[route.status]}
+                {routeDisplayLabel(route)}
               </span>
               {route.vehicle && route.vehicle.vehicleId && (
                 <span
@@ -237,7 +254,10 @@ export function RideCard({
       route.status === "EnRoute" ||
       route.status === "Pickedup");
 
-  const chipStyle = getStudentStatusChipStyle(route.status);
+  const chipStyle = getStudentStatusChipStyle(
+    route.status,
+    isRouteDelayed(route),
+  );
   const canCancel = CANCELLABLE_STATUSES.has(route.status);
 
   return (
@@ -299,7 +319,7 @@ export function RideCard({
 
         <div className={styles.rideCardStatusRow}>
           <span className={styles.rideCardStatusChip} style={chipStyle}>
-            {routeStatusLabels[route.status]}
+            {routeDisplayLabel(route)}
           </span>
           {href ? (
             <Link href={href} className={styles.rideDetailsLink}>

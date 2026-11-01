@@ -1,6 +1,10 @@
 "use client";
 
-import { routeStatusLabels } from "@/utils/route-status";
+import {
+  routeStatusLabels,
+  routeDisplayLabel,
+  isRouteDelayed,
+} from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
@@ -565,10 +569,6 @@ export default function RideDetailPage({
     }
   };
 
-  const handleDelayRide = useCallback(async () => {
-    if (!routeId) return;
-  }, [routeId]);
-
   const handleCancelRide = useCallback(async () => {
     if (!routeId) return;
     setCancellingRide(true);
@@ -681,10 +681,12 @@ export default function RideDetailPage({
           const body = await res.json();
           throw new Error(body.error ?? res.statusText);
         }
+        return true;
       } catch (e) {
         setDelayActionError(
           e instanceof Error ? e.message : "Failed to mark as delayed.",
         );
+        return false;
       } finally {
         setDelayActionBusy(false);
       }
@@ -777,7 +779,10 @@ export default function RideDetailPage({
     });
   };
 
-  const statusChipStyle = getStudentStatusChipStyle(route.status);
+  const statusChipStyle = getStudentStatusChipStyle(
+    route.status,
+    isRouteDelayed(route),
+  );
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.type === "Driver") {
@@ -923,9 +928,14 @@ export default function RideDetailPage({
             }
           }}
           onConfirm={async (minutes) => {
+            const ok = await handleMarkDelay(minutes);
+            if (ok) {
+              setShowDelayModal(false);
+            }
             const result = await handleMarkDelay(minutes);
           }}
           confirming={delayActionBusy}
+          delayActionError={delayActionError ?? undefined}
         />
 
         <main className={styles.main}>
@@ -940,7 +950,7 @@ export default function RideDetailPage({
           <div className={styles.titleRow}>
             <h1 className={styles.pageTitle}>Ride Details</h1>
             <span className={styles.statusChip} style={statusChipStyle}>
-              {routeStatusLabels[route.status]}
+              {routeDisplayLabel(route)}
             </span>
           </div>
 
@@ -1153,7 +1163,7 @@ export default function RideDetailPage({
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>Ride Details</h1>
           <span className={styles.statusChip} style={statusChipStyle}>
-            {routeStatusLabels[route.status]}
+            {routeDisplayLabel(route)}
           </span>
         </div>
 

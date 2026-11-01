@@ -13,6 +13,8 @@ type DelayRideModalProps = {
   onConfirm: (minutes: number) => void | Promise<void>;
   /** True while the delay request is running. */
   confirming?: boolean;
+  /** Error message to display if the delay request fails. */
+  delayActionError?: string;
 };
 
 /**
@@ -24,9 +26,19 @@ export default function DelayRideModal({
   onOpenChange,
   onConfirm,
   confirming = false,
+  delayActionError,
 }: DelayRideModalProps) {
   const [preset, setPreset] = useState<number | null>(null);
   const [custom, setCustom] = useState("");
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setPreset(null);
+      setCustom("");
+    }
+  }
 
   // Whichever was touched last wins: picking a preset clears the custom
   // field and typing a custom value clears the preset.
@@ -39,14 +51,6 @@ export default function DelayRideModal({
       ? customMinutes
       : null);
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setPreset(null);
-      setCustom("");
-    }
-    onOpenChange(next);
-  };
-
   const optionClass = (selected: boolean) =>
     `h-[4.8rem] w-full rounded-[0.4rem] border px-[0.8rem] text-paragraph-1 ${
       selected
@@ -57,7 +61,7 @@ export default function DelayRideModal({
   return (
     <ConfirmActionModal
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       onConfirm={async () => {
         if (minutes === null) return;
         await onConfirm(minutes);
@@ -121,6 +125,13 @@ export default function DelayRideModal({
             </span>
           )}
         </label>
+        <div className="col-span-4 text-paragraph-1 text-[var(--color-error-text)]">
+          {delayActionError && (
+            <span role="alert" aria-live="polite">
+              {delayActionError}
+            </span>
+          )}
+        </div>
       </div>
     </ConfirmActionModal>
   );
