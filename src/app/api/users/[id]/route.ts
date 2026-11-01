@@ -64,7 +64,7 @@ const driverShiftsPatchSchema = z
   })
   .strict();
 
-const adminPatchSchema = z
+const settingsPatchSchema = z
   .object({ settings: notificationSettingsSchema.optional() })
   .strict();
 
@@ -114,6 +114,17 @@ export async function PATCH(
 
   try {
     const user = await getUserById(id);
+    // Notification settings belong to the account, regardless of role order.
+    const settingsPatch = settingsPatchSchema.safeParse(body);
+    if (settingsPatch.success && settingsPatch.data.settings !== undefined) {
+      const updated = await updateUser(
+        id,
+        isSelf ? viewer.activeType : user.types[0],
+        settingsPatch.data,
+      );
+      return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
+    }
+
     const profileRole =
       typeof body === "object" && body !== null && "shifts" in body
         ? "Driver"
@@ -173,7 +184,7 @@ export async function PATCH(
           { error: "Cannot update this user type" },
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
         );
-      const adminParsed = adminPatchSchema.safeParse(body);
+      const adminParsed = settingsPatchSchema.safeParse(body);
       if (!adminParsed.success)
         return NextResponse.json(adminParsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
