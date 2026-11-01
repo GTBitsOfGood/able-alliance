@@ -55,6 +55,15 @@ function AdminSidebarContent() {
             <span>Rides</span>
           </Link>
 
+          {/* Chats */}
+          <Link
+            href="/admin/chats"
+            className={`${styles.navItem} ${pathname.startsWith("/admin/chats") ? styles.active : ""}`}
+          >
+            <Image src="/folder.svg" alt="" width={20} height={20} />
+            <span>Chats</span>
+          </Link>
+
           {/* Shifts */}
           <Link
             href="/admin/shifts"
