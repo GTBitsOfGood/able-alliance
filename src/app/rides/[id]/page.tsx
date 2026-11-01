@@ -754,7 +754,7 @@ export default function RideDetailPage({
   if (session?.user?.activeType === "Driver") {
     const studentObj = route.student;
     const studentName = studentObj
-      ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
+      ? `${studentObj.preferredName || studentObj.firstName} ${studentObj.lastName}`.trim()
       : "—";
     const accommodations =
       studentObj?.studentInfo?.accessibilityNeeds
