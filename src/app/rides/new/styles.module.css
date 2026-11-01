@@ -178,6 +178,11 @@
   justify-content: center;
 }
 
+.calendarNav:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
 .calendarMonth {
   display: flex;
   flex-direction: row;
@@ -288,6 +293,7 @@
 /* Time / Location Cells */
 .timeCell,
 .locationCell {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -308,8 +314,7 @@
   border-radius: 0.4rem;
 }
 
-.timeInput,
-.locationSelect {
+.timeInput {
   flex: 1;
   min-width: 0;
   border: none;
@@ -333,6 +338,14 @@
   min-width: 0;
 }
 
+/* Anchor dropdowns to the whole field cell rather than the inner input, so
+   the list opens below the cell's border instead of overlapping it. */
+.timeCell .timeInputWrapper,
+.locationCell .locationSelectWrapper,
+.pickupWindowCell .pickupWindowInputWrapper {
+  position: static;
+}
+
 .locationTextInput {
   flex: 1;
   min-width: 0;
@@ -340,8 +353,8 @@
   background: transparent;
   font-family: var(--font-paragraph);
   font-weight: 400;
-  font-size: 1.6rem;
-  line-height: 2rem;
+  font-size: 1.2rem;
+  line-height: 1.6rem;
   color: var(--color-grey-text-strong);
   outline: none;
   cursor: text;
@@ -359,13 +372,6 @@
 .timeInput::-webkit-calendar-picker-indicator {
   display: none;
   -webkit-appearance: none;
-}
-
-/* Hide native select dropdown arrow */
-.locationSelect {
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
 }
 
 .locationIcon,
@@ -391,11 +397,6 @@
   fill: var(--color-solid-bg-base);
 }
 
-.locationSelect option {
-  background: var(--color-solid-bg-base);
-  color: var(--color-grey-text-strong);
-}
-
 /* Pickup Time Window */
 .pickupWindowRow {
   width: 100%;
@@ -414,6 +415,7 @@
 }
 
 .pickupWindowCell {
+  position: relative;
   display: flex;
   align-items: center;
   flex: 1;
@@ -855,7 +857,8 @@
   }
 
   .timeInput,
-  .pickupWindowInput {
+  .pickupWindowInput,
+  .locationTextInput {
     font-size: 1.6rem;
     line-height: 2rem;
   }

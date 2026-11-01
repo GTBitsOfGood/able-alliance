@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fromZonedTime } from "date-fns-tz";
+import { estDateKey, estNowWallClock } from "@/utils/dateEst";
 import { useRouter } from "next/navigation";
 import type { Location } from "@db/generated/browser";
 import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
@@ -23,8 +24,29 @@ type RideDraft = {
   ends: string;
 };
 
+function toDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+// Ride dates are New York days (see toEstUtc), so "today" follows the
+// New York clock, not the browser's.
+function todayKey(): string {
+  return estDateKey(new Date());
+}
+
+// Today, or the following Monday if today is a weekend.
+function defaultRideDate(): string {
+  const date = estNowWallClock();
+  const day = date.getDay();
+  if (day === 6) date.setDate(date.getDate() + 2);
+  else if (day === 0) date.setDate(date.getDate() + 1);
+  return toDateKey(date);
+}
+
 const newRide = (): RideDraft => ({
-  date: "",
+  date: defaultRideDate(),
   pickupTime: "",
   windowFrom: "",
   windowTo: "",
@@ -113,6 +135,10 @@ export default function BatchRidePage() {
         setError(`Ride #${index + 1} must be scheduled Monday through Friday.`);
         return;
       }
+      if (ride.date < todayKey()) {
+        setError(`Ride #${index + 1} cannot be scheduled in the past.`);
+        return;
+      }
       if (ride.pickup === ride.dropoff) {
         setError(
           `Ride #${index + 1} must have different pickup and drop-off locations.`,
@@ -124,6 +150,10 @@ export default function BatchRidePage() {
       const pickup = toEstUtc(ride.date, ride.pickupTime);
       if (end <= start) {
         setError(`Ride #${index + 1} has an invalid pickup window.`);
+        return;
+      }
+      if (pickup <= new Date()) {
+        setError(`Ride #${index + 1} pickup time cannot be in the past.`);
         return;
       }
       if (pickup < start || pickup > end) {
@@ -226,6 +256,7 @@ export default function BatchRidePage() {
                     <input
                       type="date"
                       value={ride.date}
+                      min={todayKey()}
                       onChange={(event) =>
                         updateRide(index, { date: event.target.value })
                       }
