@@ -40,11 +40,15 @@ export default function AdminChatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isAuthorized =
-    session?.user?.type === "Admin" || session?.user?.type === "SuperAdmin";
+    session?.user?.activeType === "Admin" ||
+    session?.user?.activeType === "SuperAdmin";
 
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;
-    if (session.user.type !== "Admin" && session.user.type !== "SuperAdmin")
+    if (
+      session.user.activeType !== "Admin" &&
+      session.user.activeType !== "SuperAdmin"
+    )
       return;
 
     const loadRoutes = async () => {

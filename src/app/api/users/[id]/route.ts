@@ -1,3 +1,4 @@
+import { hasAdminType, hasUserType } from "@/utils/userTypes";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
@@ -9,7 +10,6 @@ import {
 import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
-import { auth } from "@/auth";
 import { z } from "zod";
 import { notificationSettingsSchema, shiftSchema } from "@/utils/types/user";
 
@@ -36,7 +36,7 @@ export async function GET(
   try {
     const user = await getUserById(id);
     // Only allow: Admin/SuperAdmin, or self
-    if (isAdmin(authUser.type) || user.id === authUser.userId) {
+    if (isAdmin(authUser.activeType) || user.id === authUser.userId) {
       return NextResponse.json(user, { status: HTTP_STATUS_CODE.OK });
     }
     return NextResponse.json(
@@ -81,8 +81,7 @@ export async function PATCH(
     );
   }
 
-  const session = await auth();
-  const viewer = session?.user;
+  const viewer = await getUserFromRequest().catch(() => null);
   if (!viewer) {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -90,7 +89,7 @@ export async function PATCH(
     );
   }
 
-  const viewerType = viewer.type as string;
+  const viewerType = viewer.activeType as string;
   const viewerId = viewer.userId as string;
 
   const isSelf = viewerId === id;
@@ -115,8 +114,20 @@ export async function PATCH(
 
   try {
     const user = await getUserById(id);
+    const profileRole =
+      typeof body === "object" && body !== null && "shifts" in body
+        ? "Driver"
+        : hasUserType(user, "Student")
+          ? "Student"
+          : user.types[0];
+    if (!hasUserType(user, profileRole)) {
+      return NextResponse.json(
+        { error: "User does not have this type" },
+        { status: 400 },
+      );
+    }
     let parsed;
-    if (user.type === "Student") {
+    if (profileRole === "Student") {
       parsed = studentInfoPatchSchema.safeParse(body);
       if (!parsed.success) {
         return NextResponse.json(parsed.error.format(), {
@@ -135,7 +146,7 @@ export async function PATCH(
       }
       const updated = await updateUser(id, "Student", parsed.data);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
-    } else if (user.type === "Driver") {
+    } else if (profileRole === "Driver") {
       // For drivers, only admins can update shifts
       if (
         !viewerIsAdmin &&
@@ -167,7 +178,7 @@ export async function PATCH(
         return NextResponse.json(adminParsed.error.format(), {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
-      const updated = await updateUser(id, user.type, adminParsed.data);
+      const updated = await updateUser(id, profileRole, adminParsed.data);
       return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
     }
   } catch (error) {
@@ -198,8 +209,8 @@ export async function DELETE(
   try {
     const user = await getUserById(id);
     if (
-      !isAdmin(authUser.type) ||
-      (isAdmin(user.type) && authUser.type !== "SuperAdmin")
+      !isAdmin(authUser.activeType) ||
+      (hasAdminType(user) && authUser.activeType !== "SuperAdmin")
     ) {
       return NextResponse.json(
         { error: "Forbidden" },

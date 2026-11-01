@@ -1,0 +1,113 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+.label {
+  display: inline-flex;
+}
+.required {
+  color: var(--color-status-red-text);
+}
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-sunken);
+  color: var(--color-grey-text-strong);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trigger[data-placeholder] {
+  color: var(--color-grey-text-weak);
+}
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--color-brand-stroke-strong);
+  outline-offset: 2px;
+}
+.trigger > svg {
+  flex-shrink: 0;
+}
+.menu {
+  z-index: 100;
+  width: var(--radix-dropdown-menu-trigger-width);
+  max-width: calc(100vw - 2.4rem);
+  max-height: var(--radix-dropdown-menu-content-available-height);
+  overflow-y: auto;
+  padding: 0.4rem;
+  background: var(--color-solid-bg-base);
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.8rem;
+  box-shadow: 0 0.8rem 2.4rem rgb(34 7 11 / 12%);
+  font-family: var(--font-paragraph);
+  font-size: var(--text-desktop-paragraph-2);
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  color: var(--color-grey-text-strong);
+}
+.menuLabel {
+  padding: 0.8rem 1.2rem;
+  font-size: 1.4rem;
+  color: var(--color-grey-text-weak);
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+.option[data-highlighted] {
+  background: var(--color-grey-fill-weaker);
+  outline: none;
+}
+.option[data-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.check {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--color-grey-stroke-strong);
+  border-radius: 0.4rem;
+}
+.option[data-state="checked"] .check {
+  background: var(--color-brand-text);
+  border-color: var(--color-brand-text);
+  color: white;
+}
+.optionTitle {
+  display: block;
+  font-weight: 600;
+}
+.description {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.4rem;
+  color: var(--color-grey-text-weak);
+}
+.help {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--color-grey-text-weak);
+}

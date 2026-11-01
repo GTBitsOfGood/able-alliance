@@ -1,3 +1,4 @@
+import { hasUserType } from "@/utils/userTypes";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -42,7 +43,7 @@ export async function GET(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -68,7 +69,7 @@ export async function GET(
 
   try {
     const driver = await getUserById(driverId);
-    if (driver.type !== "Driver") {
+    if (!hasUserType(driver, "Driver")) {
       return NextResponse.json(
         { error: "Driver not found" },
         { status: HTTP_STATUS_CODE.NOT_FOUND },
@@ -105,7 +106,7 @@ export async function GET(
         start_time: dayStart,
         end_time: dayEnd,
       },
-      user.type,
+      user.activeType,
     );
 
     // Requested routes (no driver) that fall within the shift time window
@@ -115,7 +116,7 @@ export async function GET(
         start_time: shiftStart,
         end_time: shiftEnd,
       },
-      user.type,
+      user.activeType,
     );
 
     return NextResponse.json(

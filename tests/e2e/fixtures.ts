@@ -24,7 +24,8 @@ export async function mintSessionToken(persona: Persona): Promise<string> {
     token: {
       sub: persona.id,
       userId: persona.id,
-      type: persona.type,
+      activeType: persona.types[0],
+      types: persona.types,
       email: persona.email,
       name: `${persona.firstName} ${persona.lastName}`,
       firstName: persona.firstName,
@@ -129,8 +130,20 @@ export const test = base.extend<Fixtures>({
     await provide(async (key) => {
       const ctx = await playwright.request.newContext({
         baseURL: E2E.baseURL,
-        extraHTTPHeaders: {
-          cookie: `${E2E.sessionCookieName}=${await mintSessionToken(PERSONAS[key])}`,
+        storageState: {
+          cookies: [
+            {
+              name: E2E.sessionCookieName,
+              value: await mintSessionToken(PERSONAS[key]),
+              domain: new URL(E2E.baseURL).hostname,
+              path: "/",
+              httpOnly: true,
+              secure: E2E.baseURL.startsWith("https:"),
+              sameSite: "Lax",
+              expires: -1,
+            },
+          ],
+          origins: [],
         },
       });
       open.push(ctx);
