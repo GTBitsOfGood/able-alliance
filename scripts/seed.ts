@@ -110,7 +110,7 @@ async function seed() {
       preferredName: "G",
       username: "gburdell3",
       email: "gburdell3@gatech.edu",
-      type: "Student",
+      types: ["Student"],
       studentInfo: {
         create: {
           accessibilityNeeds: {
@@ -129,7 +129,7 @@ async function seed() {
       lastName: "Doe",
       username: "jdoe3",
       email: "jdoe3@gatech.edu",
-      type: "Student",
+      types: ["Student"],
       studentInfo: { create: { notes: "Please call ahead of arrival." } },
     },
     "student: Jane Doe",
@@ -142,7 +142,7 @@ async function seed() {
       lastName: "Chen",
       username: "mchen3",
       email: "mchen3@gatech.edu",
-      type: "Student",
+      types: ["Student"],
       studentInfo: {
         create: {
           accessibilityNeeds: {
@@ -161,7 +161,7 @@ async function seed() {
       lastName: "Priya",
       username: "spriya3",
       email: "spriya3@gatech.edu",
-      type: "Student",
+      types: ["Student"],
       studentInfo: {
         create: {
           accessibilityNeeds: {
@@ -182,7 +182,7 @@ async function seed() {
       preferredName: "TD",
       username: "driver1",
       email: "driver1@gatech.edu",
-      type: "Driver",
+      types: ["Driver"],
       shifts: {
         create: [
           { dayOfWeek: 1, startTime: "08:00", endTime: "14:00" },
@@ -203,7 +203,7 @@ async function seed() {
       lastName: "Smith",
       username: "driver2",
       email: "driver2@gatech.edu",
-      type: "Driver",
+      types: ["Driver"],
       shifts: {
         create: [
           { dayOfWeek: 1, startTime: "13:00", endTime: "19:00" },
@@ -223,7 +223,7 @@ async function seed() {
       lastName: "Evans",
       username: "aevans3",
       email: "aevans3@gatech.edu",
-      type: "Driver",
+      types: ["Driver"],
       shifts: {
         create: [
           { dayOfWeek: 0, startTime: "09:00", endTime: "15:00" },
@@ -242,7 +242,7 @@ async function seed() {
       lastName: "User",
       username: "adminuser",
       email: "adminuser@gatech.edu",
-      type: "Admin",
+      types: ["Student", "Driver", "Admin"],
     },
     "admin: Admin User",
   );
@@ -254,7 +254,7 @@ async function seed() {
       lastName: "Nestani",
       username: "dnestani3",
       email: "dnestani3@gatech.edu",
-      type: "Admin",
+      types: ["Admin"],
     },
     "admin: Daniele Nestani",
   );
@@ -266,7 +266,7 @@ async function seed() {
       lastName: "Admin",
       username: "superadmin",
       email: "superadmin@gatech.edu",
-      type: "SuperAdmin",
+      types: ["SuperAdmin"],
     },
     "superadmin: Super Admin",
   );
@@ -401,7 +401,10 @@ async function seed() {
   const students = [student1, student2, student3, student4];
   const fleet = Object.values(vehicles);
   const drivers = await db.user.findMany({
-    where: { id: { in: [driver1.id, driver2.id, driver3.id] }, type: "Driver" },
+    where: {
+      id: { in: [driver1.id, driver2.id, driver3.id] },
+      types: { has: "Driver" },
+    },
     include: {
       shifts: {
         orderBy: [
