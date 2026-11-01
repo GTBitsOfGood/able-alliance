@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { authConfig } from "@/auth";
 
 // Paths that don't require authentication
 const PUBLIC_PATHS = ["/login", "/api/auth"];
@@ -10,7 +11,7 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
-export default auth((request) => {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public paths and static assets
@@ -25,14 +26,22 @@ export default auth((request) => {
     return NextResponse.next();
   }
 
-  // Check for valid session — req.auth is populated by Auth.js
-  if (!request.auth) {
+  // Read the cookie without renewing it. auth() middleware writes a refreshed
+  // cookie on every response, so an older request can undo a role switch.
+  // Database-backed authorization remains in server pages and API handlers.
+  const token = await getToken({
+    req: request,
+    secret: authConfig.secret,
+    cookieName: authConfig.cookies.sessionToken.name,
+    secureCookie: authConfig.useSecureCookies,
+  });
+  if (!token?.userId) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   // Match all routes except static files, Next.js internals, and Auth.js

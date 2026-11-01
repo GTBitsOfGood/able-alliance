@@ -20,7 +20,8 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 async function requireAdmin() {
   try {
     const user = await getUserFromRequest();
-    if (user.type === "Admin" || user.type === "SuperAdmin") return { user };
+    if (user.activeType === "Admin" || user.activeType === "SuperAdmin")
+      return { user };
     return {
       response: NextResponse.json(
         { error: "Only admins can use auto-scheduling." },

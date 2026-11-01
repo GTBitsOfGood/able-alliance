@@ -48,7 +48,7 @@ model User {
   preferredName String?
   username      String          @unique
   email         String          @unique
-  type          UserType
+  types         UserType[]
   status        Status          @default(active)
   settings      UserSettings?
   studentInfo   StudentProfile?
@@ -60,7 +60,8 @@ model User {
   auditEntries  AuditEntry[]    @relation("AuditActor")
   subjectAudits AuditEntry[]    @relation("AuditSubjectUser")
 
-  @@index([type, status])
+  @@index([types], type: Gin)
+  @@index([status])
 }
 
 model AuditEntry {

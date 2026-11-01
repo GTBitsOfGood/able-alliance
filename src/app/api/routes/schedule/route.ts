@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
     // Only allow: Admin, SuperAdmin
-    if (!isAdmin(user.type)) {
+    if (!isAdmin(user.activeType)) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },

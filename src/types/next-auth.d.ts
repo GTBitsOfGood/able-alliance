@@ -1,10 +1,10 @@
 import type { DefaultSession, User as DefaultUser } from "next-auth";
-import type { JWT as DefaultJWT } from "next-auth/jwt";
 import type { User as DatabaseUser } from "@db/generated/browser";
 
-type AuthUserFields = Pick<DatabaseUser, "type" | "email"> &
+type AuthUserFields = Pick<DatabaseUser, "types" | "email"> &
   Partial<Pick<DatabaseUser, "username" | "firstName" | "lastName">> & {
     userId: DatabaseUser["id"];
+    activeType: DatabaseUser["types"][number];
   };
 
 declare module "next-auth" {
@@ -19,8 +19,7 @@ declare module "next-auth" {
 }
 
 declare module "next-auth/jwt" {
-  interface JWT
-    extends Omit<DefaultJWT, keyof AuthUserFields>, Partial<AuthUserFields> {
+  interface JWT extends Partial<AuthUserFields> {
     accessToken?: string;
   }
 }

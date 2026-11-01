@@ -1,3 +1,4 @@
+import { userTypeFilter } from "@/utils/userTypes";
 import { db } from "@db";
 import { userInclude } from "@/server/db/queries";
 import { Prisma, type UserSettings } from "@db/generated/client";
@@ -15,7 +16,7 @@ function userAuditSnapshot(user: UserWithDetails) {
     preferredName: user.preferredName,
     username: user.username,
     email: user.email,
-    type: user.type,
+    types: user.types,
     status: user.status,
     settings: user.settings,
     studentInfo: user.studentInfo
@@ -36,7 +37,9 @@ function userAuditSnapshot(user: UserWithDetails) {
 
 export async function getUsers(type?: UserType) {
   return db.user.findMany({
-    where: type ? { type, status: "active" } : { status: "active" },
+    where: type
+      ? { ...userTypeFilter(type), status: "active" }
+      : { status: "active" },
     include: userInclude,
   });
 }
@@ -172,12 +175,12 @@ export async function updateUser(
         SELECT "id" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE
       `);
       const before = await tx.user.findUnique({
-        where: { id: userId, type },
+        where: { id: userId, ...userTypeFilter(type) },
         include: userInclude,
       });
       if (!before) throw new NotFoundError("User not found");
       const updated = await tx.user.update({
-        where: { id: before.id, type },
+        where: { id: before.id, ...userTypeFilter(type) },
         data,
         include: userInclude,
       });
@@ -197,7 +200,7 @@ export async function updateUser(
       error.code === "P2025"
     ) {
       const user = await db.user.findUnique({
-        where: { id: id.toLowerCase(), type },
+        where: { id: id.toLowerCase(), ...userTypeFilter(type) },
         select: { id: true },
       });
       if (!user) throw new NotFoundError("User not found");

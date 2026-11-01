@@ -1,3 +1,4 @@
+import { hasUserType } from "@/utils/userTypes";
 import { findBookingConflicts } from "@/server/scheduling/autoSchedule";
 import { db } from "@db";
 import { Prisma, RouteStatus } from "@db/generated/client";
@@ -91,7 +92,7 @@ export async function createRoute(
   if (!pickup) throw new ArgumentError("Pickup location not found");
   if (!dropoff) throw new ArgumentError("Dropoff location not found");
   if (!student) throw new ArgumentError("Student not found");
-  if (student.type !== "Student")
+  if (!hasUserType(student, "Student"))
     throw new ArgumentError("Referenced user is not a student");
   const existing = await client.route.findUnique({
     where: {
@@ -510,7 +511,7 @@ async function assignRoute(
     const vehicleRow = await tx.vehicle.findUnique({
       where: { id: vehicleId },
     });
-    if (!driverRow || driverRow.type !== "Driver")
+    if (!driverRow || !hasUserType(driverRow, "Driver"))
       throw new ArgumentError("Driver not found or not a driver");
     if (driverRow.status === "archived")
       throw new ArgumentError("Driver is archived and cannot be assigned");

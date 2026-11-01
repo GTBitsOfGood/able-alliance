@@ -188,7 +188,7 @@ function layoutLanes(
 export default function AutoSchedulePage() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
   const isAdmin = userType === "Admin" || userType === "SuperAdmin";
 
   const [date, setDate] = useState(todayEst);

@@ -36,10 +36,10 @@ export async function GET(req: NextRequest) {
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
         );
       }
-      const route = await getRouteById(id, user.type);
+      const route = await getRouteById(id, user.activeType);
       // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
       if (
-        isAdmin(user.type) ||
+        isAdmin(user.activeType) ||
         (route.student && route.student.id === user.userId) ||
         (route.driver && route.driver.id === user.userId)
       ) {
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const userType = session.user.type;
+    const userType = session.user.activeType;
     const loggedInUserId = session.user.userId;
 
     // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?status=<RouteStatus> | ?start_time=<time> | ?end_time=<time>
@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
         start_time: startDate,
         end_time: endDate,
       },
-      user.type,
+      user.activeType,
     );
     return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
@@ -191,7 +191,10 @@ export async function POST(request: NextRequest) {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      if (user.type !== "Student" || user.userId !== session.user.userId) {
+      if (
+        user.activeType !== "Student" ||
+        user.userId !== session.user.userId
+      ) {
         return NextResponse.json(
           { error: "Forbidden" },
           {
@@ -248,7 +251,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!(user.type === "Student" && user.userId === parsed.data.student)) {
+    if (!(
+      user.activeType === "Student" && user.userId === parsed.data.student
+    )) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },

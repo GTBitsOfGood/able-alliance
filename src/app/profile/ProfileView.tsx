@@ -1,5 +1,6 @@
 "use client";
 
+import { hasUserType, userTypeLabel } from "@/utils/userTypes";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
@@ -78,7 +79,7 @@ export function ProfileView({
   const [savingNotifications, setSavingNotifications] = useState(false);
 
   const fetchAccommodations = useCallback(() => {
-    if (user.type === "Student") {
+    if (hasUserType(user, "Student")) {
       fetch("/api/accommodations")
         .then((r) => r.json())
         .then((data: { label: string }[]) =>
@@ -86,7 +87,7 @@ export function ProfileView({
         )
         .catch(() => {});
     }
-  }, [user.type]);
+  }, [user.types]);
 
   useEffect(() => {
     fetchAccommodations();
@@ -97,7 +98,7 @@ export function ProfileView({
   const displayName =
     [displayUser.firstName, displayUser.lastName].filter(Boolean).join(" ") ||
     displayUser.email;
-  const showAccommodations = displayUser.type === "Student";
+  const showAccommodations = hasUserType(displayUser, "Student");
 
   function handleEdit() {
     setDraftPreferredName(displayUser.preferredName ?? "");
@@ -212,20 +213,23 @@ export function ProfileView({
         {/* Header */}
         <header className={styles.profileHeader}>
           <div
-            className={`${styles.profileAvatar} ${avatarClass(displayUser.type)}`}
+            className={`${styles.profileAvatar} ${avatarClass(isOwnProfile ? viewerType : displayUser.types[0])}`}
           >
             {avatarLetter}
           </div>
           <div className={styles.profileNameBlock}>
             <h1 className={styles.profileDisplayName}>{displayName}</h1>
-            <span className={styles.profileRole}>{displayUser.type}</span>
+            <span className={styles.profileRole}>
+              {displayUser.types.map(userTypeLabel).join(" · ")}
+            </span>
           </div>
         </header>
 
         {/* Tabs */}
         {(() => {
           const showRidesTab =
-            (displayUser.type === "Student" || displayUser.type === "Driver") &&
+            (hasUserType(displayUser, "Student") ||
+              hasUserType(displayUser, "Driver")) &&
             (viewerType === "Admin" || viewerType === "SuperAdmin");
           return (
             <div className={styles.tabBar}>
@@ -251,7 +255,9 @@ export function ProfileView({
         {activeTab === "rides" && (
           <ProfileRidesTab
             userId={displayUser.id}
-            userType={displayUser.type as "Student" | "Driver"}
+            userType={
+              hasUserType(displayUser, "Student") ? "Student" : "Driver"
+            }
           />
         )}
 
@@ -550,12 +556,12 @@ export function ProfileView({
               </section>
             )}
             {isOwnProfile &&
-              (displayUser.type === "Student" ||
-                displayUser.type === "Driver") && (
+              (hasUserType(displayUser, "Student") ||
+                hasUserType(displayUser, "Driver")) && (
                 <section className={styles.profileSection}>
                   <h3 className={styles.sectionSubtitle}>Notifications</h3>
                   <div style={{ display: "grid", gap: "0.8rem" }}>
-                    {displayUser.type === "Student" && (
+                    {hasUserType(displayUser, "Student") && (
                       <>
                         <BogSwitch
                           checked={draftNotifications.dailySummary}
@@ -609,7 +615,7 @@ export function ProfileView({
                       </>
                     )}
 
-                    {displayUser.type === "Driver" && (
+                    {hasUserType(displayUser, "Driver") && (
                       <>
                         <BogSwitch
                           checked={draftNotifications.dailySummary}

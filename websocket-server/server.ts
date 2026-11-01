@@ -32,11 +32,8 @@ export async function startServer(requestHandler?: RequestListener) {
     SocketData
   >(server, {
     cors: {
-      origin: [
-        "http://localhost:3000",
-        "https://able-alliance.netlify.app",
-        /^https:\/\/deploy-preview-\d+--able-alliance\.netlify\.app$/, // deploy previews
-      ],
+      origin: new URL(process.env.DEPLOY_PRIME_URL ?? "http://localhost:3000")
+        .origin,
       methods: ["GET", "POST"],
     },
     transports: ["websocket", "polling"],

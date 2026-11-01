@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const route = await getRouteById(routeId, user.type);
+    const route = await getRouteById(routeId, user.activeType);
 
     const driverId = route.driver?.id;
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await pickupStudent(routeId, user.userId);
-    return NextResponse.json(routeResponseForRole(updated, user.type), {
+    return NextResponse.json(routeResponseForRole(updated, user.activeType), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (user.type !== "Driver") {
+  if (user.activeType !== "Driver") {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const route = await getRouteById(routeId, user.type);
+    const route = await getRouteById(routeId, user.activeType);
 
     // Validate caller is the assigned driver
     const driverId = route.driver?.id;
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const updated = await markRouteMissing(routeId, user.userId);
-    return NextResponse.json(routeResponseForRole(updated, user.type), {
+    return NextResponse.json(routeResponseForRole(updated, user.activeType), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {
