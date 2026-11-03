@@ -1,0 +1,54 @@
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
+}
+
+.history :where(p, strong, time, th, td) {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.entity {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.meta strong {
+  color: var(--color-grey-text-strong);
+}
+
+.changes {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.changes th,
+.changes td {
+  padding: 0.8rem;
+  border-bottom: 1px solid var(--color-grey-fill-weak);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.changes thead {
+  background: var(--color-admin-bg);
+  color: var(--color-grey-text-strong);
+}
+
+.changes tbody th {
+  font-weight: 500;
+}

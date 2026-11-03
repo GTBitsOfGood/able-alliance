@@ -219,7 +219,7 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
                   <Table.Row
                     key={row.key}
                     {...row.styleProps}
-                    className={styles.row}
+                    className={`${styles.row} ${row.styleProps?.className ?? ""}`}
                     data-route-id={row.key}
                   >
                     {row.cells.map((cell, cIdx) => (

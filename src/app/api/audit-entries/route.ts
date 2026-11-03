@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
   const entityType = params.getAll("entityType");
   const action = params.getAll("action");
   const query: Parameters<typeof getAuditEntries>[0] = { page, pageSize };
+  const entityId = params.get("entityId");
+  if (entityId) query.entityId = entityId;
 
   if (entityType.length) {
     if (!entityType.every(isAuditEntityType)) {

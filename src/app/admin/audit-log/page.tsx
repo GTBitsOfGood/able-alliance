@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminRidesTable, {
   type ColumnHeader,
   type TableRow,
 } from "@/components/AdminRidesTable/AdminRidesTable";
 import RideFilter from "../RideFilter";
-import { adminStatusLabel } from "../RideStatusChip";
+import AuditHistoryModal from "./AuditHistoryModal";
+import {
+  type AuditEntry,
+  type AuditResponse,
+  actorName,
+  entryTime,
+  fieldLabel,
+  summaryValue,
+} from "./auditLog";
 import styles from "./auditLog.module.css";
 
 const COLUMNS: ColumnHeader[] = [
@@ -17,64 +25,9 @@ const COLUMNS: ColumnHeader[] = [
   { content: "Changes", width: "30%" },
 ];
 
-type Change = { before: unknown; after: unknown };
-type AuditEntry = {
-  id: string;
-  createdAt: string;
-  entityType: string;
-  entityId: string;
-  action: "Create" | "Update" | "Delete";
-  changes: Record<string, Change>;
-  actor: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    preferredName: string | null;
-    username: string;
-  } | null;
-};
-
-type AuditResponse = {
-  entries: AuditEntry[];
-  total: number;
-  page: number;
-  pageSize: number;
-  pageCount: number;
-  entityTypes: string[];
-};
-
-function fieldLabel(field: string) {
-  const label = field
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[._]/g, " ");
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function summaryValue(
-  field: string,
-  value: unknown,
-  entityType: string,
-): string {
-  if (value === null || value === undefined) return "None";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "string") {
-    if (!value) return '""';
-    if (entityType === "Route" && field === "status")
-      return adminStatusLabel(value);
-    return value;
-  }
-  return JSON.stringify(value);
-}
-
-function actorName(entry: AuditEntry) {
-  if (!entry.actor) return "System";
-  return (
-    entry.actor.preferredName ||
-    `${entry.actor.firstName} ${entry.actor.lastName}`
-  );
-}
-
 export default function AuditLogPage() {
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  const selectedRow = useRef<HTMLElement | null>(null);
   const [data, setData] = useState<AuditResponse | null>(null);
   const [entityTypes, setEntityTypes] = useState<string[]>([]);
   const [actions, setActions] = useState<string[]>([]);
@@ -113,13 +66,27 @@ export default function AuditLogPage() {
 
   const rows: TableRow[] = (data?.entries ?? []).map((entry) => ({
     key: entry.id,
+    styleProps: {
+      tabIndex: 0,
+      className: styles.clickableRow,
+      "aria-label": `View change history for ${entry.entityType} ${entry.entityId}`,
+      "aria-haspopup": "dialog",
+      onClick: (event) => {
+        selectedRow.current = event.currentTarget;
+        setSelectedEntry(entry);
+      },
+      onKeyDown: (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectedRow.current = event.currentTarget;
+          setSelectedEntry(entry);
+        }
+      },
+    },
     cells: [
       {
         wrap: true,
-        content: new Intl.DateTimeFormat(undefined, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(entry.createdAt)),
+        content: entryTime(entry),
         value: new Date(entry.createdAt).getTime(),
       },
       {
@@ -188,6 +155,17 @@ export default function AuditLogPage() {
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col gap-6 px-[var(--layout-admin-pad-x)] py-[var(--layout-content-pad-y)] lg:pt-[6.4rem] lg:pl-[5.6rem] lg:pr-[2.6rem]">
       <h1 className="text-display">Audit Log</h1>
+      {selectedEntry && (
+        <AuditHistoryModal
+          key={selectedEntry.id}
+          entry={selectedEntry}
+          onClose={() => setSelectedEntry(null)}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            selectedRow.current?.focus();
+          }}
+        />
+      )}
 
       <AdminRidesTable
         columnHeaders={COLUMNS}

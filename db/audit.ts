@@ -115,9 +115,11 @@ export async function getAuditEntries(input: {
   page: number;
   pageSize: number;
   entityType?: AuditEntityType | AuditEntityType[];
+  entityId?: string;
   action?: AuditAction | AuditAction[];
 }) {
   const where: Prisma.AuditEntryWhereInput = {
+    ...(input.entityId ? { entityId: input.entityId.toLowerCase() } : {}),
     ...(input.entityType
       ? {
           entityType: Array.isArray(input.entityType)

@@ -1,23 +1,26 @@
 .changes {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  padding: 1.2rem 0;
-  font-size: var(--text-mobile-paragraph-2);
+  padding: 0.8rem 0;
 }
 
 .summaryList {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.4rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.changes,
+.changes p,
+.summaryList,
+.summaryItem,
+.summaryItem span {
+  font-size: inherit;
+  line-height: inherit;
+}
+
 .summaryItem {
-  font-size: var(--text-mobile-paragraph-2);
-  line-height: 1.6;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -30,4 +33,13 @@
 
 .arrow {
   color: var(--color-grey-text-weak);
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:focus-visible {
+  outline: 2px solid var(--color-brand-stroke-strong);
+  outline-offset: -2px;
 }
