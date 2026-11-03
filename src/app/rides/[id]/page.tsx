@@ -8,6 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
+import {
+  getDirectionsGeometry,
+  getRouteLinePaint,
+  type LineStringGeometry,
+} from "@/utils/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
@@ -28,11 +33,6 @@ const CLOSED_CHAT_STATUSES = new Set([
   "CancelledByStudent",
   "CancelledByAdmin",
 ]);
-
-type LineStringGeometry = {
-  type: "LineString";
-  coordinates: [number, number][];
-};
 
 function createCustomPin(
   labelText: string,
@@ -71,26 +71,6 @@ function coordsOverlap(
   return (
     Math.abs(a[0] - b[0]) < thresholdDeg && Math.abs(a[1] - b[1]) < thresholdDeg
   );
-}
-
-async function getDirectionsGeometry(
-  pickup: [number, number],
-  dropoff: [number, number],
-  token: string,
-): Promise<LineStringGeometry | null> {
-  const coordinates = `${pickup.join(",")};${dropoff.join(",")}`;
-  const response = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?overview=full&geometries=geojson&access_token=${encodeURIComponent(token)}`,
-  );
-
-  if (!response.ok) {
-    throw new Error(`Directions API responded with ${response.status}`);
-  }
-
-  const data = (await response.json()) as {
-    routes?: Array<{ geometry?: LineStringGeometry }>;
-  };
-  return data.routes?.[0]?.geometry ?? null;
 }
 
 function getStudentId(student: RouteData["student"]): string {
@@ -272,7 +252,8 @@ export default function RideDetailPage({
       return;
     }
 
-    const initializeMap = async () => {
+    const initializeMap = () => {
+      let cancelled = false;
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
       const container = mapContainerRef.current;
       if (!container || !token) return;
@@ -341,34 +322,37 @@ export default function RideDetailPage({
             "line-cap": "round",
             "line-join": "round",
           },
-          paint: {
-            "line-color": "#2563eb",
-            "line-width": 5,
-            "line-opacity": 0.8,
-          },
+          paint: getRouteLinePaint(map.getContainer()),
         });
       };
 
-      const updateMap = async () => {
-        map.resize();
-        fitToBounds(map);
+      const updateRoute = async () => {
         let routeGeometry: LineStringGeometry | null = null;
         try {
           routeGeometry = await getDirectionsGeometry(
             [pickup.longitude, pickup.latitude],
             [dropoff.longitude, dropoff.latitude],
             token,
+            "driving",
           );
         } catch (error) {
+          if (cancelled) return;
           console.warn("[mapbox] Unable to load ride route:", error);
         }
+        if (cancelled) return;
         updateRouteLine(routeGeometry);
+      };
+
+      const updateMap = () => {
+        if (cancelled) return;
+        map.resize();
+        fitToBounds(map);
 
         markerRefs.current.forEach((marker) => marker.remove());
         markerRefs.current = [];
 
-        const pickupPinColor = "#eb2525";
-        const dropoffPinColor = "#16a34a";
+        const pickupPinColor = "var(--color-map-pickup)";
+        const dropoffPinColor = "var(--color-map-dropoff)";
         const pickupLngLat: [number, number] = [
           pickup.longitude,
           pickup.latitude,
@@ -402,13 +386,19 @@ export default function RideDetailPage({
           .setLngLat(dropoffLngLat)
           .addTo(map);
         markerRefs.current.push(dropoffMarker);
+        void updateRoute();
       };
 
       if (mapLoadedRef.current) updateMap();
       else map.once("load", updateMap);
+
+      return () => {
+        cancelled = true;
+        map.off("load", updateMap);
+      };
     };
 
-    initializeMap();
+    return initializeMap();
   }, [route]);
 
   useEffect(() => {

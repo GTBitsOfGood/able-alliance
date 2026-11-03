@@ -14,39 +14,10 @@ import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
+import { getDirectionsGeometry, getRouteLinePaint } from "@/utils/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import type { Location } from "@db/generated/browser";
-
-type LineStringGeometry = {
-  type: "LineString";
-  coordinates: [number, number][];
-};
-
-async function getDirectionsGeometry(
-  pickup: [number, number],
-  dropoff: [number, number],
-  token: string,
-): Promise<LineStringGeometry | null> {
-  const coordinates = `${pickup.join(",")};${dropoff.join(",")}`;
-  const query = new URLSearchParams({
-    overview: "full",
-    geometries: "geojson",
-    access_token: token,
-  });
-  const response = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coordinates}?${query}`,
-  );
-
-  if (!response.ok) {
-    throw new Error(`Directions API responded with ${response.status}`);
-  }
-
-  const data = (await response.json()) as {
-    routes?: Array<{ geometry?: LineStringGeometry }>;
-  };
-  return data.routes?.[0]?.geometry ?? null;
-}
 
 function PickupWindowErrorIcon({ className }: { className?: string }) {
   return (
@@ -426,6 +397,7 @@ export default function CreateRidePage() {
             pickupLngLat,
             dropoffLngLat,
             token,
+            "driving-traffic",
           );
           if (cancelled) return;
           if (!geometry) {
@@ -456,11 +428,7 @@ export default function CreateRidePage() {
               "line-cap": "round",
               "line-join": "round",
             },
-            paint: {
-              "line-color": "#2563eb",
-              "line-width": 5,
-              "line-opacity": 0.8,
-            },
+            paint: getRouteLinePaint(map.getContainer()),
           });
         } catch (error) {
           if (!cancelled) {
@@ -487,7 +455,10 @@ export default function CreateRidePage() {
 
         if (pickup && pickupLngLat) {
           const pickupMarker = new mapboxgl.Marker({
-            element: createCustomPin(`Pickup: ${pickup.name}`, "#eb2525"),
+            element: createCustomPin(
+              `Pickup: ${pickup.name}`,
+              "var(--color-map-pickup)",
+            ),
             anchor: "bottom",
           })
             .setLngLat(pickupLngLat)
@@ -500,7 +471,7 @@ export default function CreateRidePage() {
           const dropoffMarker = new mapboxgl.Marker({
             element: createCustomPin(
               `Dropoff: ${dropoff.name}`,
-              "#16a34a",
+              "var(--color-map-dropoff)",
               overlap ? 50 : 0,
             ),
             anchor: "bottom",
@@ -512,6 +483,7 @@ export default function CreateRidePage() {
       };
 
       const addMapContent = () => {
+        if (cancelled) return;
         addMarkers();
         void updateRoute();
       };
@@ -521,6 +493,7 @@ export default function CreateRidePage() {
 
       return () => {
         cancelled = true;
+        map.off("load", addMapContent);
       };
     } catch (e) {
       // Surface failures from the external map API to the user.
