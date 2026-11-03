@@ -1,0 +1,33 @@
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding: 1.2rem 0;
+  font-size: var(--text-mobile-paragraph-2);
+}
+
+.summaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summaryItem {
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.summaryField,
+.summaryAfter {
+  color: var(--color-grey-text-strong);
+  font-weight: 600;
+}
+
+.arrow {
+  color: var(--color-grey-text-weak);
+}

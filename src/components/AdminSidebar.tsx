@@ -87,7 +87,7 @@ function AdminSidebarContent() {
             href="/admin/audit-log"
             className={`${styles.navItem} ${pathname.startsWith("/admin/audit-log") ? styles.active : ""}`}
           >
-            <Image src="/folder.svg" alt="" width={20} height={20} />
+            <Image src="/archive.svg" alt="" width={20} height={20} />
             <span>Audit Log</span>
           </Link>
 

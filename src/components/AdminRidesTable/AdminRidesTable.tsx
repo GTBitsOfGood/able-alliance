@@ -30,6 +30,8 @@ export type ColumnHeader = {
 };
 
 export type RowCell = {
+  /** Allow expanded details and long content to wrap within the cell. */
+  wrap?: boolean;
   content: ReactNode;
   /** Raw values keep dates chronological and status components searchable. */
   value?: string | number;
@@ -212,85 +214,96 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {sortedRows.map((row) => (
-                <ContextMenu.Root key={row.key}>
-                  <ContextMenu.Trigger asChild>
-                    <Table.Row
-                      {...row.styleProps}
-                      className={styles.row}
-                      data-route-id={row.key}
-                    >
-                      {row.cells.map((cell, cIdx) => (
-                        <Table.Cell
-                          key={`${row.key}-cell-${cIdx}`}
-                          {...cell.styleProps}
-                          className={styles.cell}
+              {sortedRows.map((row) => {
+                const tableRow = (
+                  <Table.Row
+                    key={row.key}
+                    {...row.styleProps}
+                    className={styles.row}
+                    data-route-id={row.key}
+                  >
+                    {row.cells.map((cell, cIdx) => (
+                      <Table.Cell
+                        key={`${row.key}-cell-${cIdx}`}
+                        {...cell.styleProps}
+                        className={styles.cell}
+                      >
+                        <div
+                          className={
+                            cell.wrap ? styles.cellWrapped : styles.cellText
+                          }
+                          title={
+                            cell.wrap
+                              ? undefined
+                              : extractText(cell.content) ||
+                                String(cell.value ?? "")
+                          }
                         >
-                          <div
-                            className={styles.cellText}
-                            title={
-                              extractText(cell.content) ||
-                              String(cell.value ?? "")
-                            }
+                          {cell.content}
+                        </div>
+                        {cIdx === row.cells.length - 1 && row.actions && (
+                          <DropdownMenu.Root>
+                            <DropdownMenu.Trigger asChild>
+                              <button
+                                type="button"
+                                className={styles.rowActions}
+                                aria-label={`Actions for ${row.label ?? row.key}`}
+                              >
+                                <Image
+                                  src="/ride-actions-menu.svg"
+                                  alt=""
+                                  width={20}
+                                  height={20}
+                                />
+                              </button>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                              <DropdownMenu.Content
+                                className={styles.menu}
+                                align="end"
+                                sideOffset={4}
+                              >
+                                {row.actions.map((action) => (
+                                  <DropdownMenu.Item
+                                    key={action.label}
+                                    className={styles.menuItem}
+                                    disabled={action.disabled}
+                                    onSelect={action.onSelect}
+                                  >
+                                    {action.label}
+                                  </DropdownMenu.Item>
+                                ))}
+                              </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                          </DropdownMenu.Root>
+                        )}
+                      </Table.Cell>
+                    ))}
+                  </Table.Row>
+                );
+                if (!row.actions?.length) return tableRow;
+                return (
+                  <ContextMenu.Root key={row.key}>
+                    <ContextMenu.Trigger asChild>
+                      {tableRow}
+                    </ContextMenu.Trigger>
+                    <ContextMenu.Portal>
+                      <ContextMenu.Content className={styles.menu}>
+                        {row.actions?.map((action) => (
+                          <ContextMenu.Item
+                            key={action.label}
+                            className={styles.menuItem}
+                            disabled={action.disabled}
+                            onSelect={action.onSelect}
                           >
-                            {cell.content}
-                          </div>
-                          {cIdx === row.cells.length - 1 && row.actions && (
-                            <DropdownMenu.Root>
-                              <DropdownMenu.Trigger asChild>
-                                <button
-                                  type="button"
-                                  className={styles.rowActions}
-                                  aria-label={`Actions for ${row.label ?? row.key}`}
-                                >
-                                  <Image
-                                    src="/ride-actions-menu.svg"
-                                    alt=""
-                                    width={20}
-                                    height={20}
-                                  />
-                                </button>
-                              </DropdownMenu.Trigger>
-                              <DropdownMenu.Portal>
-                                <DropdownMenu.Content
-                                  className={styles.menu}
-                                  align="end"
-                                  sideOffset={4}
-                                >
-                                  {row.actions.map((action) => (
-                                    <DropdownMenu.Item
-                                      key={action.label}
-                                      className={styles.menuItem}
-                                      disabled={action.disabled}
-                                      onSelect={action.onSelect}
-                                    >
-                                      {action.label}
-                                    </DropdownMenu.Item>
-                                  ))}
-                                </DropdownMenu.Content>
-                              </DropdownMenu.Portal>
-                            </DropdownMenu.Root>
-                          )}
-                        </Table.Cell>
-                      ))}
-                    </Table.Row>
-                  </ContextMenu.Trigger>
-                  <ContextMenu.Portal>
-                    <ContextMenu.Content className={styles.menu}>
-                      {row.actions?.map((action) => (
-                        <ContextMenu.Item
-                          key={action.label}
-                          className={styles.menuItem}
-                          disabled={action.disabled}
-                          onSelect={action.onSelect}
-                        >
-                          {action.label}
-                        </ContextMenu.Item>
-                      ))}
-                    </ContextMenu.Content>
-                  </ContextMenu.Portal>
-                </ContextMenu.Root>
-              ))}
+                            {action.label}
+                          </ContextMenu.Item>
+                        ))}
+                      </ContextMenu.Content>
+                    </ContextMenu.Portal>
+                  </ContextMenu.Root>
+                );
+              })}
             </Table.Body>
           </Table.Root>
           {filteredRows.length === 0 && emptyMessage && (

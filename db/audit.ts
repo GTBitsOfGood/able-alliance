@@ -114,12 +114,24 @@ export async function recordAudit(
 export async function getAuditEntries(input: {
   page: number;
   pageSize: number;
-  entityType?: AuditEntityType;
-  action?: AuditAction;
+  entityType?: AuditEntityType | AuditEntityType[];
+  action?: AuditAction | AuditAction[];
 }) {
   const where: Prisma.AuditEntryWhereInput = {
-    ...(input.entityType ? { entityType: input.entityType } : {}),
-    ...(input.action ? { action: input.action } : {}),
+    ...(input.entityType
+      ? {
+          entityType: Array.isArray(input.entityType)
+            ? { in: input.entityType }
+            : input.entityType,
+        }
+      : {}),
+    ...(input.action
+      ? {
+          action: Array.isArray(input.action)
+            ? { in: input.action }
+            : input.action,
+        }
+      : {}),
   };
 
   const [entries, total] = await db.$transaction([
