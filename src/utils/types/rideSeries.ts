@@ -19,9 +19,8 @@ export const recurrenceRequestSchema = z
      */
     daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).optional(),
     /** Last Eastern calendar date (YYYY-MM-DD) to schedule on; omit to repeat indefinitely. */
-    endsOn: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
+    endsOn: z.iso
+      .date({ error: "End date must be a valid calendar date (YYYY-MM-DD)" })
       .optional(),
   })
   .strict();
