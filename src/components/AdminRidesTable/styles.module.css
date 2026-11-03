@@ -5,13 +5,13 @@
   .ridesTable {
     display: flex;
     flex-direction: column;
-    gap: 1.6rem;
+    gap: 2.4rem;
   }
 
   /* Search field, then the toolbar actions, as laid out in the design. */
   .topBar {
     display: flex;
-    gap: 4.4rem;
+    gap: 3.2rem;
     justify-content: space-between;
     align-items: center;
   }
@@ -19,14 +19,13 @@
   .searchWrapper {
     position: relative;
     flex: 1;
-    max-width: 61.1rem;
   }
 
   .searchWithIcon input {
     height: 3.6rem !important;
     padding-right: 2.6rem !important;
     border: 1px solid #d1d5db !important;
-    border-radius: 0.4rem !important;
+    border-radius: 0.6rem !important;
     background-color: var(--color-solid-bg-base) !important;
     font-family: var(--font-paragraph) !important;
     font-size: var(--text-mobile-paragraph-2) !important;
@@ -39,17 +38,6 @@
   .searchWithIcon input:focus {
     border-color: #6b7280 !important;
     outline: none !important;
-  }
-
-  .searchWrapper::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: calc(1.3rem + 2rem + 0.5rem);
-    width: 0;
-    border-left: 0.1rem solid var(--color-grey-stroke-weak);
-    pointer-events: none;
   }
 
   .searchIcon {
@@ -71,8 +59,8 @@
   .container {
     position: relative;
     min-height: auto !important;
-    border-radius: 0.8rem !important;
-    overflow: hidden;
+    overflow: auto;
+    padding-right: 4rem;
     font-family: var(--font-paragraph);
   }
 
@@ -83,12 +71,13 @@
   .root {
     table-layout: fixed;
     width: 100%;
+    min-width: 100rem;
   }
 
   .columnHeaderCell.columnHeaderCell {
     position: relative;
     height: 5.6rem;
-    padding: 0 1.6rem;
+    padding: 0 1.2rem;
     border-bottom: 1px solid var(--color-grey-stroke-weak) !important;
     box-shadow: none !important;
     background-color: var(--color-admin-bg) !important;
@@ -113,6 +102,7 @@
   }
 
   .cell.cell {
+    position: relative;
     height: 5.6rem;
     padding: 0 1.6rem;
     border-bottom: 1px solid var(--color-grey-fill-weak) !important;
@@ -123,10 +113,6 @@
     vertical-align: middle;
   }
 
-  .row:last-child .cell.cell {
-    border-bottom: 0 !important;
-  }
-
   .empty {
     margin: 0;
     padding: 2.4rem 1.6rem;
@@ -134,5 +120,134 @@
     color: var(--color-grey-text-weak);
     font-size: var(--text-desktop-paragraph-2);
     text-align: center;
+  }
+}
+
+/* The outer container owns scrolling. Radix's inner viewport otherwise clips
+   the action button placed in the gutter just beyond the Vehicle cell. */
+.root :global(.rt-ScrollAreaRoot),
+.root :global(.rt-ScrollAreaViewport) {
+  overflow: visible !important;
+}
+
+.row:hover .cell.cell,
+.row:focus-within .cell.cell,
+.row[data-state="open"] .cell.cell,
+.row:has(.rowActions[data-state="open"]) .cell.cell {
+  background-color: #f4f2f3 !important;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.4rem;
+}
+
+.sortHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sortIcons {
+  display: inline-flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sortIcons svg + svg {
+  margin-top: -0.4rem;
+}
+.sortActive {
+  color: var(--color-grey-text-strong);
+}
+.sortInactive {
+  color: var(--color-grey-off-state);
+}
+.cellText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowActions {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+}
+.row:hover .rowActions,
+.row:focus-within .rowActions,
+.row[data-state="open"] .rowActions,
+.rowActions[data-state="open"] {
+  opacity: 1;
+}
+.sortHeader:focus-visible,
+.rowActions:focus-visible {
+  outline: 2px solid var(--color-brand-stroke-strong);
+  outline-offset: 2px;
+  border-radius: 0.4rem;
+}
+.menu {
+  z-index: 50;
+  min-width: 11.5rem;
+  padding: 0.4rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-background-sunken, #f9f9f9);
+  color: var(--color-grey-text-strong);
+  box-shadow:
+    0 8px 8px -4px rgb(0 0 0 / 4%),
+    0 20px 24px -4px rgb(0 0 0 / 8%);
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  min-height: 4.4rem;
+  padding: 0.8rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  outline: none;
+}
+.menuItem[data-highlighted] {
+  background: var(--color-admin-bg);
+}
+.menuItem[data-disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (hover: none) {
+  .rowActions {
+    opacity: 1;
+  }
+}
+@media (width < 640px) {
+  .topBar {
+    flex-wrap: wrap;
+    gap: 1.6rem;
+  }
+  .searchWrapper {
+    min-width: 20rem;
+  }
+  .filters {
+    gap: 1.2rem;
   }
 }

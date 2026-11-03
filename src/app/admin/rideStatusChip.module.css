@@ -2,7 +2,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 8.8rem;
   height: 2.6rem;
   padding: 0 1.2rem;
   border-radius: 10000rem;
@@ -11,6 +10,16 @@
   font-weight: 400;
   line-height: 1.6rem;
   white-space: nowrap;
+}
+
+.actionRequired {
+  background: #ffa5a5;
+  color: var(--color-grey-text-strong);
+}
+
+.progress {
+  background: #99c0ff;
+  color: var(--color-grey-text-strong);
 }
 
 /* grey/solid/850 in the design system; no token for it in globals.css yet. */

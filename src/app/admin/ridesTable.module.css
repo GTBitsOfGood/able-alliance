@@ -1,93 +1,109 @@
-/* Three icon buttons spanning 100px, as laid out in the design's action cell.
-   Hidden until the row is hovered. Opacity rather than visibility keeps the
-   buttons in the tab order, and :focus-within reveals them for keyboard use. */
-.actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2.15rem;
-  opacity: 0;
-  transition: opacity 0.12s ease-in-out;
-}
-
-:global(tr):hover .actions,
-.actions:focus-within {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .actions {
-    transition: none;
-  }
-}
-
-.actionButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.attentionButton,
+.attentionEmpty {
   border: 0;
   background: none;
-  padding: 0;
-  cursor: pointer;
-  line-height: 0;
-}
-
-.actionButton:hover:not(:disabled) {
-  opacity: 0.7;
-}
-
-.actionButton:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.actionButton:focus-visible {
-  outline: 0.2rem solid var(--color-brand-stroke-strong);
-  outline-offset: 0.2rem;
-  border-radius: 0.2rem;
-}
-
-/* BogDropdown's root carries `min-width: 35%`, which stretches the trigger to
-   a share of the toolbar. The design wants a fixed 108x36 button, so pin the
-   track here and restyle the trigger to match the search field beside it.
-   Doubled class names outrank the design-system rules without !important. */
-.toolbarControl.toolbarControl {
-  flex: 0 0 10.8rem;
-  min-width: 0;
-  width: 10.8rem;
-}
-
-.toolbarControl.toolbarControl > :global(button) {
-  height: 3.6rem;
-  padding: 0 0.8rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.4rem;
-  background-color: var(--color-solid-bg-base);
-  color: var(--color-grey-text-strong);
-  font-size: var(--text-mobile-paragraph-2);
-}
-
-.toolbarControl.toolbarControl > :global(button:hover) {
-  border-color: #9ca3af;
-}
-
-.requestedLink {
-  border: 0;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  color: var(--color-status-blue-text);
+  padding: 0.8rem 1.2rem;
   font-family: var(--font-paragraph);
-  font-size: var(--text-desktop-paragraph-2);
+  font-size: 1.6rem;
   font-weight: 600;
   white-space: nowrap;
 }
-
-.requestedNone {
+.attentionButton {
+  color: #ed2024;
+  cursor: pointer;
+}
+.attentionButton[aria-pressed="true"] {
+  background: #ffe5e5;
+  border-radius: 999px;
+}
+.attentionEmpty {
   color: var(--color-grey-text-weak);
+}
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 3.8rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--color-grey-text-strong);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
   font-family: var(--font-paragraph);
-  font-size: var(--text-desktop-paragraph-2);
-  white-space: nowrap;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 2rem;
+  cursor: pointer;
+}
+.filterButton[data-active="true"] {
+  background: #dedbdb;
+  border-color: transparent;
+}
+.filterCount {
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: white;
+  font-size: 1.2rem;
+  line-height: 1.8rem;
+}
+.filterMenu {
+  z-index: 50;
+  min-width: 22rem;
+  max-width: min(36rem, calc(100vw - 3.2rem));
+  max-height: var(--radix-dropdown-menu-content-available-height);
+  overflow-y: auto;
+  padding: 0.4rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+}
+.filterLabel {
+  padding: 0.8rem;
+  font-weight: 600;
+}
+.filterItem {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  min-height: 4rem;
+  padding: 0.8rem;
+  border-radius: 0.4rem;
+  outline: none;
+  cursor: pointer;
+}
+.filterItem[data-highlighted] {
+  background: var(--color-admin-bg);
+}
+.filterItem[data-disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+.filterCheckbox {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--color-grey-stroke-strong);
+  border-radius: 0.2rem;
+}
+.filterSeparator {
+  height: 1px;
+  margin: 0.4rem 0;
+  background: var(--color-grey-stroke-weak);
+}
+.filterButton:focus-visible,
+.attentionButton:focus-visible {
+  outline: 2px solid var(--color-brand-stroke-strong);
+  outline-offset: 2px;
 }
 
 .notice {

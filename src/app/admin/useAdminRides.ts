@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   useRouteUpdates,
   type RouteChanges,
@@ -60,7 +67,17 @@ function mergeRows(
  * rides current from real-time events: changed rows are refetched one by one,
  * and the full list is only reloaded after a (re)connect or a failed refresh.
  */
+export const AdminRidesContext = createContext<ReturnType<
+  typeof useAdminRidesData
+> | null>(null);
+
 export function useAdminRides() {
+  const data = useContext(AdminRidesContext);
+  if (!data) throw new Error("useAdminRides requires AdminRidesProvider");
+  return data;
+}
+
+export function useAdminRidesData() {
   const [routes, setRoutes] = useState<RouteEntry[]>([]);
   const [drivers, setDrivers] = useState<DriverEntry[]>([]);
   const [vehicles, setVehicles] = useState<VehicleEntry[]>([]);
@@ -201,6 +218,9 @@ export function useAdminRides() {
 
   return {
     routes,
+    actionRequiredCount: routes.filter(
+      (route) => route.status === "ActionRequired",
+    ).length,
     drivers,
     vehicles,
     loading,

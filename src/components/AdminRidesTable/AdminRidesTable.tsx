@@ -6,12 +6,14 @@
  *
  * Differences from BogTable, all required by the admin rides design:
  *   - the search field takes a caller-supplied placeholder
- *   - columns carry a fixed width and have no per-column sort carets; the
- *     caller orders its own rows and offers a "Sort By" control in the toolbar
+ *   - fixed-width columns, typed sort values, and individual filters
+ *   - contextual row actions without a dedicated Action column
  *   - no selection checkboxes
  *   - body cells use the weaker row divider the design asks for
  */
 
+import Image from "next/image";
+import { ContextMenu, DropdownMenu } from "radix-ui";
 import { Table, Theme } from "@radix-ui/themes";
 import React, { ReactNode } from "react";
 import "../BogTable/bogtable-radix.css";
@@ -29,6 +31,8 @@ export type ColumnHeader = {
 
 export type RowCell = {
   content: ReactNode;
+  /** Raw values keep dates chronological and status components searchable. */
+  value?: string | number;
   styleProps?: React.ComponentProps<typeof Table.Cell>;
 };
 
@@ -36,6 +40,8 @@ export type TableRow = {
   /** Stable identity for the row, used as the React key. */
   key: string;
   cells: RowCell[];
+  label?: string;
+  actions?: { label: string; onSelect: () => void; disabled?: boolean }[];
   styleProps?: React.ComponentProps<typeof Table.Row>;
 };
 
@@ -45,6 +51,7 @@ interface AdminRidesTableProps {
   searchPlaceholder?: string;
   /** Rendered to the right of the search field. */
   toolbarActions?: ReactNode;
+  filters?: ReactNode;
   size?: "small" | "medium" | "large" | "responsive";
   /** Shown in place of the body when no row survives the search. */
   emptyMessage?: ReactNode;
@@ -67,11 +74,25 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
   rows,
   searchPlaceholder = "Enter text to search",
   toolbarActions,
+  filters,
   size = "responsive",
   emptyMessage,
   className,
 }) => {
   const breakpoint = useResponsive();
+  const [sorts, setSorts] = React.useState<
+    { index: number; direction: "asc" | "desc" }[]
+  >([]);
+  const toggleSort = (index: number) =>
+    setSorts((previous) => {
+      const current = previous.find((sort) => sort.index === index);
+      if (!current) return [...previous, { index, direction: "asc" }];
+      return current.direction === "asc"
+        ? previous.map((sort) =>
+            sort.index === index ? { ...sort, direction: "desc" } : sort,
+          )
+        : previous.filter((sort) => sort.index !== index);
+    });
   const [query, setQuery] = React.useState("");
 
   const filteredRows = React.useMemo(() => {
@@ -79,10 +100,30 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
     if (!q) return rows;
     return rows.filter((row) =>
       row.cells.some((cell) =>
-        extractText(cell.content).toLowerCase().includes(q),
+        `${extractText(cell.content)} ${cell.value ?? ""}`
+          .toLowerCase()
+          .includes(q),
       ),
     );
   }, [rows, query]);
+
+  const sortedRows = React.useMemo(() => {
+    return [...filteredRows].sort((a, b) => {
+      for (const { index, direction } of sorts) {
+        const av = a.cells[index].value ?? extractText(a.cells[index].content);
+        const bv = b.cells[index].value ?? extractText(b.cells[index].content);
+        const compared =
+          typeof av === "number" && typeof bv === "number"
+            ? av - bv
+            : String(av).localeCompare(String(bv), undefined, {
+                numeric: true,
+                sensitivity: "base",
+              });
+        if (compared) return direction === "asc" ? compared : -compared;
+      }
+      return 0;
+    });
+  }, [filteredRows, sorts]);
 
   const handleSearchChange: React.FormEventHandler<HTMLDivElement> = (e) => {
     const el = e.target as HTMLInputElement;
@@ -111,41 +152,140 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
           )}
         </div>
 
+        {filters && <div className={styles.filters}>{filters}</div>}
         <div className={styles.container}>
           <Table.Root
             size={radixSize}
+            layout="fixed"
             className={`${styles.root} ${className || ""}`}
           >
             <Table.Header>
               <Table.Row>
-                {columnHeaders.map((header, i) => (
-                  <Table.ColumnHeaderCell
-                    key={`col-${i}`}
-                    className={styles.columnHeaderCell}
-                    style={header.width ? { width: header.width } : undefined}
-                  >
-                    {header.content}
-                  </Table.ColumnHeaderCell>
-                ))}
+                {columnHeaders.map((header, i) => {
+                  const direction = sorts.find(
+                    (sort) => sort.index === i,
+                  )?.direction;
+                  return (
+                    <Table.ColumnHeaderCell
+                      key={header.content}
+                      className={styles.columnHeaderCell}
+                      aria-sort={
+                        direction === "asc"
+                          ? "ascending"
+                          : direction === "desc"
+                            ? "descending"
+                            : "none"
+                      }
+                      style={header.width ? { width: header.width } : undefined}
+                    >
+                      <button
+                        type="button"
+                        className={styles.sortHeader}
+                        aria-label={`Sort by ${header.content}${direction ? `, ${direction === "asc" ? "ascending" : "descending"}` : ""}`}
+                        onClick={() => toggleSort(i)}
+                      >
+                        <span>{header.content}</span>
+                        <span className={styles.sortIcons} aria-hidden="true">
+                          <BogIcon
+                            name="caret-up"
+                            size={12}
+                            className={
+                              direction === "asc"
+                                ? styles.sortActive
+                                : styles.sortInactive
+                            }
+                          />
+                          <BogIcon
+                            name="caret-down"
+                            size={12}
+                            className={
+                              direction === "desc"
+                                ? styles.sortActive
+                                : styles.sortInactive
+                            }
+                          />
+                        </span>
+                      </button>
+                    </Table.ColumnHeaderCell>
+                  );
+                })}
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {filteredRows.map((row) => (
-                <Table.Row
-                  key={row.key}
-                  {...row.styleProps}
-                  className={styles.row}
-                >
-                  {row.cells.map((cell, cIdx) => (
-                    <Table.Cell
-                      key={`${row.key}-cell-${cIdx}`}
-                      {...cell.styleProps}
-                      className={styles.cell}
-                    >
-                      {cell.content}
-                    </Table.Cell>
-                  ))}
-                </Table.Row>
+              {sortedRows.map((row) => (
+                <ContextMenu.Root key={row.key}>
+                  <ContextMenu.Trigger asChild>
+                    <Table.Row {...row.styleProps} className={styles.row}>
+                      {row.cells.map((cell, cIdx) => (
+                        <Table.Cell
+                          key={`${row.key}-cell-${cIdx}`}
+                          {...cell.styleProps}
+                          className={styles.cell}
+                        >
+                          <div
+                            className={styles.cellText}
+                            title={
+                              extractText(cell.content) ||
+                              String(cell.value ?? "")
+                            }
+                          >
+                            {cell.content}
+                          </div>
+                          {cIdx === row.cells.length - 1 && row.actions && (
+                            <DropdownMenu.Root>
+                              <DropdownMenu.Trigger asChild>
+                                <button
+                                  type="button"
+                                  className={styles.rowActions}
+                                  aria-label={`Actions for ${row.label ?? row.key}`}
+                                >
+                                  <Image
+                                    src="/ride-actions-menu.svg"
+                                    alt=""
+                                    width={20}
+                                    height={20}
+                                  />
+                                </button>
+                              </DropdownMenu.Trigger>
+                              <DropdownMenu.Portal>
+                                <DropdownMenu.Content
+                                  className={styles.menu}
+                                  align="end"
+                                  sideOffset={4}
+                                >
+                                  {row.actions.map((action) => (
+                                    <DropdownMenu.Item
+                                      key={action.label}
+                                      className={styles.menuItem}
+                                      disabled={action.disabled}
+                                      onSelect={action.onSelect}
+                                    >
+                                      {action.label}
+                                    </DropdownMenu.Item>
+                                  ))}
+                                </DropdownMenu.Content>
+                              </DropdownMenu.Portal>
+                            </DropdownMenu.Root>
+                          )}
+                        </Table.Cell>
+                      ))}
+                    </Table.Row>
+                  </ContextMenu.Trigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.Content className={styles.menu}>
+                      {row.actions?.map((action) => (
+                        <ContextMenu.Item
+                          key={action.label}
+                          className={styles.menuItem}
+                          disabled={action.disabled}
+                          onSelect={action.onSelect}
+                        >
+                          {action.label}
+                        </ContextMenu.Item>
+                      ))}
+                    </ContextMenu.Content>
+                  </ContextMenu.Portal>
+                </ContextMenu.Root>
               ))}
             </Table.Body>
           </Table.Root>
