@@ -55,6 +55,54 @@ export async function selectLocation(
   await expect(input).toHaveValue(name);
 }
 
+/** Schedule through the current admin row menu and Edit ride modal. */
+export async function scheduleRideInAdmin(page: Page, routeId: string) {
+  const row = page.locator(`tr[data-route-id="${routeId}"]`);
+  await expect(row).toHaveCount(1);
+  await row.hover();
+  await row.getByRole("button", { name: /^Actions for / }).click();
+  await page.getByRole("menuitem", { name: "Edit ride", exact: true }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "Edit ride", exact: true }),
+  ).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Select...", exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("menuitem", {
+      name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
+      exact: true,
+    })
+    .click();
+  await dialog.getByRole("button", { name: "Select...", exact: true }).click();
+  await page
+    .getByRole("menuitem", {
+      name: `${VEHICLE.name} (${VEHICLE.licensePlate})`,
+      exact: true,
+    })
+    .click();
+
+  const scheduled = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/routes/schedule") &&
+      response.request().method() === "POST",
+  );
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  const response = await scheduled;
+  expect(response.status(), await response.text()).toBe(200);
+  await expect(dialog).toBeHidden();
+  await expect(row.getByText("Scheduled", { exact: true })).toBeVisible();
+  await expect(
+    row.getByText(`${PERSONAS.driver.firstName} ${PERSONAS.driver.lastName}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(row.getByText(VEHICLE.name, { exact: true })).toBeVisible();
+}
+
 /**
  * The calendar opens on the default ride date's month, which may already be
  * next month, so only advance when the target month isn't shown.

@@ -45,7 +45,8 @@ function fullName(user: { firstName: string; lastName: string } | null) {
 }
 
 function timeAt(iso: string | null | undefined, place: string | undefined) {
-  if (!iso) return "—";
+  // Requested rides can have a destination before a dropoff estimate exists.
+  if (!iso) return place ?? "—";
   const time = formatEstTime(new Date(iso));
   return place ? `${time} @ ${place}` : time;
 }

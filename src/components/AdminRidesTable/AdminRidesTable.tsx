@@ -215,7 +215,11 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
               {sortedRows.map((row) => (
                 <ContextMenu.Root key={row.key}>
                   <ContextMenu.Trigger asChild>
-                    <Table.Row {...row.styleProps} className={styles.row}>
+                    <Table.Row
+                      {...row.styleProps}
+                      className={styles.row}
+                      data-route-id={row.key}
+                    >
                       {row.cells.map((cell, cIdx) => (
                         <Table.Cell
                           key={`${row.key}-cell-${cIdx}`}
