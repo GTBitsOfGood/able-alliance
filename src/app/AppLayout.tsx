@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import AppNavbar from "@/components/AppNavbar";
 import AdminSidebar from "@/components/AdminSidebar";
+import RoleSwitcher from "@/components/RoleSwitcher";
 import AdminRidesProvider from "./admin/AdminRidesProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+        <RoleSwitcher />
       </AdminRidesProvider>
     );
   }
@@ -42,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <AppNavbar />
       {children}
+      <RoleSwitcher />
     </>
   );
 }

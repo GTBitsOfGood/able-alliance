@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import RoleSwitcher from "./RoleSwitcher";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, usePathname } from "next/navigation";
@@ -162,7 +161,6 @@ function AdminSidebarContent() {
       </div>
 
       <div className={styles.bottom}>
-        <RoleSwitcher />
         <Link href={`/profile/${userId}`} className={styles.userCard}>
           <div className={styles.avatar}>{avatarLetter}</div>
           <div className={styles.userInfo}>
