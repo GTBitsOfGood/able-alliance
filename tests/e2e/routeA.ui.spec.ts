@@ -12,7 +12,13 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-import { estDateDaysFromNow, nextServiceDate } from "./routeTestHelpers";
+import {
+  clearLocations,
+  estDateDaysFromNow,
+  nextServiceDate,
+  selectLocation,
+  showCalendarMonth,
+} from "./routeTestHelpers";
 
 const PICKUP = LOCATIONS.techSquare;
 const DROPOFF = LOCATIONS.studentCenter;
@@ -41,9 +47,7 @@ test("route A: student creates, admin schedules (UI)", async ({
 
   const today = estDateDaysFromNow(0);
   const rideDate = nextServiceDate();
-  if (rideDate.getMonth() !== today.getMonth()) {
-    await student.getByRole("button", { name: "Next month" }).click();
-  }
+  await showCalendarMonth(student, rideDate);
   await student
     .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
@@ -53,12 +57,9 @@ test("route A: student creates, admin schedules (UI)", async ({
   await pickTime(student.locator("#pickup-window-from"), "1:30 PM");
   await pickTime(student.locator("#pickup-window-to"), "2:30 PM");
 
-  await student
-    .getByRole("combobox", { name: "Pickup location" })
-    .selectOption({ label: PICKUP.name });
-  await student
-    .getByRole("combobox", { name: "Dropoff location" })
-    .selectOption({ label: DROPOFF.name });
+  await clearLocations(student);
+  await selectLocation(student, "Pickup location", PICKUP.name);
+  await selectLocation(student, "Dropoff location", DROPOFF.name);
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",

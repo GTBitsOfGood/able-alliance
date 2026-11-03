@@ -8,6 +8,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
+import {
+  getDirectionsGeometry,
+  getRouteLinePaint,
+  type LineStringGeometry,
+} from "@/utils/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
@@ -247,7 +252,8 @@ export default function RideDetailPage({
       return;
     }
 
-    const initializeMap = async () => {
+    const initializeMap = () => {
+      let cancelled = false;
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
       const container = mapContainerRef.current;
       if (!container || !token) return;
@@ -279,13 +285,74 @@ export default function RideDetailPage({
       }
 
       const map = mapRef.current;
+      const updateRouteLine = (geometry: LineStringGeometry | null) => {
+        if (!geometry) {
+          if (map.getLayer("ride-route-line")) {
+            map.removeLayer("ride-route-line");
+          }
+          if (map.getSource("ride-route")) {
+            map.removeSource("ride-route");
+          }
+          return;
+        }
+
+        const source = map.getSource("ride-route");
+        if (source && "setData" in source) {
+          source.setData({
+            type: "Feature",
+            properties: {},
+            geometry,
+          });
+          return;
+        }
+
+        map.addSource("ride-route", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry,
+          },
+        });
+        map.addLayer({
+          id: "ride-route-line",
+          type: "line",
+          source: "ride-route",
+          layout: {
+            "line-cap": "round",
+            "line-join": "round",
+          },
+          paint: getRouteLinePaint(map.getContainer()),
+        });
+      };
+
+      const updateRoute = async () => {
+        let routeGeometry: LineStringGeometry | null = null;
+        try {
+          routeGeometry = await getDirectionsGeometry(
+            [pickup.longitude, pickup.latitude],
+            [dropoff.longitude, dropoff.latitude],
+            token,
+            "driving",
+          );
+        } catch (error) {
+          if (cancelled) return;
+          console.warn("[mapbox] Unable to load ride route:", error);
+        }
+        if (cancelled) return;
+        updateRouteLine(routeGeometry);
+      };
+
       const updateMap = () => {
+        if (cancelled) return;
         map.resize();
         fitToBounds(map);
+
         markerRefs.current.forEach((marker) => marker.remove());
         markerRefs.current = [];
 
-        const pinColor = "#183777";
+        const pickupPinColor = "var(--color-map-pickup)";
+        const dropoffPinColor = "var(--color-map-dropoff)";
         const pickupLngLat: [number, number] = [
           pickup.longitude,
           pickup.latitude,
@@ -300,7 +367,7 @@ export default function RideDetailPage({
         staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
 
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
+          element: createCustomPin(`Pickup: ${pickup.name}`, pickupPinColor),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
@@ -311,7 +378,7 @@ export default function RideDetailPage({
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
             `Dropoff: ${dropoff.name}`,
-            pinColor,
+            dropoffPinColor,
             overlap ? 50 : 0,
           ),
           anchor: "bottom",
@@ -319,13 +386,19 @@ export default function RideDetailPage({
           .setLngLat(dropoffLngLat)
           .addTo(map);
         markerRefs.current.push(dropoffMarker);
+        void updateRoute();
       };
 
       if (mapLoadedRef.current) updateMap();
       else map.once("load", updateMap);
+
+      return () => {
+        cancelled = true;
+        map.off("load", updateMap);
+      };
     };
 
-    initializeMap();
+    return initializeMap();
   }, [route]);
 
   useEffect(() => {
@@ -754,7 +827,7 @@ export default function RideDetailPage({
   if (session?.user?.activeType === "Driver") {
     const studentObj = route.student;
     const studentName = studentObj
-      ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
+      ? `${studentObj.preferredName || studentObj.firstName} ${studentObj.lastName}`.trim()
       : "—";
     const accommodations =
       studentObj?.studentInfo?.accessibilityNeeds

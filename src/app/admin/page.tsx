@@ -38,6 +38,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     columns,
     rows,
     rowIds,
+    protectedIds,
     locations,
     loading,
     error,
@@ -90,6 +91,9 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
   };
 
   const canDelete = selectedRows.size > 0 && rowIds.length > 0;
+  const selectionHasProtected = [...selectedRows].some((idx) =>
+    protectedIds.has(rowIds[idx] ?? ""),
+  );
 
   const deleteNoun =
     table === "Vehicles"
@@ -421,7 +425,12 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                           variant="secondary"
                           size="medium"
                           onClick={() => setShowDeleteConfirm(true)}
-                          disabled={deleting}
+                          disabled={deleting || selectionHasProtected}
+                          title={
+                            selectionHasProtected
+                              ? "Super admins cannot be archived"
+                              : undefined
+                          }
                           style={
                             {
                               "--color-brand-stroke-strong": "#C73A3A",
