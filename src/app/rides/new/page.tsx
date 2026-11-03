@@ -14,6 +14,7 @@ import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import styles from "./styles.module.css";
 
 import mapboxgl from "mapbox-gl";
+import { getDirectionsGeometry, getRouteLinePaint } from "@/utils/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import type { Location } from "@db/generated/browser";
@@ -321,10 +322,12 @@ export default function CreateRidePage() {
 
       const createCustomPin = (
         labelText: string,
+        color: string,
         extraStemPx = 0,
       ): HTMLDivElement => {
         const root = document.createElement("div");
         root.className = styles.mapPinRoot;
+        root.style.setProperty("--pin-color", color);
 
         const label = document.createElement("div");
         label.textContent = labelText;
@@ -374,6 +377,66 @@ export default function CreateRidePage() {
         Math.abs(pickupLngLat[1] - dropoffLngLat[1]) < 0.0003;
 
       const map = mapRef.current;
+      let cancelled = false;
+      const clearRoute = () => {
+        if (map.getLayer("ride-route-line")) {
+          map.removeLayer("ride-route-line");
+        }
+        if (map.getSource("ride-route")) {
+          map.removeSource("ride-route");
+        }
+      };
+      const updateRoute = async () => {
+        if (!pickupLngLat || !dropoffLngLat) {
+          clearRoute();
+          return;
+        }
+
+        try {
+          const geometry = await getDirectionsGeometry(
+            pickupLngLat,
+            dropoffLngLat,
+            token,
+            "driving-traffic",
+          );
+          if (cancelled) return;
+          if (!geometry) {
+            clearRoute();
+            return;
+          }
+
+          const source = map.getSource("ride-route");
+          const data = {
+            type: "Feature" as const,
+            properties: {},
+            geometry,
+          };
+          if (source && "setData" in source) {
+            source.setData(data);
+            return;
+          }
+
+          map.addSource("ride-route", {
+            type: "geojson",
+            data,
+          });
+          map.addLayer({
+            id: "ride-route-line",
+            type: "line",
+            source: "ride-route",
+            layout: {
+              "line-cap": "round",
+              "line-join": "round",
+            },
+            paint: getRouteLinePaint(map.getContainer()),
+          });
+        } catch (error) {
+          if (!cancelled) {
+            console.warn("[mapbox] Unable to load ride route:", error);
+            clearRoute();
+          }
+        }
+      };
       const addMarkers = () => {
         // Add a dot for every non-selected campus location.
         for (const loc of locations) {
@@ -392,7 +455,10 @@ export default function CreateRidePage() {
 
         if (pickup && pickupLngLat) {
           const pickupMarker = new mapboxgl.Marker({
-            element: createCustomPin(`Pickup: ${pickup.name}`),
+            element: createCustomPin(
+              `Pickup: ${pickup.name}`,
+              "var(--color-map-pickup)",
+            ),
             anchor: "bottom",
           })
             .setLngLat(pickupLngLat)
@@ -405,6 +471,7 @@ export default function CreateRidePage() {
           const dropoffMarker = new mapboxgl.Marker({
             element: createCustomPin(
               `Dropoff: ${dropoff.name}`,
+              "var(--color-map-dropoff)",
               overlap ? 50 : 0,
             ),
             anchor: "bottom",
@@ -415,8 +482,19 @@ export default function CreateRidePage() {
         }
       };
 
-      if (mapLoadedRef.current) addMarkers();
-      else map.once("load", addMarkers);
+      const addMapContent = () => {
+        if (cancelled) return;
+        addMarkers();
+        void updateRoute();
+      };
+
+      if (mapLoadedRef.current) addMapContent();
+      else map.once("load", addMapContent);
+
+      return () => {
+        cancelled = true;
+        map.off("load", addMapContent);
+      };
     } catch (e) {
       // Surface failures from the external map API to the user.
       // eslint-disable-next-line react-hooks/set-state-in-effect
