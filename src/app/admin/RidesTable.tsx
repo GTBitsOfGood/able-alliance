@@ -1,101 +1,128 @@
 "use client";
 
-import React, { useState } from "react";
-import BogTable from "@/components/BogTable/BogTable";
-import BogDropdown from "@/components/BogDropdown/BogDropdown";
-import BogButton from "@/components/BogButton/BogButton";
-import { RIDE_COLUMNS } from "./admin-table-data";
-import type { TableRow } from "@/components/BogTable/BogTable";
-import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
-import {
-  useRequestedRides,
-  type DriverEntry,
-  type VehicleEntry,
-} from "./useRequestedRides";
+import React, { useMemo, useState } from "react";
 
-function makeDriverLabel(d: DriverEntry) {
-  return `${d.lastName}, ${d.firstName}`;
+import AdminRidesTable, {
+  type ColumnHeader,
+  type TableRow,
+} from "@/components/AdminRidesTable/AdminRidesTable";
+import RideFilter from "./RideFilter";
+import { adminStatusLabel } from "./RideStatusChip";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import { routeStatusLabels } from "@/utils/route-status";
+import { formatEstDate, formatEstTime } from "@/utils/dateEst";
+
+import AdminChatView from "./AdminChatView";
+import AssignRideModal from "./AssignRideModal";
+import RideStatusChip from "./RideStatusChip";
+import { useAdminRides, type RouteEntry } from "./useAdminRides";
+import styles from "./ridesTable.module.css";
+
+// Final Sprint 3 column order; space is shared by content length.
+const COLUMNS: ColumnHeader[] = [
+  { content: "Status", width: "13%" },
+  { content: "Student", width: "14%" },
+  { content: "Student Email", width: "18%" },
+  { content: "Driver", width: "11%" },
+  { content: "Date", width: "9%" },
+  { content: "Pickup", width: "13%" },
+  { content: "Dropoff", width: "13%" },
+  { content: "Vehicle", width: "9%" },
+];
+
+// Admins may edit a ride in any status; the server accepts the same set.
+// Cancelling still mirrors what cancelRoute accepts — anything already
+// completed, missing or cancelled would just 409.
+const CANCELLABLE_STATUSES = new Set<string>([
+  "Requested",
+  "Scheduled",
+  "EnRoute",
+  "Pickedup",
+]);
+
+function fullName(user: { firstName: string; lastName: string } | null) {
+  return user ? `${user.firstName} ${user.lastName}` : "—";
 }
 
-function makeVehicleLabel(v: VehicleEntry) {
-  return `${v.name} (${v.licensePlate})`;
+function timeAt(iso: string | null | undefined, place: string | undefined) {
+  // Requested rides can have a destination before a dropoff estimate exists.
+  if (!iso) return place ?? "—";
+  const time = formatEstTime(new Date(iso));
+  return place ? `${time} @ ${place}` : time;
+}
+
+/** Attention items first, then rides in progress, then scheduled rides. */
+function defaultOrder(a: RouteEntry, b: RouteEntry) {
+  const priority = (status: string) =>
+    ({
+      ActionRequired: 0,
+      Requested: 1,
+      EnRoute: 2,
+      Pickedup: 3,
+      Scheduled: 4,
+    })[status] ?? 5;
+  return (
+    priority(a.status) - priority(b.status) ||
+    new Date(a.scheduledPickupTime).getTime() -
+      new Date(b.scheduledPickupTime).getTime()
+  );
 }
 
 export default function RidesTable() {
   const {
     routes,
+    actionRequiredCount: actionCount,
     drivers,
     vehicles,
     loading,
     error,
     refreshError,
-    removeRoute,
-  } = useRequestedRides();
+    refreshRoute,
+  } = useAdminRides();
 
-  // Per-row selections keyed by routeId — store display labels for BogDropdown
-  const [driverLabels, setDriverLabels] = useState<Record<string, string>>({});
-  const [vehicleLabels, setVehicleLabels] = useState<Record<string, string>>(
-    {},
+  const [statuses, setStatuses] = useState<string[]>([]);
+  const [pickups, setPickups] = useState<string[]>([]);
+  const [dropoffs, setDropoffs] = useState<string[]>([]);
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const [chatRoute, setChatRoute] = useState<RouteEntry | null>(null);
+  const [assignRoute, setAssignRoute] = useState<RouteEntry | null>(null);
+  const [pendingCancel, setPendingCancel] = useState<RouteEntry | null>(null);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const statusOptions = Object.entries(routeStatusLabels).map(([value]) => ({
+    value,
+    label: adminStatusLabel(value),
+  }));
+  const locationOptions = (field: "pickup" | "dropoff") =>
+    [
+      ...new Map(
+        routes.map((route) => [
+          route[field].id,
+          { value: route[field].id, label: route[field].name },
+        ]),
+      ).values(),
+    ].sort((a, b) => a.label.localeCompare(b.label));
+
+  const visibleRoutes = useMemo(
+    () =>
+      routes
+        .filter(
+          (route) =>
+            (!statuses.length || statuses.includes(route.status)) &&
+            (!pickups.length || pickups.includes(route.pickup.id)) &&
+            (!dropoffs.length || dropoffs.includes(route.dropoff.id)) &&
+            (!attentionOnly || route.status === "ActionRequired"),
+        )
+        .sort(defaultOrder),
+    [routes, statuses, pickups, dropoffs, attentionOnly],
   );
-  const [assigning, setAssigning] = useState<Set<string>>(new Set());
-  const [assignErrors, setAssignErrors] = useState<Record<string, string>>({});
-  const [canceling, setCanceling] = useState<Set<string>>(new Set());
-  const [cancelErrors, setCancelErrors] = useState<Record<string, string>>({});
-  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
-  const handleAssign = async (routeId: string) => {
-    const driverLabel = driverLabels[routeId];
-    const vehicleLabel = vehicleLabels[routeId];
-    if (!driverLabel || !vehicleLabel) return;
-
-    const driver = drivers.find((d) => makeDriverLabel(d) === driverLabel);
-    const vehicle = vehicles.find((v) => makeVehicleLabel(v) === vehicleLabel);
-    if (!driver || !vehicle) return;
-
-    setAssigning((prev) => new Set(prev).add(routeId));
-    setAssignErrors((prev) => {
-      const next = { ...prev };
-      delete next[routeId];
-      return next;
-    });
-
-    try {
-      const res = await fetch("/api/routes/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          routeId,
-          driverId: driver.id,
-          vehicleId: vehicle.id,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error ?? res.statusText);
-      }
-      removeRoute(routeId);
-    } catch (e) {
-      setAssignErrors((prev) => ({
-        ...prev,
-        [routeId]: e instanceof Error ? e.message : "Assignment failed.",
-      }));
-    } finally {
-      setAssigning((prev) => {
-        const next = new Set(prev);
-        next.delete(routeId);
-        return next;
-      });
-    }
-  };
-
-  const handleCancel = async (routeId: string) => {
-    setCanceling((prev) => new Set(prev).add(routeId));
-    setCancelErrors((prev) => {
-      const next = { ...prev };
-      delete next[routeId];
-      return next;
-    });
-
+  const handleCancel = async () => {
+    if (!pendingCancel) return;
+    const routeId = pendingCancel.id;
+    setCanceling(true);
+    setCancelError(null);
     try {
       const res = await fetch("/api/routes/cancel", {
         method: "POST",
@@ -106,175 +133,184 @@ export default function RidesTable() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      removeRoute(routeId);
+      refreshRoute(routeId);
+      setPendingCancel(null);
     } catch (e) {
-      setCancelErrors((prev) => ({
-        ...prev,
-        [routeId]: e instanceof Error ? e.message : "Cancellation failed.",
-      }));
+      setCancelError(
+        e instanceof Error ? e.message : "Cancellation failed. Try again.",
+      );
     } finally {
-      setCanceling((prev) => {
-        const next = new Set(prev);
-        next.delete(routeId);
-        return next;
-      });
+      setCanceling(false);
     }
   };
 
-  const driverOptions = drivers.map(makeDriverLabel);
-  const vehicleOptions = vehicles.map(makeVehicleLabel);
-
-  const rows: TableRow[] = routes.map((route) => {
-    const studentName = `${route.student.firstName} ${route.student.lastName}`;
-    const pickupName = route.pickup.name;
-    const dropoffName = route.dropoff.name;
-    const pickupDate = route.scheduledPickupTime
-      ? new Date(route.scheduledPickupTime).toLocaleDateString("en-US", {
-          timeZone: "America/New_York",
-        })
-      : "—";
-    const pickupTime = route.scheduledPickupTime
-      ? new Date(route.scheduledPickupTime).toLocaleTimeString("en-US", {
-          timeZone: "America/New_York",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : "—";
-
-    const selectedDriver = driverLabels[route.id] ?? "";
-    const selectedVehicle = vehicleLabels[route.id] ?? "";
-    const bothSelected = !!selectedDriver && !!selectedVehicle;
-    const isAssigning = assigning.has(route.id);
-    const isCanceling = canceling.has(route.id);
-    const assignError = assignErrors[route.id];
-    const cancelError = cancelErrors[route.id];
-    const activeError = assignError ?? cancelError;
+  const rows: TableRow[] = visibleRoutes.map((route) => {
+    const canCancel = CANCELLABLE_STATUSES.has(route.status);
 
     return {
+      key: route.id,
+      label: fullName(route.student),
+      actions: [
+        { label: "Edit ride", onSelect: () => setAssignRoute(route) },
+        { label: "Ride chat", onSelect: () => setChatRoute(route) },
+        {
+          label: "Cancel ride",
+          disabled: !canCancel,
+          onSelect: () => {
+            setCancelError(null);
+            setPendingCancel(route);
+          },
+        },
+      ],
       cells: [
-        { content: studentName },
         {
-          content: (
-            <BogDropdown
-              name={`driver-${route.id}`}
-              options={driverOptions}
-              placeholder="Select driver"
-              value={selectedDriver}
-              onSelectionChange={(v) => {
-                const label = typeof v === "string" ? v : (v[0] ?? "");
-                setDriverLabels((prev) => ({ ...prev, [route.id]: label }));
-              }}
-              style={{ fontSize: "1em" }}
-            />
-          ),
+          content: <RideStatusChip status={route.status} />,
+          value: adminStatusLabel(route.status),
+        },
+        { content: fullName(route.student) },
+        { content: route.student.email },
+        { content: fullName(route.driver) },
+        {
+          content: formatEstDate(new Date(route.scheduledPickupTime)),
+          value: new Date(route.scheduledPickupTime).getTime(),
         },
         {
-          content: (
-            <BogDropdown
-              name={`vehicle-${route.id}`}
-              options={vehicleOptions}
-              placeholder="Select vehicle"
-              value={selectedVehicle}
-              onSelectionChange={(v) => {
-                const label = typeof v === "string" ? v : (v[0] ?? "");
-                setVehicleLabels((prev) => ({ ...prev, [route.id]: label }));
-              }}
-              style={{ fontSize: "1em" }}
-            />
-          ),
+          content: timeAt(route.scheduledPickupTime, route.pickup?.name),
+          value: new Date(route.scheduledPickupTime).getTime(),
         },
-        { content: pickupDate },
-        { content: pickupTime },
-        { content: pickupName },
-        { content: dropoffName },
         {
-          content: (
-            <div className="flex flex-col gap-1">
-              <div className="flex gap-2">
-                <BogButton
-                  variant="primary"
-                  size="small"
-                  disabled={isAssigning || isCanceling || !bothSelected}
-                  onClick={() => handleAssign(route.id)}
-                  style={
-                    !bothSelected
-                      ? {
-                          backgroundColor: "var(--color-grey-off-state)",
-                        }
-                      : {}
-                  }
-                >
-                  {isAssigning ? "Assigning…" : "Assign"}
-                </BogButton>
-                <BogButton
-                  variant="secondary"
-                  size="small"
-                  disabled={isCanceling || isAssigning}
-                  onClick={() => setPendingCancelId(route.id)}
-                >
-                  {isCanceling ? "Canceling…" : "Cancel"}
-                </BogButton>
-              </div>
-              {activeError && (
-                <p className="text-xs text-red-600">{activeError}</p>
-              )}
-            </div>
-          ),
+          content: timeAt(route.estimatedDropoffTime, route.dropoff?.name),
+          value: route.estimatedDropoffTime
+            ? new Date(route.estimatedDropoffTime).getTime()
+            : Number.MAX_SAFE_INTEGER,
         },
+        { content: route.vehicle?.name ?? "—" },
       ],
     };
   });
 
-  if (loading) return <p className="text-gray-600">Loading…</p>;
+  if (loading) return <p className={styles.notice}>Loading…</p>;
   if (error)
     return (
-      <p className="mb-4 text-sm text-amber-700" role="status">
+      <p className={styles.warning} role="status">
         {error}
       </p>
     );
-  const refreshNotice = refreshError && (
-    <p className="mb-4 text-sm text-amber-700" role="status">
-      {refreshError}
-    </p>
-  );
-
-  if (routes.length === 0)
-    return (
-      <>
-        {refreshNotice}
-        <p className="text-gray-600">No requested rides.</p>
-      </>
-    );
-
-  const pendingCancelRoute = pendingCancelId
-    ? routes.find((r) => r.id === pendingCancelId)
-    : undefined;
 
   return (
     <>
-      {refreshNotice}
-      <BogTable columnHeaders={RIDE_COLUMNS} rows={rows} selectable={false} />
+      {refreshError && (
+        <p className={styles.warning} role="status">
+          {refreshError}
+        </p>
+      )}
+
+      <AdminRidesTable
+        columnHeaders={COLUMNS}
+        rows={rows}
+        searchPlaceholder="Search for a ride..."
+        emptyMessage="No rides found."
+        toolbarActions={
+          <button
+            type="button"
+            className={
+              actionCount ? styles.attentionButton : styles.attentionEmpty
+            }
+            aria-pressed={attentionOnly}
+            disabled={!actionCount && !attentionOnly}
+            onClick={() => setAttentionOnly((current) => !current)}
+          >
+            {actionCount} action{actionCount === 1 ? "" : "s"} required
+          </button>
+        }
+        filters={
+          <>
+            <RideFilter
+              label="Status"
+              options={statusOptions}
+              selected={statuses}
+              onChange={setStatuses}
+            />
+            <RideFilter
+              label="Pickup"
+              options={locationOptions("pickup")}
+              selected={pickups}
+              onChange={setPickups}
+            />
+            <RideFilter
+              label="Dropoff"
+              options={locationOptions("dropoff")}
+              selected={dropoffs}
+              onChange={setDropoffs}
+            />
+          </>
+        }
+      />
+
+      {assignRoute && (
+        <AssignRideModal
+          route={assignRoute}
+          drivers={drivers}
+          vehicles={vehicles}
+          onClose={() => setAssignRoute(null)}
+          onAssigned={(routeId) => {
+            refreshRoute(routeId);
+            setAssignRoute(null);
+          }}
+        />
+      )}
+
+      {chatRoute && (
+        <div className={styles.drawerLayer}>
+          <button
+            type="button"
+            className={styles.drawerBackdrop}
+            aria-label="Close chat"
+            onClick={() => setChatRoute(null)}
+          />
+          <aside className={styles.drawer} aria-label="Chat transcript">
+            <AdminChatView
+              routeId={chatRoute.id}
+              rideLabel={[
+                fullName(chatRoute.student),
+                chatRoute.driver
+                  ? `Driver: ${fullName(chatRoute.driver)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              routeStatus={chatRoute.status}
+              studentId={chatRoute.student.id}
+              driverId={chatRoute.driver?.id ?? null}
+              onClose={() => setChatRoute(null)}
+            />
+          </aside>
+        </div>
+      )}
+
       <ConfirmActionModal
-        open={pendingCancelId !== null}
-        onOpenChange={(o) => {
-          if (!o) setPendingCancelId(null);
+        open={pendingCancel !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingCancel(null);
         }}
-        onConfirm={async () => {
-          if (!pendingCancelId) return;
-          await handleCancel(pendingCancelId);
-          setPendingCancelId(null);
-        }}
+        onConfirm={handleCancel}
         title="Cancel this ride?"
         description={
-          pendingCancelRoute
-            ? `This cancels the requested ride for ${pendingCancelRoute.student.firstName} ${pendingCancelRoute.student.lastName}. This action cannot be undone.`
-            : "This cancels the requested ride. This action cannot be undone."
+          <>
+            {pendingCancel
+              ? `This cancels the ride for ${fullName(pendingCancel.student)}. This action cannot be undone.`
+              : "This cancels the ride. This action cannot be undone."}
+            {cancelError && (
+              <span className={styles.modalError} role="alert">
+                {cancelError}
+              </span>
+            )}
+          </>
         }
         confirmLabel="Cancel ride"
         confirmingLabel="Canceling…"
         cancelLabel="Keep ride"
-        confirming={pendingCancelId !== null && canceling.has(pendingCancelId)}
+        confirming={canceling}
       />
     </>
   );

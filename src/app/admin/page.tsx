@@ -314,7 +314,9 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     );
 
   return (
-    <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 w-full">
+    <div
+      className={`py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 min-w-0 w-full ${table === "Rides" ? "lg:pt-[6.4rem] lg:pl-[5.6rem] lg:pr-[2.6rem]" : ""}`}
+    >
       {selectedVehicleId ? (
         <VehicleDetailsPanel
           key={selectedVehicleId}
@@ -349,7 +351,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
         </>
       ) : (
         <>
-          <div className="mb-[2.4rem]">
+          <div className={table === "Rides" ? "mb-[6.4rem]" : "mb-[2.4rem]"}>
             <h1 className="text-display">
               {table === "Locations" || table === "Accommodations"
                 ? "Configurations"

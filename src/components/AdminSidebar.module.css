@@ -57,6 +57,23 @@
   color: var(--color-grey-text-strong);
 }
 
+.notificationBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #c73a3a;
+  color: white;
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.8rem;
+}
+
 .navGroup {
   display: flex;
   align-items: center;

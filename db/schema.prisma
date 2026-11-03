@@ -20,6 +20,7 @@ enum VehicleAccessibility {
 }
 
 enum RouteStatus {
+  ActionRequired
   Requested
   Scheduled
   EnRoute

@@ -1,0 +1,163 @@
+.attentionButton,
+.attentionEmpty {
+  border: 0;
+  background: none;
+  padding: 0.8rem 1.2rem;
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.attentionButton {
+  color: #ed2024;
+  cursor: pointer;
+}
+.attentionButton[aria-pressed="true"] {
+  background: #ffe5e5;
+  border-radius: 999px;
+}
+.attentionEmpty {
+  color: var(--color-grey-text-weak);
+}
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 3.8rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--color-grey-text-strong);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 2rem;
+  cursor: pointer;
+}
+.filterButton[data-active="true"] {
+  background: #dedbdb;
+  border-color: transparent;
+}
+.filterCount {
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: white;
+  font-size: 1.2rem;
+  line-height: 1.8rem;
+}
+.filterMenu {
+  z-index: 50;
+  min-width: 22rem;
+  max-width: min(36rem, calc(100vw - 3.2rem));
+  max-height: var(--radix-dropdown-menu-content-available-height);
+  overflow-y: auto;
+  padding: 0.4rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+}
+.filterLabel {
+  padding: 0.8rem;
+  font-weight: 600;
+}
+.filterItem {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  min-height: 4rem;
+  padding: 0.8rem;
+  border-radius: 0.4rem;
+  outline: none;
+  cursor: pointer;
+}
+.filterItem[data-highlighted] {
+  background: var(--color-admin-bg);
+}
+.filterItem[data-disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+.filterCheckbox {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--color-grey-stroke-strong);
+  border-radius: 0.2rem;
+}
+.filterSeparator {
+  height: 1px;
+  margin: 0.4rem 0;
+  background: var(--color-grey-stroke-weak);
+}
+.filterButton:focus-visible,
+.attentionButton:focus-visible {
+  outline: 2px solid var(--color-brand-stroke-strong);
+  outline-offset: 2px;
+}
+
+.notice {
+  color: var(--color-grey-text-weak);
+  font-size: var(--text-desktop-paragraph-2);
+}
+
+.warning {
+  margin-bottom: 1.6rem;
+  color: var(--color-status-amber-text);
+  font-size: var(--text-mobile-paragraph-2);
+}
+
+.modalError {
+  display: block;
+  margin-top: 1.2rem;
+  color: var(--color-status-red-text);
+}
+
+/* Chat drawer, carried over from the standalone admin chats page. */
+.drawerLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawerBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(34 7 11 / 24%);
+  cursor: default;
+}
+
+.drawer {
+  position: relative;
+  width: min(48rem, 100vw);
+  height: 100%;
+  overflow-y: auto;
+  padding: 2.4rem;
+  background: var(--color-solid-bg-base);
+  box-shadow: -0.8rem 0 2.4rem rgb(34 7 11 / 12%);
+}
+
+.drawer > section {
+  margin-top: 0;
+  border: 0;
+  padding: 0;
+}
+
+@media (width < 640px) {
+  .drawer {
+    padding: 2rem;
+  }
+}

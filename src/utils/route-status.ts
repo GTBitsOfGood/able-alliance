@@ -2,6 +2,7 @@ import { RouteStatus } from "@db/generated/enums";
 
 // Prisma enum identifiers cannot contain spaces or hyphens. Keep API labels stable.
 export const routeStatusLabels = {
+  ActionRequired: "Action Required",
   Requested: "Requested",
   Scheduled: "Scheduled",
   EnRoute: "En-route",

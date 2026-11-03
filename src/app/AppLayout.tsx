@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import AppNavbar from "@/components/AppNavbar";
 import AdminSidebar from "@/components/AdminSidebar";
+import AdminRidesProvider from "./admin/AdminRidesProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -26,12 +27,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (isAdmin) {
     return (
-      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-        <AdminSidebar />
-        <main style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-          {children}
-        </main>
-      </div>
+      <AdminRidesProvider>
+        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+          <AdminSidebar />
+          <main style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+            {children}
+          </main>
+        </div>
+      </AdminRidesProvider>
     );
   }
 

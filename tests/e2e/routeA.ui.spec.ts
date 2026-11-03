@@ -17,6 +17,7 @@ import {
   estDateDaysFromNow,
   nextServiceDate,
   selectLocation,
+  scheduleRideInAdmin,
   showCalendarMonth,
 } from "./routeTestHelpers";
 
@@ -86,34 +87,7 @@ test("route A: student creates, admin schedules (UI)", async ({
   // ── Admin sees it and schedules ────────────────────────────────────────
   const admin = await pageAs("admin");
   await admin.goto("/admin?tab=Rides");
-  const row = admin
-    .getByRole("row")
-    .filter({ hasText: PERSONAS.student.lastName })
-    .filter({ hasText: PICKUP.name })
-    .filter({ hasText: DROPOFF.name })
-    .filter({ hasText: PICKUP_TIME });
-  await expect(row).toHaveCount(1);
-
-  await row.getByText("Select driver").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
-    })
-    .click();
-  await row.getByText("Select vehicle").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${VEHICLE.name} (${VEHICLE.licensePlate})`,
-    })
-    .click();
-
-  const scheduled = admin.waitForResponse((r) =>
-    r.url().endsWith("/api/routes/schedule"),
-  );
-  await row.getByRole("button", { name: "Assign" }).click();
-  const scheduleRes = await scheduled;
-  expect(scheduleRes.status(), await scheduleRes.text()).toBe(200);
-  await expect(row).toHaveCount(0);
+  await scheduleRideInAdmin(admin, routeId);
 
   // ── Driver sees the scheduled ride ─────────────────────────────────────
   const driver = await pageAs("driver");
