@@ -56,7 +56,7 @@ For host development, use `localhost` instead of Docker service names.
   ```
 - Production:
   ```sh
-  docker compose -f docker-compose-prod.yml up --build
+  docker compose -f compose.prod.yaml up --build
   ```
 
 To run PostgreSQL 18 by itself in Docker:
