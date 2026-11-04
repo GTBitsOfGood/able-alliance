@@ -22,6 +22,7 @@ import {
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
+import { MAX_DELAY_MINUTES } from "@/utils/consts";
 import { recordAudit } from "@db/audit";
 
 function routeAuditSnapshot(route: {
@@ -317,7 +318,20 @@ export async function cancelRoute(
 
   return route;
 }
-export async function delayRoute(routeId: string, minutes: number) {
+export async function delayRoute(
+  routeId: string,
+  minutes: number,
+  studentId: string,
+) {
+  if (
+    !Number.isInteger(minutes) ||
+    minutes <= 0 ||
+    minutes > MAX_DELAY_MINUTES
+  ) {
+    throw new ArgumentError(
+      `Delay must be a whole number from 1 to ${MAX_DELAY_MINUTES} minutes. Cancel your ride if you need longer.`,
+    );
+  }
   routeId = routeId.toLowerCase();
   const route = await db.$transaction(async (tx) => {
     // Only allow delay if route is Scheduled or EnRoute. Checking status in the same query
@@ -325,7 +339,10 @@ export async function delayRoute(routeId: string, minutes: number) {
     const { count } = await tx.route.updateMany({
       where: {
         id: routeId,
+        studentId: studentId.toLowerCase(),
         status: { in: [RouteStatus.Scheduled, RouteStatus.EnRoute] },
+        // Check the total atomically so concurrent requests cannot exceed the ceiling.
+        delayMinutes: { lte: MAX_DELAY_MINUTES - minutes },
       },
       data: { delayMinutes: { increment: minutes } },
     });
@@ -339,7 +356,7 @@ export async function delayRoute(routeId: string, minutes: number) {
         throw new NotFoundError("Route not found");
       }
       throw new ConflictError(
-        "This ride can no longer be delayed. Current status: " + current.status,
+        `This ride cannot be delayed further. The total delay cannot exceed ${MAX_DELAY_MINUTES} minutes and the ride must be awaiting pickup. Cancel your ride if you need longer.`,
       );
     }
 
@@ -367,11 +384,19 @@ export async function delayRoute(routeId: string, minutes: number) {
       }),
     ),
   ];
-  if (route.student) {
+  if (route.student.settings?.rideDelayed) {
     tasks.push(
       emitToast(route.student.id.toString(), {
         type: "info",
         message: `Your ride has been delayed by ${route.delayMinutes} minutes.`,
+      }),
+    );
+  }
+  if (route.driver?.settings?.rideDelayed) {
+    tasks.push(
+      emitToast(route.driver.id, {
+        type: "info",
+        message: `Your student reported a delay of ${route.delayMinutes} minutes for their ride.`,
       }),
     );
   }

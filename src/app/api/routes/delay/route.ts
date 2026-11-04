@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (user.type !== "Driver") {
+  if (user.activeType !== "Student") {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -53,24 +53,25 @@ export async function POST(request: NextRequest) {
       delayMinutes > MAX_DELAY_MINUTES
     ) {
       return NextResponse.json(
-        { error: "Invalid delay minutes" },
+        {
+          error: `Delay must be a whole number from 1 to ${MAX_DELAY_MINUTES} minutes. Cancel your ride if you need longer.`,
+        },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
 
-    const route = await getRouteById(routeId, user.type);
+    const route = await getRouteById(routeId, user.activeType);
 
-    // Validate caller is the assigned driver
-    const driverId = route.driver?.id;
-    if (!driverId || driverId !== user.userId) {
+    // Only the student who owns the ride can report a delay.
+    if (route.student.id !== user.userId) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
 
-    const updated = await delayRoute(routeId, delayMinutes);
-    return NextResponse.json(routeResponseForRole(updated, user.type), {
+    const updated = await delayRoute(routeId, delayMinutes, user.userId);
+    return NextResponse.json(routeResponseForRole(updated, user.activeType), {
       status: HTTP_STATUS_CODE.OK,
     });
   } catch (error) {

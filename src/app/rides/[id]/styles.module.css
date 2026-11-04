@@ -39,8 +39,7 @@
 .rideDetailPage {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 8rem);
-  overflow: hidden;
+  min-height: calc(100vh - 8rem);
   background-color: var(--color-solid-bg-base);
 }
 
@@ -54,7 +53,7 @@
   margin-inline: auto;
   width: 100%;
   gap: 2rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .header {
@@ -276,7 +275,7 @@
   gap: 2rem;
   width: 100%;
   flex: 1;
-  min-height: 0;
+  min-height: auto;
 }
 
 /* Left Column */
@@ -284,8 +283,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  min-height: 0;
-  overflow-y: auto;
+  min-height: auto;
 }
 
 /* Right Column */
@@ -312,7 +310,7 @@
   overflow: hidden;
   background-color: var(--color-grey-fill-weaker);
   flex: 1;
-  min-height: 0;
+  min-height: 32rem;
   aspect-ratio: unset;
 }
 
@@ -889,7 +887,6 @@
 @media (max-width: 1024px) {
   .contentContainer {
     grid-template-columns: 1fr;
-    overflow-y: auto;
   }
 }
 
@@ -963,6 +960,7 @@
   .mapContainer {
     flex: none;
     height: 24rem;
+    min-height: 0;
   }
 
   .rideSummaryCard {

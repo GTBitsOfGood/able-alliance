@@ -10,7 +10,7 @@ import RideFilter from "./RideFilter";
 import { adminStatusLabel } from "./RideStatusChip";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { routeStatusLabels } from "@/utils/route-status";
-import { formatEstDate, formatEstTime } from "@/utils/dateEst";
+import { formatEstDate, formatEstTime, withDelay } from "@/utils/dateEst";
 
 import AdminChatView from "./AdminChatView";
 import AssignRideModal from "./AssignRideModal";
@@ -44,11 +44,26 @@ function fullName(user: { firstName: string; lastName: string } | null) {
   return user ? `${user.firstName} ${user.lastName}` : "—";
 }
 
-function timeAt(iso: string | null | undefined, place: string | undefined) {
+function timeAt(
+  iso: string | null | undefined,
+  place: string | undefined,
+  delayMinutes: number,
+) {
   // Requested rides can have a destination before a dropoff estimate exists.
   if (!iso) return place ?? "—";
-  const time = formatEstTime(new Date(iso));
-  return place ? `${time} @ ${place}` : time;
+  const original = new Date(iso);
+  const time = formatEstTime(withDelay(original, delayMinutes));
+  if (!delayMinutes) return place ? `${time} @ ${place}` : time;
+  return (
+    <span className={styles.timeCell}>
+      <span className={styles.delayedTime}>{time}</span>{" "}
+      <span className={styles.originalTime}>
+        <span className="sr-only">Originally </span>
+        {formatEstTime(original)}
+      </span>
+      {place ? ` @ ${place}` : ""}
+    </span>
+  );
 }
 
 /** Attention items first, then rides in progress, then scheduled rides. */
@@ -63,8 +78,8 @@ function defaultOrder(a: RouteEntry, b: RouteEntry) {
     })[status] ?? 5;
   return (
     priority(a.status) - priority(b.status) ||
-    new Date(a.scheduledPickupTime).getTime() -
-      new Date(b.scheduledPickupTime).getTime()
+    withDelay(new Date(a.scheduledPickupTime), a.delayMinutes ?? 0).getTime() -
+      withDelay(new Date(b.scheduledPickupTime), b.delayMinutes ?? 0).getTime()
   );
 }
 
@@ -146,6 +161,14 @@ export default function RidesTable() {
 
   const rows: TableRow[] = visibleRoutes.map((route) => {
     const canCancel = CANCELLABLE_STATUSES.has(route.status);
+    const delayMinutes = route.delayMinutes ?? 0;
+    const pickupAt = withDelay(
+      new Date(route.scheduledPickupTime),
+      delayMinutes,
+    );
+    const dropoffAt = route.estimatedDropoffTime
+      ? withDelay(new Date(route.estimatedDropoffTime), delayMinutes)
+      : null;
 
     return {
       key: route.id,
@@ -171,18 +194,24 @@ export default function RidesTable() {
         { content: route.student.email },
         { content: fullName(route.driver) },
         {
-          content: formatEstDate(new Date(route.scheduledPickupTime)),
-          value: new Date(route.scheduledPickupTime).getTime(),
+          content: formatEstDate(pickupAt),
+          value: pickupAt.getTime(),
         },
         {
-          content: timeAt(route.scheduledPickupTime, route.pickup?.name),
-          value: new Date(route.scheduledPickupTime).getTime(),
+          content: timeAt(
+            route.scheduledPickupTime,
+            route.pickup?.name,
+            delayMinutes,
+          ),
+          value: pickupAt.getTime(),
         },
         {
-          content: timeAt(route.estimatedDropoffTime, route.dropoff?.name),
-          value: route.estimatedDropoffTime
-            ? new Date(route.estimatedDropoffTime).getTime()
-            : Number.MAX_SAFE_INTEGER,
+          content: timeAt(
+            route.estimatedDropoffTime,
+            route.dropoff?.name,
+            delayMinutes,
+          ),
+          value: dropoffAt?.getTime() ?? Number.MAX_SAFE_INTEGER,
         },
         { content: route.vehicle?.name ?? "—" },
       ],

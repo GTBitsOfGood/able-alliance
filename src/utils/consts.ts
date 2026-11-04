@@ -14,5 +14,5 @@ export enum HTTP_STATUS_CODE {
 export const SERVICE_START_TIME = "07:30";
 export const SERVICE_END_TIME = "19:45";
 
-// The maximum number of minutes a driver can report a delay for a route.
-export const MAX_DELAY_MINUTES = 120;
+// Maximum cumulative delay a student can report before cancelling their ride.
+export const MAX_DELAY_MINUTES = 15;

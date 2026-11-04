@@ -3,7 +3,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
 import styles from "./profileRides.module.css";
-import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
+import {
+  estWeekRange,
+  formatEstTime,
+  formatEstDate,
+  withDelay,
+} from "@/utils/dateEst";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
@@ -26,8 +31,8 @@ function fmtWeekLabel(start: Date, end: Date): string {
   return `Week of ${s} - ${e}`;
 }
 
-function fmtTime(iso: string): string {
-  return formatEstTime(new Date(iso));
+function fmtTime(iso: string, delayMinutes = 0): string {
+  return formatEstTime(withDelay(new Date(iso), delayMinutes));
 }
 
 function fmtDate(iso: string): string {
@@ -265,9 +270,9 @@ export function ProfileRidesTab({
                         ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
                         : "—"
                       : (route.vehicle?.vehicleId ?? "—");
-                  const pickup = `${fmtTime(route.scheduledPickupTime)} @ ${route.pickup.name}`;
+                  const pickup = `${fmtTime(route.scheduledPickupTime, route.delayMinutes)} @ ${route.pickup.name}`;
                   const dropoff = route.estimatedDropoffTime
-                    ? `${fmtTime(route.estimatedDropoffTime)} @ ${route.dropoff.name}`
+                    ? `${fmtTime(route.estimatedDropoffTime, route.delayMinutes)} @ ${route.dropoff.name}`
                     : `— @ ${route.dropoff.name}`;
                   return (
                     <tr key={route.id} className={styles.row}>

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  routeStatusLabels,
-  routeDisplayLabel,
-  isRouteDelayed,
-} from "@/utils/route-status";
+import { routeDisplayLabel, isRouteDelayed } from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
@@ -33,7 +29,7 @@ import type {
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { withDelay } from "@/utils/dateEst";
 
-const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
+const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled", "EnRoute"]);
 const CLOSED_CHAT_STATUSES = new Set([
   "Completed",
   "Missing",
@@ -153,17 +149,20 @@ export default function RideDetailPage({
     }
   }, [searchParams, route]);
 
-  // Driver-specific state
+  // Driver actions
   const [markingMissing, setMarkingMissing] = useState(false);
   const [missingError, setMissingError] = useState<string | null>(null);
   const [driverActionBusy, setDriverActionBusy] = useState(false);
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
-  const [delayActionBusy, setDelayActionBusy] = useState(false);
-  const [delayActionError, setDelayActionError] = useState<string | null>(null);
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
+
+  // Student delay reporting
+  const [delayActionBusy, setDelayActionBusy] = useState(false);
+  const delayRequestPending = useRef(false);
+  const [delayActionError, setDelayActionError] = useState<string | null>(null);
   const [showDelayModal, setShowDelayModal] = useState(false);
 
   // Extract ID from params
@@ -749,7 +748,8 @@ export default function RideDetailPage({
 
   const handleMarkDelay = useCallback(
     async (minutes: number) => {
-      if (!routeId) return;
+      if (!routeId || delayRequestPending.current) return false;
+      delayRequestPending.current = true;
       setDelayActionBusy(true);
       setDelayActionError(null);
       try {
@@ -762,6 +762,8 @@ export default function RideDetailPage({
           const body = await res.json();
           throw new Error(body.error ?? res.statusText);
         }
+        const updated: RouteData = await res.json();
+        setRoute(updated);
         return true;
       } catch (e) {
         setDelayActionError(
@@ -769,6 +771,7 @@ export default function RideDetailPage({
         );
         return false;
       } finally {
+        delayRequestPending.current = false;
         setDelayActionBusy(false);
       }
     },
@@ -1000,24 +1003,6 @@ export default function RideDetailPage({
           cancelLabel="Cancel"
           confirming={markingMissing}
         />
-        <DelayRideModal
-          open={showDelayModal}
-          onOpenChange={(open) => {
-            setShowDelayModal(open);
-            if (!open) {
-              setDelayActionError(null);
-            }
-          }}
-          onConfirm={async (minutes) => {
-            const ok = await handleMarkDelay(minutes);
-            if (ok) {
-              setShowDelayModal(false);
-            }
-            const result = await handleMarkDelay(minutes);
-          }}
-          confirming={delayActionBusy}
-          delayActionError={delayActionError ?? undefined}
-        />
 
         <main className={styles.main}>
           <header className={styles.header}>
@@ -1113,19 +1098,6 @@ export default function RideDetailPage({
                   <span>Chat with student</span>
                 </button>
               </div>
-
-              {(route.status === "Scheduled" || route.status === "EnRoute") && (
-                <button
-                  type="button"
-                  className={
-                    styles.outlineButton + " " + styles.redOutlineButton
-                  }
-                  onClick={() => void setShowDelayModal(true)}
-                  disabled={delayActionBusy}
-                >
-                  {delayActionBusy ? "Delaying..." : "Delay Ride"}
-                </button>
-              )}
 
               {/* Scheduled: Start ride */}
               {route.status === "Scheduled" && (
@@ -1230,6 +1202,28 @@ export default function RideDetailPage({
         confirmingLabel="Cancelling…"
         cancelLabel="Nevermind"
         confirming={cancellingRide}
+      />
+      <DelayRideModal
+        open={showDelayModal}
+        onOpenChange={(open) => {
+          setShowDelayModal(open);
+          if (!open) {
+            setDelayActionError(null);
+          }
+        }}
+        onConfirm={async (minutes) => {
+          const ok = await handleMarkDelay(minutes);
+          if (ok) {
+            setShowDelayModal(false);
+          }
+        }}
+        currentDelayMinutes={delayMinutes}
+        onCancelRide={() => {
+          setShowDelayModal(false);
+          setShowCancelModal(true);
+        }}
+        confirming={delayActionBusy}
+        delayActionError={delayActionError ?? undefined}
       />
       <main className={styles.main}>
         <header className={styles.header}>
@@ -1377,6 +1371,17 @@ export default function RideDetailPage({
             >
               Edit ride
             </button>
+
+            {(route.status === "Scheduled" || route.status === "EnRoute") && (
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={() => setShowDelayModal(true)}
+                disabled={delayActionBusy || cancellingRide}
+              >
+                {delayActionBusy ? "Delaying…" : "Delay ride"}
+              </button>
+            )}
 
             {CANCELLABLE_STATUSES.has(route.status) && (
               <button

@@ -1,3 +1,17 @@
+.timeCell,
+.timeCell span {
+  font: inherit;
+}
+
+.delayedTime {
+  color: var(--color-status-red-text);
+}
+
+.originalTime {
+  color: var(--color-grey-text-weak);
+  text-decoration: line-through;
+}
+
 .attentionButton,
 .attentionEmpty {
   border: 0;
