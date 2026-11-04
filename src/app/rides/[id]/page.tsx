@@ -1254,12 +1254,14 @@ export default function RideDetailPage({
                 <span className={styles.stopLabel}>Dropoff</span>
               </div>
               <div className={styles.stopTimesRow}>
-                <StopTime
-                  time={formatTime(delayedPickup)}
-                  originalTime={
-                    isDelayed ? formatTime(scheduledPickup) : undefined
-                  }
-                />
+                <div className={styles.stopTimeStack}>
+                  <StopTime
+                    time={formatTime(delayedPickup)}
+                    originalTime={
+                      isDelayed ? formatTime(scheduledPickup) : undefined
+                    }
+                  />
+                </div>
                 <div className={styles.stopDivider} aria-hidden />
                 <div className={styles.stopTimeStack}>
                   <StopTime

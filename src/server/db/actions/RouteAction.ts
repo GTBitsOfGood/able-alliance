@@ -36,6 +36,7 @@ function routeAuditSnapshot(route: {
   pickupWindowStart: Date;
   pickupWindowEnd: Date;
   estimatedDropoffTime: Date | null;
+  delayMinutes: number;
   status: RouteStatus;
   seriesId: string | null;
 }) {
@@ -50,6 +51,7 @@ function routeAuditSnapshot(route: {
     pickupWindowStart: route.pickupWindowStart,
     pickupWindowEnd: route.pickupWindowEnd,
     estimatedDropoffTime: route.estimatedDropoffTime,
+    delayMinutes: route.delayMinutes,
     status: route.status,
     seriesId: route.seriesId,
   };
@@ -360,10 +362,24 @@ export async function delayRoute(
       );
     }
 
-    return await tx.route.findUniqueOrThrow({
+    const updated = await tx.route.findUniqueOrThrow({
       where: { id: routeId },
       include: adminRouteInclude,
     });
+    // The increment holds the row lock until commit. Derive the prior total
+    // from its result so concurrent delay requests get accurate audit entries.
+    await recordAudit(tx, {
+      actorId: studentId,
+      entityType: "Route",
+      entityId: updated.id,
+      action: "Update",
+      before: routeAuditSnapshot({
+        ...updated,
+        delayMinutes: updated.delayMinutes - minutes,
+      }),
+      after: routeAuditSnapshot(updated),
+    });
+    return updated;
   });
   emitRouteUpdate(route);
 

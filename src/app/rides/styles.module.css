@@ -451,8 +451,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.8rem 1.2rem;
-  border: 1px solid #416ebc;
+  gap: 0.4rem;
+  padding: 0.8rem 0 0.8rem 1.2rem;
+  border: none;
   border-radius: 0.4rem;
   font-size: 1.8rem;
   font-family: var(--font-paragraph);
@@ -460,7 +461,7 @@
   color: #183777;
   text-decoration: none;
   white-space: nowrap;
-  min-width: 17.2rem;
+  min-width: 0;
   text-align: center;
   line-height: 2.4rem;
 
@@ -469,9 +470,12 @@
   }
 }
 
-.rideDetailsLinkMobileText,
+.rideDetailsLinkText {
+  font: inherit;
+}
+
 .rideDetailsLinkIcon {
-  display: none;
+  display: inline-flex;
 }
 
 .rideCardVerticalDivider {
@@ -1265,23 +1269,18 @@
   }
 
   .requestRideButtonLink {
-    display: block;
-    width: auto;
+    flex: 1;
+    min-width: 0;
   }
 
   .requestRideButtonGroup {
-    flex-direction: column;
-    gap: 0.8rem;
-  }
-
-  .requestRideButtonLink:first-child .requestRideButton {
-    border-radius: 0.4rem;
-  }
-
-  .requestRideMenuButton {
     width: 100%;
-    border: 0;
-    border-radius: 0.4rem;
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .requestRideMenuWrap {
+    flex-shrink: 0;
   }
 
   .requestRideButton {
@@ -1319,15 +1318,13 @@
   }
 
   .rideCardStudentSecondaryActions {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
     width: 100%;
     gap: 1.2rem;
   }
 
   .rideCardStudentSecondaryActions .rideCardActionBtn {
-    width: auto;
-    flex: 1 1 calc(50% - 0.6rem);
+    width: 100%;
   }
 
   .rideCardPickupDropoffStack .rideCardStopLocationNew {
@@ -1360,23 +1357,6 @@
   .rideDetailsLink {
     font-size: 1.6rem;
     line-height: 2rem;
-  }
-
-  .rideDetailsLink {
-    gap: 0.4rem;
-    padding: 0.8rem 1.2rem;
-    border: none;
-    min-width: 0;
-    padding-right: 0;
-  }
-
-  .rideDetailsLinkDesktopText {
-    display: none;
-  }
-
-  .rideDetailsLinkMobileText,
-  .rideDetailsLinkIcon {
-    display: inline-flex;
   }
 
   .tabsRow > [role="tablist"] {
@@ -1465,9 +1445,6 @@
     color: #22070b;
   }
 
-  .rideDetailsLinkMobileText {
-    line-height: inherit;
-  }
   .rideTabs,
   .driverWeekToggleRow > [role="tablist"] {
     width: 100%;

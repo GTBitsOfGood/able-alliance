@@ -50,20 +50,20 @@ function statusChipStyle(
   if (delayed) {
     return {
       background: "var(--color-status-yellow)",
-      color: "var(--color-status-yellow)",
+      color: "var(--color-grey-text-strong)",
     };
   }
   switch (status) {
     case "Scheduled":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
       };
     case "EnRoute":
     case "Pickedup":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
       };
     case "Completed":
       return {
@@ -79,7 +79,7 @@ function statusChipStyle(
     case "CancelledByAdmin":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
       };
     case "Missing":
       return {

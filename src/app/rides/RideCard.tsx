@@ -340,12 +340,7 @@ export function RideCard({
           </span>
           {href ? (
             <Link href={href} className={styles.rideDetailsLink}>
-              <span className={styles.rideDetailsLinkDesktopText}>
-                View details
-              </span>
-              <span className={styles.rideDetailsLinkMobileText}>
-                View details
-              </span>
+              <span className={styles.rideDetailsLinkText}>View details</span>
               <BogIcon
                 name="chevron-right"
                 size={20}
