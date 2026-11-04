@@ -2,9 +2,21 @@ import { db } from "@db";
 import { Prisma } from "@db/generated/client";
 import type { LocationInput } from "@/utils/types";
 import { ConflictError, NotFoundError } from "@/utils/errors";
-export async function createLocation(data: LocationInput) {
+import { recordAudit } from "@db/audit";
+
+export async function createLocation(data: LocationInput, actorId: string) {
   try {
-    return await db.location.create({ data });
+    return await db.$transaction(async (tx) => {
+      const created = await tx.location.create({ data });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Location",
+        entityId: created.id,
+        action: "Create",
+        after: created,
+      });
+      return created;
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -14,7 +26,8 @@ export async function createLocation(data: LocationInput) {
     throw error;
   }
 }
-export const getLocations = () => db.location.findMany();
+export const getLocations = () =>
+  db.location.findMany({ where: { status: "active" } });
 export async function getLocationById(id: string) {
   const location = await db.location.findUnique({
     where: { id: id.toLowerCase() },
@@ -22,17 +35,24 @@ export async function getLocationById(id: string) {
   if (!location) throw new NotFoundError("Location not found");
   return location;
 }
-export async function deleteLocation(id: string) {
-  try {
-    return await db.location.delete({ where: { id: id.toLowerCase() } });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") throw new NotFoundError("Location not found");
-      if (error.code === "P2003")
-        throw new ConflictError(
-          "Location is referenced by a ride and cannot be deleted",
-        );
-    }
-    throw error;
-  }
+export async function archiveLocation(id: string, actorId: string) {
+  return db.$transaction(async (tx) => {
+    const before = await tx.location.findUnique({
+      where: { id: id.toLowerCase() },
+    });
+    if (!before) throw new NotFoundError("Location not found");
+    const updated = await tx.location.update({
+      where: { id: before.id },
+      data: { status: "archived" },
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "Location",
+      entityId: updated.id,
+      action: "Update",
+      before,
+      after: updated,
+    });
+    return updated;
+  });
 }

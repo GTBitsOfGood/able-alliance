@@ -11,7 +11,8 @@ export const getEmailRoute = (routeId: string) =>
 export const getDailySummaryUsers = () =>
   db.user.findMany({
     where: {
-      type: { in: ["Student", "Driver"] },
+      types: { hasSome: ["Student", "Driver"] },
+      status: "active",
       settings: { is: { dailySummary: true } },
     },
   });

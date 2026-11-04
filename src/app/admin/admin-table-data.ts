@@ -16,7 +16,15 @@ export type DriverRowRaw = {
 };
 
 /** Raw row shape for Admins table. */
-export type AdminRowRaw = DriverRowRaw;
+export type AdminRowRaw = DriverRowRaw & {
+  adminType: string;
+};
+
+/** Display labels for admin user types. */
+export const ADMIN_TYPE_LABELS = {
+  Admin: "Admin",
+  SuperAdmin: "Super Admin",
+} as const;
 
 /** Raw row shape for Vehicles table. */
 export type VehicleRowRaw = Pick<Vehicle, "licensePlate" | "seatCount"> & {
@@ -42,6 +50,7 @@ export const DRIVER_COLUMNS: ColumnHeaderCellContent[] = [
 export const ADMIN_COLUMNS: ColumnHeaderCellContent[] = [
   { content: "Name", datatype: "string" },
   { content: "Email", datatype: "string" },
+  { content: "Admin Type", datatype: "string" },
 ];
 
 export const VEHICLE_COLUMNS: ColumnHeaderCellContent[] = [

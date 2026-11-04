@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    const vehicle = await createVehicle(parsed.data);
+    const vehicle = await createVehicle(parsed.data, user.userId);
     return NextResponse.json(vehicle, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {
     return errorResponse(error);

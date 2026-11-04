@@ -4,7 +4,7 @@ import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { vehicleSchema } from "@/utils/types/vehicle";
 import {
-  deleteVehicle,
+  archiveVehicle,
   getVehicleById,
   updateVehicle,
 } from "@/server/db/actions/VehicleAction";
@@ -50,7 +50,7 @@ export async function DELETE(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -64,9 +64,9 @@ export async function DELETE(
     );
   }
   try {
-    await deleteVehicle(id);
+    await archiveVehicle(id, user.userId);
     return NextResponse.json(
-      { message: "Vehicle deleted" },
+      { message: "Vehicle archived" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {
@@ -87,7 +87,7 @@ export async function PATCH(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -111,7 +111,7 @@ export async function PATCH(
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
-    const updated = await updateVehicle(id, parsed.data);
+    const updated = await updateVehicle(id, parsed.data, user.userId);
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     return errorResponse(error);

@@ -1,6 +1,5 @@
 "use client";
 
-import type { StudentInput } from "@/utils/types/user";
 import type { VehicleInput } from "@/utils/types/vehicle";
 
 import BogTable from "@/components/BogTable/BogTable";
@@ -11,6 +10,7 @@ import BogDropdown from "@/components/BogDropdown/BogDropdown";
 import React, { useState, useEffect, Suspense } from "react";
 import AccommodationsPanel from "./AccommodationsPanel";
 import VehicleDetailsPanel from "./VehicleDetailsPanel";
+import LocationsMap, { type LngLat } from "./LocationsMap";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
 const VEHICLE_ACCESSIBILITY_OPTIONS = ["None", "Wheelchair"] as const;
@@ -19,7 +19,6 @@ import RidesTable from "./RidesTable";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Form } from "radix-ui";
 
 function AdminContent() {
   const searchParams = useSearchParams();
@@ -35,34 +34,33 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     null,
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { columns, rows, rowIds, loading, error, deleteRows, refetch } =
-    useAdminTableData(table);
+  const {
+    columns,
+    rows,
+    rowIds,
+    protectedIds,
+    locations,
+    loading,
+    error,
+    deleteRows,
+    refetch,
+  } = useAdminTableData(table);
+  const [newLocationPoint, setNewLocationPoint] = useState<LngLat | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [studentAccessibilityNeeds, setStudentAccessibilityNeeds] = useState<
-    string[]
-  >([]);
+  // Selection is by row index, so drop it whenever the rows are replaced
+  // (e.g. a real-time update) to avoid acting on a different row.
+  const [selectionRowIds, setSelectionRowIds] = useState(rowIds);
+  if (selectionRowIds !== rowIds) {
+    setSelectionRowIds(rowIds);
+    setSelectedRows(new Set());
+    if (!deleting) setShowDeleteConfirm(false);
+  }
   const [vehicleAccessibility, setVehicleAccessibility] =
     useState<string>("None");
-  const [accommodationOptions, setAccommodationOptions] = useState<string[]>(
-    [],
-  );
 
-  const refetchAccommodations = React.useCallback(() => {
-    fetch("/api/accommodations")
-      .then((r) => r.json())
-      .then((data: { label: string }[]) =>
-        setAccommodationOptions(data.map((d) => d.label)),
-      )
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    refetchAccommodations();
-  }, [refetchAccommodations]);
-
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
   useEffect(() => {
     if (
       status !== "loading" &&
@@ -93,6 +91,9 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
   };
 
   const canDelete = selectedRows.size > 0 && rowIds.length > 0;
+  const selectionHasProtected = [...selectedRows].some((idx) =>
+    protectedIds.has(rowIds[idx] ?? ""),
+  );
 
   const deleteNoun =
     table === "Vehicles"
@@ -100,202 +101,6 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
       : table === "Locations"
         ? "location"
         : "user";
-
-  const handleAddStudent = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSubmitError(null);
-    const form = e.currentTarget;
-    const firstName = (
-      form.elements.namedItem("firstName") as HTMLInputElement
-    ).value.trim();
-    const lastName = (
-      form.elements.namedItem("lastName") as HTMLInputElement
-    ).value.trim();
-    const preferredName = (
-      form.elements.namedItem("preferredName") as HTMLInputElement
-    ).value.trim();
-    const username = (
-      form.elements.namedItem("username") as HTMLInputElement
-    ).value.trim();
-    const email = (
-      form.elements.namedItem("email") as HTMLInputElement
-    ).value.trim();
-    const additionalComments = (
-      form.elements.namedItem("additionalComments") as HTMLInputElement
-    ).value.trim();
-
-    if (!firstName || !lastName || !username || !email) {
-      setSubmitError(
-        "First name, last name, username, and email are required.",
-      );
-      return;
-    }
-
-    if (!/^[a-z0-9]+$/i.test(username)) {
-      setSubmitError("username must be alphanumeric (e.g. gburdell3).");
-      return;
-    }
-
-    const studentInfo: StudentInput["studentInfo"] = {
-      ...(additionalComments && { notes: additionalComments }),
-      ...(studentAccessibilityNeeds.length > 0 && {
-        accessibilityNeeds: studentAccessibilityNeeds,
-      }),
-    };
-    fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "Student",
-        firstName,
-        lastName,
-        ...(preferredName && { preferredName }),
-        username,
-        email,
-        studentInfo,
-      }),
-    })
-      .then((res) => {
-        if (!res.ok)
-          return res
-            .json()
-            .then((body) =>
-              Promise.reject(
-                new Error(body.error ?? body.message ?? res.statusText),
-              ),
-            );
-        refetch();
-        setShowForm(false);
-        form.reset();
-      })
-      .catch((err: Error) =>
-        setSubmitError(err.message ?? "Failed to create student."),
-      );
-  };
-
-  const handleAddAdmin = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSubmitError(null);
-    const form = e.currentTarget;
-    const firstName = (
-      form.elements.namedItem("firstName") as HTMLInputElement
-    ).value.trim();
-    const lastName = (
-      form.elements.namedItem("lastName") as HTMLInputElement
-    ).value.trim();
-    const preferredName = (
-      form.elements.namedItem("preferredName") as HTMLInputElement
-    ).value.trim();
-    const username = (
-      form.elements.namedItem("username") as HTMLInputElement
-    ).value.trim();
-    const email = (
-      form.elements.namedItem("email") as HTMLInputElement
-    ).value.trim();
-
-    if (!firstName || !lastName || !username || !email) {
-      setSubmitError(
-        "First name, last name, username, and email are required.",
-      );
-      return;
-    }
-
-    if (!/^[a-z0-9]+$/i.test(username)) {
-      setSubmitError("username must be alphanumeric (e.g. gburdell3).");
-      return;
-    }
-
-    fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "Admin",
-        firstName,
-        lastName,
-        ...(preferredName && { preferredName }),
-        username,
-        email,
-      }),
-    })
-      .then((res) => {
-        if (!res.ok)
-          return res
-            .json()
-            .then((body) =>
-              Promise.reject(
-                new Error(body.error ?? body.message ?? res.statusText),
-              ),
-            );
-        refetch();
-        setShowForm(false);
-        form.reset();
-      })
-      .catch((err: Error) =>
-        setSubmitError(err.message ?? "Failed to create admin."),
-      );
-  };
-
-  const handleAddDriver = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSubmitError(null);
-    const form = e.currentTarget;
-    const firstName = (
-      form.elements.namedItem("firstName") as HTMLInputElement
-    ).value.trim();
-    const lastName = (
-      form.elements.namedItem("lastName") as HTMLInputElement
-    ).value.trim();
-    const preferredName = (
-      form.elements.namedItem("preferredName") as HTMLInputElement
-    ).value.trim();
-    const username = (
-      form.elements.namedItem("username") as HTMLInputElement
-    ).value.trim();
-    const email = (
-      form.elements.namedItem("email") as HTMLInputElement
-    ).value.trim();
-
-    if (!firstName || !lastName || !username || !email) {
-      setSubmitError(
-        "First name, last name, username, and email are required.",
-      );
-      return;
-    }
-
-    if (!/^[a-z0-9]+$/i.test(username)) {
-      setSubmitError("username must be alphanumeric (e.g. gburdell3).");
-      return;
-    }
-
-    fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "Driver",
-        firstName,
-        lastName,
-        ...(preferredName && { preferredName }),
-        username,
-        email,
-      }),
-    })
-      .then((res) => {
-        if (!res.ok)
-          return res
-            .json()
-            .then((body) =>
-              Promise.reject(
-                new Error(body.error ?? body.message ?? res.statusText),
-              ),
-            );
-        refetch();
-        setShowForm(false);
-        form.reset();
-      })
-      .catch((err: Error) =>
-        setSubmitError(err.message ?? "Failed to create driver."),
-      );
-  };
 
   const handleAddVehicle = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -361,21 +166,16 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     const name = (
       form.elements.namedItem("name") as HTMLInputElement
     ).value.trim();
-    const latitude = parseFloat(
-      (form.elements.namedItem("latitude") as HTMLInputElement).value,
-    );
-    const longitude = parseFloat(
-      (form.elements.namedItem("longitude") as HTMLInputElement).value,
-    );
 
     if (!name) {
       setSubmitError("Location name is required.");
       return;
     }
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      setSubmitError("Latitude and longitude must be valid numbers.");
+    if (!newLocationPoint) {
+      setSubmitError("Click the map to place the location.");
       return;
     }
+    const { latitude, longitude } = newLocationPoint;
 
     fetch("/api/locations", {
       method: "POST",
@@ -393,6 +193,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
             );
         refetch();
         setShowForm(false);
+        setNewLocationPoint(null);
         form.reset();
       })
       .catch((err: Error) =>
@@ -405,347 +206,19 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
       ? "Add Location"
       : table === "Vehicles"
         ? "Add Vehicle"
-        : table === "Admins"
-          ? "Invite User"
-          : "Invite User";
+        : "Invite User";
 
-  const formTitle =
-    table === "Locations"
-      ? "Add Location"
-      : table === "Vehicles"
-        ? "Add Vehicle"
-        : table === "Admins"
-          ? "Invite New Admin"
-          : table === "Drivers"
-            ? "Invite New Driver"
-            : "Invite New Student";
+  const formTitle = table === "Locations" ? "Add Location" : "Add Vehicle";
 
   const deleteLabel =
     table === "Locations"
-      ? "Delete location"
+      ? "Archive location"
       : table === "Vehicles"
-        ? "Delete vehicle"
-        : "Delete user";
+        ? "Archive vehicle"
+        : "Archive user";
 
   const formContent =
-    table === "Students" ? (
-      <div className="flex flex-row">
-        <Form.Root
-          onSubmit={handleAddStudent}
-          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
-        >
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="firstName"
-              label="First Name"
-              placeholder="George"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-            <BogTextInput
-              name="lastName"
-              label="Last Name"
-              placeholder="Burdell"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="preferredName"
-              label="Preferred Name"
-              placeholder="Buzz"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-            />
-            <BogTextInput
-              name="username"
-              label="Username"
-              placeholder="gburdell3"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-            <BogTextInput
-              name="email"
-              label="Email"
-              type="email"
-              placeholder="george.burdell@gatech.edu"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <div className="flex flex-col flex-1 basis-[20rem] max-w-[35rem] gap-3">
-              <span
-                style={{
-                  fontSize: "1.6rem",
-                  fontFamily: "var(--font-paragraph)",
-                  color: "var(--color-grey-text-strong)",
-                }}
-              >
-                Accommodations
-              </span>
-              {/* Dropdown */}
-              <div style={{ position: "relative" }}>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val && !studentAccessibilityNeeds.includes(val)) {
-                      setStudentAccessibilityNeeds([
-                        ...studentAccessibilityNeeds,
-                        val,
-                      ]);
-                    }
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 0.5rem",
-                    paddingRight: "2.4rem",
-                    appearance: "none",
-                    border: "1px solid var(--color-grey-stroke-weak)",
-                    borderRadius: "0.4rem",
-                    fontSize: "1.4rem",
-                    fontFamily: "var(--font-paragraph)",
-                    color: "var(--color-grey-text-weak)",
-                    background: "var(--color-solid-bg-sunken)",
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  <option value="" disabled>
-                    Select from list
-                  </option>
-                  {accommodationOptions
-                    .filter((opt) => !studentAccessibilityNeeds.includes(opt))
-                    .map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                </select>
-                <span
-                  style={{
-                    position: "absolute",
-                    right: "1rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    pointerEvents: "none",
-                    width: "1.2rem",
-                    height: "1.2rem",
-                    display: "inline-block",
-                    backgroundColor: "var(--color-grey-text-weak)",
-                    clipPath:
-                      "polygon(20% 35%, 50% 65%, 80% 35%, 90% 45%, 50% 80%, 10% 45%)",
-                  }}
-                />
-              </div>
-              {/* Selected chips */}
-              {studentAccessibilityNeeds.length > 0 && (
-                <div
-                  style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem" }}
-                >
-                  {studentAccessibilityNeeds.map((opt) => (
-                    <span
-                      key={opt}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.6rem",
-                        padding: "0.5rem 1rem",
-                        border: "1px solid var(--color-grey-stroke-weak)",
-                        borderRadius: "0.4rem",
-                        fontSize: "1.4rem",
-                        fontFamily: "var(--font-paragraph)",
-                        background: "var(--color-solid-bg-sunken)",
-                        color: "var(--color-grey-text-strong)",
-                      }}
-                    >
-                      {opt}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setStudentAccessibilityNeeds(
-                            studentAccessibilityNeeds.filter((v) => v !== opt),
-                          )
-                        }
-                        style={{
-                          border: "none",
-                          background: "none",
-                          cursor: "pointer",
-                          fontSize: "1.5rem",
-                          lineHeight: 1,
-                          padding: 0,
-                          color: "var(--color-grey-text-strong)",
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <BogTextInput
-              name="additionalComments"
-              label="Additional Notes"
-              placeholder="Add any additional information here."
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="inviteMessage"
-              label="Invite message"
-              placeholder="Add custom invite message here."
-              className="flex w-full"
-              multiline={true}
-            />
-          </div>
-          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-
-          <Form.Submit asChild>
-            <BogButton
-              type="submit"
-              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
-            >
-              {"Invite"}
-            </BogButton>
-          </Form.Submit>
-        </Form.Root>
-      </div>
-    ) : table === "Drivers" ? (
-      <div className="flex flex-row">
-        <Form.Root
-          onSubmit={handleAddDriver}
-          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
-        >
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="firstName"
-              label="First Name"
-              placeholder="George"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-            <BogTextInput
-              name="lastName"
-              label="Last Name"
-              placeholder="Burdell"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="preferredName"
-              label="Preferred Name"
-              placeholder="Buzz"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-            />
-            <BogTextInput
-              name="username"
-              label="GT Username"
-              placeholder="gburdell3"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-            <BogTextInput
-              name="email"
-              label="Email"
-              type="email"
-              placeholder="george.burdell@gatech.edu"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="inviteMessage"
-              label="Invite message"
-              placeholder="Add custom invite message here."
-              className="flex w-full"
-              multiline={true}
-            />
-          </div>
-          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-
-          <Form.Submit asChild>
-            <BogButton
-              type="submit"
-              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
-            >
-              {"Invite"}
-            </BogButton>
-          </Form.Submit>
-        </Form.Root>
-      </div>
-    ) : table === "Admins" ? (
-      <div className="flex flex-row">
-        <Form.Root
-          onSubmit={handleAddAdmin}
-          className="flex flex-col gap-[4.3rem] text-[1.6rem] px-[3.2rem] py-[2.4rem] max-w-full basis-[82.5rem] shrink border rounded-[0.8rem] border-[var(--color-grey-off-state)]"
-        >
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="firstName"
-              label="First Name"
-              placeholder="George"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-            <BogTextInput
-              name="lastName"
-              label="Last Name"
-              placeholder="Burdell"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="preferredName"
-              label="Preferred Name"
-              placeholder="Buzz"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-            />
-            <BogTextInput
-              name="username"
-              label="Username"
-              placeholder="gburdell3"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-            <BogTextInput
-              name="email"
-              label="Email"
-              type="email"
-              placeholder="george.burdell@gatech.edu"
-              className="flex-1 basis-[20rem] max-w-[35rem] gap-3"
-              required
-            />
-          </div>
-          <div className="flex flex-row flex-wrap gap-[5.8rem]">
-            <BogTextInput
-              name="inviteMessage"
-              label="Invite message"
-              placeholder="Add custom invite message here."
-              className="flex w-full"
-              multiline={true}
-            />
-          </div>
-          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-
-          <Form.Submit asChild>
-            <BogButton
-              type="submit"
-              className="bg-[var(--color-checkbox-checked)] rounded-[0.4rem] w-max text-paragraph-1 font-semibold py-[.8rem] px-[1.2rem]"
-            >
-              {"Invite"}
-            </BogButton>
-          </Form.Submit>
-        </Form.Root>
-      </div>
-    ) : table === "Locations" ? (
+    table === "Locations" ? (
       <BogForm onSubmit={handleAddLocation} submitLabel="Create location">
         <BogTextInput
           name="name"
@@ -753,18 +226,22 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
           placeholder="e.g. Campus Recreation Center"
           required
         />
-        <BogTextInput
-          name="latitude"
-          label="Latitude"
-          placeholder="e.g. 33.7756"
-          required
-        />
-        <BogTextInput
-          name="longitude"
-          label="Longitude"
-          placeholder="e.g. -84.3963"
-          required
-        />
+        <div className="flex flex-col gap-3 w-full max-w-[80rem]">
+          <span className="text-paragraph-1 text-[var(--color-grey-text-strong)]">
+            Click the map to place the location. Existing locations are shown as
+            dots.
+          </span>
+          <LocationsMap
+            locations={locations}
+            selected={newLocationPoint}
+            onSelect={setNewLocationPoint}
+          />
+          <span className="text-paragraph-2 text-[var(--color-grey-text-weak)]">
+            {newLocationPoint
+              ? `Selected: ${newLocationPoint.latitude.toFixed(6)}, ${newLocationPoint.longitude.toFixed(6)}`
+              : "No point selected"}
+          </span>
+        </div>
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}
       </BogForm>
     ) : (
@@ -837,7 +314,9 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
     );
 
   return (
-    <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 w-full">
+    <div
+      className={`py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 min-w-0 w-full ${table === "Rides" ? "lg:pt-[6.4rem] lg:pl-[5.6rem] lg:pr-[2.6rem]" : ""}`}
+    >
       {selectedVehicleId ? (
         <VehicleDetailsPanel
           key={selectedVehicleId}
@@ -858,8 +337,8 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                 onClick={() => {
                   setShowForm(false);
                   setSubmitError(null);
-                  setStudentAccessibilityNeeds([]);
                   setVehicleAccessibility("None");
+                  setNewLocationPoint(null);
                 }}
               >
                 <BogIcon name="arrow-left" size={20} />
@@ -872,7 +351,7 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
         </>
       ) : (
         <>
-          <div className="mb-[2.4rem]">
+          <div className={table === "Rides" ? "mb-[6.4rem]" : "mb-[2.4rem]"}>
             <h1 className="text-display">
               {table === "Locations" || table === "Accommodations"
                 ? "Configurations"
@@ -887,13 +366,16 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
           {table === "Rides" ? (
             <RidesTable />
           ) : table === "Accommodations" ? (
-            <AccommodationsPanel onSaved={refetchAccommodations} />
+            <AccommodationsPanel onSaved={refetch} />
           ) : (
             <>
               {error && (
                 <p className="mb-4 text-sm text-amber-700" role="status">
                   {error}
                 </p>
+              )}
+              {table === "Locations" && !loading && (
+                <LocationsMap locations={locations} className="mb-[2.4rem]" />
               )}
               {loading ? (
                 <p className="text-gray-600">Loading…</p>
@@ -945,7 +427,12 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                           variant="secondary"
                           size="medium"
                           onClick={() => setShowDeleteConfirm(true)}
-                          disabled={deleting}
+                          disabled={deleting || selectionHasProtected}
+                          title={
+                            selectionHasProtected
+                              ? "Super admins cannot be archived"
+                              : undefined
+                          }
                           style={
                             {
                               "--color-brand-stroke-strong": "#C73A3A",
@@ -955,13 +442,17 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
                             } as React.CSSProperties
                           }
                         >
-                          {deleting ? "Deleting…" : deleteLabel}
+                          {deleting ? "Archiving…" : deleteLabel}
                         </BogButton>
                       )}
                       <BogButton
                         variant="primary"
                         size="medium"
-                        onClick={() => setShowForm(true)}
+                        onClick={() => {
+                          if (["Students", "Drivers", "Admins"].includes(table))
+                            router.push("/admin/inviteUser");
+                          else setShowForm(true);
+                        }}
                         iconProps={{
                           position: "left",
                           iconProps: { name: "plus", size: 16 },
@@ -991,14 +482,14 @@ function AdminTableContent({ table }: { table: AdminTableType }) {
           if (!o) setShowDeleteConfirm(false);
         }}
         onConfirm={handleDelete}
-        title={`Delete ${deleteNoun}${selectedRows.size === 1 ? "" : "s"}?`}
+        title={`Archive ${deleteNoun}${selectedRows.size === 1 ? "" : "s"}?`}
         description={
           selectedRows.size === 1
-            ? `Are you sure you want to delete this ${deleteNoun}? This action cannot be undone.`
-            : `Are you sure you want to delete these ${selectedRows.size} ${deleteNoun}s? This action cannot be undone.`
+            ? `Are you sure you want to archive this ${deleteNoun}? It will be hidden from all lists and dropdowns, and this cannot be undone yet.`
+            : `Are you sure you want to archive these ${selectedRows.size} ${deleteNoun}s? They will be hidden from all lists and dropdowns, and this cannot be undone yet.`
         }
         confirmLabel={deleteLabel}
-        confirmingLabel="Deleting…"
+        confirmingLabel="Archiving…"
         confirming={deleting}
       />
     </div>

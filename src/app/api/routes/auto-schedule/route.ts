@@ -20,22 +20,27 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 async function requireAdmin() {
   try {
     const user = await getUserFromRequest();
-    if (user.type === "Admin" || user.type === "SuperAdmin") return null;
-    return NextResponse.json(
-      { error: "Only admins can use auto-scheduling." },
-      { status: HTTP_STATUS_CODE.FORBIDDEN },
-    );
+    if (user.activeType === "Admin" || user.activeType === "SuperAdmin")
+      return { user };
+    return {
+      response: NextResponse.json(
+        { error: "Only admins can use auto-scheduling." },
+        { status: HTTP_STATUS_CODE.FORBIDDEN },
+      ),
+    };
   } catch {
-    return NextResponse.json(
-      { error: "You must be signed in to use auto-scheduling." },
-      { status: HTTP_STATUS_CODE.UNAUTHORIZED },
-    );
+    return {
+      response: NextResponse.json(
+        { error: "You must be signed in to use auto-scheduling." },
+        { status: HTTP_STATUS_CODE.UNAUTHORIZED },
+      ),
+    };
   }
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
 
   const date = req.nextUrl.searchParams.get("date") ?? "";
   if (!DATE_RE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
@@ -101,8 +106,8 @@ function describeScheduleError(e: unknown) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
 
   let body: unknown;
   try {
@@ -127,7 +132,8 @@ export async function POST(req: NextRequest) {
     // manual bookings can't slip a conflicting ride in between.
     const results = await withSchedulingLock(
       schedulingLockKeys(assignments),
-      (tx, afterCommit) => applyAssignments(date, assignments, tx, afterCommit),
+      (tx, afterCommit) =>
+        applyAssignments(date, assignments, tx, afterCommit, auth.user.userId),
     );
     return NextResponse.json(
       { results },
@@ -153,6 +159,7 @@ async function applyAssignments(
   assignments: Assignment[],
   tx: Prisma.TransactionClient,
   afterCommit: (() => void)[],
+  actorId: string,
 ) {
   const plan = await planDay(date, assignments, tx);
   const info = new Map(
@@ -180,6 +187,7 @@ async function applyAssignments(
         a.vehicleId,
         tx,
         afterCommit,
+        actorId,
       );
       results.push({
         ...summary,

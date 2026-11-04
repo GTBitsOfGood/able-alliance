@@ -12,7 +12,14 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-import { estDateDaysFromNow, nextServiceDate } from "./routeTestHelpers";
+import {
+  clearLocations,
+  estDateDaysFromNow,
+  nextServiceDate,
+  selectLocation,
+  scheduleRideInAdmin,
+  showCalendarMonth,
+} from "./routeTestHelpers";
 
 const PICKUP = LOCATIONS.techSquare;
 const DROPOFF = LOCATIONS.studentCenter;
@@ -41,9 +48,7 @@ test("route A: student creates, admin schedules (UI)", async ({
 
   const today = estDateDaysFromNow(0);
   const rideDate = nextServiceDate();
-  if (rideDate.getMonth() !== today.getMonth()) {
-    await student.getByRole("button", { name: "Next month" }).click();
-  }
+  await showCalendarMonth(student, rideDate);
   await student
     .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
@@ -53,12 +58,9 @@ test("route A: student creates, admin schedules (UI)", async ({
   await pickTime(student.locator("#pickup-window-from"), "1:30 PM");
   await pickTime(student.locator("#pickup-window-to"), "2:30 PM");
 
-  await student
-    .getByRole("combobox", { name: "Pickup location" })
-    .selectOption({ label: PICKUP.name });
-  await student
-    .getByRole("combobox", { name: "Dropoff location" })
-    .selectOption({ label: DROPOFF.name });
+  await clearLocations(student);
+  await selectLocation(student, "Pickup location", PICKUP.name);
+  await selectLocation(student, "Dropoff location", DROPOFF.name);
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",
@@ -85,34 +87,7 @@ test("route A: student creates, admin schedules (UI)", async ({
   // ── Admin sees it and schedules ────────────────────────────────────────
   const admin = await pageAs("admin");
   await admin.goto("/admin?tab=Rides");
-  const row = admin
-    .getByRole("row")
-    .filter({ hasText: PERSONAS.student.lastName })
-    .filter({ hasText: PICKUP.name })
-    .filter({ hasText: DROPOFF.name })
-    .filter({ hasText: PICKUP_TIME });
-  await expect(row).toHaveCount(1);
-
-  await row.getByText("Select driver").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
-    })
-    .click();
-  await row.getByText("Select vehicle").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${VEHICLE.name} (${VEHICLE.licensePlate})`,
-    })
-    .click();
-
-  const scheduled = admin.waitForResponse((r) =>
-    r.url().endsWith("/api/routes/schedule"),
-  );
-  await row.getByRole("button", { name: "Assign" }).click();
-  const scheduleRes = await scheduled;
-  expect(scheduleRes.status(), await scheduleRes.text()).toBe(200);
-  await expect(row).toHaveCount(0);
+  await scheduleRideInAdmin(admin, routeId);
 
   // ── Driver sees the scheduled ride ─────────────────────────────────────
   const driver = await pageAs("driver");

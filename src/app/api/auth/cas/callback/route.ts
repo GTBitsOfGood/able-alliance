@@ -90,6 +90,13 @@ export async function GET(request: NextRequest) {
       return loginErrorRedirect(request, "user_not_found", appUrl);
     }
 
+    if (user.status === "archived") {
+      console.error(
+        `[CAS Callback] CAS user "${username}" is archived and cannot log in`,
+      );
+      return loginErrorRedirect(request, "account_archived", appUrl);
+    }
+
     const userId = user.id;
 
     const displayName =
@@ -109,7 +116,8 @@ export async function GET(request: NextRequest) {
       token: {
         sub: userId,
         userId,
-        type: user.type,
+        activeType: user.types[0],
+        types: user.types,
         username,
         email: user.email,
         name: displayName,
@@ -121,7 +129,7 @@ export async function GET(request: NextRequest) {
       maxAge: 24 * 60 * 60, // 24 hours
     });
 
-    // Redirect to same origin so cookie domain matches; set cookie via next/headers for better compatibility with Netlify
+    // Redirect to same origin so cookie domain matches; set cookie via next/headers for better compatibility
     const cookieStore = await cookies();
     cookieStore.set(cookieName, token, {
       ...cookieOptions,

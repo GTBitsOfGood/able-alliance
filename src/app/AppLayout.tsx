@@ -4,6 +4,8 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import AppNavbar from "@/components/AppNavbar";
 import AdminSidebar from "@/components/AdminSidebar";
+import RoleSwitcher from "@/components/RoleSwitcher";
+import AdminRidesProvider from "./admin/AdminRidesProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -13,25 +15,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // signed-in users while its redirect is resolving
   if (pathname === "/login") return <>{children}</>;
 
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
+  const hasSession = Boolean(session?.user);
   const isAdmin =
-    status === "authenticated" &&
-    (userType === "Admin" || userType === "SuperAdmin");
+    hasSession && (userType === "Admin" || userType === "SuperAdmin");
 
-  // During loading, don't render navbar (it returns null anyway) but keep
-  // children visible so the page doesn't blank out
-  if (status === "loading") {
+  // Initial loading has no session. During a session update, keep the existing
+  // layout and switcher mounted until navigation to the new role completes.
+  if (status === "loading" && !hasSession) {
     return <>{children}</>;
   }
 
   if (isAdmin) {
     return (
-      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-        <AdminSidebar />
-        <main style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-          {children}
-        </main>
-      </div>
+      <AdminRidesProvider>
+        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+          <AdminSidebar />
+          <main style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+            {children}
+          </main>
+        </div>
+        <RoleSwitcher />
+      </AdminRidesProvider>
     );
   }
 
@@ -39,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <AppNavbar />
       {children}
+      <RoleSwitcher />
     </>
   );
 }

@@ -20,6 +20,7 @@ enum VehicleAccessibility {
 }
 
 enum RouteStatus {
+  ActionRequired
   Requested
   Scheduled
   EnRoute
@@ -30,6 +31,17 @@ enum RouteStatus {
   CancelledByAdmin
 }
 
+enum Status {
+  active
+  archived
+}
+
+enum AuditAction {
+  Create
+  Update
+  Delete
+}
+
 model User {
   id            String          @id @default(uuid()) @db.Uuid
   firstName     String
@@ -37,7 +49,8 @@ model User {
   preferredName String?
   username      String          @unique
   email         String          @unique
-  type          UserType
+  types         UserType[]
+  status        Status          @default(active)
   settings      UserSettings?
   studentInfo   StudentProfile?
   shifts        Shift[]
@@ -45,6 +58,29 @@ model User {
   driverRoutes  Route[]         @relation("DriverRoutes")
   rideSeries    RideSeries[]
   sentMessages  Message[]
+  auditEntries  AuditEntry[]    @relation("AuditActor")
+  subjectAudits AuditEntry[]    @relation("AuditSubjectUser")
+
+  @@index([types], type: Gin)
+  @@index([status])
+}
+
+model AuditEntry {
+  id            String      @id @default(uuid()) @db.Uuid
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+  actorId       String?     @db.Uuid
+  actor         User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+  subjectUserId String?     @db.Uuid
+  subjectUser   User?       @relation("AuditSubjectUser", fields: [subjectUserId], references: [id], onDelete: Restrict)
+  entityType    String
+  entityId      String      @db.Uuid
+  action        AuditAction
+  changes       Json
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([subjectUserId, createdAt])
+  @@index([createdAt])
 }
 
 model UserSettings {
@@ -83,10 +119,13 @@ model Location {
   name           String       @unique
   latitude       Float
   longitude      Float
+  status         Status       @default(active)
   pickups        Route[]      @relation("PickupLocation")
   dropoffs       Route[]      @relation("DropoffLocation")
   seriesPickups  RideSeries[] @relation("SeriesPickupLocation")
   seriesDropoffs RideSeries[] @relation("SeriesDropoffLocation")
+
+  @@index([status])
 }
 
 model Vehicle {
@@ -97,7 +136,10 @@ model Vehicle {
   description   String?
   accessibility VehicleAccessibility
   seatCount     Int
+  status        Status               @default(active)
   routes        Route[]
+
+  @@index([status])
 }
 
 model Accommodation {
@@ -163,7 +205,11 @@ model RideSeries {
   pickup                    Location            @relation("SeriesPickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
   dropoff                   Location            @relation("SeriesDropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
   frequency                 RecurrenceFrequency @default(weekly)
+  /// Eastern weekdays a ride is scheduled on, 0 = Sunday … 6 = Saturday.
+  daysOfWeek                Int[]
   firstPickupTime           DateTime            @db.Timestamptz(3)
+  /// End of the last Eastern day a ride may be scheduled on; null repeats until deactivated.
+  endsAt                    DateTime?           @db.Timestamptz(3)
   pickupWindowStartOffsetMs Int
   pickupWindowEndOffsetMs   Int
   materializedThrough       DateTime            @db.Timestamptz(3)

@@ -10,11 +10,9 @@ See [docs/upsun.md](docs/upsun.md) for documentation on Georgia Tech hosting.
 See [docs/cas-integration.md](docs/cas-integration.md) for information on integrating with GT SSO CAS.
 For deployment previews and local development, we use `mock-cas-server`.
 
-## Deployment Preview
+## Staging
 
-A deployment preview of the main branch from Netlify is available at https://able-alliance.netlify.app/.
-
-[![Netlify Status](https://api.netlify.com/api/v1/badges/85fa2c6e-6dac-463a-8467-1d6d02d37cb3/deploy-status)](https://app.netlify.com/projects/able-alliance/deploys)
+A staging preview of the main branch is available at https://stage.paratransit.pts.gatech.edu.
 
 ## Technologies
 
@@ -58,7 +56,7 @@ For host development, use `localhost` instead of Docker service names.
   ```
 - Production:
   ```sh
-  docker compose -f docker-compose-prod.yml up --build
+  docker compose -f compose.prod.yaml up --build
   ```
 
 To run PostgreSQL 18 by itself in Docker:
@@ -121,4 +119,4 @@ npm run seed -- "postgresql://able:able@localhost:5432/able_alliance"
 
 - There is a husky pre-commit hook to lint and style code to maintain consistency.
 - We use Playwright for API and UI testing. Use a disposable database whose name contains `test` or `e2e`.
-- GitHub Actions run linting, formatting, type checks, and Playwright end-to-end tests. Netlify provides the deployment preview.
+- GitHub Actions run linting, formatting, type checks, and Playwright end-to-end tests.

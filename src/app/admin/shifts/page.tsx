@@ -45,7 +45,7 @@ export default function ShiftsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Auth guard
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
   useEffect(() => {
     if (
       sessionStatus !== "loading" &&

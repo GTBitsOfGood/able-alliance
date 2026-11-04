@@ -8,7 +8,7 @@ import {
   getRoutes,
 } from "@/server/db/actions/RouteAction";
 import { createRideSeries } from "@/server/db/actions/RideSeriesAction";
-import { createRouteSchema } from "@/utils/types";
+import { batchRideRequestSchema, createRouteSchema } from "@/utils/types";
 import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
 import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -36,10 +36,10 @@ export async function GET(req: NextRequest) {
           { status: HTTP_STATUS_CODE.BAD_REQUEST },
         );
       }
-      const route = await getRouteById(id, user.type);
+      const route = await getRouteById(id, user.activeType);
       // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
       if (
-        isAdmin(user.type) ||
+        isAdmin(user.activeType) ||
         (route.student && route.student.id === user.userId) ||
         (route.driver && route.driver.id === user.userId)
       ) {
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const userType = session.user.type;
+    const userType = session.user.activeType;
     const loggedInUserId = session.user.userId;
 
     // optional filters: ?student=ID | ?driver=ID | ?vehicle=ID | ?status=<RouteStatus> | ?start_time=<time> | ?end_time=<time>
@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
         start_time: startDate,
         end_time: endDate,
       },
-      user.type,
+      user.activeType,
     );
     return NextResponse.json(routes, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
@@ -184,6 +184,56 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
 
+    if ("rides" in body) {
+      const batch = batchRideRequestSchema.safeParse(body);
+      if (!batch.success) {
+        return NextResponse.json(batch.error.format(), {
+          status: HTTP_STATUS_CODE.BAD_REQUEST,
+        });
+      }
+      if (
+        user.activeType !== "Student" ||
+        user.userId !== session.user.userId
+      ) {
+        return NextResponse.json(
+          { error: "Forbidden" },
+          {
+            status: HTTP_STATUS_CODE.FORBIDDEN,
+          },
+        );
+      }
+
+      const created = [];
+      for (const ride of batch.data.rides) {
+        const routeData = {
+          pickupLocation: ride.pickupLocation,
+          dropoffLocation: ride.dropoffLocation,
+          student: session.user.userId,
+          scheduledPickupTime: ride.scheduledPickupTime,
+          pickupWindowStart: ride.pickupWindowStart,
+          pickupWindowEnd: ride.pickupWindowEnd,
+        };
+        const parsedRoute = createRouteSchema.safeParse(routeData);
+        if (!parsedRoute.success) {
+          return NextResponse.json(parsedRoute.error.format(), {
+            status: HTTP_STATUS_CODE.BAD_REQUEST,
+          });
+        }
+        created.push(
+          ride.recurring
+            ? (
+                await createRideSeries(
+                  parsedRoute.data,
+                  ride.recurring,
+                  user.userId,
+                )
+              ).firstRoute
+            : await createRoute(parsedRoute.data, { actorId: user.userId }),
+        );
+      }
+      return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
+    }
+
     // `recurring` is a sibling of the route fields, not part of them —
     // createRouteSchema is strict, so split it off before parsing.
     const { recurring, ...routeFields } = body ?? {};
@@ -201,7 +251,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!(user.type === "Student" && user.userId === parsed.data.student)) {
+    if (!(
+      user.activeType === "Student" && user.userId === parsed.data.student
+    )) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -233,10 +285,11 @@ export async function POST(request: NextRequest) {
           status: HTTP_STATUS_CODE.BAD_REQUEST,
         });
       }
-      created = (await createRideSeries(parsed.data, recurrence.data))
-        .firstRoute;
+      created = (
+        await createRideSeries(parsed.data, recurrence.data, user.userId)
+      ).firstRoute;
     } else {
-      created = await createRoute(parsed.data);
+      created = await createRoute(parsed.data, { actorId: user.userId });
     }
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {

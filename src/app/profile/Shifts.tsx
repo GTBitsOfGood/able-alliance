@@ -1,5 +1,7 @@
 "use client";
 
+import { hasUserType } from "@/utils/userTypes";
+
 import React, { useState } from "react";
 import BogButton from "@/components/BogButton/BogButton";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
@@ -209,7 +211,7 @@ export function Shifts({
   };
 
   // Only show for drivers
-  if (user.type !== "Driver") {
+  if (!hasUserType(user, "Driver")) {
     return null;
   }
 
@@ -218,7 +220,7 @@ export function Shifts({
     canEdit && (viewerType === "Admin" || viewerType === "SuperAdmin");
 
   return (
-    <section className={styles.shiftCard}>
+    <section className={styles.profileCard}>
       <div className={styles.profileCardHeader}>
         <h2 className={styles.sectionTitle}>Driver Shifts</h2>
         {editing ? (

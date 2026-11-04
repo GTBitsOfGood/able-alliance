@@ -9,7 +9,7 @@ import styles from "./AppNavbar.module.css";
 
 export default function AppNavbar() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLElement>(null);
 
@@ -40,9 +40,9 @@ export default function AppNavbar() {
   }, [menuOpen]);
 
   if (pathname === "/login") return null;
-  if (status !== "authenticated") return null;
+  if (!session?.user) return null;
 
-  const userType = session.user?.type;
+  const userType = session.user?.activeType;
   const showRides = userType === "Student" || userType === "Driver";
   const showAdmin = userType === "Admin" || userType === "SuperAdmin";
   const fullName =

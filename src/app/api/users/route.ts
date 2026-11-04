@@ -1,4 +1,6 @@
-import type { UserType } from "@db/generated/browser";
+import { hasAdminType } from "@/utils/userTypes";
+import { UserType } from "@db/generated/enums";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { createUser, getUsers } from "@/server/db/actions/UserAction";
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -30,9 +32,11 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     //so you can filter by the type of user
-    const type = searchParams.get("type") as UserType | null;
-
-    const users = await getUsers(type || undefined);
+    const type = searchParams.get("type");
+    const parsedType = type ? z.enum(UserType).safeParse(type) : null;
+    if (parsedType && !parsedType.success)
+      throw new ArgumentError("Invalid user type");
+    const users = await getUsers(parsedType?.data);
     return NextResponse.json(users, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
     return errorResponse(error);
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
     };
     let parsed;
 
-    if (body.type === "Student") {
+    if (Array.isArray(body.types) && body.types.includes("Student")) {
       parsed = studentSchema.safeParse(userData);
     } else {
       parsed = baseUserSchema.safeParse(userData);
@@ -87,10 +91,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (
-      user.type !== "SuperAdmin" &&
-      (parsed.data.type == "Admin" || parsed.data.type == "SuperAdmin")
-    ) {
+    if (user.activeType !== "SuperAdmin" && hasAdminType(parsed.data)) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -98,8 +99,9 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
-    const studentInfo =
-      data.type === "Student" ? (data as StudentInput).studentInfo : undefined;
+    const studentInfo = data.types.includes("Student")
+      ? (data as StudentInput).studentInfo
+      : undefined;
     if (studentInfo?.accessibilityNeeds?.length) {
       const invalid = await findInvalidAccommodations(
         studentInfo.accessibilityNeeds,
@@ -111,29 +113,32 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    const created = await createUser({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      preferredName: data.preferredName,
-      username: data.username,
-      email: data.email,
-      type: data.type,
-      settings: { create: data.settings ?? {} },
-      ...(studentInfo
-        ? {
-            studentInfo: {
-              create: {
-                notes: studentInfo.notes,
-                accessibilityNeeds: {
-                  connect: (studentInfo.accessibilityNeeds ?? []).map(
-                    (label) => ({ label }),
-                  ),
+    const created = await createUser(
+      {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        preferredName: data.preferredName,
+        username: data.username,
+        email: data.email,
+        types: data.types,
+        settings: { create: data.settings ?? {} },
+        ...(studentInfo
+          ? {
+              studentInfo: {
+                create: {
+                  notes: studentInfo.notes,
+                  accessibilityNeeds: {
+                    connect: (studentInfo.accessibilityNeeds ?? []).map(
+                      (label) => ({ label }),
+                    ),
+                  },
                 },
               },
-            },
-          }
-        : {}),
-    });
+            }
+          : {}),
+      },
+      user.userId,
+    );
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {
     return errorResponse(error);

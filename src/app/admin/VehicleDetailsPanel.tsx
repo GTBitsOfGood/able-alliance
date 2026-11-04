@@ -160,7 +160,7 @@ export default function VehicleDetailsPanel({
             } as React.CSSProperties
           }
         >
-          {deleting ? "Deleting…" : "Delete vehicle"}
+          {deleting ? "Archiving…" : "Archive vehicle"}
         </BogButton>
       </div>
 
@@ -390,12 +390,12 @@ export default function VehicleDetailsPanel({
           if (!o) setShowDeleteConfirm(false);
         }}
         onConfirm={handleDelete}
-        title="Delete this vehicle?"
-        description={`Are you sure you want to delete ${
+        title="Archive this vehicle?"
+        description={`Are you sure you want to archive ${
           vehicle?.name ? `vehicle ${vehicle.name}` : "this vehicle"
-        }? This action cannot be undone.`}
-        confirmLabel="Delete vehicle"
-        confirmingLabel="Deleting…"
+        }? It will be hidden from all lists and dropdowns, and this cannot be undone yet.`}
+        confirmLabel="Archive vehicle"
+        confirmingLabel="Archiving…"
         confirming={deleting}
       />
     </div>

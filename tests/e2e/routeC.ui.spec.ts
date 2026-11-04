@@ -1,14 +1,10 @@
 /**
  * Route C through the pages. The ride is created by API setup so the UI test
- * can focus on the student confirmation dialog and admin requested-rides view.
+ * can focus on the student confirmation dialog and updated admin ride status.
  */
 import { test, expect } from "./fixtures";
 import { LOCATIONS } from "./seed";
-import {
-  createRequestedRide,
-  expectRouteStatus,
-  formatEstTime,
-} from "./routeTestHelpers";
+import { createRequestedRide, expectRouteStatus } from "./routeTestHelpers";
 
 test("route C: student cancellation requires confirmation (UI)", async ({
   apiAs,
@@ -25,16 +21,15 @@ test("route C: student cancellation requires confirmation (UI)", async ({
     hoursFromNow: 55,
   });
   const routeId = created.id;
-  const pickupTime = formatEstTime(created.scheduledPickupTime);
 
   const admin = await pageAs("admin");
   await admin.goto("/admin?tab=Rides");
-  const adminRow = admin
-    .getByRole("row")
-    .filter({ hasText: LOCATIONS.studentCenter.name })
-    .filter({ hasText: LOCATIONS.exhibitionHall.name })
-    .filter({ hasText: pickupTime });
+  const adminRow = admin.locator(`tr[data-route-id="${routeId}"]`);
   await expect(adminRow).toHaveCount(1);
+  await expect(
+    adminRow.getByText(LOCATIONS.exhibitionHall.name, { exact: true }),
+  ).toBeVisible();
+  await expect(adminRow.getByText("Requested", { exact: true })).toBeVisible();
 
   const student = await pageAs("student");
   await student.goto(`/rides/${routeId}`);
@@ -76,7 +71,9 @@ test("route C: student cancellation requires confirmation (UI)", async ({
   ).toBeHidden();
 
   await admin.reload();
-  await expect(adminRow).toHaveCount(0);
+  await expect(
+    adminRow.getByText("Cancelled by Student", { exact: true }),
+  ).toBeVisible();
   await expectRouteStatus(adminApi, routeId, "CancelledByStudent", "admin");
 
   expect(diag.apiFailures, diag.summary()).toHaveLength(0);

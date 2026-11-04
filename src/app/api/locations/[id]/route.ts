@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  deleteLocation,
+  archiveLocation,
   getLocationById,
 } from "@/server/db/actions/LocationAction";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
+import { emitLocationsUpdate } from "@/server/notifications/emitLocationsUpdate";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { errorResponse } from "@/utils/errors";
 
@@ -50,7 +51,7 @@ export async function DELETE(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -64,9 +65,10 @@ export async function DELETE(
     );
   }
   try {
-    await deleteLocation(id);
+    await archiveLocation(id, user.userId);
+    emitLocationsUpdate();
     return NextResponse.json(
-      { message: "Location deleted successfully" },
+      { message: "Location archived" },
       { status: HTTP_STATUS_CODE.OK },
     );
   } catch (error) {

@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import AdminChatView from "@/app/admin/AdminChatView";
+import { routeStatusLabels } from "@/utils/route-status";
+import type { RouteStatus } from "@db/generated/enums";
 
 type RouteDetails = {
   student: { id: string; firstName: string; lastName: string };
   driver?: { id: string } | null;
-  status: string;
+  status: RouteStatus;
 };
 
 export default function AdminChatPage() {
@@ -72,7 +74,7 @@ export default function AdminChatPage() {
       </BogButton>
       <AdminChatView
         routeId={params.routeId}
-        rideLabel={`${route.student.firstName} ${route.student.lastName} · ${route.status}`}
+        rideLabel={`${route.student.firstName} ${route.student.lastName} · ${routeStatusLabels[route.status]}`}
         routeStatus={route.status}
         studentId={route.student.id}
         driverId={route.driver?.id ?? null}

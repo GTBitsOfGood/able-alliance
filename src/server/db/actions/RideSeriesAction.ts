@@ -21,7 +21,7 @@
 import { db } from "@db";
 import { Prisma } from "@db/generated/client";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
-import { addDays, addWeeks, endOfDay } from "date-fns";
+import { addDays, endOfDay, set } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { createRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/utils/types/rideSeries";
@@ -29,21 +29,74 @@ import type { RecurrenceRequest } from "@/utils/types/rideSeries";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import { ArgumentError, ConflictError } from "@/utils/errors";
 import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
+import { recordAudit } from "@db/audit";
 
 const TZ = "America/New_York";
+
+function seriesAuditSnapshot(series: {
+  id: string;
+  studentId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  frequency: string;
+  firstPickupTime: Date;
+  pickupWindowStartOffsetMs: number;
+  pickupWindowEndOffsetMs: number;
+  materializedThrough: Date;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: series.id,
+    studentId: series.studentId,
+    pickupLocation: series.pickupLocation,
+    dropoffLocation: series.dropoffLocation,
+    frequency: series.frequency,
+    firstPickupTime: series.firstPickupTime,
+    pickupWindowStartOffsetMs: series.pickupWindowStartOffsetMs,
+    pickupWindowEndOffsetMs: series.pickupWindowEndOffsetMs,
+    materializedThrough: series.materializedThrough,
+    active: series.active,
+    createdAt: series.createdAt,
+    updatedAt: series.updatedAt,
+  };
+}
 
 /** How far ahead rides are kept scheduled, in Eastern calendar days. */
 export const SCHEDULING_HORIZON_DAYS = 28;
 
 /**
- * The pickup instant of occurrence `weeks` after the first ride.
+ * The first occurrence on a later Eastern day than `after`, falling on one of
+ * `daysOfWeek` at the first ride's time of day.
  *
- * Addition happens in Eastern wall-clock time, so a 1:00 PM ride stays 1:00 PM
- * across a DST boundary instead of sliding to 12:00 or 2:00.
+ * `after` is always a previous occurrence (or the first ride), so its Eastern
+ * date is the day already handled. The arithmetic happens in Eastern wall-clock
+ * time, so a 1:00 PM ride stays 1:00 PM across a DST boundary instead of sliding
+ * to 12:00 or 2:00.
  */
-export function occurrenceAt(firstPickupTime: Date, weeks: number): Date {
-  const zoned = toZonedTime(firstPickupTime, TZ);
-  return fromZonedTime(addWeeks(zoned, weeks), TZ);
+export function nextOccurrence(
+  firstPickupTime: Date,
+  daysOfWeek: number[],
+  after: Date,
+): Date {
+  const timeOfDay = toZonedTime(firstPickupTime, TZ);
+  const handled = toZonedTime(after, TZ);
+  for (let offset = 1; offset <= 7; offset++) {
+    const day = addDays(handled, offset);
+    if (daysOfWeek.includes(day.getDay())) {
+      return fromZonedTime(
+        set(day, {
+          hours: timeOfDay.getHours(),
+          minutes: timeOfDay.getMinutes(),
+          seconds: timeOfDay.getSeconds(),
+          milliseconds: timeOfDay.getMilliseconds(),
+        }),
+        TZ,
+      );
+    }
+  }
+  throw new Error("Ride series has no days of week to repeat on");
 }
 
 /**
@@ -78,24 +131,48 @@ async function materializeSeries(
           `);
           const series = await tx.rideSeries.findUnique({
             where: { id: seriesId },
+            include: {
+              student: { select: { status: true } },
+              pickup: { select: { status: true } },
+              dropoff: { select: { status: true } },
+            },
           });
           if (!series?.active) return null;
+          if (
+            series.student.status === "archived" ||
+            series.pickup.status === "archived" ||
+            series.dropoff.status === "archived"
+          )
+            return null;
 
-          const elapsedMs =
-            series.materializedThrough.getTime() -
-            series.firstPickupTime.getTime();
-          const weeksDone = Math.max(
-            0,
-            Math.round(elapsedMs / (7 * 86400 * 1000)),
+          const next = nextOccurrence(
+            series.firstPickupTime,
+            series.daysOfWeek,
+            series.materializedThrough,
           );
-          const next = occurrenceAt(series.firstPickupTime, weeksDone + 1);
+          // Past its end date the series has nothing left to generate, so retire
+          // it instead of rechecking it on every cron tick.
+          if (series.endsAt && next > series.endsAt) {
+            await tx.rideSeries.update({
+              where: { id: seriesId },
+              data: { active: false },
+            });
+            return null;
+          }
           if (next > horizon) return null;
           // Missed occurrences are processed permanently, without creating old
           // requests or asking Mapbox for travel estimates in the past.
           if (next <= new Date()) {
-            await tx.rideSeries.update({
+            const updated = await tx.rideSeries.update({
               where: { id: seriesId },
               data: { materializedThrough: next },
+            });
+            await recordAudit(tx, {
+              entityType: "RideSeries",
+              entityId: updated.id,
+              action: "Update",
+              before: seriesAuditSnapshot(series),
+              after: seriesAuditSnapshot(updated),
             });
             return { route: null };
           }
@@ -124,11 +201,18 @@ async function materializeSeries(
                     next.getTime() + series.pickupWindowEndOffsetMs,
                   ),
                 },
-                { seriesId, tx },
+                { seriesId, tx, actorId: null },
               );
-          await tx.rideSeries.update({
+          const updatedSeries = await tx.rideSeries.update({
             where: { id: seriesId },
             data: { materializedThrough: next },
+          });
+          await recordAudit(tx, {
+            entityType: "RideSeries",
+            entityId: updatedSeries.id,
+            action: "Update",
+            before: seriesAuditSnapshot(series),
+            after: seriesAuditSnapshot(updatedSeries),
           });
           return { route };
         },
@@ -187,6 +271,7 @@ export async function materializeDueSeries(
 export async function createRideSeries(
   data: CreateRouteInput,
   recurrence: RecurrenceRequest,
+  actorId: string,
 ) {
   data = createRouteSchema.parse(data);
   recurrence = recurrenceRequestSchema.parse(recurrence);
@@ -211,6 +296,22 @@ export async function createRideSeries(
     throw new ArgumentError("Pickup window offsets are out of range");
   }
 
+  const firstWeekday = toZonedTime(data.scheduledPickupTime, TZ).getDay();
+  const daysOfWeek = [...new Set(recurrence.daysOfWeek ?? [firstWeekday])].sort(
+    (a, b) => a - b,
+  );
+  if (!daysOfWeek.includes(firstWeekday)) {
+    throw new ArgumentError("Repeat days must include the first ride's day");
+  }
+  const endsAt = recurrence.endsOn
+    ? fromZonedTime(`${recurrence.endsOn}T23:59:59.999`, TZ)
+    : null;
+  if (endsAt && endsAt < data.scheduledPickupTime) {
+    throw new ArgumentError(
+      "Recurring rides must end on or after the first ride",
+    );
+  }
+
   // The template and first ride become visible together. A failed first ride
   // rolls back the template, so the cron cannot generate orphaned future rides.
   let created;
@@ -223,13 +324,26 @@ export async function createRideSeries(
             pickupLocation: data.pickupLocation.toLowerCase(),
             dropoffLocation: data.dropoffLocation.toLowerCase(),
             frequency: recurrence.frequency,
+            daysOfWeek,
             firstPickupTime: data.scheduledPickupTime,
+            endsAt,
             pickupWindowStartOffsetMs: windowStartOffset,
             pickupWindowEndOffsetMs: windowEndOffset,
             materializedThrough: data.scheduledPickupTime,
           },
         });
-        const firstRoute = await createRoute(data, { seriesId: series.id, tx });
+        await recordAudit(tx, {
+          actorId,
+          entityType: "RideSeries",
+          entityId: series.id,
+          action: "Create",
+          after: seriesAuditSnapshot(series),
+        });
+        const firstRoute = await createRoute(data, {
+          seriesId: series.id,
+          tx,
+          actorId,
+        });
         return { series, firstRoute };
       },
       { timeout: 60000 },
@@ -258,10 +372,28 @@ export async function createRideSeries(
 }
 
 /** Stop future generation for a series without touching rides already created. */
-export async function deactivateRideSeries(seriesId: string): Promise<boolean> {
-  const { count } = await db.rideSeries.updateMany({
-    where: { id: seriesId.toLowerCase() },
-    data: { active: false },
+export async function deactivateRideSeries(
+  seriesId: string,
+  actorId: string | null = null,
+): Promise<boolean> {
+  const changed = await db.$transaction(async (tx) => {
+    const before = await tx.rideSeries.findUnique({
+      where: { id: seriesId.toLowerCase() },
+    });
+    if (!before) return false;
+    const updated = await tx.rideSeries.update({
+      where: { id: before.id },
+      data: { active: false },
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "RideSeries",
+      entityId: updated.id,
+      action: "Update",
+      before: seriesAuditSnapshot(before),
+      after: seriesAuditSnapshot(updated),
+    });
+    return true;
   });
-  return count !== 0;
+  return changed;
 }

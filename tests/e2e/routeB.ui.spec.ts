@@ -6,14 +6,20 @@
  *   student  /rides/new          fills the form            Requested
  *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
  *   driver   /rides/:id          Start ride                En-route
- *   driver   /rides/:id          Student picked up         Pickedup
+ *   driver   /rides/:id          Student picked up         Picked up
  *   driver   /rides/:id          Student dropped off       Completed
  *   student  /rides/:id          sees Completed
  */
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
-import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-import { estDateDaysFromNow, nextServiceDate } from "./routeTestHelpers";
+import { LOCATIONS } from "./seed";
+import {
+  clearLocations,
+  nextServiceDate,
+  selectLocation,
+  scheduleRideInAdmin,
+  showCalendarMonth,
+} from "./routeTestHelpers";
 
 /** TimeInput is a text box with a listbox; typing then Enter commits the first match. */
 async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
@@ -36,11 +42,8 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     student.getByRole("heading", { name: "Request Ride" }),
   ).toBeVisible();
 
-  const today = estDateDaysFromNow(0);
   const rideDate = nextServiceDate();
-  if (rideDate.getMonth() !== today.getMonth()) {
-    await student.getByRole("button", { name: "Next month" }).click();
-  }
+  await showCalendarMonth(student, rideDate);
   await student
     .getByRole("button", { name: String(rideDate.getDate()), exact: true })
     .click();
@@ -50,12 +53,13 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   await pickTime(student.locator("#pickup-window-from"), "9:30 AM");
   await pickTime(student.locator("#pickup-window-to"), "10:30 AM");
 
-  await student
-    .getByRole("combobox", { name: "Pickup location" })
-    .selectOption({ label: LOCATIONS.exhibitionHall.name });
-  await student
-    .getByRole("combobox", { name: "Dropoff location" })
-    .selectOption({ label: LOCATIONS.techSquare.name });
+  await clearLocations(student);
+  await selectLocation(
+    student,
+    "Pickup location",
+    LOCATIONS.exhibitionHall.name,
+  );
+  await selectLocation(student, "Dropoff location", LOCATIONS.techSquare.name);
 
   const created = student.waitForResponse(
     (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",
@@ -69,33 +73,7 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   // ── Admin schedules it ─────────────────────────────────────────────────
   const admin = await pageAs("admin");
   await admin.goto("/admin?tab=Rides");
-  const row = admin
-    .getByRole("row")
-    .filter({ hasText: PERSONAS.student.lastName })
-    .filter({ hasText: LOCATIONS.exhibitionHall.name })
-    .filter({ hasText: LOCATIONS.techSquare.name });
-  await expect(row).toHaveCount(1);
-
-  await row.getByText("Select driver").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
-    })
-    .click();
-  await row.getByText("Select vehicle").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${VEHICLE.name} (${VEHICLE.licensePlate})`,
-    })
-    .click();
-
-  const scheduled = admin.waitForResponse((r) =>
-    r.url().endsWith("/api/routes/schedule"),
-  );
-  await row.getByRole("button", { name: "Assign" }).click();
-  const scheduleRes = await scheduled;
-  expect(scheduleRes.status(), await scheduleRes.text()).toBe(200);
-  await expect(row).toHaveCount(0);
+  await scheduleRideInAdmin(admin, routeId);
 
   // ── Driver runs the ride ───────────────────────────────────────────────
   const driver = await pageAs("driver");
@@ -119,7 +97,7 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     pickupDialog.getByRole("heading", { name: "Student Picked Up" }),
   ).toBeVisible();
   await pickupDialog.getByRole("button", { name: "Confirm Pickup" }).click();
-  await expect(chip).toHaveText("Pickedup");
+  await expect(chip).toHaveText("Picked up");
   await expect(
     driver.getByRole("button", { name: "Student dropped off" }),
   ).toBeVisible();

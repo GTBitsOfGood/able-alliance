@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
 import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
+import BogIcon from "@/components/BogIcon/BogIcon";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
@@ -79,6 +80,7 @@ export default function RidesPage() {
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [requestMenuOpen, setRequestMenuOpen] = useState(false);
 
   useEffect(() => {
     // Date-dependent UI must wait until hydration finishes.
@@ -119,7 +121,7 @@ export default function RidesPage() {
 
   // Drivers get their own subscription inside DriverRidesView.
   useRouteUpdates(() => {
-    if (mounted && session?.user?.type === "Student") void fetchRides();
+    if (mounted && session?.user?.activeType === "Student") void fetchRides();
   });
 
   const handleCancel = useCallback(async (routeId: string) => {
@@ -188,7 +190,7 @@ export default function RidesPage() {
     );
   }
 
-  if (session?.user?.type === "Driver") {
+  if (session?.user?.activeType === "Driver") {
     return (
       <div className={styles.ridesPage}>
         <DriverRidesView userId={session.user.userId} />
@@ -249,19 +251,37 @@ export default function RidesPage() {
   );
 
   const requestRideButton = (
-    <Link href="/rides/new" className={styles.requestRideButtonLink}>
-      <BogButton
-        variant="primary"
-        size="medium"
-        className={styles.requestRideButton}
-        iconProps={{
-          position: "left",
-          iconProps: { name: "plus", size: 20 },
-        }}
-      >
-        Request new ride
-      </BogButton>
-    </Link>
+    <div className={styles.requestRideButtonGroup}>
+      <Link href="/rides/new" className={styles.requestRideButtonLink}>
+        <BogButton className={styles.requestRideButton}>
+          <span className={styles.requestRideButtonContent}>
+            <BogIcon name="plus" size={20} color="currentColor" />
+            Request new ride
+          </span>
+        </BogButton>
+      </Link>
+      <div className={styles.requestRideMenuWrap}>
+        <BogButton
+          className={styles.requestRideMenuButton}
+          aria-label="Request multiple rides"
+          aria-expanded={requestMenuOpen}
+          aria-haspopup="menu"
+          onClick={() => setRequestMenuOpen((open) => !open)}
+        >
+          <BogIcon name="chevron-down" size={20} color="currentColor" />
+        </BogButton>
+        {requestMenuOpen && (
+          <Link
+            href="/rides/new/batch"
+            className={styles.requestRidePopover}
+            role="menuitem"
+            onClick={() => setRequestMenuOpen(false)}
+          >
+            Request multiple rides
+          </Link>
+        )}
+      </div>
+    </div>
   );
 
   return (

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     });
   }
   try {
-    const created = await createAccommodation(parsed.data.label);
+    const created = await createAccommodation(parsed.data.label, user.userId);
     return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
   } catch (error) {
     return errorResponse(error);

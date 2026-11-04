@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromRequest();
     userId = user.userId;
-    type = user.type;
+    type = user.activeType;
   } catch {
     return NextResponse.json(
       { error: "Unauthorized" },
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    const updated = await completeRoute(routeId);
+    const updated = await completeRoute(routeId, userId);
     return NextResponse.json(routeResponseForRole(updated, type), {
       status: HTTP_STATUS_CODE.OK,
     });

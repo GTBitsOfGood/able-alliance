@@ -1,3 +1,4 @@
+import { hasUserType } from "@/utils/userTypes";
 import { findBookingConflicts } from "@/server/scheduling/autoSchedule";
 import { db } from "@db";
 import { Prisma, RouteStatus } from "@db/generated/client";
@@ -21,6 +22,37 @@ import {
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
+import { recordAudit } from "@db/audit";
+
+function routeAuditSnapshot(route: {
+  id: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  studentId: string;
+  driverId: string | null;
+  vehicleId: string | null;
+  scheduledPickupTime: Date;
+  pickupWindowStart: Date;
+  pickupWindowEnd: Date;
+  estimatedDropoffTime: Date | null;
+  status: RouteStatus;
+  seriesId: string | null;
+}) {
+  return {
+    id: route.id,
+    pickupLocation: route.pickupLocation,
+    dropoffLocation: route.dropoffLocation,
+    studentId: route.studentId,
+    driverId: route.driverId,
+    vehicleId: route.vehicleId,
+    scheduledPickupTime: route.scheduledPickupTime,
+    pickupWindowStart: route.pickupWindowStart,
+    pickupWindowEnd: route.pickupWindowEnd,
+    estimatedDropoffTime: route.estimatedDropoffTime,
+    status: route.status,
+    seriesId: route.seriesId,
+  };
+}
 
 async function sendEmailSafely(label: string, send: () => Promise<void>) {
   try {
@@ -38,7 +70,11 @@ function dispatchNotifications(tasks: Promise<void>[]) {
 
 export async function createRoute(
   data: CreateRouteInput,
-  options?: { seriesId?: string; tx?: Prisma.TransactionClient },
+  options?: {
+    seriesId?: string;
+    tx?: Prisma.TransactionClient;
+    actorId?: string | null;
+  },
 ) {
   const client = options?.tx ?? db;
   const parsed = createRouteSchema.parse(data);
@@ -56,7 +92,7 @@ export async function createRoute(
   if (!pickup) throw new ArgumentError("Pickup location not found");
   if (!dropoff) throw new ArgumentError("Dropoff location not found");
   if (!student) throw new ArgumentError("Student not found");
-  if (student.type !== "Student")
+  if (!hasUserType(student, "Student"))
     throw new ArgumentError("Referenced user is not a student");
   const existing = await client.route.findUnique({
     where: {
@@ -74,8 +110,8 @@ export async function createRoute(
     dropoff.longitude,
     input.scheduledPickupTime,
   );
-  try {
-    const route = await client.route.create({
+  const persist = async (tx: Prisma.TransactionClient) => {
+    const route = await tx.route.create({
       data: {
         pickupLocation: input.pickupLocation,
         dropoffLocation: input.dropoffLocation,
@@ -92,6 +128,19 @@ export async function createRoute(
       },
       include: studentRouteInclude,
     });
+    await recordAudit(tx, {
+      actorId: options?.actorId,
+      entityType: "Route",
+      entityId: route.id,
+      action: "Create",
+      after: routeAuditSnapshot(route),
+    });
+    return route;
+  };
+  try {
+    const route = options?.tx
+      ? await persist(options.tx)
+      : await db.$transaction(persist);
     if (!options?.tx) emitRouteUpdate(route);
     return route;
   } catch (error) {
@@ -114,11 +163,21 @@ export async function getRouteById(id: string, role: UserType) {
   if (!route) throw new NotFoundError("Route not found");
   return route;
 }
-export async function deleteRoute(id: string) {
+export async function deleteRoute(id: string, actorId: string) {
   try {
-    const route = await db.route.delete({
-      where: { id: id.toLowerCase() },
-      include: adminRouteInclude,
+    const route = await db.$transaction(async (tx) => {
+      const removed = await tx.route.delete({
+        where: { id: id.toLowerCase() },
+        include: adminRouteInclude,
+      });
+      await recordAudit(tx, {
+        actorId,
+        entityType: "Route",
+        entityId: removed.id,
+        action: "Delete",
+        before: routeAuditSnapshot(removed),
+      });
+      return removed;
     });
     emitRouteUpdate(route);
     return route;
@@ -160,11 +219,12 @@ export async function getRoutes(
     : db.route.findMany({ include: studentRouteInclude, where });
 }
 
-export async function completeRoute(routeId: string) {
+export async function completeRoute(routeId: string, actorId: string) {
   const route = await transitionRoute(
     routeId,
     [RouteStatus.Pickedup],
     RouteStatus.Completed,
+    actorId,
   );
 
   const studentUser = route.student;
@@ -192,8 +252,8 @@ export async function completeRoute(routeId: string) {
 export async function cancelRoute(
   routeId: string,
   status:
-    | typeof RouteStatus.CancelledByStudent
-    | typeof RouteStatus.CancelledByAdmin = RouteStatus.CancelledByStudent,
+    typeof RouteStatus.CancelledByStudent | typeof RouteStatus.CancelledByAdmin,
+  actorId: string,
 ) {
   if (
     status !== RouteStatus.CancelledByStudent &&
@@ -209,6 +269,7 @@ export async function cancelRoute(
       RouteStatus.Pickedup,
     ],
     status,
+    actorId,
   );
   const studentUser = route.student;
   if (studentUser && studentUser.settings?.rideCancelled) {
@@ -319,11 +380,12 @@ export async function delayRoute(routeId: string, minutes: number) {
   return route;
 }
 
-export async function startRoute(routeId: string) {
+export async function startRoute(routeId: string, actorId: string) {
   const route = await transitionRoute(
     routeId,
     [RouteStatus.Scheduled],
     RouteStatus.EnRoute,
+    actorId,
   );
   const studentUser = route.student;
   if (studentUser && studentUser.settings?.driverEnRoute) {
@@ -352,14 +414,20 @@ export async function startRoute(routeId: string) {
   return route;
 }
 
-export const pickupStudent = (routeId: string) =>
-  transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Pickedup);
+export const pickupStudent = (routeId: string, actorId: string) =>
+  transitionRoute(
+    routeId,
+    [RouteStatus.EnRoute],
+    RouteStatus.Pickedup,
+    actorId,
+  );
 
-export const markRouteMissing = (routeId: string) =>
+export const markRouteMissing = (routeId: string, actorId: string) =>
   transitionRoute(
     routeId,
     [RouteStatus.Scheduled, RouteStatus.EnRoute],
     RouteStatus.Missing,
+    actorId,
   );
 
 const LOCK_WAIT_MS = 10_000;
@@ -411,15 +479,31 @@ export class BookingConflictError extends ConflictError {
   }
 }
 
+/**
+ * `from` lists the statuses the ride may be assigned out of. It defaults to
+ * Requested — the first assignment. Admins reassigning an already-scheduled
+ * ride pass Scheduled as well; bulk and automatic scheduling keep the default
+ * so they can never touch a ride an admin has already placed.
+ */
 export async function scheduleRoute(
   routeId: string,
   driverId: string,
   vehicleId: string,
+  actorId: string,
+  from: RouteStatus[] = [RouteStatus.Requested],
 ) {
   return withSchedulingLock(
     schedulingLockKeys([{ driverId, vehicleId }]),
     (tx, afterCommit) =>
-      scheduleRouteWhileLocked(routeId, driverId, vehicleId, tx, afterCommit),
+      scheduleRouteWhileLocked(
+        routeId,
+        driverId,
+        vehicleId,
+        tx,
+        afterCommit,
+        actorId,
+        from,
+      ),
   );
 }
 
@@ -430,42 +514,86 @@ export async function scheduleRouteWhileLocked(
   vehicleId: string,
   tx: Prisma.TransactionClient,
   afterCommit: (() => void)[],
+  actorId: string,
+  from: RouteStatus[] = [RouteStatus.Requested],
 ) {
-  const assigned = await assignRoute(routeId, driverId, vehicleId, tx);
-  const { route, driver } = assigned;
+  const assigned = await assignRoute(
+    routeId,
+    driverId,
+    vehicleId,
+    tx,
+    actorId,
+    from,
+  );
+  const { route, driver, priorDriverId, previousDriver, unchanged } = assigned;
   afterCommit.push(() => {
     emitRouteUpdate(route);
+
+    // Saving the same driver and vehicle changes nothing worth announcing.
+    if (unchanged) return;
+
+    const driverName = `${driver.firstName} ${driver.lastName}`;
+    const rideTime = `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`;
+    // Null before the first assignment; set when an admin swaps the driver.
+    const driverChanged = previousDriver != null;
+    // Everything else is a vehicle swap that leaves the driver in place.
+    const vehicleOnly = priorDriverId != null && !driverChanged;
+
+    // The driver who lost the ride hears about it too. There is no email
+    // template for a reassignment yet, so this one is in-app only.
+    if (driverChanged && previousDriver.settings?.rideAssigned) {
+      dispatchNotifications([
+        emitToast(previousDriver.id.toString(), {
+          type: "warn",
+          message: `Your ${rideTime} ride has been reassigned to another driver.`,
+        }),
+      ]);
+    }
 
     const studentUser = route.student;
     if (studentUser?.settings?.driverAssigned) {
       dispatchNotifications([
-        sendEmailSafely("rideConfirmed", () =>
-          EmailClient.rideConfirmed(route.id.toString()),
-        ),
+        ...(vehicleOnly
+          ? []
+          : [
+              sendEmailSafely("rideConfirmed", () =>
+                EmailClient.rideConfirmed(route.id.toString()),
+              ),
+            ]),
         emitToast(studentUser.id.toString(), {
           type: "success",
-          message: `Your driver ${driver.firstName} ${driver.lastName} has been assigned.`,
+          message: vehicleOnly
+            ? `The vehicle for your ${rideTime} ride has changed.`
+            : driverChanged
+              ? `Your driver for ${rideTime} is now ${driverName}.`
+              : `Your driver ${driverName} has been assigned.`,
         }),
       ]);
     }
 
     if (driver.settings?.rideAssigned) {
       dispatchNotifications([
-        sendEmailSafely("rideAssigned", () =>
-          EmailClient.rideAssigned(
-            driver.email,
-            driver.preferredName ?? `${driver.firstName} ${driver.lastName}`,
-            {
-              rideId: route.id.toString(),
-              pickup: route.pickupLocation.toString(),
-              dropoff: route.dropoffLocation.toString(),
-              time: `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`,
-            },
-          ),
-        ),
+        ...(vehicleOnly
+          ? []
+          : [
+              sendEmailSafely("rideAssigned", () =>
+                EmailClient.rideAssigned(
+                  driver.email,
+                  driver.preferredName ?? driverName,
+                  {
+                    rideId: route.id.toString(),
+                    pickup: route.pickupLocation.toString(),
+                    dropoff: route.dropoffLocation.toString(),
+                    time: rideTime,
+                  },
+                ),
+              ),
+            ]),
         emitToast(driver.id.toString(), {
           type: "info",
-          message: "You have been assigned a new ride.",
+          message: vehicleOnly
+            ? `The vehicle for your ${rideTime} ride has changed.`
+            : "You have been assigned a new ride.",
         }),
       ]);
     }
@@ -479,15 +607,17 @@ async function assignRoute(
   driverId: string,
   vehicleId: string,
   tx: Prisma.TransactionClient,
+  actorId: string,
+  from: RouteStatus[] = [RouteStatus.Requested],
 ) {
   routeId = routeId.toLowerCase();
   driverId = driverId.toLowerCase();
   vehicleId = vehicleId.toLowerCase();
+  const expected = `Route is not in ${from.join(" or ")} status`;
   try {
     const route = await tx.route.findUnique({ where: { id: routeId } });
     if (!route) throw new NotFoundError("Route not found");
-    if (route.status !== RouteStatus.Requested)
-      throw new ConflictError("Route is no longer in Requested status");
+    if (!from.includes(route.status)) throw new ConflictError(expected);
     const driverRow = await tx.user.findUnique({
       where: { id: driverId },
       include: userInclude,
@@ -495,9 +625,13 @@ async function assignRoute(
     const vehicleRow = await tx.vehicle.findUnique({
       where: { id: vehicleId },
     });
-    if (!driverRow || driverRow.type !== "Driver")
+    if (!driverRow || !hasUserType(driverRow, "Driver"))
       throw new ArgumentError("Driver not found or not a driver");
+    if (driverRow.status === "archived")
+      throw new ArgumentError("Driver is archived and cannot be assigned");
     if (!vehicleRow) throw new ArgumentError("Vehicle not found");
+    if (vehicleRow.status === "archived")
+      throw new ArgumentError("Vehicle is archived and cannot be assigned");
     const driver = driverRow;
     const startTime = estTimeStr(route.scheduledPickupTime);
     const day = estDayOfWeek(route.scheduledPickupTime);
@@ -520,7 +654,7 @@ async function assignRoute(
     );
     if (conflicts.length) throw new BookingConflictError(conflicts);
     const { count } = await tx.route.updateMany({
-      where: { id: routeId, status: RouteStatus.Requested },
+      where: { id: routeId, status: { in: from } },
       data: {
         driverId,
         vehicleId,
@@ -533,13 +667,34 @@ async function assignRoute(
         select: { id: true },
       });
       if (!current) throw new NotFoundError("Route not found");
-      throw new ConflictError("Route is no longer in Requested status");
+      throw new ConflictError(expected);
     }
     const updated = await tx.route.findUniqueOrThrow({
       where: { id: routeId },
       include: adminRouteInclude,
     });
-    return { route: updated, driver };
+    await recordAudit(tx, {
+      actorId,
+      entityType: "Route",
+      entityId: updated.id,
+      action: "Update",
+      before: routeAuditSnapshot(route),
+      after: routeAuditSnapshot(updated),
+    });
+    // A reassignment leaves the previous driver to be told they are off the
+    // ride; an unchanged save should notify nobody at all.
+    const priorDriverId = route.driverId?.toLowerCase() ?? null;
+    const previousDriver =
+      priorDriverId && priorDriverId !== driverId
+        ? await tx.user.findUnique({
+            where: { id: priorDriverId },
+            include: userInclude,
+          })
+        : null;
+    const unchanged =
+      priorDriverId === driverId &&
+      route.vehicleId?.toLowerCase() === vehicleId;
+    return { route: updated, driver, priorDriverId, previousDriver, unchanged };
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -553,9 +708,12 @@ export async function transitionRoute(
   routeId: string,
   expected: RouteStatus[],
   status: RouteStatus,
+  actorId: string,
 ) {
   routeId = routeId.toLowerCase();
   const route = await db.$transaction(async (tx) => {
+    const before = await tx.route.findUnique({ where: { id: routeId } });
+    if (!before) throw new NotFoundError("Route not found");
     const { count } = await tx.route.updateMany({
       where: {
         id: routeId,
@@ -574,6 +732,14 @@ export async function transitionRoute(
     const updated = await tx.route.findUniqueOrThrow({
       where: { id: routeId },
       include: adminRouteInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "Route",
+      entityId: updated.id,
+      action: "Update",
+      before: routeAuditSnapshot(before),
+      after: routeAuditSnapshot(updated),
     });
     return updated;
   });

@@ -10,6 +10,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid_ticket: "Your login ticket was invalid or expired.",
   user_not_found:
     "No account found. If you are a student, contact Office of Disability Services to register an account.",
+  account_archived:
+    "This account has been archived. Contact an administrator if you believe this is a mistake.",
   cas_unavailable: "The authentication server is unavailable.",
   cas_misconfigured:
     "Single sign-on is not configured correctly. Please contact an administrator.",

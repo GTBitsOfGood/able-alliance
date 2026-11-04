@@ -258,7 +258,7 @@ export function ProfileRidesTab({
                       ? route.driver
                         ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
                         : "—"
-                      : `${route.student.firstName} ${route.student.lastName}`.trim();
+                      : `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
                   const col2 =
                     userType === "Vehicle"
                       ? route.driver

@@ -27,7 +27,7 @@ export async function POST(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -82,7 +82,7 @@ export async function POST(
 
     for (const { rideId, vehicleId } of parsedBody.data.rides) {
       try {
-        await scheduleRoute(rideId, driverId, vehicleId);
+        await scheduleRoute(rideId, driverId, vehicleId, user.userId);
         results.push({ rideId, success: true });
       } catch (error) {
         if (!(error instanceof HttpError) || error.statusCode >= 500)

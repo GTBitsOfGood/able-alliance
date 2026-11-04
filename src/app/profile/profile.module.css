@@ -99,10 +99,6 @@
   border-bottom: 2px solid #22070b;
 }
 
-.ridesPlaceholder {
-  min-height: 20rem;
-}
-
 .profileCard {
   padding: 3.2rem;
   border-radius: 0.8rem;
@@ -137,6 +133,11 @@
   font-size: 1.3rem;
   color: var(--color-status-red-text);
   margin-bottom: 1.6rem;
+}
+
+.notificationSettings {
+  display: grid;
+  gap: 1.2rem;
 }
 
 /* Field rows layout */
@@ -355,16 +356,6 @@
 
 .deleteButton:hover {
   background: var(--color-status-red-fill);
-}
-
-.shiftCard {
-  margin-top: 2rem;
-  padding: 1.75rem 2rem;
-  border-radius: 0.75rem;
-  border: 0.1rem solid var(--color-grey-stroke-weak);
-  background-color: var(--color-solid-bg-base);
-  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.04);
-  max-width: 72rem;
 }
 
 .shiftEditor {

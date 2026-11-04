@@ -26,10 +26,10 @@ export async function GET(
     );
   }
   try {
-    const route = await getRouteById(id, user.type);
+    const route = await getRouteById(id, user.activeType);
     // Only allow: Admin/SuperAdmin, or owner (student.id or driver.id matches userId)
     if (
-      isAdmin(user.type) ||
+      isAdmin(user.activeType) ||
       route.student?.id === user.userId ||
       route.driver?.id === user.userId
     ) {
@@ -57,7 +57,7 @@ export async function DELETE(
       { status: HTTP_STATUS_CODE.UNAUTHORIZED },
     );
   }
-  if (!isAdmin(user.type)) {
+  if (!isAdmin(user.activeType)) {
     return NextResponse.json(
       { error: "Forbidden" },
       { status: HTTP_STATUS_CODE.FORBIDDEN },
@@ -71,7 +71,7 @@ export async function DELETE(
     );
   }
   try {
-    await deleteRoute(id);
+    await deleteRoute(id, user.userId);
     return NextResponse.json(
       { message: "Route deleted" },
       { status: HTTP_STATUS_CODE.OK },

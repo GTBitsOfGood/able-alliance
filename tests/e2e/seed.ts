@@ -15,7 +15,7 @@ export type Persona = Pick<
   User,
   "id" | "username" | "email" | "firstName" | "lastName"
 > & {
-  type: Extract<User["type"], "Student" | "Driver" | "Admin">;
+  types: User["types"];
 };
 
 /** Stable UUIDs let specs reference fixtures without lookups. */
@@ -29,7 +29,7 @@ export const PERSONAS = {
     email: "gburdell3@gatech.edu",
     firstName: "George",
     lastName: "Burdell",
-    type: "Student",
+    types: ["Student"],
   },
   driver: {
     id: fixtureId("a002"),
@@ -37,7 +37,7 @@ export const PERSONAS = {
     email: "driver1@gatech.edu",
     firstName: "Test",
     lastName: "Driver",
-    type: "Driver",
+    types: ["Driver"],
   },
   admin: {
     id: fixtureId("a003"),
@@ -45,9 +45,25 @@ export const PERSONAS = {
     email: "adminuser@gatech.edu",
     firstName: "Admin",
     lastName: "User",
-    type: "Admin",
+    types: ["Admin"],
   },
-} as const satisfies Record<string, Persona>;
+  multi: {
+    id: fixtureId("a004"),
+    username: "multirole",
+    email: "multirole@gatech.edu",
+    firstName: "Multi",
+    lastName: "Role",
+    types: ["Admin", "Driver", "Student"],
+  },
+  superAdmin: {
+    id: fixtureId("a005"),
+    username: "superadmin",
+    email: "superadmin@gatech.edu",
+    firstName: "Super",
+    lastName: "Admin",
+    types: ["SuperAdmin"],
+  },
+} satisfies Record<string, Persona>;
 
 export type PersonaKey = keyof typeof PERSONAS;
 
@@ -57,18 +73,21 @@ export const LOCATIONS = {
     name: "Exhibition Hall",
     latitude: 33.7756,
     longitude: -84.4027,
+    status: "active",
   },
   techSquare: {
     id: fixtureId("b002"),
     name: "Tech Square Eastbound",
     latitude: 33.7767,
     longitude: -84.3891,
+    status: "active",
   },
   studentCenter: {
     id: fixtureId("b003"),
     name: "Student Center",
     latitude: 33.7739,
     longitude: -84.3983,
+    status: "active",
   },
 } as const;
 
@@ -89,7 +108,7 @@ function buildSeed() {
     lastName: p.lastName,
     username: p.username,
     email: p.email,
-    type: p.type,
+    types: p.types,
   });
   // On shift every day, all day, so the flow never trips the availability check.
   const allWeek = Array.from({ length: 7 }, (_, dayOfWeek) => ({
@@ -102,6 +121,12 @@ function buildSeed() {
       { ...user(PERSONAS.student), studentInfo: { create: {} } },
       { ...user(PERSONAS.driver), shifts: { create: allWeek } },
       user(PERSONAS.admin),
+      {
+        ...user(PERSONAS.multi),
+        studentInfo: { create: {} },
+        shifts: { create: allWeek },
+      },
+      user(PERSONAS.superAdmin),
     ],
     locations: Object.values(LOCATIONS).map((l) => ({
       id: l.id,
@@ -140,6 +165,7 @@ export async function resetAndSeed(url: string = E2E.databaseUrl) {
   try {
     const data = buildSeed();
     await db.$transaction(async (tx) => {
+      await tx.auditEntry.deleteMany();
       await tx.message.deleteMany();
       await tx.route.deleteMany();
       await tx.rideSeries.deleteMany();

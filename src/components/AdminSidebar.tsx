@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import styles from "./AdminSidebar.module.css";
+import { useAdminRides } from "@/app/admin/useAdminRides";
 
 type AdminTableType =
   | "Students"
@@ -17,6 +18,7 @@ type AdminTableType =
   | "Rides";
 
 function AdminSidebarContent() {
+  const { actionRequiredCount, loading } = useAdminRides();
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -24,7 +26,7 @@ function AdminSidebarContent() {
   const [directoryOpen, setDirectoryOpen] = useState(true);
   const [configOpen, setConfigOpen] = useState(true);
 
-  const userType = session?.user?.type;
+  const userType = session?.user?.activeType;
   const isSuperAdmin = userType === "SuperAdmin";
   const userId = session?.user?.userId;
   const fullName =
@@ -53,15 +55,14 @@ function AdminSidebarContent() {
           >
             <Image src="/car.svg" alt="" width={20} height={16} />
             <span>Rides</span>
-          </Link>
-
-          {/* Chats */}
-          <Link
-            href="/admin/chats"
-            className={`${styles.navItem} ${pathname.startsWith("/admin/chats") ? styles.active : ""}`}
-          >
-            <Image src="/folder.svg" alt="" width={20} height={20} />
-            <span>Chats</span>
+            {!loading && actionRequiredCount > 0 && (
+              <span
+                className={styles.notificationBadge}
+                aria-label={`${actionRequiredCount} rides require action`}
+              >
+                {actionRequiredCount}
+              </span>
+            )}
           </Link>
 
           {/* Shifts */}
@@ -80,6 +81,14 @@ function AdminSidebarContent() {
           >
             <Image src="/calendar.svg" alt="" width={20} height={20} />
             <span>Auto-Schedule</span>
+          </Link>
+
+          <Link
+            href="/admin/audit-log"
+            className={`${styles.navItem} ${pathname.startsWith("/admin/audit-log") ? styles.active : ""}`}
+          >
+            <Image src="/archive.svg" alt="" width={20} height={20} />
+            <span>Audit Log</span>
           </Link>
 
           {/* Directory */}

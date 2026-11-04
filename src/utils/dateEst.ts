@@ -84,6 +84,15 @@ export function formatEstDate(
   return date.toLocaleDateString("en-US", { timeZone: TZ, ...options });
 }
 
+/**
+ * Current America/New_York wall-clock time, as a Date whose local fields
+ * (getFullYear, getDate, getHours, …) read as New York time regardless of the
+ * browser's timezone. Use only its fields — its getTime() is not the real instant.
+ */
+export function estNowWallClock(): Date {
+  return toZonedTime(new Date(), TZ);
+}
+
 /** True if the UTC Date falls on today's calendar day in America/New_York. */
 export function isEstToday(date: Date): boolean {
   return estDateKey(date) === estDateKey(new Date());
