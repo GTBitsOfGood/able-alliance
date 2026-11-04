@@ -97,3 +97,7 @@ export function estNowWallClock(): Date {
 export function isEstToday(date: Date): boolean {
   return estDateKey(date) === estDateKey(new Date());
 }
+
+export function withDelay(date: Date, delayMinutes: number): Date {
+  return new Date(date.getTime() + delayMinutes * 60_000);
+}

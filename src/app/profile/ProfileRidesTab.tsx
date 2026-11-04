@@ -1,9 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { routeStatusLabels } from "@/utils/route-status";
+import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
 import styles from "./profileRides.module.css";
-import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
+import {
+  estWeekRange,
+  formatEstTime,
+  formatEstDate,
+  withDelay,
+} from "@/utils/dateEst";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 
@@ -26,8 +31,8 @@ function fmtWeekLabel(start: Date, end: Date): string {
   return `Week of ${s} - ${e}`;
 }
 
-function fmtTime(iso: string): string {
-  return formatEstTime(new Date(iso));
+function fmtTime(iso: string, delayMinutes = 0): string {
+  return formatEstTime(withDelay(new Date(iso), delayMinutes));
 }
 
 function fmtDate(iso: string): string {
@@ -38,18 +43,27 @@ function fmtDate(iso: string): string {
   });
 }
 
-function statusChipStyle(status: Route["status"]): React.CSSProperties {
+function statusChipStyle(
+  status: Route["status"],
+  delayed = false,
+): React.CSSProperties {
+  if (delayed) {
+    return {
+      background: "var(--color-status-yellow)",
+      color: "var(--color-grey-text-strong)",
+    };
+  }
   switch (status) {
     case "Scheduled":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-grey-text-strong)",
       };
     case "EnRoute":
     case "Pickedup":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-grey-text-strong)",
       };
     case "Completed":
       return {
@@ -65,7 +79,7 @@ function statusChipStyle(status: Route["status"]): React.CSSProperties {
     case "CancelledByAdmin":
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-grey-text-strong)",
       };
     case "Missing":
       return {
@@ -256,9 +270,9 @@ export function ProfileRidesTab({
                         ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
                         : "—"
                       : (route.vehicle?.vehicleId ?? "—");
-                  const pickup = `${fmtTime(route.scheduledPickupTime)} @ ${route.pickup.name}`;
+                  const pickup = `${fmtTime(route.scheduledPickupTime, route.delayMinutes)} @ ${route.pickup.name}`;
                   const dropoff = route.estimatedDropoffTime
-                    ? `${fmtTime(route.estimatedDropoffTime)} @ ${route.dropoff.name}`
+                    ? `${fmtTime(route.estimatedDropoffTime, route.delayMinutes)} @ ${route.dropoff.name}`
                     : `— @ ${route.dropoff.name}`;
                   return (
                     <tr key={route.id} className={styles.row}>
@@ -272,9 +286,12 @@ export function ProfileRidesTab({
                       <td className={styles.td}>
                         <span
                           className={styles.statusChip}
-                          style={statusChipStyle(route.status)}
+                          style={statusChipStyle(
+                            route.status,
+                            isRouteDelayed(route),
+                          )}
                         >
-                          {routeStatusLabels[route.status]}
+                          {routeDisplayLabel(route)}
                         </span>
                       </td>
                     </tr>

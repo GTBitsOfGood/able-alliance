@@ -679,14 +679,6 @@ export function ProfileView({
                     label="Ride Completed"
                   />
                   <BogSwitch
-                    checked={draftNotifications.rideDelayed}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("rideDelayed", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Ride Delayed"
-                  />
-                  <BogSwitch
                     checked={draftNotifications.newMessageFromDriver}
                     onCheckedChange={(value) =>
                       handleNotificationToggle("newMessageFromDriver", value)
@@ -724,6 +716,17 @@ export function ProfileView({
                     label="Ride Cancelled"
                   />
                 </>
+              )}
+              {(hasUserType(displayUser, "Student") ||
+                hasUserType(displayUser, "Driver")) && (
+                <BogSwitch
+                  checked={draftNotifications.rideDelayed}
+                  onCheckedChange={(value) =>
+                    handleNotificationToggle("rideDelayed", value)
+                  }
+                  disabled={!editingNotifications}
+                  label="Ride Delayed"
+                />
               )}
             </div>
           </section>

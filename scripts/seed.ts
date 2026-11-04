@@ -490,6 +490,7 @@ async function seed() {
               pickupWindowStart: windowStart,
               pickupWindowEnd: windowEnd,
               estimatedDropoffTime: dropoff,
+              delayMinutes: 0,
               status: requested
                 ? "Requested"
                 : dropoff <= now

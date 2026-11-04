@@ -44,6 +44,7 @@
       &:disabled {
         cursor: not-allowed;
         background-color: var(--color-grey-fill-weak);
+        color: var(--color-grey-off-state);
       }
 
       &:not(:disabled):hover {

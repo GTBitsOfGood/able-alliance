@@ -249,11 +249,12 @@ async function loadDay(date: string, client: Prisma.TransactionClient = db) {
         ? WHEELCHAIR_BOARDING_MIN
         : OTHER_ACCOMMODATION_BOARDING_MIN
       : 0;
-    const start = minutesFromDay(r.scheduledPickupTime, date);
+    const delayMinutes = r.delayMinutes ?? 0;
+    const start = minutesFromDay(r.scheduledPickupTime, date) + delayMinutes;
     const pickupLoc = r.pickup;
     const dropoffLoc = r.dropoff;
     const estimatedDropoff = r.estimatedDropoffTime
-      ? minutesFromDay(r.estimatedDropoffTime, date)
+      ? minutesFromDay(r.estimatedDropoffTime, date) + delayMinutes
       : null;
     const busyUntil =
       estimatedDropoff ??

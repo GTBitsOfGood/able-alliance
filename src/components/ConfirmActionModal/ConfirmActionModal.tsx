@@ -12,19 +12,25 @@ type ConfirmActionModalProps = {
   /** Modal heading, e.g. "Cancel this ride?" */
   title: string;
   /** Body copy explaining what the action does. */
-  description: React.ReactNode;
+  description?: React.ReactNode;
+  /** Optional children to render below the description, e.g. a form for additional input. */
+  children?: React.ReactNode;
   /** Label for the destructive confirm button, e.g. "Cancel ride". */
   confirmLabel: string;
   /** Label shown on the confirm button while the request is in flight. */
   confirmingLabel?: string;
   /** Label for the dismiss button. */
   cancelLabel?: string;
+  /** If true, the cancel button will be hidden. The X still works to close the modal. */
+  hideCancelButton?: boolean;
   /** True while the confirmed request is running — disables the buttons and
    *  prevents the modal from being dismissed. */
   confirming?: boolean;
   /** Confirm button color: "destructive" (red, default) or "primary" (navy)
    *  for non-destructive confirmations. */
   variant?: "destructive" | "primary";
+  /** Disable confirm without the in-flight state, e.g. until input is valid. */
+  confirmDisabled?: boolean;
 };
 
 /**
@@ -38,11 +44,14 @@ export default function ConfirmActionModal({
   onConfirm,
   title,
   description,
+  children,
   confirmLabel,
   confirmingLabel,
   cancelLabel = "Nevermind",
+  hideCancelButton = false,
   confirming = false,
   variant = "destructive",
+  confirmDisabled = false,
 }: ConfirmActionModalProps) {
   // While the request is in flight, don't let the modal be dismissed
   // (Escape, outside click, or the close button).
@@ -89,23 +98,30 @@ export default function ConfirmActionModal({
       }
     >
       <div className="flex flex-col gap-[4.8rem]">
-        <p className="m-0 text-paragraph-1 text-[var(--color-grey-text-weak)]">
-          {description}
-        </p>
+        {description && (
+          <p className="m-0 text-paragraph-1 text-[var(--color-grey-text-weak)]">
+            {description}
+          </p>
+        )}
+        {children && (
+          <div className="flex flex-col gap-[1.6rem]">{children}</div>
+        )}
         <div className="flex flex-wrap justify-end gap-[1.6rem]">
-          <BogButton
-            variant="secondary"
-            size="large"
-            disabled={confirming}
-            onClick={() => setOpen(false)}
-            style={{ fontWeight: 600 }}
-          >
-            {cancelLabel}
-          </BogButton>
+          {!hideCancelButton && (
+            <BogButton
+              variant="secondary"
+              size="large"
+              disabled={confirming}
+              onClick={() => setOpen(false)}
+              style={{ fontWeight: 600 }}
+            >
+              {cancelLabel}
+            </BogButton>
+          )}
           <BogButton
             variant="primary"
             size="large"
-            disabled={confirming}
+            disabled={confirming || confirmDisabled}
             onClick={() => void onConfirm()}
             style={{
               fontWeight: 600,

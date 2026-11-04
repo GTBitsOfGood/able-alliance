@@ -13,3 +13,6 @@ export enum HTTP_STATUS_CODE {
 // Pickup times and windows must fall inside these hours (America/New_York).
 export const SERVICE_START_TIME = "07:30";
 export const SERVICE_END_TIME = "19:45";
+
+// Maximum cumulative delay a student can report before cancelling their ride.
+export const MAX_DELAY_MINUTES = 15;

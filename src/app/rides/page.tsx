@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
 import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
 import {
@@ -80,6 +81,11 @@ export default function RidesPage() {
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [delayTargetId, setDelayTargetId] = useState<string | null>(null);
+  const [delaying, setDelaying] = useState(false);
+  const delayPending = useRef(false);
+  const [delayError, setDelayError] = useState<string | null>(null);
+  const delayTarget = routes.find((route) => route.id === delayTargetId);
   const [requestMenuOpen, setRequestMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -144,6 +150,34 @@ export default function RidesPage() {
       setCancellingId(null);
     }
   }, []);
+
+  const handleDelay = async (minutes: number) => {
+    if (!delayTargetId || delayPending.current) return;
+    delayPending.current = true;
+    setDelaying(true);
+    setDelayError(null);
+    try {
+      const res = await fetch("/api/routes/delay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeId: delayTargetId, delayMinutes: minutes }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? res.statusText);
+      }
+      const updated: Route = await res.json();
+      setRoutes((prev) =>
+        prev.map((route) => (route.id === updated.id ? updated : route)),
+      );
+      setDelayTargetId(null);
+    } catch (e) {
+      setDelayError(e instanceof Error ? e.message : "Failed to delay ride.");
+    } finally {
+      delayPending.current = false;
+      setDelaying(false);
+    }
+  };
 
   const thisWeekRange = React.useMemo(
     () =>
@@ -232,6 +266,11 @@ export default function RidesPage() {
                   href={`/rides/${route.id}`}
                   onCancel={(id) => setCancelTargetId(id)}
                   cancelling={cancellingId === route.id}
+                  onDelay={(id) => {
+                    setDelayError(null);
+                    setDelayTargetId(id);
+                  }}
+                  delaying={delaying && delayTargetId === route.id}
                 />
               ))}
             </div>
@@ -286,6 +325,22 @@ export default function RidesPage() {
 
   return (
     <div className={styles.ridesPage}>
+      {delayTarget && (
+        <DelayRideModal
+          open
+          onOpenChange={(open) => {
+            if (!open) setDelayTargetId(null);
+          }}
+          onConfirm={handleDelay}
+          currentDelayMinutes={delayTarget.delayMinutes ?? 0}
+          confirming={delaying}
+          delayActionError={delayError ?? undefined}
+          onCancelRide={() => {
+            setCancelTargetId(delayTarget.id);
+            setDelayTargetId(null);
+          }}
+        />
+      )}
       <ConfirmActionModal
         open={cancelTargetId !== null}
         onOpenChange={(open) => {

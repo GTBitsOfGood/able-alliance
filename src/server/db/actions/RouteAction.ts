@@ -22,6 +22,7 @@ import {
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
+import { MAX_DELAY_MINUTES } from "@/utils/consts";
 import { recordAudit } from "@db/audit";
 
 function routeAuditSnapshot(route: {
@@ -35,6 +36,7 @@ function routeAuditSnapshot(route: {
   pickupWindowStart: Date;
   pickupWindowEnd: Date;
   estimatedDropoffTime: Date | null;
+  delayMinutes: number;
   status: RouteStatus;
   seriesId: string | null;
 }) {
@@ -49,6 +51,7 @@ function routeAuditSnapshot(route: {
     pickupWindowStart: route.pickupWindowStart,
     pickupWindowEnd: route.pickupWindowEnd,
     estimatedDropoffTime: route.estimatedDropoffTime,
+    delayMinutes: route.delayMinutes,
     status: route.status,
     seriesId: route.seriesId,
   };
@@ -314,6 +317,106 @@ export async function cancelRoute(
       ]);
     }
   }
+
+  return route;
+}
+export async function delayRoute(
+  routeId: string,
+  minutes: number,
+  studentId: string,
+) {
+  if (
+    !Number.isInteger(minutes) ||
+    minutes <= 0 ||
+    minutes > MAX_DELAY_MINUTES
+  ) {
+    throw new ArgumentError(
+      `Delay must be a whole number from 1 to ${MAX_DELAY_MINUTES} minutes. Cancel your ride if you need longer.`,
+    );
+  }
+  routeId = routeId.toLowerCase();
+  const route = await db.$transaction(async (tx) => {
+    // Only allow delay if route is Scheduled or EnRoute. Checking status in the same query
+    // ensures that the route is not modified by another transaction like pickup or cancel
+    const { count } = await tx.route.updateMany({
+      where: {
+        id: routeId,
+        studentId: studentId.toLowerCase(),
+        status: { in: [RouteStatus.Scheduled, RouteStatus.EnRoute] },
+        // Check the total atomically so concurrent requests cannot exceed the ceiling.
+        delayMinutes: { lte: MAX_DELAY_MINUTES - minutes },
+      },
+      data: { delayMinutes: { increment: minutes } },
+    });
+
+    if (count === 0) {
+      const current = await tx.route.findUnique({
+        where: { id: routeId },
+        select: { id: true, status: true },
+      });
+      if (!current) {
+        throw new NotFoundError("Route not found");
+      }
+      throw new ConflictError(
+        `This ride cannot be delayed further. The total delay cannot exceed ${MAX_DELAY_MINUTES} minutes and the ride must be awaiting pickup. Cancel your ride if you need longer.`,
+      );
+    }
+
+    const updated = await tx.route.findUniqueOrThrow({
+      where: { id: routeId },
+      include: adminRouteInclude,
+    });
+    // The increment holds the row lock until commit. Derive the prior total
+    // from its result so concurrent delay requests get accurate audit entries.
+    await recordAudit(tx, {
+      actorId: studentId,
+      entityType: "Route",
+      entityId: updated.id,
+      action: "Update",
+      before: routeAuditSnapshot({
+        ...updated,
+        delayMinutes: updated.delayMinutes - minutes,
+      }),
+      after: routeAuditSnapshot(updated),
+    });
+    return updated;
+  });
+  emitRouteUpdate(route);
+
+  const shift = (date: Date) =>
+    new Date(date.getTime() + route.delayMinutes * 60 * 1000);
+  const tasks = [
+    sendEmailSafely("rideDelayed", () =>
+      EmailClient.rideDelayed(route.id, {
+        delay: `${route.delayMinutes} minutes`,
+        oldPickupTime: formatEstTime(route.scheduledPickupTime),
+        newPickupTime: formatEstTime(shift(route.scheduledPickupTime)),
+        oldDropoffTime: route.estimatedDropoffTime
+          ? formatEstTime(route.estimatedDropoffTime)
+          : "N/A",
+        newDropoffTime: route.estimatedDropoffTime
+          ? formatEstTime(shift(route.estimatedDropoffTime))
+          : "N/A",
+      }),
+    ),
+  ];
+  if (route.student.settings?.rideDelayed) {
+    tasks.push(
+      emitToast(route.student.id.toString(), {
+        type: "info",
+        message: `Your ride has been delayed by ${route.delayMinutes} minutes.`,
+      }),
+    );
+  }
+  if (route.driver?.settings?.rideDelayed) {
+    tasks.push(
+      emitToast(route.driver.id, {
+        type: "info",
+        message: `Your student reported a delay of ${route.delayMinutes} minutes for their ride.`,
+      }),
+    );
+  }
+  dispatchNotifications(tasks);
 
   return route;
 }
