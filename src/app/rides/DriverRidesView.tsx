@@ -11,11 +11,11 @@ import {
   estTimeStr,
   formatEstDate,
 } from "@/utils/dateEst";
-import type { Shift } from "@/utils/types/user";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import type { Shift } from "@/schemas/user";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
-import type { DriverRouteResponse as DriverRoute } from "@/utils/types/api";
+import type { DriverRouteResponse as DriverRoute } from "@/types/api";
 
 function formatDayRangeHeading(range: [Date, Date]) {
   return formatEstDate(range[0], {

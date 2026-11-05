@@ -5,7 +5,7 @@ import { isValidId } from "@/utils/ids";
 import {
   BookingConflictError,
   scheduleRoute,
-} from "@/server/db/actions/RouteAction";
+} from "@/server/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 

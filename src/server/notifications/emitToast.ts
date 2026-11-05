@@ -1,9 +1,6 @@
+import type { ToastPayload } from "@/types/notifications";
 import type { UserType } from "@db/generated/enums";
 import { TOAST_DELIVERY_TIMEOUT_MS } from "@/utils/consts";
-
-export type ToastType = "success" | "error" | "info" | "warn";
-
-export type ToastPayload = { type: ToastType; message: string };
 
 /**
  * Best-effort push of a real-time toast to a user's active-role connections.

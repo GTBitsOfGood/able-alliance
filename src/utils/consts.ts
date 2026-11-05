@@ -1,4 +1,4 @@
-import type { ToastPayload } from "@/server/notifications/emitToast";
+import type { ToastPayload } from "@/types/notifications";
 
 export enum HTTP_STATUS_CODE {
   BAD_REQUEST = 400,

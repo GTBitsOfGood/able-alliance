@@ -9,7 +9,7 @@ import BogTable, {
 } from "@/components/BogTable/BogTable";
 import styles from "./styles.module.css";
 
-import type { ShiftInstanceResponse as ShiftInstance } from "@/utils/types/api";
+import type { ShiftInstanceResponse as ShiftInstance } from "@/types/api";
 
 const WEEK_OPTIONS = [
   { label: "All", value: "all" },

@@ -35,6 +35,15 @@ export class InternalError extends HttpError {
   }
 }
 
+export class EmailFailedToSendException extends Error {
+  code: HTTP_STATUS_CODE = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
+
+  constructor(message = "Failed to send email") {
+    super(message);
+    this.name = "EmailFailedToSendException";
+  }
+}
+
 export function errorResponse(error: unknown) {
   if (error instanceof InternalError) {
     console.error("Internal API error", error);

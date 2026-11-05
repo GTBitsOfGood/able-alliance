@@ -1,7 +1,7 @@
 import styles from "./styles.module.css";
 import React, { useState } from "react";
-import type { IconProps } from "../../utils/design-system/types/types";
-import BogIcon from "../BogIcon/BogIcon";
+import type { IconProps } from "@/utils/design-system/types/types";
+import BogIcon from "@/components/BogIcon/BogIcon";
 
 interface BogTextInputProps {
   /** Whether or not the text input has multiple lines. */

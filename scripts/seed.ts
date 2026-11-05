@@ -17,8 +17,8 @@ import {
   type Prisma,
   type Route,
 } from "@db/generated/client";
-import type { LocationInput } from "@/utils/types";
-import type { VehicleInput } from "@/utils/types/vehicle";
+import type { LocationInput } from "@/schemas/location";
+import type { VehicleInput } from "@/schemas/vehicle";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 const DATABASE_URL =

@@ -1,5 +1,4 @@
-import { z } from "zod";
+import { idSchema } from "@/schemas/id";
 
-export const idSchema = z.uuid();
 export const isValidId = (id: unknown): id is string =>
   idSchema.safeParse(id).success;

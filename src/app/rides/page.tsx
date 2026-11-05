@@ -14,8 +14,8 @@ import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import {
   estDateKey,
   estDayRange,
@@ -24,7 +24,7 @@ import {
   isEstToday,
 } from "@/utils/dateEst";
 
-import type { RouteResponse as Route } from "@/utils/types/api";
+import type { RouteResponse as Route } from "@/types/api";
 
 function formatWeekRangeHeader(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };

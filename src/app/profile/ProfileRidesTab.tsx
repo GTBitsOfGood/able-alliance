@@ -11,10 +11,10 @@ import {
   formatEstDate,
   withDelay,
 } from "@/utils/dateEst";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
-import type { RouteResponse as Route } from "@/utils/types/api";
+import type { RouteResponse as Route } from "@/types/api";
 
 type Filter = "all" | "this-week" | "next-week";
 

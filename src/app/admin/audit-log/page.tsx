@@ -1,20 +1,20 @@
 "use client";
 
+import type { AuditEntry, AuditResponse } from "@/types/audit";
+
 import { useEffect, useRef, useState } from "react";
 import AdminRidesTable, {
   type ColumnHeader,
   type TableRow,
 } from "@/components/AdminRidesTable/AdminRidesTable";
-import RideFilter from "../RideFilter";
-import AuditHistoryModal from "./AuditHistoryModal";
+import RideFilter from "@/components/admin/RideFilter";
+import AuditHistoryModal from "@/components/admin/AuditHistoryModal";
 import {
-  type AuditEntry,
-  type AuditResponse,
   actorName,
   entryTime,
   fieldLabel,
   summaryValue,
-} from "./auditLog";
+} from "@/components/admin/auditLog";
 import styles from "./auditLog.module.css";
 
 const COLUMNS: ColumnHeader[] = [

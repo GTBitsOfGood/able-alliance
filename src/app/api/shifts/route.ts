@@ -1,7 +1,7 @@
-import type { ShiftInstanceResponse as ShiftInstance } from "@/utils/types/api";
+import type { ShiftInstanceResponse as ShiftInstance } from "@/types/api";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
-import { getUsers } from "@/server/db/actions/UserAction";
+import { getUsers } from "@/server/actions/UserAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { estWeekRange } from "@/utils/dateEst";
 import { addDays } from "date-fns";

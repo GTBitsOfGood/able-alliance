@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { DropdownMenu } from "radix-ui";
 import styles from "./styles.module.css";
-import BogIcon from "../BogIcon/BogIcon";
-import BogCheckbox from "../BogCheckbox/BogCheckbox";
-import BogRadioItem from "../BogRadioItem/BogRadioItem";
-import BogRadioGroup from "../BogRadioGroup/BogRadioGroup";
+import BogIcon from "@/components/BogIcon/BogIcon";
+import BogCheckbox from "@/components/BogCheckbox/BogCheckbox";
+import BogRadioItem from "@/components/BogRadioItem/BogRadioItem";
+import BogRadioGroup from "@/components/BogRadioGroup/BogRadioGroup";
 import { CheckedState } from "@radix-ui/react-checkbox";
 
 interface BogDropdownProps extends React.HTMLAttributes<HTMLDivElement> {

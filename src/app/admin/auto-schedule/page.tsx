@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useMeasure } from "react-use";
 import BogIcon from "@/components/BogIcon/BogIcon";
-import type { AutoSchedulePlan } from "@/server/scheduling/autoSchedule";
+import type { AutoSchedulePlan } from "@/types/autoSchedule";
 import styles from "./styles.module.css";
 
 type BlockKind = "existing" | "proposed" | "unassigned";

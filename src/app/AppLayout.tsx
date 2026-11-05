@@ -3,9 +3,9 @@
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import AppNavbar from "@/components/AppNavbar";
-import AdminSidebar from "@/components/AdminSidebar";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 import RoleSwitcher from "@/components/RoleSwitcher";
-import AdminRidesProvider from "./admin/AdminRidesProvider";
+import AdminRidesProvider from "@/components/admin/AdminRidesProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -23,7 +23,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Initial loading has no session. During a session update, keep the existing
   // layout and switcher mounted until navigation to the new role completes.
   if (status === "loading" && !hasSession) {
-    return <>{children}</>;
+    return null;
+  }
+
+  // A role switch updates the session before the full navigation completes.
+  // Admin pages must never render outside their role's provider.
+  if (!isAdmin && (pathname === "/admin" || pathname.startsWith("/admin/"))) {
+    return null;
   }
 
   if (isAdmin) {

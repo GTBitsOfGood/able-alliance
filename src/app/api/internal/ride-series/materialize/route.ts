@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { materializeDueSeries } from "@/server/db/actions/RideSeriesAction";
+import { materializeDueSeries } from "@/server/actions/RideSeriesAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
 

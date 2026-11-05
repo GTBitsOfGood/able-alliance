@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { vehicleSchema } from "@/utils/types/vehicle";
+import { vehicleSchema } from "@/schemas/vehicle";
 import {
   archiveVehicle,
   getVehicleById,
   updateVehicle,
-} from "@/server/db/actions/VehicleAction";
+} from "@/server/actions/VehicleAction";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function GET(

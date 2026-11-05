@@ -4,13 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
 import { ToastContainer, toast } from "react-toast";
-import type { UserType } from "@db/generated/enums";
-
-type ToastNotification = {
-  type: "success" | "error" | "info" | "warn";
-  message: string;
-  activeType: UserType;
-};
+import type { ToastNotification } from "@/types/notifications";
 
 // The per-user /notifications socket, shared so pages can listen for
 // real-time data events (see useRouteUpdates). Null until connected.

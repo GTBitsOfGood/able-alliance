@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authConfig } from "@/auth";
-import { casLogoutUrl, readCASConfig } from "@/server/cas/config";
+import { casLogoutUrl, readCASConfig } from "@/server/cas";
 
 /**
  * GET /api/auth/cas/logout

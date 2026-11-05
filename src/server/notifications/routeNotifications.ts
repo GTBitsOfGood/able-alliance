@@ -1,12 +1,13 @@
 import type { Prisma } from "@db/generated/client";
 import { RouteStatus } from "@db/generated/enums";
 
-import type { adminRouteInclude, userInclude } from "@/server/db/queries";
-import { EmailClient } from "@/server/email/EmailClient";
+import type { adminRouteInclude, userInclude } from "@/server/queries";
+import { EmailClient } from "@/server/EmailClient";
 import { formatEstDate, formatEstTime } from "@/utils/dateEst";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
 
-import { emitToast, type ToastPayload } from "./emitToast";
+import { emitToast } from "./emitToast";
+import type { ToastPayload } from "@/types/notifications";
 
 type NotificationRoute = Prisma.RouteGetPayload<{
   include: typeof adminRouteInclude;

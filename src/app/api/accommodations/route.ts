@@ -3,7 +3,7 @@ import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import {
   createAccommodation,
   getAccommodations,
-} from "@/server/db/actions/AccommodationAction";
+} from "@/server/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { z } from "zod";
 import { errorResponse } from "@/utils/errors";

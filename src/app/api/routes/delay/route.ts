@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { getRouteById, delayRoute } from "@/server/db/actions/RouteAction";
-import { routeResponseForRole } from "@/server/db/queries";
+import { getRouteById, delayRoute } from "@/server/actions/RouteAction";
+import { routeResponseForRole } from "@/server/queries";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 import { MAX_DELAY_MINUTES } from "@/utils/consts";
 

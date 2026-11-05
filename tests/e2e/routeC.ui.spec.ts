@@ -23,7 +23,7 @@ test("route C: student cancellation requires confirmation (UI)", async ({
   const routeId = created.id;
 
   const admin = await pageAs("admin");
-  await admin.goto("/admin?tab=Rides");
+  await admin.goto("/admin/rides");
   const adminRow = admin.locator(`tr[data-route-id="${routeId}"]`);
   await expect(adminRow).toHaveCount(1);
   await expect(

@@ -10,7 +10,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
 import type { Vehicle } from "@db/generated/browser";
-import type { ShiftDetailResponse as ShiftDetail } from "@/utils/types/api";
+import type { ShiftDetailResponse as ShiftDetail } from "@/types/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

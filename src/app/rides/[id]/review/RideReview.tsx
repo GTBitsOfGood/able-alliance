@@ -7,10 +7,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { formatEstDate, formatEstTime, isEstToday } from "@/utils/dateEst";
-import type { RouteResponse } from "@/utils/types/api";
+import type { RouteResponse } from "@/types/api";
 import styles from "./review.module.css";
 
 export default function RideReview({
@@ -34,7 +34,7 @@ export default function RideReview({
 
   const beginRequest = useLatestRequest();
 
-  const back = admin ? "/admin?tab=Rides" : "/rides";
+  const back = admin ? "/admin/rides" : "/rides";
 
   const refresh = useCallback(async () => {
     const isLatest = beginRequest();
