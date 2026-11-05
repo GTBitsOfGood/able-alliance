@@ -12,7 +12,6 @@ import AdminRidesTable, {
   type TableRow,
 } from "@/components/AdminRidesTable/AdminRidesTable";
 import RideFilter from "@/components/admin/RideFilter";
-import { adminStatusLabel } from "@/components/admin/RideStatusChip";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import { routeStatusLabels } from "@/utils/route-status";
 import { formatEstDate, formatEstTime, withDelay } from "@/utils/dateEst";
@@ -116,10 +115,12 @@ export default function AdminRidesPage() {
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const statusOptions = Object.entries(routeStatusLabels).map(([value]) => ({
-    value,
-    label: adminStatusLabel(value),
-  }));
+  const statusOptions = Object.entries(routeStatusLabels).map(
+    ([value, label]) => ({
+      value,
+      label,
+    }),
+  );
   const locationOptions = (field: "pickup" | "dropoff") =>
     [
       ...new Map(
@@ -226,7 +227,7 @@ export default function AdminRidesPage() {
       cells: [
         {
           content: <RideStatusChip status={route.status} />,
-          value: adminStatusLabel(route.status),
+          value: routeStatusLabels[route.status],
         },
         { content: fullName(route.student) },
         { content: route.student.email },

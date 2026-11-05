@@ -1,4 +1,4 @@
-import { adminStatusLabel } from "./RideStatusChip";
+import { routeStatusLabels } from "@/utils/route-status";
 
 import type { AuditEntry } from "@/types/audit";
 
@@ -19,7 +19,9 @@ export function summaryValue(
   if (typeof value === "string") {
     if (!value) return '""';
     if (entityType === "Route" && field === "status")
-      return adminStatusLabel(value);
+      return (
+        routeStatusLabels[value as keyof typeof routeStatusLabels] ?? value
+      );
     return value;
   }
   return JSON.stringify(value);

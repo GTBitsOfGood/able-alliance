@@ -5,19 +5,12 @@ import { RouteStatus } from "@db/generated/enums";
 import { routeStatusLabels } from "@/utils/route-status";
 import styles from "./rideStatusChip.module.css";
 
-/** Admin terminology from the Sprint 3 ride list. API status names stay stable. */
-export function adminStatusLabel(status: string) {
-  if (status === RouteStatus.EnRoute) return "Initiated";
-  if (status === RouteStatus.Pickedup) return "In-Progress";
-  return routeStatusLabels[status as keyof typeof routeStatusLabels] ?? status;
-}
-
 /**
  * The status pill in the admin rides table. Requested and Scheduled come
  * straight from the design; the remaining statuses reuse the same palette.
  */
 export default function RideStatusChip({ status }: { status: RouteStatus }) {
-  const label = adminStatusLabel(status);
+  const label = routeStatusLabels[status];
 
   return (
     <span className={`${styles.chip} ${styles[toneFor(status)]}`}>{label}</span>
