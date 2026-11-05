@@ -3,7 +3,7 @@
  *
  *   student  /rides/new          fills the form            Requested
  *   student  /rides              ride is in this/next week
- *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
+ *   admin    /admin/rides    assigns driver + vehicle  Scheduled
  *   driver   /rides/:id          scheduled ride is visible
  *   student  /rides/:id          scheduled driver/vehicle
  *
@@ -86,7 +86,7 @@ test("route A: student creates, admin schedules (UI)", async ({
 
   // ── Admin sees it and schedules ────────────────────────────────────────
   const admin = await pageAs("admin");
-  await admin.goto("/admin?tab=Rides");
+  await admin.goto("/admin/rides");
   await scheduleRideInAdmin(admin, routeId);
 
   // ── Driver sees the scheduled ride ─────────────────────────────────────

@@ -17,7 +17,7 @@ import type {
   DriverRouteDetailResponse,
   RouteResponse,
   StudentRouteResponse,
-} from "@/utils/types/api";
+} from "@/types/api";
 
 function asRoutes(body: unknown): RouteResponse[] {
   return Array.isArray(body) ? (body as RouteResponse[]) : [];

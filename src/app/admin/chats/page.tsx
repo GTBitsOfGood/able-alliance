@@ -8,9 +8,9 @@ import BogTable, {
   type ColumnHeaderCellContent,
   type TableRow,
 } from "@/components/BogTable/BogTable";
-import AdminChatView from "@/app/admin/AdminChatView";
+import AdminChatView from "@/components/admin/AdminChatView";
 import { routeStatusLabels } from "@/utils/route-status";
-import type { AdminRouteResponse } from "@/utils/types/api";
+import type { AdminRouteResponse } from "@/types/api";
 import styles from "./styles.module.css";
 
 type ChatUser = {

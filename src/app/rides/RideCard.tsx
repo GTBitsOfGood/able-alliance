@@ -16,7 +16,7 @@ import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
-import type { RouteResponse as RideCardRoute } from "@/utils/types/api";
+import type { RouteResponse as RideCardRoute } from "@/types/api";
 
 const CANCELLABLE_STATUSES = new Set<RouteStatus>([
   RouteStatus.Requested,

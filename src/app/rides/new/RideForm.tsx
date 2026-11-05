@@ -2,8 +2,8 @@
 
 import RecurrenceFields from "@/components/RecurrenceFields/RecurrenceFields";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
-import type { RecurrenceRequest } from "@/utils/types/rideSeries";
-import type { RouteResponse } from "@/utils/types/api";
+import type { RecurrenceRequest } from "@/schemas/rideSeries";
+import type { RouteResponse } from "@/types/api";
 import {
   canStudentEditRide,
   EDITABLE_RIDE_STATUSES,
@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import { SearchableSelect } from "@/components/SearchableSelect/SearchableSelect";
-import { useLocationUpdates } from "@/components/NotificationProvider/useLocationUpdates";
+import { useLocationUpdates } from "@/hooks/useLocationUpdates";
 import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import styles from "./styles.module.css";
 
@@ -879,7 +879,7 @@ export function RideForm({
         );
       }
 
-      router.push(admin ? "/admin?tab=Rides" : "/rides");
+      router.push(admin ? "/admin/rides" : "/rides");
     } catch (e) {
       setError(e instanceof Error ? e.message : "An error occurred");
 
@@ -965,7 +965,7 @@ export function RideForm({
       )}
       <main className={styles.main}>
         <Link
-          href={admin ? "/admin?tab=Rides" : "/rides"}
+          href={admin ? "/admin/rides" : "/rides"}
           className={styles.backButton}
         >
           ← Back to rides

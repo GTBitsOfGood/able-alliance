@@ -2,16 +2,16 @@ import { Table, Theme } from "@radix-ui/themes";
 import React, { ReactNode } from "react";
 import "./bogtable-radix.css";
 import styles from "./styles.module.css";
-import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
-import { getNumericalSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
-import BogTextInput from "../BogTextInput/BogTextInput";
-import BogIcon from "../BogIcon/BogIcon";
-// import BogButton from "../BogButton/BogButton";
-// import BogPopover from "../BogPopover/BogPopover";
+import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
+import { getNumericalSizeFromBreakpoint } from "@/utils/design-system/breakpoints/breakpoints";
+import BogTextInput from "@/components/BogTextInput/BogTextInput";
+import BogIcon from "@/components/BogIcon/BogIcon";
+// import BogButton from "@/components/BogButton/BogButton";
+// import BogPopover from "@/components/BogPopover/BogPopover";
 // import { Popover } from "radix-ui";
-import BogCheckbox from "../BogCheckbox/BogCheckbox";
-// import BogDropdown from "../BogDropdown/BogDropdown";
-// import BogChip from "../BogChip/BogChip";
+import BogCheckbox from "@/components/BogCheckbox/BogCheckbox";
+// import BogDropdown from "@/components/BogDropdown/BogDropdown";
+// import BogChip from "@/components/BogChip/BogChip";
 
 type ColumnDatatype = "string" | "string[]" | "number" | "number[]" | "other";
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   archiveLocation,
   getLocationById,
-} from "@/server/db/actions/LocationAction";
+} from "@/server/actions/LocationAction";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { emitLocationsUpdate } from "@/server/notifications/emitLocationsUpdate";

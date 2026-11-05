@@ -1,10 +1,10 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import { idSchema } from "@/utils/ids";
-import { getEmailRoute } from "@/server/db/actions/EmailAction";
-import { EmailClient } from "@/server/email/EmailClient";
-import { getRouteMessage } from "@/server/db/actions/MessageAction";
+import { idSchema } from "@/schemas/id";
+import { getEmailRoute } from "@/server/actions/EmailAction";
+import { EmailClient } from "@/server/EmailClient";
+import { getRouteMessage } from "@/server/actions/MessageAction";
 import { emitToast } from "@/server/notifications/emitToast";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
 

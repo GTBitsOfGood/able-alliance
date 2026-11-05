@@ -8,12 +8,12 @@ import {
   schedulingLockKeys,
   scheduleRouteWhileLocked,
   withSchedulingLock,
-} from "@/server/db/actions/RouteAction";
+} from "@/server/actions/RouteAction";
 import {
   planDay,
   formatMinutes,
   AutoScheduleConflictError,
-} from "@/server/scheduling/autoSchedule";
+} from "@/server/autoSchedule";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

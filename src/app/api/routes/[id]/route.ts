@@ -1,11 +1,11 @@
-import { editRouteSchema, rideReviewSchema } from "@/utils/types";
+import { editRouteSchema, rideReviewSchema } from "@/schemas/ride";
 import { ArgumentError } from "@/utils/errors";
-import { editOrAcceptRoute } from "@/server/db/actions/RouteAction";
-import { routeResponseForRole } from "@/server/db/queries";
+import { editOrAcceptRoute } from "@/server/actions/RouteAction";
+import { routeResponseForRole } from "@/server/queries";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
-import { deleteRoute, getRouteById } from "@/server/db/actions/RouteAction";
+import { deleteRoute, getRouteById } from "@/server/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
 

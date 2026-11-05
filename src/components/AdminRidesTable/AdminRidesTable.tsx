@@ -16,12 +16,12 @@ import Image from "next/image";
 import { ContextMenu, DropdownMenu } from "radix-ui";
 import { Table, Theme } from "@radix-ui/themes";
 import React, { ReactNode } from "react";
-import "../BogTable/bogtable-radix.css";
+import "@/components/BogTable/bogtable-radix.css";
 import styles from "./styles.module.css";
-import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
-import { getNumericalSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
-import BogTextInput from "../BogTextInput/BogTextInput";
-import BogIcon from "../BogIcon/BogIcon";
+import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
+import { getNumericalSizeFromBreakpoint } from "@/utils/design-system/breakpoints/breakpoints";
+import BogTextInput from "@/components/BogTextInput/BogTextInput";
+import BogIcon from "@/components/BogIcon/BogIcon";
 
 export type ColumnHeader = {
   content: string;

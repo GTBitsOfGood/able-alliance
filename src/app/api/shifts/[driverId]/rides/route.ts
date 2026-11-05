@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { scheduleRoute } from "@/server/db/actions/RouteAction";
+import { scheduleRoute } from "@/server/actions/RouteAction";
 import { isValidId } from "@/utils/ids";
 import { z } from "zod";
 import { HttpError, errorResponse } from "@/utils/errors";

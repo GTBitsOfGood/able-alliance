@@ -2,8 +2,8 @@ import { hasUserType } from "@/utils/userTypes";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { getUserById } from "@/server/db/actions/UserAction";
-import { getRoutes } from "@/server/db/actions/RouteAction";
+import { getUserById } from "@/server/actions/UserAction";
+import { getRoutes } from "@/server/actions/RouteAction";
 import { errorResponse } from "@/utils/errors";
 
 import { RouteStatus } from "@db/generated/enums";

@@ -3,8 +3,8 @@ import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
-import { getRouteById } from "@/server/db/actions/RouteAction";
-import { getMessagesForRoute } from "@/server/db/actions/MessageAction";
+import { getRouteById } from "@/server/actions/RouteAction";
+import { getMessagesForRoute } from "@/server/actions/MessageAction";
 
 export async function GET(
   req: NextRequest,

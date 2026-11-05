@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
-import { cancelRoute, getRouteById } from "@/server/db/actions/RouteAction";
+import { cancelRoute, getRouteById } from "@/server/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 import { RouteStatus } from "@db/generated/enums";
-import { routeResponseForRole } from "@/server/db/queries";
+import { routeResponseForRole } from "@/server/queries";
 
 export async function POST(request: NextRequest) {
   let userId, type;

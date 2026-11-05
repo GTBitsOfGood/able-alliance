@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidId } from "@/utils/ids";
 import { getUserFromRequest } from "@/utils/authUser";
-import { getRouteById, pickupStudent } from "@/server/db/actions/RouteAction";
-import { routeResponseForRole } from "@/server/db/queries";
+import { getRouteById, pickupStudent } from "@/server/actions/RouteAction";
+import { routeResponseForRole } from "@/server/queries";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 

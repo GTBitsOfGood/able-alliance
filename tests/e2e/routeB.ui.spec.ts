@@ -4,7 +4,7 @@
  * attachment on the failed test says which request or error.
  *
  *   student  /rides/new          fills the form            Requested
- *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
+ *   admin    /admin/rides    assigns driver + vehicle  Scheduled
  *   driver   /rides/:id          Start ride                En-route
  *   driver   /rides/:id          Student picked up         Picked up
  *   driver   /rides/:id          Student dropped off       Completed
@@ -72,7 +72,7 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
 
   // ── Admin schedules it ─────────────────────────────────────────────────
   const admin = await pageAs("admin");
-  await admin.goto("/admin?tab=Rides");
+  await admin.goto("/admin/rides");
   await scheduleRideInAdmin(admin, routeId);
 
   // ── Driver runs the ride ───────────────────────────────────────────────

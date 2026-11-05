@@ -1,6 +1,6 @@
 import { Form } from "radix-ui";
 import styles from "./styles.module.css";
-import BogButton from "../BogButton/BogButton";
+import BogButton from "@/components/BogButton/BogButton";
 import type { FormEventHandler } from "react";
 import React from "react";
 

@@ -6,10 +6,10 @@ import {
   createRoute,
   getRouteById,
   getRoutes,
-} from "@/server/db/actions/RouteAction";
-import { createRideSeries } from "@/server/db/actions/RideSeriesAction";
-import { batchRideRequestSchema, createRouteSchema } from "@/utils/types";
-import { recurrenceRequestSchema } from "@/utils/types/rideSeries";
+} from "@/server/actions/RouteAction";
+import { createRideSeries } from "@/server/actions/RideSeriesAction";
+import { batchRideRequestSchema, createRouteSchema } from "@/schemas/ride";
+import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";

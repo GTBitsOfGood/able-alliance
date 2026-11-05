@@ -7,10 +7,7 @@ import { PERSONAS, VEHICLE } from "./seed";
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
-import type {
-  AdminRouteResponse,
-  StudentRouteResponse,
-} from "@/utils/types/api";
+import type { AdminRouteResponse, StudentRouteResponse } from "@/types/api";
 
 export function estDateDaysFromNow(days: number): Date {
   return addDays(toZonedTime(new Date(), "America/New_York"), days);

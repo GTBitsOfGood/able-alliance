@@ -13,7 +13,7 @@ import BogSwitch from "@/components/BogSwitch/BogSwitch";
 
 type ProfileTab = "profile" | "rides" | "shifts" | "settings";
 
-import type { UserResponse } from "@/utils/types/api";
+import type { UserResponse } from "@/types/api";
 
 function avatarClass(type: UserType): string {
   switch (type) {
@@ -132,7 +132,7 @@ export function ProfileView({
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error ?? "Failed to delete user");
       }
-      router.push("/admin");
+      router.push("/admin/directory/students");
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete user");
       setDeleting(false);

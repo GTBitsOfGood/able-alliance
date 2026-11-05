@@ -25,14 +25,14 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import StopTime from "./StopTime";
-import { getStudentStatusChipStyle } from "../RideCard";
+import { getStudentStatusChipStyle } from "@/app/rides/RideCard";
 import styles from "./styles.module.css";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import type {
   RouteDetailResponse as RouteData,
   ChatMessageResponse,
-} from "@/utils/types/api";
+} from "@/types/api";
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { withDelay } from "@/utils/dateEst";
 

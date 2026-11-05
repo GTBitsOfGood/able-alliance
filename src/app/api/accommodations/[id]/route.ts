@@ -3,7 +3,7 @@ import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import {
   deleteAccommodation,
   renameAccommodation,
-} from "@/server/db/actions/AccommodationAction";
+} from "@/server/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { isValidId } from "@/utils/ids";
 import { errorResponse } from "@/utils/errors";
