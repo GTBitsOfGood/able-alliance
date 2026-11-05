@@ -1,5 +1,10 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
+import { useRouter } from "next/navigation";
+import { EDITABLE_RIDE_STATUSES } from "@/utils/route-status";
+
 import React, { useMemo, useState } from "react";
 
 import AdminRidesTable, {
@@ -30,15 +35,16 @@ const COLUMNS: ColumnHeader[] = [
   { content: "Vehicle", width: "9%" },
 ];
 
-// Admins may edit a ride in any status; the server accepts the same set.
 // Cancelling still mirrors what cancelRoute accepts — anything already
 // completed, missing or cancelled would just 409.
-const CANCELLABLE_STATUSES = new Set<string>([
-  "Requested",
-  "Scheduled",
-  "EnRoute",
-  "Arrived",
-  "Pickedup",
+const CANCELLABLE_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+  RouteStatus.EnRoute,
+  RouteStatus.Arrived,
+  RouteStatus.Pickedup,
 ]);
 
 function fullName(user: { firstName: string; lastName: string } | null) {
@@ -69,15 +75,15 @@ function timeAt(
 
 /** Attention items first, then rides in progress, then scheduled rides. */
 function defaultOrder(a: RouteEntry, b: RouteEntry) {
-  const priority = (status: string) =>
-    ({
-      ActionRequired: 0,
-      Requested: 1,
-      EnRoute: 2,
-      Arrived: 3,
-      Pickedup: 4,
-      Scheduled: 5,
-    })[status] ?? 6;
+  const priorities: Partial<Record<RouteStatus, number>> = {
+    [RouteStatus.ActionRequiredByAdmin]: 0,
+    [RouteStatus.Requested]: 1,
+    [RouteStatus.EnRoute]: 2,
+    [RouteStatus.Arrived]: 3,
+    [RouteStatus.Pickedup]: 4,
+    [RouteStatus.Scheduled]: 5,
+  };
+  const priority = (status: RouteStatus) => priorities[status] ?? 6;
   return (
     priority(a.status) - priority(b.status) ||
     withDelay(new Date(a.scheduledPickupTime), a.delayMinutes ?? 0).getTime() -
@@ -86,6 +92,8 @@ function defaultOrder(a: RouteEntry, b: RouteEntry) {
 }
 
 export default function RidesTable() {
+  const router = useRouter();
+
   const {
     routes,
     actionRequiredCount: actionCount,
@@ -129,7 +137,9 @@ export default function RidesTable() {
             (!statuses.length || statuses.includes(route.status)) &&
             (!pickups.length || pickups.includes(route.pickup.id)) &&
             (!dropoffs.length || dropoffs.includes(route.dropoff.id)) &&
-            (!attentionOnly || route.status === "ActionRequired"),
+            (!attentionOnly ||
+              route.status === RouteStatus.ActionRequiredByAdmin ||
+              route.status === RouteStatus.Requested),
         )
         .sort(defaultOrder),
     [routes, statuses, pickups, dropoffs, attentionOnly],
@@ -176,7 +186,25 @@ export default function RidesTable() {
       key: route.id,
       label: fullName(route.student),
       actions: [
-        { label: "Edit ride", onSelect: () => setAssignRoute(route) },
+        ...(route.status === RouteStatus.Requested
+          ? [{ label: "Schedule ride", onSelect: () => setAssignRoute(route) }]
+          : []),
+        ...(EDITABLE_RIDE_STATUSES.has(route.status)
+          ? [
+              {
+                label: "Edit ride",
+                onSelect: () => router.push(`/rides/${route.id}/edit`),
+              },
+            ]
+          : []),
+        ...(route.status === RouteStatus.ActionRequiredByAdmin
+          ? [
+              {
+                label: "Review changes",
+                onSelect: () => router.push(`/rides/${route.id}/review`),
+              },
+            ]
+          : []),
         { label: "Ride chat", onSelect: () => setChatRoute(route) },
         {
           label: "Cancel ride",

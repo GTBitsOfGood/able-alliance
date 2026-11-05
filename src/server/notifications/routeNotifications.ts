@@ -6,7 +6,7 @@ import { EmailClient } from "@/server/email/EmailClient";
 import { formatEstDate, formatEstTime } from "@/utils/dateEst";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
 
-import { emitToast } from "./emitToast";
+import { emitToast, type ToastPayload } from "./emitToast";
 
 type NotificationRoute = Prisma.RouteGetPayload<{
   include: typeof adminRouteInclude;
@@ -42,9 +42,11 @@ function recipientName(user: NotificationUser): string {
 
 export function notifyRideStatusChanged(
   route: NotificationRoute,
+  notificationOverride?: ToastPayload,
 ): Promise<void> {
   const { student, driver, status } = route;
-  const notification = RIDE_NOTIFICATIONS[status](route.pickup.name);
+  const notification =
+    notificationOverride ?? RIDE_NOTIFICATIONS[status](route.pickup.name);
 
   const deliveries: Delivery[] = [
     () => emitToast(student.id, "Student", notification),

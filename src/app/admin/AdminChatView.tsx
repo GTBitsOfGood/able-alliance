@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
@@ -17,11 +19,11 @@ type Chatlog = {
   messages: ChatMessage[];
 };
 
-const CLOSED_ROUTE_STATUSES = new Set([
-  "Completed",
-  "Missing",
-  "CancelledByStudent",
-  "CancelledByAdmin",
+const CLOSED_ROUTE_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Completed,
+  RouteStatus.Missing,
+  RouteStatus.CancelledByStudent,
+  RouteStatus.CancelledByAdmin,
 ]);
 
 export default function AdminChatView({
@@ -34,7 +36,7 @@ export default function AdminChatView({
 }: {
   routeId: string;
   rideLabel: string;
-  routeStatus: string;
+  routeStatus: RouteStatus;
   studentId: string;
   driverId: string | null;
   onClose: () => void;

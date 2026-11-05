@@ -24,6 +24,8 @@ const NEW_DRIVER_VEHICLE_PAIR_COST = 1;
 const ACCESSIBLE_VEHICLE_MISUSE_COST = 0.1;
 
 const BUSY_STATUSES = [
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
   RouteStatus.Scheduled,
   RouteStatus.EnRoute,
   RouteStatus.Arrived,

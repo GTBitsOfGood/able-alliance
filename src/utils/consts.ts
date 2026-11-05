@@ -16,6 +16,9 @@ export enum HTTP_STATUS_CODE {
 export const SERVICE_START_TIME = "07:30";
 export const SERVICE_END_TIME = "19:45";
 
+// Student edits require strictly more than this many hours before pickup.
+export const STUDENT_EDIT_MIN_NOTICE_HOURS = 3;
+
 // Maximum cumulative delay a student can report before cancelling their ride.
 export const MAX_DELAY_MINUTES = 15;
 
@@ -24,9 +27,20 @@ export const TOAST_DELIVERY_TIMEOUT_MS = 2_000;
 
 // In-app notification payloads. Keep user-facing toast copy here.
 export const RIDE_NOTIFICATIONS = {
-  ActionRequired: (): ToastPayload => ({
+  changesAccepted: (): ToastPayload => ({
+    type: "success",
+    message: "Changes accepted.",
+  }),
+
+  ActionRequiredByAdmin: (): ToastPayload => ({
     type: "warn",
-    message: "Your ride needs attention. Please contact an administrator.",
+    message: "Your ride changes are awaiting administrator approval.",
+  }),
+
+  ActionRequiredByStudent: (): ToastPayload => ({
+    type: "warn",
+    message:
+      "An administrator edited your ride. Review the details and accept the changes.",
   }),
 
   Requested: (): ToastPayload => ({

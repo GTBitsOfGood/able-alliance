@@ -1,6 +1,13 @@
 "use client";
 
-import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
+import { RouteStatus } from "@db/generated/enums";
+
+import {
+  canStudentEditRide,
+  studentEditDisabledReason,
+  isRouteDelayed,
+  routeDisplayLabel,
+} from "@/utils/route-status";
 import React from "react";
 import { withDelay } from "@/utils/dateEst";
 import { useWindowSize } from "react-use";
@@ -11,11 +18,13 @@ import styles from "./styles.module.css";
 
 import type { RouteResponse as RideCardRoute } from "@/utils/types/api";
 
-const CANCELLABLE_STATUSES = new Set([
-  "Requested",
-  "Scheduled",
-  "EnRoute",
-  "Arrived",
+const CANCELLABLE_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+  RouteStatus.EnRoute,
+  RouteStatus.Arrived,
 ]);
 
 type RideCardProps = {
@@ -82,25 +91,28 @@ export function getStudentStatusChipStyle(
     };
   }
   switch (status) {
-    case "Scheduled":
+    case RouteStatus.Scheduled:
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-grey-text-strong)",
       };
-    case "Requested":
+    case RouteStatus.ActionRequiredByStudent:
+    case RouteStatus.ActionRequiredByAdmin:
+      return { background: "var(--color-status-pink)", color: "#22070b" };
+    case RouteStatus.Requested:
       return { background: "#432c30", color: "#ffffff" };
-    case "EnRoute":
-    case "Arrived":
-    case "Pickedup":
+    case RouteStatus.EnRoute:
+    case RouteStatus.Arrived:
+    case RouteStatus.Pickedup:
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-grey-text-strong)",
       };
-    case "Completed":
+    case RouteStatus.Completed:
       return { background: "#70cd87", color: "#22070b" };
-    case "CancelledByStudent":
-    case "CancelledByAdmin":
-    case "Missing":
+    case RouteStatus.CancelledByStudent:
+    case RouteStatus.CancelledByAdmin:
+    case RouteStatus.Missing:
       return { background: "var(--color-status-pink)", color: "#22070b" };
     default:
       return { background: "#e0e0e0", color: "#22070b" };
@@ -115,19 +127,19 @@ function getDriverStatusChipColor(
     return "amber";
   }
   switch (status) {
-    case "Completed":
+    case RouteStatus.Completed:
       return "green";
-    case "CancelledByStudent":
-    case "CancelledByAdmin":
-    case "Missing":
+    case RouteStatus.CancelledByStudent:
+    case RouteStatus.CancelledByAdmin:
+    case RouteStatus.Missing:
       return "red";
-    case "EnRoute":
-    case "Arrived":
-    case "Pickedup":
+    case RouteStatus.EnRoute:
+    case RouteStatus.Arrived:
+    case RouteStatus.Pickedup:
       return "green";
-    case "Requested":
+    case RouteStatus.Requested:
       return "amber";
-    case "Scheduled":
+    case RouteStatus.Scheduled:
       return "gray";
     default:
       return "gray";
@@ -156,13 +168,13 @@ export function RideCard({
     const studentName =
       `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
 
-    const canStart = route.status === "Scheduled";
-    const CHAT_DISABLED_STATUSES = new Set([
-      "Pickedup",
-      "Completed",
-      "Missing",
-      "CancelledByStudent",
-      "CancelledByAdmin",
+    const canStart = route.status === RouteStatus.Scheduled;
+    const CHAT_DISABLED_STATUSES = new Set<RouteStatus>([
+      RouteStatus.Pickedup,
+      RouteStatus.Completed,
+      RouteStatus.Missing,
+      RouteStatus.CancelledByStudent,
+      RouteStatus.CancelledByAdmin,
     ]);
     const canChat =
       isToday(route.scheduledPickupTime) &&
@@ -270,10 +282,10 @@ export function RideCard({
 
   const chatEligible =
     isToday(route.scheduledPickupTime) &&
-    (route.status === "Scheduled" ||
-      route.status === "EnRoute" ||
-      route.status === "Arrived" ||
-      route.status === "Pickedup");
+    (route.status === RouteStatus.Scheduled ||
+      route.status === RouteStatus.EnRoute ||
+      route.status === RouteStatus.Arrived ||
+      route.status === RouteStatus.Pickedup);
 
   const chipStyle = getStudentStatusChipStyle(
     route.status,
@@ -382,17 +394,33 @@ export function RideCard({
           </button>
         )}
         <div className={styles.rideCardStudentSecondaryActions}>
-          <button
-            type="button"
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            Edit ride
-          </button>
-          {(route.status === "Scheduled" || route.status === "EnRoute") &&
+          {canStudentEditRide(route) ? (
+            <Link
+              href={`/rides/${route.id}/edit`}
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            >
+              Edit ride
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${styles.rideCardActionBtnDisabled}`}
+              title={studentEditDisabledReason(route)}
+            >
+              Edit ride
+            </button>
+          )}
+          {route.status === RouteStatus.ActionRequiredByStudent && (
+            <Link
+              href={`/rides/${route.id}/review`}
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            >
+              Review changes
+            </Link>
+          )}
+          {(route.status === RouteStatus.Scheduled ||
+            route.status === RouteStatus.EnRoute) &&
             onDelay && (
               <button
                 type="button"

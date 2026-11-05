@@ -19,10 +19,7 @@ function vehicleLabel(v: VehicleEntry) {
   return `${v.name} (${v.licensePlate})`;
 }
 
-/**
- * Reassigns a scheduled ride's driver and vehicle. The rides list carries no
- * inline controls in the new design, so the row's edit action opens this.
- */
+/** Assigns a driver and vehicle to a requested ride. */
 export default function AssignRideModal({
   route,
   drivers,
@@ -105,7 +102,7 @@ export default function AssignRideModal({
         },
       }}
       closeButton={<BogIcon name="x" size={36} />}
-      title={<h3 className={styles.title}>Edit ride</h3>}
+      title={<h3 className={styles.title}>Schedule ride</h3>}
     >
       <div className={styles.body}>
         <p className={styles.summary}>
@@ -141,11 +138,6 @@ export default function AssignRideModal({
             {error}
           </p>
         )}
-
-        <p className={styles.hint}>
-          Saving notifies the student and the driver. A driver who loses the
-          ride is told as well.
-        </p>
 
         <div className={styles.footer}>
           <BogButton

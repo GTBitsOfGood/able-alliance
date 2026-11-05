@@ -1,5 +1,7 @@
 "use client";
 
+import type { RouteStatus } from "@db/generated/enums";
+
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import BogTable, {
@@ -22,7 +24,7 @@ type ChatEntry = {
   student: ChatUser;
   driver: ChatUser | null;
   scheduledPickupTime: string;
-  status: string;
+  status: RouteStatus;
 };
 
 const COLUMNS: ColumnHeaderCellContent[] = [
