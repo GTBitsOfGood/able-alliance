@@ -76,7 +76,7 @@
 .original {
   color: var(--color-grey-text-weak);
   text-decoration: line-through;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 0.1rem;
 }
 
 .legend {
@@ -87,7 +87,7 @@
 }
 
 .divider {
-  height: 1px;
+  height: 0.1rem;
   background: var(--color-grey-stroke-weak);
   flex: 1;
   min-width: 1rem;

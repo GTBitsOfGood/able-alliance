@@ -189,6 +189,13 @@ export default function RidesTable() {
         ...(route.status === RouteStatus.Requested
           ? [{ label: "Schedule ride", onSelect: () => setAssignRoute(route) }]
           : []),
+        {
+          label: "Edit driver and vehicle",
+          disabled:
+            route.status === RouteStatus.Requested ||
+            !EDITABLE_RIDE_STATUSES.has(route.status),
+          onSelect: () => setAssignRoute(route),
+        },
         ...(EDITABLE_RIDE_STATUSES.has(route.status)
           ? [
               {

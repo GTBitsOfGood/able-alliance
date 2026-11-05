@@ -1519,15 +1519,15 @@
   cursor: pointer;
 }
 .studentTabs [role="tab"].hasActions {
-  color: #ed2024;
+  color: var(--color-status-red-text);
 }
 .studentTabs [role="tab"].actionRequiredTab[data-state="active"] {
-  background: #ffe5e5;
-  border-radius: 999px;
+  background: var(--color-status-red-fill);
+  border-radius: 999rem;
 }
 .studentTabs [role="tab"].actionRequiredTab:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.2rem;
 }
 @media (max-width: 768px) {
   .studentTabs [role="tab"]:not(.actionRequiredTab) {

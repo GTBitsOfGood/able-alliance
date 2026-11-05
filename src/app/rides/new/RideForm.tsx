@@ -1024,6 +1024,7 @@ export function RideForm({
                       <button
                         type="button"
                         aria-label="Next month"
+                        disabled={!!editId}
                         onClick={nextMonth}
                         className={styles.calendarNav}
                       >

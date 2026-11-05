@@ -25,7 +25,6 @@ import { estDateKey, estDayOfWeek, estTimeStr } from "@/utils/dateEst";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 import {
   MAX_DELAY_MINUTES,
-  RIDE_NOTIFICATIONS,
   STUDENT_EDIT_MIN_NOTICE_HOURS,
   SERVICE_START_TIME,
   SERVICE_END_TIME,
@@ -34,6 +33,7 @@ import {
   notifyRideStatusChanged,
   notifyRideDelayed,
   notifyRideAssigned,
+  notifyRideChangesAccepted,
 } from "@/server/notifications/routeNotifications";
 import { recordAudit } from "@db/audit";
 
@@ -392,6 +392,10 @@ export async function withSchedulingLock<T>(
   return result;
 }
 
+class AssignmentUnavailableError extends ConflictError {}
+
+class InvalidAssignmentError extends ArgumentError {}
+
 export class BookingConflictError extends ConflictError {
   constructor(readonly details: string[]) {
     super(
@@ -402,9 +406,9 @@ export class BookingConflictError extends ConflictError {
 
 /**
  * `from` lists the statuses the ride may be assigned out of. It defaults to
- * Requested — the first assignment. Admins reassigning an already-scheduled
- * ride pass Scheduled as well; bulk and automatic scheduling keep the default
- * so they can never touch a ride an admin has already placed.
+ * Requested — the first assignment. Admins can also change an assignment on
+ * Scheduled rides or rides awaiting review without resolving the proposal.
+ * Bulk and automatic scheduling keep the Requested-only default.
  */
 export async function scheduleRoute(
   routeId: string,
@@ -449,7 +453,10 @@ export async function scheduleRouteWhileLocked(
   const { route } = assigned;
 
   afterCommit.push(() => {
-    emitRouteUpdate(route);
+    emitRouteUpdate(
+      route,
+      assigned.priorDriverId ? [assigned.priorDriverId] : [],
+    );
     void notifyRideAssigned(assigned);
   });
 
@@ -471,7 +478,10 @@ async function assignRoute(
   vehicleId = vehicleId.toLowerCase();
   const expected = `Route is not in ${from.join(" or ")} status`;
   try {
+    await tx.$queryRaw`SELECT id FROM "Route" WHERE id = ${routeId}::uuid FOR UPDATE`;
+
     const route = await tx.route.findUnique({ where: { id: routeId } });
+
     if (!route) throw new NotFoundError("Route not found");
     if (!from.includes(route.status)) throw new ConflictError(expected);
     const driverRow = await tx.user.findUnique({
@@ -482,12 +492,16 @@ async function assignRoute(
       where: { id: vehicleId },
     });
     if (!driverRow || !hasUserType(driverRow, "Driver"))
-      throw new ArgumentError("Driver not found or not a driver");
+      throw new InvalidAssignmentError("Driver not found or not a driver");
     if (driverRow.status === "archived")
-      throw new ArgumentError("Driver is archived and cannot be assigned");
-    if (!vehicleRow) throw new ArgumentError("Vehicle not found");
+      throw new InvalidAssignmentError(
+        "Driver is archived and cannot be assigned",
+      );
+    if (!vehicleRow) throw new InvalidAssignmentError("Vehicle not found");
     if (vehicleRow.status === "archived")
-      throw new ArgumentError("Vehicle is archived and cannot be assigned");
+      throw new InvalidAssignmentError(
+        "Vehicle is archived and cannot be assigned",
+      );
     const driver = driverRow;
     const startTime = estTimeStr(route.scheduledPickupTime);
     const day = estDayOfWeek(route.scheduledPickupTime);
@@ -499,7 +513,7 @@ async function assignRoute(
           startTime <= shift.endTime,
       )
     )
-      throw new ConflictError(
+      throw new AssignmentUnavailableError(
         "Driver is not available during the scheduled time",
       );
     const conflicts = await findBookingConflicts(
@@ -514,7 +528,12 @@ async function assignRoute(
       data: {
         driverId,
         vehicleId,
-        status: RouteStatus.Scheduled,
+        // Assignment changes do not resolve a pending itinerary review.
+        status:
+          route.status === RouteStatus.ActionRequiredByAdmin ||
+          route.status === RouteStatus.ActionRequiredByStudent
+            ? route.status
+            : RouteStatus.Scheduled,
       },
     });
     if (count === 0) {
@@ -628,6 +647,7 @@ export async function editOrAcceptRoute(
 
   const initial = await db.route.findUnique({
     where: { id: routeId },
+    include: { driver: { include: userInclude } },
   });
 
   if (!initial) throw new NotFoundError("Route not found");
@@ -804,21 +824,42 @@ export async function editOrAcceptRoute(
           },
         });
 
-        if (before.driverId && before.vehicleId) {
-          await assignRoute(
-            routeId,
-            before.driverId,
-            before.vehicleId,
-            tx,
-            actor.userId,
-            [RouteStatus.Requested],
-            false,
-          );
-        }
-        status =
+        const candidate =
           before.driverId && before.vehicleId
-            ? RouteStatus.Scheduled
-            : RouteStatus.Requested;
+            ? { driverId: before.driverId, vehicleId: before.vehicleId }
+            : null;
+
+        status = RouteStatus.Requested;
+
+        if (candidate) {
+          try {
+            await assignRoute(
+              routeId,
+              candidate.driverId,
+              candidate.vehicleId,
+              tx,
+              actor.userId,
+              [RouteStatus.Requested],
+              false,
+            );
+
+            status = RouteStatus.Scheduled;
+          } catch (error) {
+            // A stale existing assignment must not block an otherwise valid approval.
+            if (!(
+              error instanceof BookingConflictError ||
+              error instanceof AssignmentUnavailableError ||
+              error instanceof InvalidAssignmentError
+            ))
+              throw error;
+          }
+        }
+
+        if (status === RouteStatus.Requested)
+          await tx.route.update({
+            where: { id: routeId },
+            data: { driverId: null, vehicleId: null },
+          });
 
         await resolveProposedRideChange(tx, pending, "Accepted", actor.userId);
       }
@@ -855,13 +896,10 @@ export async function editOrAcceptRoute(
     throw error;
   });
 
-  emitRouteUpdate(updated);
-  void notifyRideStatusChanged(
-    updated,
-    !input && review?.action === "accept"
-      ? RIDE_NOTIFICATIONS.changesAccepted()
-      : undefined,
-  );
+  emitRouteUpdate(updated, initial.driverId ? [initial.driverId] : []);
+
+  if (accepting) void notifyRideChangesAccepted(updated, initial.driver);
+  else void notifyRideStatusChanged(updated);
 
   return updated;
 }

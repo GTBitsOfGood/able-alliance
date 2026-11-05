@@ -127,6 +127,9 @@ export const EmailClient = {
     });
   },
 
+  rideUpdated: (to: string, toName: string, details: string) =>
+    sendEmail({ to, toName, subject: "Ride Updated", text: details }),
+
   rideCompleted: (
     to: string,
     toName: string,

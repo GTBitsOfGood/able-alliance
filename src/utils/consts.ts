@@ -27,9 +27,21 @@ export const TOAST_DELIVERY_TIMEOUT_MS = 2_000;
 
 // In-app notification payloads. Keep user-facing toast copy here.
 export const RIDE_NOTIFICATIONS = {
-  changesAccepted: (): ToastPayload => ({
+  changesAccepted: (awaitingScheduling = false): ToastPayload => ({
     type: "success",
-    message: "Changes accepted.",
+    message: awaitingScheduling
+      ? "Changes accepted. Your ride is awaiting scheduling."
+      : "Changes accepted.",
+  }),
+
+  driverRideUpdated: (details: string): ToastPayload => ({
+    type: "warn",
+    message: `Your ride has changed. ${details}`,
+  }),
+
+  driverRideReleased: (rideTime: string): ToastPayload => ({
+    type: "warn",
+    message: `The edited ride on ${rideTime} is no longer assigned to you.`,
   }),
 
   ActionRequiredByAdmin: (): ToastPayload => ({

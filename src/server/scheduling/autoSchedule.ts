@@ -697,7 +697,10 @@ export async function findBookingConflicts(
     formatInTimeZone(route.scheduledPickupTime, TZ, "yyyy-MM-dd"),
     client,
   );
-  const ride = requested.find((r) => r.id === routeId);
+  // Reassignment validates the approved itinerary even while a proposal is pending.
+  const ride =
+    requested.find((r) => r.id === routeId) ??
+    busy.find((r) => r.id === routeId);
   const vehicle = vehicles.find((v) => v.id === vehicleId);
   if (!ride || !vehicle) return [];
   const driver = drivers.find((d) => d.id === driverId) ?? {

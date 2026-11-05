@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import React, { useState } from "react";
 
 import BogModal from "@/components/BogModal/BogModal";
@@ -19,7 +21,7 @@ function vehicleLabel(v: VehicleEntry) {
   return `${v.name} (${v.licensePlate})`;
 }
 
-/** Assigns a driver and vehicle to a requested ride. */
+/** Schedules a requested ride or updates an existing assignment. */
 export default function AssignRideModal({
   route,
   drivers,
@@ -102,7 +104,13 @@ export default function AssignRideModal({
         },
       }}
       closeButton={<BogIcon name="x" size={36} />}
-      title={<h3 className={styles.title}>Schedule ride</h3>}
+      title={
+        <h3 className={styles.title}>
+          {route.status === RouteStatus.Requested
+            ? "Schedule ride"
+            : "Edit driver and vehicle"}
+        </h3>
+      }
     >
       <div className={styles.body}>
         <p className={styles.summary}>

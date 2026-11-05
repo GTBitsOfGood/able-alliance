@@ -1,3 +1,4 @@
+import { RouteStatus } from "@db/generated/enums";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
@@ -52,6 +53,12 @@ export async function POST(request: NextRequest) {
       driverId,
       vehicleId,
       user.userId,
+      [
+        RouteStatus.Requested,
+        RouteStatus.Scheduled,
+        RouteStatus.ActionRequiredByAdmin,
+        RouteStatus.ActionRequiredByStudent,
+      ],
     );
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {
