@@ -1,3 +1,5 @@
+import type { ToastPayload } from "@/server/notifications/emitToast";
+
 export enum HTTP_STATUS_CODE {
   BAD_REQUEST = 400,
   OK = 200,
@@ -16,3 +18,108 @@ export const SERVICE_END_TIME = "19:45";
 
 // Maximum cumulative delay a student can report before cancelling their ride.
 export const MAX_DELAY_MINUTES = 15;
+
+// Abort toast delivery after this long so a slow websocket service cannot leave requests hanging.
+export const TOAST_DELIVERY_TIMEOUT_MS = 2_000;
+
+// In-app notification payloads. Keep user-facing toast copy here.
+export const RIDE_NOTIFICATIONS = {
+  ActionRequired: (): ToastPayload => ({
+    type: "warn",
+    message: "Your ride needs attention. Please contact an administrator.",
+  }),
+
+  Requested: (): ToastPayload => ({
+    type: "info",
+    message: "Your ride has been requested.",
+  }),
+
+  Scheduled: (): ToastPayload => ({
+    type: "success",
+    message: "Your ride has been scheduled.",
+  }),
+
+  EnRoute: (): ToastPayload => ({
+    type: "info",
+    message: "Your driver is on the way!",
+  }),
+
+  Arrived: (pickupName: string): ToastPayload => ({
+    type: "info",
+    message: `Your driver has arrived at ${pickupName}.`,
+  }),
+
+  Pickedup: (): ToastPayload => ({
+    type: "success",
+    message: "You've been picked up. Your ride is in progress.",
+  }),
+
+  Completed: (): ToastPayload => ({
+    type: "success",
+    message: "You've been dropped off. Thank you for riding with us!",
+  }),
+
+  Missing: (): ToastPayload => ({
+    type: "warn",
+    message:
+      "Your driver marked you as a no-show. Please contact an administrator if you still need a ride.",
+  }),
+
+  CancelledByStudent: (): ToastPayload => ({
+    type: "error",
+    message: "Your ride has been cancelled.",
+  }),
+
+  CancelledByAdmin: (): ToastPayload => ({
+    type: "error",
+    message: "Your ride has been cancelled by an administrator.",
+  }),
+
+  studentDelayed: (minutes: number): ToastPayload => ({
+    type: "info",
+    message: `Your ride has been delayed by ${minutes} minutes.`,
+  }),
+
+  driverDelayed: (minutes: number): ToastPayload => ({
+    type: "info",
+    message: `Your student reported a delay of ${minutes} minutes for their ride.`,
+  }),
+
+  studentDriverAssigned: (driverName: string): ToastPayload => ({
+    type: "success",
+    message: `Your driver ${driverName} has been assigned.`,
+  }),
+
+  studentDriverChanged: (
+    rideTime: string,
+    driverName: string,
+  ): ToastPayload => ({
+    type: "success",
+    message: `Your driver for ${rideTime} is now ${driverName}.`,
+  }),
+
+  studentVehicleChanged: (rideTime: string): ToastPayload => ({
+    type: "success",
+    message: `The vehicle for your ${rideTime} ride has changed.`,
+  }),
+
+  driverVehicleChanged: (rideTime: string): ToastPayload => ({
+    type: "info",
+    message: `The vehicle for your ${rideTime} ride has changed.`,
+  }),
+
+  driverAssigned: (): ToastPayload => ({
+    type: "info",
+    message: "You have been assigned a new ride.",
+  }),
+
+  driverReassigned: (rideTime: string): ToastPayload => ({
+    type: "warn",
+    message: `Your ${rideTime} ride has been reassigned to another driver.`,
+  }),
+
+  driverMessage: (text: string): ToastPayload => ({
+    type: "info",
+    message: `Your driver: ${text}`,
+  }),
+} as const;

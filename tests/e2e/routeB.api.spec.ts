@@ -5,6 +5,7 @@
  *   student  POST /api/routes           Requested
  *   admin    POST /api/routes/schedule  Scheduled
  *   driver   POST /api/routes/start     En-route
+ *   driver   POST /api/routes/arrive    Arrived
  *   driver   POST /api/routes/pickup    Pickedup
  *   driver   POST /api/routes/complete  Completed
  */
@@ -58,7 +59,31 @@ test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
   expect(((await scheduled.json()) as { status: string }).status).toBe(
     "Scheduled",
   );
+  const prematureArrival = await driver.post("/api/routes/arrive", {
+    data: { routeId },
+  });
+  expect(prematureArrival.status()).toBe(409);
+  for (const path of ["/api/routes/pickup", "/api/routes/missing"]) {
+    const rejected = await driver.post(path, { data: { routeId } });
+    expect(rejected.status(), await rejected.text()).toBe(409);
+  }
   await step(driver, "/api/routes/start", { routeId }, "EnRoute");
+  for (const path of ["/api/routes/pickup", "/api/routes/missing"]) {
+    const rejected = await driver.post(path, { data: { routeId } });
+    expect(rejected.status(), await rejected.text()).toBe(409);
+  }
+
+  for (const unauthorized of [student, admin]) {
+    const arrival = await unauthorized.post("/api/routes/arrive", {
+      data: { routeId },
+    });
+    expect(arrival.status()).toBe(403);
+  }
+  await step(driver, "/api/routes/arrive", { routeId }, "Arrived");
+  const duplicateArrival = await driver.post("/api/routes/arrive", {
+    data: { routeId },
+  });
+  expect(duplicateArrival.status()).toBe(409);
   await step(driver, "/api/routes/pickup", { routeId }, "Pickedup");
   await step(driver, "/api/routes/complete", { routeId }, "Completed");
 

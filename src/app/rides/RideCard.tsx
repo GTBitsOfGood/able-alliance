@@ -11,7 +11,12 @@ import styles from "./styles.module.css";
 
 import type { RouteResponse as RideCardRoute } from "@/utils/types/api";
 
-const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled", "EnRoute"]);
+const CANCELLABLE_STATUSES = new Set([
+  "Requested",
+  "Scheduled",
+  "EnRoute",
+  "Arrived",
+]);
 
 type RideCardProps = {
   route: RideCardRoute;
@@ -85,6 +90,7 @@ export function getStudentStatusChipStyle(
     case "Requested":
       return { background: "#432c30", color: "#ffffff" };
     case "EnRoute":
+    case "Arrived":
     case "Pickedup":
       return {
         background: "var(--color-status-yellow)",
@@ -116,6 +122,7 @@ function getDriverStatusChipColor(
     case "Missing":
       return "red";
     case "EnRoute":
+    case "Arrived":
     case "Pickedup":
       return "green";
     case "Requested":
@@ -265,6 +272,7 @@ export function RideCard({
     isToday(route.scheduledPickupTime) &&
     (route.status === "Scheduled" ||
       route.status === "EnRoute" ||
+      route.status === "Arrived" ||
       route.status === "Pickedup");
 
   const chipStyle = getStudentStatusChipStyle(

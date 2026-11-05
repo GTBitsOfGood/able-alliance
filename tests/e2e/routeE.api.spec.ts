@@ -1,5 +1,5 @@
 /**
- * Route E, UI-agnostic. Driver marks an en-route ride as no-show; the Missing
+ * Route E, UI-agnostic. Driver marks an arrived ride as no-show; the Missing
  * state is visible to student, driver, and admin.
  */
 import { test, expect } from "./fixtures";
@@ -27,6 +27,12 @@ test("route E: driver marks student as no-show", async ({ apiAs }) => {
   const started = await driver.post("/api/routes/start", { data: { routeId } });
   expect(started.status(), await started.text()).toBe(200);
   expect(((await started.json()) as { status: string }).status).toBe("EnRoute");
+
+  const arrived = await driver.post("/api/routes/arrive", {
+    data: { routeId },
+  });
+  expect(arrived.status(), await arrived.text()).toBe(200);
+  expect((await arrived.json()).status).toBe("Arrived");
 
   const missing = await driver.post("/api/routes/missing", {
     data: { routeId },

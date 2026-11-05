@@ -14,6 +14,7 @@ import { connectDatabase } from "./actions.js";
 import { registerHttpRoutes } from "./httpRoutes.js";
 import { authenticateSocket, authenticateNotificationSocket } from "./auth.js";
 import { handleConnection } from "./handlers/connection.js";
+import { handleNotificationConnection } from "./handlers/notifications.js";
 import { startRideSeriesCron } from "./jobs/rideSeriesCron.js";
 
 dotenv.config();
@@ -61,15 +62,7 @@ export async function startServer(requestHandler?: RequestListener) {
 
     const notificationsNsp = io.of("/notifications");
     notificationsNsp.use(authenticateNotificationSocket);
-    notificationsNsp.on("connection", (socket) => {
-      socket.join(`user:${socket.data.user}`);
-      if (
-        socket.data.userType === "Admin" ||
-        socket.data.userType === "SuperAdmin"
-      ) {
-        socket.join("role:admin");
-      }
-    });
+    notificationsNsp.on("connection", handleNotificationConnection);
 
     registerHttpRoutes(app, notificationsNsp);
 

@@ -10,8 +10,8 @@ type RouteRef = {
 /**
  * Best-effort push of a "route changed" event via the websocket server so
  * open clients can refetch. Sent to the route's student and driver (plus any
- * extra users, e.g. a previous driver) and to all admins. Unlike toasts, this
- * is not gated on notification preferences. Never throws and is not meant to
+ * extra users, e.g. a previous driver) and to all admins. This
+ * is not gated on email notification preferences. Never throws and is not meant to
  * be awaited — a failure here must not interfere with the caller's flow.
  */
 export function emitRouteUpdate(

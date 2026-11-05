@@ -22,7 +22,11 @@ export interface ServerEvents {
   locationError: (message: string) => void;
   connectionError: (message: string) => void;
   closeRouteRoomError: (message: string) => void;
-  notification: (payload: { type: string; message: string }) => void;
+  notification: (payload: {
+    type: string;
+    message: string;
+    activeType: string;
+  }) => void;
   routeUpdated: (payload: { routeId: string; status: string }) => void;
   locationsUpdated: () => void;
 }

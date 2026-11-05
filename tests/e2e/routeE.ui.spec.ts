@@ -1,6 +1,6 @@
 /**
- * Route E through the pages. The driver can mark no-show only after starting
- * the ride, and the Missing state is reflected to the student.
+ * Route E through the pages. The driver can mark no-show only after arriving
+ * at pickup, and the Missing state is reflected to the student.
  */
 import { test, expect } from "./fixtures";
 import { LOCATIONS } from "./seed";
@@ -41,6 +41,18 @@ test("route E: driver marks student as no-show (UI)", async ({
 
   await driver.getByRole("button", { name: "Start ride" }).click();
   await expect(chip).toHaveText("En-route");
+  await expect(
+    driver.getByRole("button", { name: "Student no-show" }),
+  ).toBeHidden();
+  await expect(
+    driver.getByRole("button", { name: "Student picked up" }),
+  ).toBeHidden();
+  await driver.getByRole("button", { name: "Arrived at pickup" }).click();
+  await driver
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm Arrival" })
+    .click();
+  await expect(chip).toHaveText("Arrived");
   await expect(
     driver.getByRole("button", { name: "Student no-show" }),
   ).toBeVisible();
