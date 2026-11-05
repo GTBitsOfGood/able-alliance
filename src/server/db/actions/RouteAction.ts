@@ -13,16 +13,14 @@ import { isAdmin } from "@/utils/authUser";
 import { createRouteSchema, type CreateRouteInput } from "@/utils/types";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { getMapboxTravelDuration } from "@/server/mapbox";
-import {
-  estDayOfWeek,
-  estTimeStr,
-  formatEstDate,
-  formatEstTime,
-} from "@/utils/dateEst";
-import { EmailClient } from "@/server/email/EmailClient";
-import { emitToast } from "@/server/notifications/emitToast";
+import { estDayOfWeek, estTimeStr } from "@/utils/dateEst";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
-import { MAX_DELAY_MINUTES, ROUTE_STATUS_NOTIFICATIONS } from "@/utils/consts";
+import { MAX_DELAY_MINUTES } from "@/utils/consts";
+import {
+  notifyRideStatusChanged,
+  notifyRideDelayed,
+  notifyRideAssigned,
+} from "@/server/notifications/routeNotifications";
 import { recordAudit } from "@db/audit";
 
 function routeAuditSnapshot(route: {
@@ -55,20 +53,6 @@ function routeAuditSnapshot(route: {
     status: route.status,
     seriesId: route.seriesId,
   };
-}
-
-async function sendEmailSafely(label: string, send: () => Promise<void>) {
-  try {
-    await send();
-  } catch (error) {
-    console.error(`Failed to send ${label} email`, error);
-  }
-}
-
-function dispatchNotifications(tasks: Promise<void>[]) {
-  Promise.all(tasks).catch((error) => {
-    console.error("Notification dispatch failed", error);
-  });
 }
 
 export async function createRoute(
@@ -156,6 +140,7 @@ export async function createRoute(
     throw error;
   }
 }
+
 export async function getRouteById(id: string, role: UserType) {
   const where = { id: id.toLowerCase() };
   const route = isAdmin(role)
@@ -166,6 +151,7 @@ export async function getRouteById(id: string, role: UserType) {
   if (!route) throw new NotFoundError("Route not found");
   return route;
 }
+
 export async function deleteRoute(id: string, actorId: string) {
   try {
     const route = await db.$transaction(async (tx) => {
@@ -193,6 +179,7 @@ export async function deleteRoute(id: string, actorId: string) {
     throw error;
   }
 }
+
 export async function getRoutes(
   filters:
     | {
@@ -222,32 +209,14 @@ export async function getRoutes(
     : db.route.findMany({ include: studentRouteInclude, where });
 }
 
-export async function completeRoute(routeId: string, actorId: string) {
-  const route = await transitionRoute(
+export const completeRoute = (routeId: string, actorId: string) =>
+  transitionRoute(
     routeId,
     [RouteStatus.Pickedup],
     RouteStatus.Completed,
     actorId,
   );
 
-  const studentUser = route.student;
-  if (studentUser && studentUser.settings?.rideCompleted) {
-    dispatchNotifications([
-      sendEmailSafely("rideCompleted", () =>
-        EmailClient.rideCompleted(
-          studentUser.email,
-          studentUser.preferredName ??
-            `${studentUser.firstName} ${studentUser.lastName}`,
-          {
-            rideId: route.id.toString(),
-          },
-        ),
-      ),
-    ]);
-  }
-
-  return route;
-}
 export async function cancelRoute(
   routeId: string,
   status:
@@ -271,44 +240,9 @@ export async function cancelRoute(
     status,
     actorId,
   );
-  const studentUser = route.student;
-  if (studentUser && studentUser.settings?.rideCancelled) {
-    dispatchNotifications([
-      sendEmailSafely("rideCancelled", () =>
-        EmailClient.rideCancelled(
-          studentUser.email,
-          studentUser.preferredName ??
-            `${studentUser.firstName} ${studentUser.lastName}`,
-          {
-            rideId: route.id.toString(),
-            reason: `Ride status: ${route.status}`,
-          },
-        ),
-      ),
-    ]);
-  }
-
-  if (route.driver?.id) {
-    const driverUser = route.driver;
-    if (driverUser && driverUser.settings?.rideCancelled) {
-      dispatchNotifications([
-        sendEmailSafely("rideCancelled", () =>
-          EmailClient.rideCancelled(
-            driverUser.email,
-            driverUser.preferredName ??
-              `${driverUser.firstName} ${driverUser.lastName}`,
-            {
-              rideId: route.id.toString(),
-              reason: `Ride status: ${route.status}`,
-            },
-          ),
-        ),
-      ]);
-    }
-  }
-
   return route;
 }
+
 export async function delayRoute(
   routeId: string,
   minutes: number,
@@ -372,73 +306,18 @@ export async function delayRoute(
   });
   emitRouteUpdate(route);
 
-  const shift = (date: Date) =>
-    new Date(date.getTime() + route.delayMinutes * 60 * 1000);
-  const tasks = [
-    sendEmailSafely("rideDelayed", () =>
-      EmailClient.rideDelayed(route.id, {
-        delay: `${route.delayMinutes} minutes`,
-        oldPickupTime: formatEstTime(route.scheduledPickupTime),
-        newPickupTime: formatEstTime(shift(route.scheduledPickupTime)),
-        oldDropoffTime: route.estimatedDropoffTime
-          ? formatEstTime(route.estimatedDropoffTime)
-          : "N/A",
-        newDropoffTime: route.estimatedDropoffTime
-          ? formatEstTime(shift(route.estimatedDropoffTime))
-          : "N/A",
-      }),
-    ),
-  ];
-  if (route.student) {
-    tasks.push(
-      emitToast(route.student.id.toString(), "Student", {
-        type: "info",
-        message: `Your ride has been delayed by ${route.delayMinutes} minutes.`,
-      }),
-    );
-  }
-  if (route.driver) {
-    tasks.push(
-      emitToast(route.driver.id, "Driver", {
-        type: "info",
-        message: `Your student reported a delay of ${route.delayMinutes} minutes for their ride.`,
-      }),
-    );
-  }
-  dispatchNotifications(tasks);
+  void notifyRideDelayed(route);
 
   return route;
 }
 
-export async function startRoute(routeId: string, actorId: string) {
-  const route = await transitionRoute(
+export const startRoute = (routeId: string, actorId: string) =>
+  transitionRoute(
     routeId,
     [RouteStatus.Scheduled],
     RouteStatus.EnRoute,
     actorId,
   );
-  const studentUser = route.student;
-  if (studentUser && studentUser.settings?.driverEnRoute) {
-    dispatchNotifications([
-      sendEmailSafely("driverEnRoute", () =>
-        EmailClient.driverEnRoute(
-          studentUser.email,
-          studentUser.preferredName ??
-            `${studentUser.firstName} ${studentUser.lastName}`,
-          {
-            name: route.driver
-              ? `${route.driver.firstName} ${route.driver.lastName}`
-              : "Driver",
-            eta: formatEstTime(route.scheduledPickupTime),
-            vehicle: route.vehicle?.licensePlate ?? "Assigned vehicle",
-          },
-        ),
-      ),
-    ]);
-  }
-
-  return route;
-}
 
 export const arriveRoute = (routeId: string, actorId: string) =>
   transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Arrived, actorId);
@@ -549,79 +428,13 @@ export async function scheduleRouteWhileLocked(
     actorId,
     from,
   );
-  const { route, driver, priorDriverId, previousDriver, unchanged } = assigned;
+  const { route } = assigned;
+
   afterCommit.push(() => {
     emitRouteUpdate(route);
-
-    // Saving the same driver and vehicle changes nothing worth announcing.
-    if (unchanged) return;
-
-    const driverName = `${driver.firstName} ${driver.lastName}`;
-    const rideTime = `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`;
-    // Null before the first assignment; set when an admin swaps the driver.
-    const driverChanged = previousDriver != null;
-    // Everything else is a vehicle swap that leaves the driver in place.
-    const vehicleOnly = priorDriverId != null && !driverChanged;
-
-    // The driver who lost the ride hears about it too. There is no email
-    // template for a reassignment yet, so this one is in-app only.
-    if (driverChanged) {
-      dispatchNotifications([
-        emitToast(previousDriver.id.toString(), "Driver", {
-          type: "warn",
-          message: `Your ${rideTime} ride has been reassigned to another driver.`,
-        }),
-      ]);
-    }
-
-    const studentUser = route.student;
-    if (studentUser) {
-      dispatchNotifications([
-        ...(vehicleOnly || !studentUser.settings?.driverAssigned
-          ? []
-          : [
-              sendEmailSafely("rideConfirmed", () =>
-                EmailClient.rideConfirmed(route.id.toString()),
-              ),
-            ]),
-        emitToast(studentUser.id.toString(), "Student", {
-          type: "success",
-          message: vehicleOnly
-            ? `The vehicle for your ${rideTime} ride has changed.`
-            : driverChanged
-              ? `Your driver for ${rideTime} is now ${driverName}.`
-              : `Your driver ${driverName} has been assigned.`,
-        }),
-      ]);
-    }
-
-    if (driver) {
-      dispatchNotifications([
-        ...(vehicleOnly || !driver.settings?.rideAssigned
-          ? []
-          : [
-              sendEmailSafely("rideAssigned", () =>
-                EmailClient.rideAssigned(
-                  driver.email,
-                  driver.preferredName ?? driverName,
-                  {
-                    rideId: route.id.toString(),
-                    pickup: route.pickupLocation.toString(),
-                    dropoff: route.dropoffLocation.toString(),
-                    time: rideTime,
-                  },
-                ),
-              ),
-            ]),
-        emitToast(driver.id.toString(), "Driver", {
-          type: "info",
-          message: vehicleOnly
-            ? `The vehicle for your ${rideTime} ride has changed.`
-            : "You have been assigned a new ride.",
-        }),
-      ]);
-    }
+    void notifyRideAssigned(assigned);
   });
+
   return route;
 }
 
@@ -728,6 +541,7 @@ async function assignRoute(
     throw error;
   }
 }
+
 export async function transitionRoute(
   routeId: string,
   expected: RouteStatus[],
@@ -768,22 +582,7 @@ export async function transitionRoute(
     return updated;
   });
   emitRouteUpdate(route);
-  const definition = ROUTE_STATUS_NOTIFICATIONS[status];
-  const notification = {
-    type: definition.type,
-    message:
-      typeof definition.message === "function"
-        ? definition.message(route.pickup.name)
-        : definition.message,
-  };
-  const tasks = [emitToast(route.student.id, "Student", notification)];
-  if (
-    route.driver &&
-    (status === RouteStatus.CancelledByStudent ||
-      status === RouteStatus.CancelledByAdmin)
-  ) {
-    tasks.push(emitToast(route.driver.id, "Driver", notification));
-  }
-  dispatchNotifications(tasks);
+  void notifyRideStatusChanged(route);
+
   return route;
 }
