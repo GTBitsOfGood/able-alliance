@@ -22,7 +22,7 @@ import {
 import { EmailClient } from "@/server/email/EmailClient";
 import { emitToast } from "@/server/notifications/emitToast";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
-import { MAX_DELAY_MINUTES } from "@/utils/consts";
+import { MAX_DELAY_MINUTES, ROUTE_STATUS_NOTIFICATIONS } from "@/utils/consts";
 import { recordAudit } from "@db/audit";
 
 function routeAuditSnapshot(route: {
@@ -243,10 +243,6 @@ export async function completeRoute(routeId: string, actorId: string) {
           },
         ),
       ),
-      emitToast(studentUser.id.toString(), {
-        type: "success",
-        message: "Your ride has been completed. Thank you for riding with us!",
-      }),
     ]);
   }
 
@@ -269,6 +265,7 @@ export async function cancelRoute(
       RouteStatus.Requested,
       RouteStatus.Scheduled,
       RouteStatus.EnRoute,
+      RouteStatus.Arrived,
       RouteStatus.Pickedup,
     ],
     status,
@@ -288,10 +285,6 @@ export async function cancelRoute(
           },
         ),
       ),
-      emitToast(studentUser.id.toString(), {
-        type: "error",
-        message: "Your ride has been cancelled.",
-      }),
     ]);
   }
 
@@ -310,10 +303,6 @@ export async function cancelRoute(
             },
           ),
         ),
-        emitToast(driverUser.id.toString(), {
-          type: "error",
-          message: "Your ride has been cancelled.",
-        }),
       ]);
     }
   }
@@ -400,17 +389,17 @@ export async function delayRoute(
       }),
     ),
   ];
-  if (route.student.settings?.rideDelayed) {
+  if (route.student) {
     tasks.push(
-      emitToast(route.student.id.toString(), {
+      emitToast(route.student.id.toString(), "Student", {
         type: "info",
         message: `Your ride has been delayed by ${route.delayMinutes} minutes.`,
       }),
     );
   }
-  if (route.driver?.settings?.rideDelayed) {
+  if (route.driver) {
     tasks.push(
-      emitToast(route.driver.id, {
+      emitToast(route.driver.id, "Driver", {
         type: "info",
         message: `Your student reported a delay of ${route.delayMinutes} minutes for their ride.`,
       }),
@@ -445,31 +434,25 @@ export async function startRoute(routeId: string, actorId: string) {
           },
         ),
       ),
-      emitToast(studentUser.id.toString(), {
-        type: "info",
-        message: "Your driver is on the way!",
-      }),
     ]);
   }
 
   return route;
 }
 
+export const arriveRoute = (routeId: string, actorId: string) =>
+  transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Arrived, actorId);
+
 export const pickupStudent = (routeId: string, actorId: string) =>
   transitionRoute(
     routeId,
-    [RouteStatus.EnRoute],
+    [RouteStatus.Arrived],
     RouteStatus.Pickedup,
     actorId,
   );
 
 export const markRouteMissing = (routeId: string, actorId: string) =>
-  transitionRoute(
-    routeId,
-    [RouteStatus.Scheduled, RouteStatus.EnRoute],
-    RouteStatus.Missing,
-    actorId,
-  );
+  transitionRoute(routeId, [RouteStatus.Arrived], RouteStatus.Missing, actorId);
 
 const LOCK_WAIT_MS = 10_000;
 const LOCK_RETRY_MS = 150;
@@ -582,9 +565,9 @@ export async function scheduleRouteWhileLocked(
 
     // The driver who lost the ride hears about it too. There is no email
     // template for a reassignment yet, so this one is in-app only.
-    if (driverChanged && previousDriver.settings?.rideAssigned) {
+    if (driverChanged) {
       dispatchNotifications([
-        emitToast(previousDriver.id.toString(), {
+        emitToast(previousDriver.id.toString(), "Driver", {
           type: "warn",
           message: `Your ${rideTime} ride has been reassigned to another driver.`,
         }),
@@ -592,16 +575,16 @@ export async function scheduleRouteWhileLocked(
     }
 
     const studentUser = route.student;
-    if (studentUser?.settings?.driverAssigned) {
+    if (studentUser) {
       dispatchNotifications([
-        ...(vehicleOnly
+        ...(vehicleOnly || !studentUser.settings?.driverAssigned
           ? []
           : [
               sendEmailSafely("rideConfirmed", () =>
                 EmailClient.rideConfirmed(route.id.toString()),
               ),
             ]),
-        emitToast(studentUser.id.toString(), {
+        emitToast(studentUser.id.toString(), "Student", {
           type: "success",
           message: vehicleOnly
             ? `The vehicle for your ${rideTime} ride has changed.`
@@ -612,9 +595,9 @@ export async function scheduleRouteWhileLocked(
       ]);
     }
 
-    if (driver.settings?.rideAssigned) {
+    if (driver) {
       dispatchNotifications([
-        ...(vehicleOnly
+        ...(vehicleOnly || !driver.settings?.rideAssigned
           ? []
           : [
               sendEmailSafely("rideAssigned", () =>
@@ -630,7 +613,7 @@ export async function scheduleRouteWhileLocked(
                 ),
               ),
             ]),
-        emitToast(driver.id.toString(), {
+        emitToast(driver.id.toString(), "Driver", {
           type: "info",
           message: vehicleOnly
             ? `The vehicle for your ${rideTime} ride has changed.`
@@ -785,5 +768,22 @@ export async function transitionRoute(
     return updated;
   });
   emitRouteUpdate(route);
+  const definition = ROUTE_STATUS_NOTIFICATIONS[status];
+  const notification = {
+    type: definition.type,
+    message:
+      typeof definition.message === "function"
+        ? definition.message(route.pickup.name)
+        : definition.message,
+  };
+  const tasks = [emitToast(route.student.id, "Student", notification)];
+  if (
+    route.driver &&
+    (status === RouteStatus.CancelledByStudent ||
+      status === RouteStatus.CancelledByAdmin)
+  ) {
+    tasks.push(emitToast(route.driver.id, "Driver", notification));
+  }
+  dispatchNotifications(tasks);
   return route;
 }

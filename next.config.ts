@@ -4,10 +4,14 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // HiGHS loads highs.wasm from beside its own loader at runtime.
   serverExternalPackages: ["highs"],
-  // Enable polling for Turbopack file watcher in Docker (inotify doesn't work through volume mounts on Windows)
-  watchOptions: {
-    pollIntervalMs: 1000,
+  // Avoid restoring stale loader state across Docker dev-server restarts.
+  experimental: {
+    turbopackFileSystemCacheForDev: false,
   },
+  // Opt in only on hosts whose Docker file sharing does not forward changes to the container.
+  ...(process.env.NEXT_DEV_POLLING === "1"
+    ? { watchOptions: { pollIntervalMs: 1000 } }
+    : {}),
   env: {
     DEPLOY_PRIME_URL: process.env.DEPLOY_PRIME_URL,
   },

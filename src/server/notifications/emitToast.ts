@@ -1,12 +1,15 @@
+import type { UserType } from "@db/generated/enums";
+
 export type ToastType = "success" | "error" | "info" | "warn";
 
 /**
- * Best-effort push of a real-time toast to a user via the websocket server.
+ * Best-effort push of a real-time toast to a user's active-role connections.
  * Never throws — a failure here must not interfere with the caller's
  * primary flow (route status update, email send).
  */
 export async function emitToast(
   userId: string,
+  activeType: UserType,
   payload: { type: ToastType; message: string },
 ): Promise<void> {
   const url = process.env.WEBSOCKET_INTERNAL_URL;
@@ -23,7 +26,7 @@ export async function emitToast(
         "Content-Type": "application/json",
         "x-internal-secret": secret,
       },
-      body: JSON.stringify({ userId, ...payload }),
+      body: JSON.stringify({ userId, activeType, ...payload }),
     });
     if (!res.ok) {
       console.error(`emitToast: notify failed with status ${res.status}`);

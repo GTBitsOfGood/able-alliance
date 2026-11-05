@@ -4,10 +4,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
 import { ToastContainer, toast } from "react-toast";
+import type { UserType } from "@db/generated/enums";
 
 type ToastNotification = {
   type: "success" | "error" | "info" | "warn";
   message: string;
+  activeType: UserType;
 };
 
 // The per-user /notifications socket, shared so pages can listen for
@@ -28,8 +30,9 @@ export default function NotificationProvider({
 
   useEffect(() => {
     const accessToken = session?.user?.accessToken;
+    const activeType = session?.user?.activeType;
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-    if (!accessToken || !wsUrl) return;
+    if (!accessToken || !activeType || !wsUrl) return;
 
     const newSocket = io(`${wsUrl}/notifications`, {
       auth: { token: accessToken },
@@ -39,9 +42,12 @@ export default function NotificationProvider({
       reconnectionAttempts: 20,
     });
 
-    newSocket.on("notification", ({ type, message }: ToastNotification) => {
-      toast[type](message);
-    });
+    newSocket.on(
+      "notification",
+      ({ type, message, activeType: recipientType }: ToastNotification) => {
+        if (recipientType === activeType) toast[type](message);
+      },
+    );
 
     // Publishing the socket from inside the effect is what lets consumers
     // subscribe; it is replaced whenever the access token changes.
@@ -50,9 +56,10 @@ export default function NotificationProvider({
 
     return () => {
       newSocket.disconnect();
+      toast.hideAll();
       setSocket(null);
     };
-  }, [session?.user?.accessToken]);
+  }, [session?.user?.accessToken, session?.user?.activeType]);
 
   return (
     <RealtimeSocketContext.Provider value={socket}>

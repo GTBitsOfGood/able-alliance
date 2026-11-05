@@ -87,6 +87,30 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   await expect(chip).toHaveText("En-route");
   await expect(
     driver.getByRole("button", { name: "Student picked up" }),
+  ).toBeHidden();
+  await expect(
+    driver.getByRole("button", { name: "Student no-show" }),
+  ).toBeHidden();
+  await driver.getByRole("button", { name: "Arrived at pickup" }).click();
+  const arrivalDialog = driver.getByRole("dialog");
+  await expect(
+    arrivalDialog.getByRole("heading", { name: "Arrived at Pickup" }),
+  ).toBeVisible();
+  await arrivalDialog
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(chip).toHaveText("En-route");
+  await driver.getByRole("button", { name: "Arrived at pickup" }).click();
+  await driver
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm Arrival" })
+    .click();
+  await expect(chip).toHaveText("Arrived");
+  await expect(
+    driver.getByRole("button", { name: "Arrived at pickup" }),
+  ).toBeHidden();
+  await expect(
+    driver.getByRole("button", { name: "Student picked up" }),
   ).toBeVisible();
   await expect(
     driver.getByRole("button", { name: "Student no-show" }),
@@ -102,6 +126,11 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     driver.getByRole("button", { name: "Student dropped off" }),
   ).toBeVisible();
   await driver.getByRole("button", { name: "Student dropped off" }).click();
+  const dropoffDialog = driver.getByRole("dialog");
+  await expect(
+    dropoffDialog.getByRole("heading", { name: "Student Dropped Off" }),
+  ).toBeVisible();
+  await dropoffDialog.getByRole("button", { name: "Confirm Dropoff" }).click();
   await expect(chip).toHaveText("Completed");
   await expect(
     driver.getByRole("button", { name: "Student dropped off" }),

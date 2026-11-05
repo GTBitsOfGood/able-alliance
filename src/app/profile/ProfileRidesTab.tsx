@@ -60,6 +60,7 @@ function statusChipStyle(
         color: "var(--color-grey-text-strong)",
       };
     case "EnRoute":
+    case "Arrived":
     case "Pickedup":
       return {
         background: "var(--color-status-yellow)",

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { idSchema } from "@/utils/ids";
 import { getEmailRoute } from "@/server/db/actions/EmailAction";
 import { EmailClient } from "@/server/email/EmailClient";
+import { getRouteMessage } from "@/server/db/actions/MessageAction";
+import { emitToast } from "@/server/notifications/emitToast";
 
 const requestSchema = z.object({
   routeId: idSchema,
@@ -38,6 +40,15 @@ export async function POST(req: NextRequest) {
     if (route?.driverId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    const message = await getRouteMessage(routeId, messageId);
+    if (!message || message.senderId !== userId) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+    // In-app messages are independent of the student's email preferences.
+    await emitToast(route.student.id, "Student", {
+      type: "info",
+      message: `Your driver: ${message.text}`,
+    });
     await EmailClient.newMessageFromDriver(routeId, messageId);
     return NextResponse.json({ ok: true });
   } catch (error) {

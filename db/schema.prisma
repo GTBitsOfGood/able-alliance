@@ -24,6 +24,7 @@ enum RouteStatus {
   Requested
   Scheduled
   EnRoute
+  Arrived
   Pickedup
   Completed
   Missing

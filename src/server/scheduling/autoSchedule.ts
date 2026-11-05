@@ -26,6 +26,7 @@ const ACCESSIBLE_VEHICLE_MISUSE_COST = 0.1;
 const BUSY_STATUSES = [
   RouteStatus.Scheduled,
   RouteStatus.EnRoute,
+  RouteStatus.Arrived,
   RouteStatus.Pickedup,
 ];
 

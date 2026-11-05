@@ -29,7 +29,12 @@ import type {
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { withDelay } from "@/utils/dateEst";
 
-const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled", "EnRoute"]);
+const CANCELLABLE_STATUSES = new Set([
+  "Requested",
+  "Scheduled",
+  "EnRoute",
+  "Arrived",
+]);
 const CLOSED_CHAT_STATUSES = new Set([
   "Completed",
   "Missing",
@@ -156,6 +161,8 @@ export default function RideDetailPage({
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
+  const [showArrivalModal, setShowArrivalModal] = useState(false);
+  const [showDropoffModal, setShowDropoffModal] = useState(false);
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
 
@@ -582,7 +589,8 @@ export default function RideDetailPage({
           longitude: pos.coords.longitude,
         });
         if (
-          routeStatusRef.current === "EnRoute" &&
+          (routeStatusRef.current === "EnRoute" ||
+            routeStatusRef.current === "Arrived") &&
           socketRef.current?.connected
         ) {
           socketRef.current.emit("updateLocation", {
@@ -674,7 +682,7 @@ export default function RideDetailPage({
 
   const handleDriverAction = useCallback(
     async (endpoint: string, errorMsg: string, terminal = false) => {
-      if (!routeId) return;
+      if (!routeId) return false;
       setDriverActionBusy(true);
       setDriverActionError(null);
       try {
@@ -690,8 +698,10 @@ export default function RideDetailPage({
         const updated: RouteData = await res.json();
         setRoute(updated);
         if (terminal) socketRef.current?.emit("closeRouteRoom");
+        return true;
       } catch (e) {
         setDriverActionError(e instanceof Error ? e.message : errorMsg);
+        return false;
       } finally {
         setDriverActionBusy(false);
       }
@@ -710,6 +720,11 @@ export default function RideDetailPage({
     [handleDriverAction],
   );
 
+  const handleArrive = useCallback(
+    () => handleDriverAction("/api/routes/arrive", "Failed to mark arrival."),
+    [handleDriverAction],
+  );
+
   const handleDropoffStudent = useCallback(
     () =>
       handleDriverAction(
@@ -721,7 +736,7 @@ export default function RideDetailPage({
   );
 
   const handleMarkMissing = useCallback(async () => {
-    if (!routeId) return;
+    if (!routeId) return false;
     setMarkingMissing(true);
     setMissingError(null);
     try {
@@ -737,10 +752,12 @@ export default function RideDetailPage({
       const updated: RouteData = await res.json();
       setRoute(updated);
       socketRef.current?.emit("closeRouteRoom");
+      return true;
     } catch (e) {
       setMissingError(
         e instanceof Error ? e.message : "Failed to mark as missing.",
       );
+      return false;
     } finally {
       setMarkingMissing(false);
     }
@@ -974,11 +991,42 @@ export default function RideDetailPage({
       <div className={styles.rideDetailPage}>
         {chatModal}
         <ConfirmActionModal
+          open={showArrivalModal}
+          onOpenChange={setShowArrivalModal}
+          onConfirm={async () => {
+            if (await handleArrive()) setShowArrivalModal(false);
+          }}
+          variant="primary"
+          title="Arrived at Pickup"
+          description={`I have arrived at ${pickupLocationName}. The student will be notified.`}
+          confirmLabel="Confirm Arrival"
+          confirmingLabel="Confirming…"
+          cancelLabel="Cancel"
+          confirming={driverActionBusy}
+        >
+          {driverActionError && <p role="alert">{driverActionError}</p>}
+        </ConfirmActionModal>
+        <ConfirmActionModal
+          open={showDropoffModal}
+          onOpenChange={setShowDropoffModal}
+          onConfirm={async () => {
+            if (await handleDropoffStudent()) setShowDropoffModal(false);
+          }}
+          variant="primary"
+          title="Student Dropped Off"
+          description={`I have dropped off ${studentName}. This will complete the ride.`}
+          confirmLabel="Confirm Dropoff"
+          confirmingLabel="Completing…"
+          cancelLabel="Cancel"
+          confirming={driverActionBusy}
+        >
+          {driverActionError && <p role="alert">{driverActionError}</p>}
+        </ConfirmActionModal>
+        <ConfirmActionModal
           open={showPickupModal}
           onOpenChange={setShowPickupModal}
           onConfirm={async () => {
-            await handlePickupStudent();
-            setShowPickupModal(false);
+            if (await handlePickupStudent()) setShowPickupModal(false);
           }}
           variant="primary"
           title="Student Picked Up"
@@ -987,13 +1035,14 @@ export default function RideDetailPage({
           confirmingLabel="Confirming…"
           cancelLabel="Cancel"
           confirming={driverActionBusy}
-        />
+        >
+          {driverActionError && <p role="alert">{driverActionError}</p>}
+        </ConfirmActionModal>
         <ConfirmActionModal
           open={showNoShowModal}
           onOpenChange={setShowNoShowModal}
           onConfirm={async () => {
-            await handleMarkMissing();
-            setShowNoShowModal(false);
+            if (await handleMarkMissing()) setShowNoShowModal(false);
           }}
           variant="destructive"
           title="Student No-Show"
@@ -1002,7 +1051,9 @@ export default function RideDetailPage({
           confirmingLabel="Marking…"
           cancelLabel="Cancel"
           confirming={markingMissing}
-        />
+        >
+          {missingError && <p role="alert">{missingError}</p>}
+        </ConfirmActionModal>
 
         <main className={styles.main}>
           <header className={styles.header}>
@@ -1111,8 +1162,24 @@ export default function RideDetailPage({
                 </button>
               )}
 
-              {/* En-route: Student picked up + Student no-show */}
+              {/* En-route: confirm arrival before pickup or no-show. */}
               {route.status === "EnRoute" && (
+                <button
+                  type="button"
+                  className={
+                    styles.outlineButton + " " + styles.greenOutlineButton
+                  }
+                  onClick={() => {
+                    setDriverActionError(null);
+                    setShowArrivalModal(true);
+                  }}
+                  disabled={driverActionBusy}
+                >
+                  {driverActionBusy ? "Updating…" : "Arrived at pickup"}
+                </button>
+              )}
+
+              {route.status === "Arrived" && (
                 <div className={styles.enRouteActions}>
                   <div className={styles.pickupActions}>
                     <button
@@ -1120,7 +1187,10 @@ export default function RideDetailPage({
                       className={
                         styles.outlineButton + " " + styles.greenOutlineButton
                       }
-                      onClick={() => setShowPickupModal(true)}
+                      onClick={() => {
+                        setDriverActionError(null);
+                        setShowPickupModal(true);
+                      }}
                       disabled={driverActionBusy}
                     >
                       {driverActionBusy ? "Updating…" : "Student picked up"}
@@ -1130,7 +1200,10 @@ export default function RideDetailPage({
                       className={
                         styles.outlineButton + " " + styles.redOutlineButton
                       }
-                      onClick={() => setShowNoShowModal(true)}
+                      onClick={() => {
+                        setMissingError(null);
+                        setShowNoShowModal(true);
+                      }}
                       disabled={markingMissing}
                     >
                       {markingMissing ? "Marking…" : "Student no-show"}
@@ -1146,7 +1219,10 @@ export default function RideDetailPage({
                   className={
                     styles.outlineButton + " " + styles.greenOutlineButton
                   }
-                  onClick={() => void handleDropoffStudent()}
+                  onClick={() => {
+                    setDriverActionError(null);
+                    setShowDropoffModal(true);
+                  }}
                   disabled={driverActionBusy}
                 >
                   {driverActionBusy ? "Completing…" : "Student dropped off"}

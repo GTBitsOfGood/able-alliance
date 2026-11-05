@@ -37,6 +37,7 @@ const CANCELLABLE_STATUSES = new Set<string>([
   "Requested",
   "Scheduled",
   "EnRoute",
+  "Arrived",
   "Pickedup",
 ]);
 
@@ -73,9 +74,10 @@ function defaultOrder(a: RouteEntry, b: RouteEntry) {
       ActionRequired: 0,
       Requested: 1,
       EnRoute: 2,
-      Pickedup: 3,
-      Scheduled: 4,
-    })[status] ?? 5;
+      Arrived: 3,
+      Pickedup: 4,
+      Scheduled: 5,
+    })[status] ?? 6;
   return (
     priority(a.status) - priority(b.status) ||
     withDelay(new Date(a.scheduledPickupTime), a.delayMinutes ?? 0).getTime() -

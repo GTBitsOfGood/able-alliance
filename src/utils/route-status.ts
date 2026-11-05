@@ -6,6 +6,7 @@ export const routeStatusLabels = {
   Requested: "Requested",
   Scheduled: "Scheduled",
   EnRoute: "En-route",
+  Arrived: "Arrived",
   Pickedup: "Picked up",
   Completed: "Completed",
   Missing: "Missing",

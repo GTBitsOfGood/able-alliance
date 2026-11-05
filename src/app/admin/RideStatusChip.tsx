@@ -42,6 +42,7 @@ function toneFor(status: string): Tone {
     case "Scheduled":
       return "scheduled";
     case "EnRoute":
+    case "Arrived":
     case "Pickedup":
       return "progress";
     case "Completed":
