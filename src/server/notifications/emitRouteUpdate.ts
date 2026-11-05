@@ -1,8 +1,9 @@
+import type { RouteStatus } from "@db/generated/enums";
 import { postEvent } from "./postEvent";
 
 type RouteRef = {
   id: { toString(): string };
-  status: string;
+  status: RouteStatus;
   student?: { id?: { toString(): string } } | null;
   driver?: { id?: { toString(): string } } | null;
 };

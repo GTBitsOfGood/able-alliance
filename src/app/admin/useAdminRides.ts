@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import {
   createContext,
   useContext,
@@ -219,7 +221,9 @@ export function useAdminRidesData() {
   return {
     routes,
     actionRequiredCount: routes.filter(
-      (route) => route.status === "ActionRequired",
+      (route) =>
+        route.status === RouteStatus.ActionRequiredByAdmin ||
+        route.status === RouteStatus.Requested,
     ).length,
     drivers,
     vehicles,

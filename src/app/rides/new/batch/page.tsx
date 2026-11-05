@@ -9,6 +9,7 @@ import type { Location } from "@db/generated/browser";
 import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./styles.module.css";
+import RecurrenceFields from "@/components/RecurrenceFields/RecurrenceFields";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
 import BogButton from "@/components/BogButton/BogButton";
 
@@ -76,15 +77,6 @@ function isWeekday(date: string) {
   return weekday >= 1 && weekday <= 5;
 }
 
-/** "Repeats on" buttons, keyed by Date#getDay() weekday number. */
-const REPEAT_DAYS = [
-  { label: "M", weekday: 1 },
-  { label: "Tu", weekday: 2 },
-  { label: "W", weekday: 3 },
-  { label: "Th", weekday: 4 },
-  { label: "F", weekday: 5 },
-];
-
 export default function BatchRidePage() {
   const router = useRouter();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -118,15 +110,6 @@ export default function BatchRidePage() {
         rideIndex === index ? { ...ride, ...patch } : ride,
       ),
     );
-  }
-
-  function toggleDay(index: number, day: number) {
-    const ride = rides[index];
-    updateRide(index, {
-      repeatsOn: ride.repeatsOn.includes(day)
-        ? ride.repeatsOn.filter((selectedDay) => selectedDay !== day)
-        : [...ride.repeatsOn, day],
-    });
   }
 
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
@@ -371,43 +354,15 @@ export default function BatchRidePage() {
                   </label>
                 </div>
                 {ride.recurring && (
-                  <div className={styles.recurrenceFields}>
-                    <label>
-                      Frequency
-                      <select defaultValue="Weekly">
-                        <option>Weekly</option>
-                      </select>
-                    </label>
-                    <fieldset>
-                      <legend>Repeats on</legend>
-                      <div className={styles.dayButtons}>
-                        {REPEAT_DAYS.map(({ label, weekday }) => (
-                          <BogButton
-                            key={weekday}
-                            type="button"
-                            className={
-                              ride.repeatsOn.includes(weekday)
-                                ? styles.dayButtonSelected
-                                : styles.dayButton
-                            }
-                            onClick={() => toggleDay(index, weekday)}
-                          >
-                            {label}
-                          </BogButton>
-                        ))}
-                      </div>
-                    </fieldset>
-                    <label>
-                      Ends
-                      <input
-                        type="date"
-                        value={ride.ends}
-                        onChange={(event) =>
-                          updateRide(index, { ends: event.target.value })
-                        }
-                      />
-                    </label>
-                  </div>
+                  <RecurrenceFields
+                    daysOfWeek={ride.repeatsOn}
+                    endsOn={ride.ends}
+                    minDate={ride.date}
+                    onDaysChange={(repeatsOn) =>
+                      updateRide(index, { repeatsOn })
+                    }
+                    onEndChange={(ends) => updateRide(index, { ends })}
+                  />
                 )}
               </section>
             ))}

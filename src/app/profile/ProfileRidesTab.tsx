@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
 import styles from "./profileRides.module.css";
@@ -54,35 +56,35 @@ function statusChipStyle(
     };
   }
   switch (status) {
-    case "Scheduled":
+    case RouteStatus.Scheduled:
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-grey-text-strong)",
       };
-    case "EnRoute":
-    case "Arrived":
-    case "Pickedup":
+    case RouteStatus.EnRoute:
+    case RouteStatus.Arrived:
+    case RouteStatus.Pickedup:
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-grey-text-strong)",
       };
-    case "Completed":
+    case RouteStatus.Completed:
       return {
         background: "var(--color-status-green)",
         color: "var(--color-status-green-text)",
       };
-    case "Requested":
+    case RouteStatus.Requested:
       return {
         background: "var(--color-admin-bg)",
         color: "var(--color-grey-text-strong)",
       };
-    case "CancelledByStudent":
-    case "CancelledByAdmin":
+    case RouteStatus.CancelledByStudent:
+    case RouteStatus.CancelledByAdmin:
       return {
         background: "var(--color-status-yellow)",
         color: "var(--color-grey-text-strong)",
       };
-    case "Missing":
+    case RouteStatus.Missing:
       return {
         background: "var(--color-status-pink)",
         color: "var(--color-grey-text-strong)",

@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -476,7 +478,9 @@ export default function ShiftDetailPage({
                                 : styles.badgeRequested
                             }`}
                           >
-                            {isSelected ? "Scheduled" : "Requested"}
+                            {isSelected
+                              ? RouteStatus.Scheduled
+                              : RouteStatus.Requested}
                           </span>
                         </td>
                         <td>

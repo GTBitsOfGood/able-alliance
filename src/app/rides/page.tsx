@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -107,7 +109,9 @@ export default function RidesPage() {
       const routesData = await routesRes.json();
       if (!isLatest()) return;
       setRoutes(
-        routesData.filter((r: Route) => r.status !== "CancelledByStudent"),
+        routesData.filter(
+          (r: Route) => r.status !== RouteStatus.CancelledByStudent,
+        ),
       );
       setError(null);
     } catch (e) {
@@ -203,6 +207,12 @@ export default function RidesPage() {
     );
     return groupRoutesByDate(filtered);
   }, [routes, nextWeekRange]);
+
+  const actionRequiredRoutes = routes.filter(
+    (route) => route.status === RouteStatus.ActionRequiredByStudent,
+  );
+  const actionRequiredByDate = groupRoutesByDate(actionRequiredRoutes);
+  const actionRequiredDateKeys = Object.keys(actionRequiredByDate).sort();
 
   const todayKey = React.useMemo(
     () => (mounted ? estDateKey(new Date()) : ""),
@@ -371,8 +381,8 @@ export default function RidesPage() {
         <Tabs.Root defaultValue="this-week" className={styles.tabsLayout}>
           <div className={styles.tabsRow}>
             <Tabs.List
-              className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]} ${styles.rideTabs}`}
-              aria-label="Ride week"
+              className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]} ${styles.rideTabs} ${styles.studentTabs}`}
+              aria-label="Ride views"
             >
               <Tabs.Trigger
                 value="this-week"
@@ -386,8 +396,33 @@ export default function RidesPage() {
               >
                 <div className={tabStyles["bog-tabs-label"]}>Next week</div>
               </Tabs.Trigger>
+              <Tabs.Trigger
+                value="action-required"
+                className={`${styles.actionRequiredTab} ${actionRequiredRoutes.length ? styles.hasActions : ""}`}
+              >
+                {actionRequiredRoutes.length} action
+                {actionRequiredRoutes.length === 1 ? "" : "s"} required
+              </Tabs.Trigger>
             </Tabs.List>
           </div>
+          <Tabs.Content
+            value="action-required"
+            className={styles.tabContentPanel}
+          >
+            {loading ? (
+              <p className={styles.rideListLoading}>Loading…</p>
+            ) : actionRequiredRoutes.length ? (
+              renderRideList(
+                actionRequiredByDate,
+                actionRequiredDateKeys,
+                requestRideButton,
+              )
+            ) : (
+              <p className={styles.rideListEmpty}>
+                No rides need your attention.
+              </p>
+            )}
+          </Tabs.Content>
           <Tabs.Content value="this-week" className={styles.tabContentPanel}>
             <div className={styles.tabContentHeader}>
               <h2 className={styles.dateHeader}>{thisWeekHeader}</h2>

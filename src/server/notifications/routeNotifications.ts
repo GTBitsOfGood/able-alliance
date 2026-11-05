@@ -6,7 +6,7 @@ import { EmailClient } from "@/server/email/EmailClient";
 import { formatEstDate, formatEstTime } from "@/utils/dateEst";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
 
-import { emitToast } from "./emitToast";
+import { emitToast, type ToastPayload } from "./emitToast";
 
 type NotificationRoute = Prisma.RouteGetPayload<{
   include: typeof adminRouteInclude;
@@ -42,9 +42,11 @@ function recipientName(user: NotificationUser): string {
 
 export function notifyRideStatusChanged(
   route: NotificationRoute,
+  notificationOverride?: ToastPayload,
 ): Promise<void> {
   const { student, driver, status } = route;
-  const notification = RIDE_NOTIFICATIONS[status](route.pickup.name);
+  const notification =
+    notificationOverride ?? RIDE_NOTIFICATIONS[status](route.pickup.name);
 
   const deliveries: Delivery[] = [
     () => emitToast(student.id, "Student", notification),
@@ -206,6 +208,60 @@ export function notifyRideAssigned({
         time: rideTime,
       }),
     );
+  }
+
+  return deliverNotifications(route.id, deliveries);
+}
+
+export function notifyRideChangesAccepted(
+  route: NotificationRoute,
+  previousDriver: NotificationUser | null,
+): Promise<void> {
+  const rideTime = `${formatEstDate(route.scheduledPickupTime)} ${formatEstTime(route.scheduledPickupTime)}`;
+
+  const details = `Pickup: ${route.pickup.name} on ${rideTime}. Dropoff: ${route.dropoff.name}. Vehicle: ${route.vehicle?.licensePlate ?? "Unassigned"}.`;
+
+  const deliveries: Delivery[] = [
+    () =>
+      emitToast(
+        route.student.id,
+        "Student",
+        RIDE_NOTIFICATIONS.changesAccepted(
+          route.status === RouteStatus.Requested,
+        ),
+      ),
+  ];
+
+  if (route.driver) {
+    const driver = route.driver;
+
+    deliveries.push(() =>
+      emitToast(
+        driver.id,
+        "Driver",
+        RIDE_NOTIFICATIONS.driverRideUpdated(details),
+      ),
+    );
+
+    if (driver.settings?.rideAssigned)
+      deliveries.push(() =>
+        EmailClient.rideUpdated(driver.email, recipientName(driver), details),
+      );
+  }
+
+  if (previousDriver && previousDriver.id !== route.driverId) {
+    const notification = RIDE_NOTIFICATIONS.driverRideReleased(rideTime);
+
+    deliveries.push(() => emitToast(previousDriver.id, "Driver", notification));
+
+    if (previousDriver.settings?.rideAssigned)
+      deliveries.push(() =>
+        EmailClient.rideUpdated(
+          previousDriver.email,
+          recipientName(previousDriver),
+          notification.message,
+        ),
+      );
   }
 
   return deliverNotifications(route.id, deliveries);

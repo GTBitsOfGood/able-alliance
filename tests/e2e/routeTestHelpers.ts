@@ -55,17 +55,19 @@ export async function selectLocation(
   await expect(input).toHaveValue(name);
 }
 
-/** Schedule through the current admin row menu and Edit ride modal. */
+/** Schedule through the current admin row menu and Schedule ride modal. */
 export async function scheduleRideInAdmin(page: Page, routeId: string) {
   const row = page.locator(`tr[data-route-id="${routeId}"]`);
   await expect(row).toHaveCount(1);
   await row.hover();
   await row.getByRole("button", { name: /^Actions for / }).click();
-  await page.getByRole("menuitem", { name: "Edit ride", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "Schedule ride", exact: true })
+    .click();
 
   const dialog = page.getByRole("dialog");
   await expect(
-    dialog.getByRole("heading", { name: "Edit ride", exact: true }),
+    dialog.getByRole("heading", { name: "Schedule ride", exact: true }),
   ).toBeVisible();
   await dialog
     .getByRole("button", { name: "Select...", exact: true })

@@ -1,3 +1,4 @@
+import type { RouteStatus } from "@db/generated/enums";
 import { render, toPlainText } from "react-email";
 import type { ComponentProps } from "react";
 import { junoEmailClient } from "@/server/juno/init";
@@ -126,6 +127,9 @@ export const EmailClient = {
     });
   },
 
+  rideUpdated: (to: string, toName: string, details: string) =>
+    sendEmail({ to, toName, subject: "Ride Updated", text: details }),
+
   rideCompleted: (
     to: string,
     toName: string,
@@ -209,7 +213,7 @@ export const EmailClient = {
       time: string;
       pickup: string;
       dropoff: string;
-      status: string;
+      status: RouteStatus;
     }[],
   ) => {
     return sendEmail({

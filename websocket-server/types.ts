@@ -1,3 +1,4 @@
+import type { RouteStatus } from "../db/generated/enums.js";
 import type { Server, Socket, Namespace } from "socket.io";
 import type {
   User,
@@ -27,7 +28,7 @@ export interface ServerEvents {
     message: string;
     activeType: string;
   }) => void;
-  routeUpdated: (payload: { routeId: string; status: string }) => void;
+  routeUpdated: (payload: { routeId: string; status: RouteStatus }) => void;
   locationsUpdated: () => void;
 }
 

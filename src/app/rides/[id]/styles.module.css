@@ -421,8 +421,14 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--color-brand-fill);
+  }
+
+  &:disabled {
+    border-color: var(--color-grey-stroke-weak);
+    color: var(--color-grey-off-state);
+    cursor: not-allowed;
   }
 
   &:focus {
@@ -1041,5 +1047,20 @@
   .cancelButton {
     font-size: 1.6rem;
     line-height: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .titleRow {
+    flex-wrap: wrap;
+    gap: 1.2rem;
+  }
+  .statusChip {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    justify-content: center;
   }
 }

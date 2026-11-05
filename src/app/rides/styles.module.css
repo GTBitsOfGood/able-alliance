@@ -1496,3 +1496,55 @@
     height: 4.4rem;
   }
 }
+
+/* Preserve the original 38.5rem week-tab pair; append the attention tab. */
+.studentTabs {
+  width: max-content;
+  flex-wrap: wrap;
+  row-gap: 1rem;
+}
+.studentTabs [role="tab"] {
+  flex: 0 0 19.25rem;
+  width: auto;
+}
+.studentTabs [role="tab"].actionRequiredTab {
+  flex: 0 0 auto;
+  margin-left: 1.6rem;
+  padding: 0.8rem 1.2rem;
+  border: 0;
+  background: none;
+  font-family: var(--font-paragraph);
+  font-weight: 600;
+  color: var(--color-grey-text-weak);
+  cursor: pointer;
+}
+.studentTabs [role="tab"].hasActions {
+  color: var(--color-status-red-text);
+}
+.studentTabs [role="tab"].actionRequiredTab[data-state="active"] {
+  background: var(--color-status-red-fill);
+  border-radius: 999rem;
+}
+.studentTabs [role="tab"].actionRequiredTab:focus-visible {
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.2rem;
+}
+@media (max-width: 768px) {
+  .studentTabs [role="tab"]:not(.actionRequiredTab) {
+    flex: 1 1 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .rideCardStatusRow {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+  .rideCardStatusChip {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+}

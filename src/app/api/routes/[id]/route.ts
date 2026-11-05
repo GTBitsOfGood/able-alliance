@@ -1,3 +1,7 @@
+import { editRouteSchema, rideReviewSchema } from "@/utils/types";
+import { ArgumentError } from "@/utils/errors";
+import { editOrAcceptRoute } from "@/server/db/actions/RouteAction";
+import { routeResponseForRole } from "@/server/db/queries";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
@@ -76,6 +80,54 @@ export async function DELETE(
       { message: "Route deleted" },
       { status: HTTP_STATUS_CODE.OK },
     );
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  let user;
+  try {
+    user = await getUserFromRequest();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  if (!isValidId(id))
+    return NextResponse.json({ error: "Invalid route ID" }, { status: 400 });
+  try {
+    const body = await req.json().catch(() => {
+      throw new ArgumentError("Malformed request body");
+    });
+
+    if (body && typeof body === "object" && "recurring" in body) {
+      throw new ArgumentError(
+        "Recurrence cannot be changed when editing a ride. Cancel the affected rides and submit a new request.",
+      );
+    }
+
+    const isReview = body && typeof body === "object" && "action" in body;
+
+    const review = isReview ? rideReviewSchema.safeParse(body) : null;
+
+    const edit = !isReview ? editRouteSchema.safeParse(body) : null;
+
+    if ((review && !review.success) || (edit && !edit.success))
+      throw new ArgumentError("Invalid ride details.");
+
+    const route = await editOrAcceptRoute(
+      id,
+      user,
+      edit?.success ? edit.data : null,
+      review?.success ? review.data : undefined,
+    );
+
+    return NextResponse.json(routeResponseForRole(route, user.activeType));
   } catch (error) {
     return errorResponse(error);
   }

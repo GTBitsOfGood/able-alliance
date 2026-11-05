@@ -11,6 +11,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   PrismaClient,
+  RouteStatus,
   type Location,
   type Vehicle,
   type Prisma,
@@ -492,12 +493,12 @@ async function seed() {
               estimatedDropoffTime: dropoff,
               delayMinutes: 0,
               status: requested
-                ? "Requested"
+                ? RouteStatus.Requested
                 : dropoff <= now
-                  ? "Completed"
+                  ? RouteStatus.Completed
                   : pickup <= now
-                    ? "Pickedup"
-                    : "Scheduled",
+                    ? RouteStatus.Pickedup
+                    : RouteStatus.Scheduled,
             };
             if (planned.some((other) => conflicts(candidate, other))) continue;
             planned.push(candidate);
@@ -560,12 +561,20 @@ async function seed() {
         "America/New_York",
         "yyyy-MM-dd",
       ) === today &&
-      ["Scheduled", "EnRoute", "Pickedup"].includes(route.status),
+      new Set<RouteStatus>([
+        RouteStatus.Scheduled,
+        RouteStatus.EnRoute,
+        RouteStatus.Pickedup,
+      ]).has(route.status),
   );
   const chatRoute =
     todayActiveRoute ??
     chatRoutes.find((route) =>
-      ["Scheduled", "EnRoute", "Pickedup"].includes(route.status),
+      new Set<RouteStatus>([
+        RouteStatus.Scheduled,
+        RouteStatus.EnRoute,
+        RouteStatus.Pickedup,
+      ]).has(route.status),
     );
 
   if (chatRoute) {

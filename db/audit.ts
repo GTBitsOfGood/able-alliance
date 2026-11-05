@@ -13,6 +13,7 @@ export const AUDIT_ENTITY_TYPES = [
   "Accommodation",
   "Route",
   "RideSeries",
+  "ProposedRideChange",
   "Message",
 ] as const;
 

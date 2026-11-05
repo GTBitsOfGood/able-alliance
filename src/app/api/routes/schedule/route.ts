@@ -1,3 +1,4 @@
+import { RouteStatus } from "@db/generated/enums";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
@@ -5,7 +6,6 @@ import {
   BookingConflictError,
   scheduleRoute,
 } from "@/server/db/actions/RouteAction";
-import { RouteStatus } from "@db/generated/enums";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -48,14 +48,17 @@ export async function POST(request: NextRequest) {
         { status: HTTP_STATUS_CODE.FORBIDDEN },
       );
     }
-    // Admins may edit a ride in any status from here, so every status is
-    // accepted. Bulk and automatic scheduling keep the Requested-only default.
     const updated = await scheduleRoute(
       routeId,
       driverId,
       vehicleId,
       user.userId,
-      Object.values(RouteStatus),
+      [
+        RouteStatus.Requested,
+        RouteStatus.Scheduled,
+        RouteStatus.ActionRequiredByAdmin,
+        RouteStatus.ActionRequiredByStudent,
+      ],
     );
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {

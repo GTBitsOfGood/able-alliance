@@ -1,6 +1,13 @@
 "use client";
 
-import { routeDisplayLabel, isRouteDelayed } from "@/utils/route-status";
+import { RouteStatus } from "@db/generated/enums";
+
+import {
+  canStudentEditRide,
+  studentEditDisabledReason,
+  routeDisplayLabel,
+  isRouteDelayed,
+} from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
@@ -29,17 +36,19 @@ import type {
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { withDelay } from "@/utils/dateEst";
 
-const CANCELLABLE_STATUSES = new Set([
-  "Requested",
-  "Scheduled",
-  "EnRoute",
-  "Arrived",
+const CANCELLABLE_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+  RouteStatus.EnRoute,
+  RouteStatus.Arrived,
 ]);
-const CLOSED_CHAT_STATUSES = new Set([
-  "Completed",
-  "Missing",
-  "CancelledByStudent",
-  "CancelledByAdmin",
+const CLOSED_CHAT_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Completed,
+  RouteStatus.Missing,
+  RouteStatus.CancelledByStudent,
+  RouteStatus.CancelledByAdmin,
 ]);
 
 function createCustomPin(
@@ -589,8 +598,8 @@ export default function RideDetailPage({
           longitude: pos.coords.longitude,
         });
         if (
-          (routeStatusRef.current === "EnRoute" ||
-            routeStatusRef.current === "Arrived") &&
+          (routeStatusRef.current === RouteStatus.EnRoute ||
+            routeStatusRef.current === RouteStatus.Arrived) &&
           socketRef.current?.connected
         ) {
           socketRef.current.emit("updateLocation", {
@@ -1151,7 +1160,7 @@ export default function RideDetailPage({
               </div>
 
               {/* Scheduled: Start ride */}
-              {route.status === "Scheduled" && (
+              {route.status === RouteStatus.Scheduled && (
                 <button
                   type="button"
                   className={styles.startRideButton}
@@ -1163,7 +1172,7 @@ export default function RideDetailPage({
               )}
 
               {/* En-route: confirm arrival before pickup or no-show. */}
-              {route.status === "EnRoute" && (
+              {route.status === RouteStatus.EnRoute && (
                 <button
                   type="button"
                   className={
@@ -1179,7 +1188,7 @@ export default function RideDetailPage({
                 </button>
               )}
 
-              {route.status === "Arrived" && (
+              {route.status === RouteStatus.Arrived && (
                 <div className={styles.enRouteActions}>
                   <div className={styles.pickupActions}>
                     <button
@@ -1213,7 +1222,7 @@ export default function RideDetailPage({
               )}
 
               {/* Pickedup: Student dropped off */}
-              {route.status === "Pickedup" && (
+              {route.status === RouteStatus.Pickedup && (
                 <button
                   type="button"
                   className={
@@ -1445,12 +1454,27 @@ export default function RideDetailPage({
             <button
               type="button"
               className={styles.editButton}
-              onClick={() => {}}
+              disabled={!canStudentEditRide(route)}
+              title={studentEditDisabledReason(route)}
+              onClick={() => router.push(`/rides/${route.id}/edit`)}
             >
               Edit ride
             </button>
 
-            {(route.status === "Scheduled" || route.status === "EnRoute") && (
+            {route.status === RouteStatus.ActionRequiredByStudent && (
+              <Link
+                href={`/rides/${route.id}/review`}
+                className={styles.editButton}
+              >
+                Review changes
+              </Link>
+            )}
+            {route.status === RouteStatus.ActionRequiredByAdmin && (
+              <p>Your ride changes are awaiting administrator approval.</p>
+            )}
+
+            {(route.status === RouteStatus.Scheduled ||
+              route.status === RouteStatus.EnRoute) && (
               <button
                 type="button"
                 className={styles.cancelButton}

@@ -45,3 +45,14 @@ export const batchRideRequestSchema = z
   .strict();
 
 export type BatchRideRequest = z.infer<typeof batchRideRequestSchema>;
+
+export const editRouteSchema = createRouteSchema.omit({ student: true });
+
+export type EditRouteInput = z.infer<typeof editRouteSchema>;
+
+export const rideReviewSchema = z
+  .object({
+    action: z.enum(["accept", "decline"]),
+    changeId: idSchema,
+  })
+  .strict();

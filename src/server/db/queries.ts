@@ -16,12 +16,17 @@ export const userInclude = {
   },
 } as const satisfies Prisma.UserInclude;
 
+const proposedRideChangeInclude = {
+  include: { pickup: true, dropoff: true },
+} as const satisfies Prisma.ProposedRideChangeDefaultArgs;
+
 export const adminRouteInclude = {
   student: { include: userInclude },
   driver: { include: userInclude },
   vehicle: true,
   pickup: true,
   dropoff: true,
+  proposedRideChange: proposedRideChangeInclude,
 } as const satisfies Prisma.RouteInclude;
 
 // Limit participant details in route responses for students and drivers.
@@ -47,6 +52,7 @@ export const studentRouteInclude = {
   vehicle: true,
   pickup: true,
   dropoff: true,
+  proposedRideChange: proposedRideChangeInclude,
 } as const satisfies Prisma.RouteInclude;
 
 export const driverRouteInclude = {
