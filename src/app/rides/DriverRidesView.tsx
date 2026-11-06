@@ -161,11 +161,15 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     }
   }, [userId, activeTab, todayRange, tomorrowRange, beginRequest]);
 
+  const refreshRoutes = useRef(fetchRoutes);
+  useEffect(() => {
+    refreshRoutes.current = fetchRoutes;
+  }, [fetchRoutes]);
+
   useEffect(() => {
     if (!mounted) return;
-    // Clear the previous day while loading routes for the selected day.
+    // This effect starts an asynchronous API request.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
     void fetchRoutes();
   }, [mounted, fetchRoutes]);
 
@@ -225,12 +229,13 @@ export default function DriverRidesView({ userId }: { userId: string }) {
           return;
         }
         const updated: DriverRoute = await res.json();
-        // A refresh started before the mutation must not restore the old status.
-        beginRequest();
         setRoutes((prev) =>
           prev.map((ride) => (ride.id === updated.id ? updated : ride)),
         );
         setConfirmRoute(null);
+        // The action may have started on a different tab. Use the current
+        // fetcher so any stale load is replaced, including its loading cleanup.
+        void refreshRoutes.current();
       } catch {
         setError("Failed to update ride");
       } finally {
@@ -242,7 +247,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
         });
       }
     },
-    [beginRequest],
+    [],
   );
 
   function renderRides() {
@@ -297,7 +302,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
 
       <Tabs.Root
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as "today" | "tomorrow")}
+        onValueChange={(v) => {
+          if (v !== "today" && v !== "tomorrow") return;
+          if (v === activeTab) return;
+          setLoading(true);
+          setActiveTab(v);
+        }}
         className={styles.tabsLayout}
       >
         {renderDayToggle()}

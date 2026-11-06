@@ -30,34 +30,34 @@
 
 .neutral {
   color: var(--color-grey-text-strong);
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   font-weight: 600;
 }
 
 .green {
-  color: #16a34a;
-  border: 1px solid #16a34a;
+  color: var(--color-status-green-text);
+  border: 0.1rem solid var(--color-status-green-stroke-strong);
 }
 
 .red {
-  color: #dc2626;
-  border: 1px solid #dc2626;
+  color: var(--color-status-red-text);
+  border: 0.1rem solid var(--color-status-red-stroke-strong);
 }
 
 .neutral:hover:not(:disabled) {
   background-color: var(--color-grey-fill-weak);
 }
 .green:hover:not(:disabled) {
-  background-color: rgba(22, 163, 74, 0.06);
+  background-color: var(--color-status-green-fill);
 }
 .red:hover:not(:disabled) {
-  background-color: rgba(220, 38, 38, 0.06);
+  background-color: var(--color-status-red-fill);
 }
 .button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .button:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.2rem;
 }
