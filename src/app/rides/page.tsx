@@ -134,26 +134,30 @@ export default function RidesPage() {
     if (mounted && session?.user?.activeType === "Student") void fetchRides();
   });
 
-  const handleCancel = useCallback(async (routeId: string) => {
-    setCancellingId(routeId);
-    try {
-      const res = await fetch("/api/routes/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error ?? res.statusText);
+  const handleCancel = useCallback(
+    async (routeId: string) => {
+      setCancellingId(routeId);
+      try {
+        const res = await fetch("/api/routes/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId }),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? res.statusText);
+        }
+        beginRequest();
+        setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+        setCancelTargetId(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Cancellation failed.");
+      } finally {
+        setCancellingId(null);
       }
-      setRoutes((prev) => prev.filter((r) => r.id !== routeId));
-      setCancelTargetId(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Cancellation failed.");
-    } finally {
-      setCancellingId(null);
-    }
-  }, []);
+    },
+    [beginRequest],
+  );
 
   const handleDelay = async (minutes: number) => {
     if (!delayTargetId || delayPending.current) return;
@@ -171,6 +175,7 @@ export default function RidesPage() {
         throw new Error(body.error ?? res.statusText);
       }
       const updated: Route = await res.json();
+      beginRequest();
       setRoutes((prev) =>
         prev.map((route) => (route.id === updated.id ? updated : route)),
       );
