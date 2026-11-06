@@ -6,6 +6,8 @@ services:
       secrets:
         - app_env
     env_file: .env
+    volumes:
+      - ./emails-preview:/app/emails-preview
     ports:
       - "3000:3000"
     networks:

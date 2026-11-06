@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { idSchema } from "@/schemas/id";
 import { getEmailRoute } from "@/server/actions/EmailAction";
-import { EmailClient } from "@/server/EmailClient";
+import { sendNewMessageFromDriver } from "@/server/email/email";
 import { getRouteMessage } from "@/server/actions/MessageAction";
 import { emitToast } from "@/server/notifications/emitToast";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     );
     after(() => toastDelivery);
 
-    await EmailClient.newMessageFromDriver(routeId, messageId);
+    await sendNewMessageFromDriver(routeId, messageId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

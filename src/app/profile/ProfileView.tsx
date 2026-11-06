@@ -65,7 +65,6 @@ export function ProfileView({
   );
 
   const [notifications, setNotifications] = useState({
-    dailySummary: user.settings?.dailySummary ?? false,
     driverAssigned: user.settings?.driverAssigned ?? false,
     driverEnRoute: user.settings?.driverEnRoute ?? false,
     rideCancelled: user.settings?.rideCancelled ?? false,
@@ -639,14 +638,6 @@ export function ProfileView({
               {hasUserType(displayUser, "Student") && (
                 <>
                   <BogSwitch
-                    checked={draftNotifications.dailySummary}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("dailySummary", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Daily Summary"
-                  />
-                  <BogSwitch
                     checked={draftNotifications.driverAssigned}
                     onCheckedChange={(value) =>
                       handleNotificationToggle("driverAssigned", value)
@@ -691,14 +682,6 @@ export function ProfileView({
 
               {hasUserType(displayUser, "Driver") && (
                 <>
-                  <BogSwitch
-                    checked={draftNotifications.dailySummary}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("dailySummary", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Daily Summary"
-                  />
                   <BogSwitch
                     checked={draftNotifications.rideAssigned}
                     onCheckedChange={(value) =>
