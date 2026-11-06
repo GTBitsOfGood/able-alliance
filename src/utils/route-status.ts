@@ -25,6 +25,77 @@ const DELAYABLE_STATUSES: ReadonlySet<RouteStatus> = new Set<RouteStatus>([
 
 type StatusRoute = { status: RouteStatus; delayMinutes?: number | null };
 
+const CLOSED_CHAT_STATUSES: ReadonlySet<RouteStatus> = new Set([
+  RouteStatus.Completed,
+  RouteStatus.Missing,
+  RouteStatus.CancelledByStudent,
+  RouteStatus.CancelledByAdmin,
+]);
+
+/** Participant chat is available on every date while the ride is open. */
+export function isRideChatOpen(status: RouteStatus): boolean {
+  return !CLOSED_CHAT_STATUSES.has(status);
+}
+
+export const driverRideActions = {
+  Scheduled: {
+    endpoint: "start",
+    label: "Start ride",
+    busyLabel: "Starting…",
+    title: "Start Ride",
+    confirmLabel: "Start ride",
+    confirmingLabel: "Starting…",
+    variant: "primary",
+  },
+  EnRoute: {
+    endpoint: "arrive",
+    label: "Arrived at pickup",
+    busyLabel: "Updating…",
+    title: "Arrived at Pickup",
+    confirmLabel: "Confirm Arrival",
+    confirmingLabel: "Confirming…",
+    variant: "primary",
+  },
+  Arrived: {
+    endpoint: "pickup",
+    label: "Student picked up",
+    busyLabel: "Updating…",
+    title: "Student Picked Up",
+    confirmLabel: "Confirm Pickup",
+    confirmingLabel: "Confirming…",
+    variant: "primary",
+  },
+  Pickedup: {
+    endpoint: "complete",
+    label: "Student dropped off",
+    busyLabel: "Completing…",
+    title: "Student Dropped Off",
+    confirmLabel: "Confirm Dropoff",
+    confirmingLabel: "Completing…",
+    variant: "primary",
+  },
+} as const;
+
+export const driverNoShowAction = {
+  endpoint: "missing",
+  label: "Student no-show",
+  busyLabel: "Marking…",
+  title: "Student No-Show",
+  confirmLabel: "Confirm No-Show",
+  confirmingLabel: "Marking…",
+  variant: "destructive",
+} as const;
+
+export type DriverRideAction =
+  | (typeof driverRideActions)[keyof typeof driverRideActions]
+  | typeof driverNoShowAction;
+
+export function getDriverRideAction(status: RouteStatus) {
+  return status in driverRideActions
+    ? driverRideActions[status as keyof typeof driverRideActions]
+    : undefined;
+}
+
 /** A ride shows as delayed only before pickup; afterwards the real status shows. */
 export function isRouteDelayed(route: StatusRoute): boolean {
   return (route.delayMinutes ?? 0) > 0 && DELAYABLE_STATUSES.has(route.status);

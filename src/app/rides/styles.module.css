@@ -488,41 +488,67 @@
 .rideCardStudentActions {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 1.5rem;
   padding: 2.4rem 3.2rem;
   flex-shrink: 0;
+  flex-basis: 30rem;
+  width: 30rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .rideCardStudentSecondaryActions {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
   gap: 1.5rem;
 }
 
 .rideCardActionBtn {
-  width: 17.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 5rem;
+  box-sizing: border-box;
   padding: 1.2rem 1.6rem;
   border-radius: 0.4rem;
   font-size: 1.8rem;
   font-family: var(--font-paragraph);
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   background: none;
   text-align: center;
   line-height: 2.4rem;
 }
 
 .rideCardActionBtnBrand {
-  border: 1px solid #416ebc;
-  color: #183777;
+  border: 1px solid var(--color-checkbox-checked);
+  color: var(--color-checkbox-checked);
 
   &:hover:not(:disabled) {
     background: var(--color-brand-fill);
   }
+}
+
+.rideCardActionBtnChat {
+  background-color: var(--color-checkbox-checked);
+  color: white;
+  border: none;
+  gap: 0.8rem;
+}
+.rideCardActionBtnChat:hover:not(:disabled) {
+  background-color: var(--color-checkbox-border);
+}
+.rideCardActionBtnChat:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .rideCardActionBtnDisabled {
@@ -532,8 +558,9 @@
 }
 
 .rideCardActionBtnCancel {
-  border: 1px solid rgba(199, 58, 58, 0.8);
-  color: rgba(199, 58, 58, 0.8);
+  border: 1px solid var(--color-status-red-text);
+  color: var(--color-status-red-text);
+  font-weight: 400;
 
   &:hover:not(:disabled) {
     background: var(--color-status-red-fill);
@@ -649,25 +676,53 @@
 .rideCardDriverButtons {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 2.2rem;
   padding: 3.2rem;
   flex-shrink: 0;
+  flex-basis: 30rem;
+  width: 30rem;
+  max-width: 100%;
+  box-sizing: border-box;
   /* Override brand color tokens to match Figma navy/blue palette */
   --color-brand-text: #183777;
   --color-brand-stroke-strong: #416ebc;
   --color-brand-hover: #0f2452;
 }
 
-.rideCardDriverButton {
-  width: 17.2rem;
-  white-space: nowrap;
-  height: 4.8rem;
+.rideCardDriverChat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 5rem;
+  padding: 1.2rem;
+  box-sizing: border-box;
+  background-color: var(--color-checkbox-checked);
+  border: none;
+  border-radius: 0.4rem;
+  color: white;
   font-size: 1.8rem;
   line-height: 2.4rem;
   font-weight: 600;
-  padding: 0.8rem 1.2rem;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+}
+
+.rideCardDriverChat:hover:not(:disabled) {
+  background-color: var(--color-checkbox-border);
+}
+.rideCardDriverChat:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.rideCardDriverChat:focus-visible {
+  outline: 2px solid var(--color-checkbox-border);
+  outline-offset: 2px;
 }
 
 .rideCardDetailsLink {
@@ -1308,6 +1363,8 @@
     align-items: stretch;
     gap: 1.2rem;
     padding: 1.6rem 1.6rem 2.4rem;
+    flex-basis: auto;
+    width: 100%;
   }
 
   .rideCardActionBtn {
@@ -1486,9 +1543,10 @@
   .rideCardDriverButtons {
     padding: 1.6rem 1.6rem 2.4rem;
     align-items: stretch;
+    flex-basis: auto;
+    width: 100%;
   }
   .rideCardDriverButtons > a,
-  .rideCardDriverButton,
   .rideCardDelayButton {
     width: 100%;
     font-size: 1.6rem;

@@ -62,6 +62,8 @@ export function useRouteUpdates(
 
     socket.on("routeUpdated", handleRouteUpdated);
     socket.on("connect", handleConnect);
+    // The provider may publish a socket that connected before we subscribed.
+    if (socket.connected) handleConnect();
 
     return () => {
       clearTimeout(timer);

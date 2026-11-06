@@ -15,6 +15,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./emails:/app/emails
+      - ./emails-preview:/app/emails-preview
       - ./db:/app/db
       - ./scripts:/app/scripts
       - ./public:/app/public

@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import tabStyles from "@/components/BogTabs/styles.module.css";
 import { RideCard } from "./RideCard";
@@ -14,6 +20,8 @@ import {
 import type { Shift } from "@/schemas/user";
 import { useRouteUpdates } from "@/hooks/useRouteUpdates";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import type { DriverRideAction } from "@/utils/route-status";
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 
 import type { DriverRouteResponse as DriverRoute } from "@/types/api";
 
@@ -64,13 +72,37 @@ function groupRidesByShift(rides: DriverRoute[], shifts: Shift[], day: Date) {
   return groups;
 }
 
+function confirmationDescription(route: DriverRoute, action: DriverRideAction) {
+  const studentName =
+    `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
+  switch (action.endpoint) {
+    case "arrive":
+      return `I have arrived at ${route.pickup.name}. The student will be notified.`;
+    case "pickup":
+      return `I have picked up ${studentName}.`;
+    case "complete":
+      return `I have dropped off ${studentName}. This will complete the ride.`;
+    case "missing":
+      return `${studentName} did not show up for their ride.`;
+    default:
+      return undefined;
+  }
+}
+
 export default function DriverRidesView({ userId }: { userId: string }) {
   const [mounted, setMounted] = useState(false);
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyRoutes, setBusyRoutes] = useState<Set<string>>(new Set());
+  const [busyRoutes, setBusyRoutes] = useState<
+    Map<string, DriverRideAction["endpoint"]>
+  >(new Map());
+  const pendingActions = useRef(new Set<string>());
+  const [confirmRoute, setConfirmRoute] = useState<{
+    route: DriverRoute;
+    action: DriverRideAction;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<"today" | "tomorrow">("today");
 
   const todayRange = useMemo(
@@ -129,11 +161,15 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     }
   }, [userId, activeTab, todayRange, tomorrowRange, beginRequest]);
 
+  const refreshRoutes = useRef(fetchRoutes);
+  useEffect(() => {
+    refreshRoutes.current = fetchRoutes;
+  }, [fetchRoutes]);
+
   useEffect(() => {
     if (!mounted) return;
-    // Clear the previous day while loading routes for the selected day.
+    // This effect starts an asynchronous API request.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
     void fetchRoutes();
   }, [mounted, fetchRoutes]);
 
@@ -174,30 +210,45 @@ export default function DriverRidesView({ userId }: { userId: string }) {
     );
   }
 
-  async function handleStart(routeId: string) {
-    setBusyRoutes((prev) => new Set(prev).add(routeId));
-    try {
-      const res = await fetch("/api/routes/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Failed to start ride");
-        return;
+  const handleDriverAction = useCallback(
+    async (route: DriverRoute, action: DriverRideAction) => {
+      const routeId = route.id;
+      if (pendingActions.current.has(routeId)) return;
+      pendingActions.current.add(routeId);
+      setBusyRoutes((prev) => new Map(prev).set(routeId, action.endpoint));
+      setError(null);
+      try {
+        const res = await fetch(`/api/routes/${action.endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          setError(data.error ?? "Failed to update ride");
+          return;
+        }
+        const updated: DriverRoute = await res.json();
+        setRoutes((prev) =>
+          prev.map((ride) => (ride.id === updated.id ? updated : ride)),
+        );
+        setConfirmRoute(null);
+        // The action may have started on a different tab. Use the current
+        // fetcher so any stale load is replaced, including its loading cleanup.
+        void refreshRoutes.current();
+      } catch {
+        setError("Failed to update ride");
+      } finally {
+        pendingActions.current.delete(routeId);
+        setBusyRoutes((prev) => {
+          const next = new Map(prev);
+          next.delete(routeId);
+          return next;
+        });
       }
-      await fetchRoutes();
-    } catch {
-      setError("Failed to start ride");
-    } finally {
-      setBusyRoutes((prev) => {
-        const next = new Set(prev);
-        next.delete(routeId);
-        return next;
-      });
-    }
-  }
+    },
+    [],
+  );
 
   function renderRides() {
     const shiftGroups = groupRidesByShift(routes, shifts, activeDayRange[0]);
@@ -219,8 +270,17 @@ export default function DriverRidesView({ userId }: { userId: string }) {
               route={route}
               isDriverCard
               href={`/rides/${route.id}`}
-              onStart={() => handleStart(route.id)}
-              startBusy={busyRoutes.has(route.id)}
+              onDriverAction={(action) => {
+                setError(null);
+                if (action.endpoint === "start")
+                  void handleDriverAction(route, action);
+                else setConfirmRoute({ route, action });
+              }}
+              driverActionBusy={
+                busyRoutes.has(route.id) &&
+                busyRoutes.get(route.id) !== "missing"
+              }
+              noShowBusy={busyRoutes.get(route.id) === "missing"}
             />
           ))}
         </div>
@@ -242,7 +302,12 @@ export default function DriverRidesView({ userId }: { userId: string }) {
 
       <Tabs.Root
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as "today" | "tomorrow")}
+        onValueChange={(v) => {
+          if (v !== "today" && v !== "tomorrow") return;
+          if (v === activeTab) return;
+          setLoading(true);
+          setActiveTab(v);
+        }}
         className={styles.tabsLayout}
       >
         {renderDayToggle()}
@@ -253,6 +318,32 @@ export default function DriverRidesView({ userId }: { userId: string }) {
           renderRides()
         )}
       </Tabs.Root>
+      <ConfirmActionModal
+        open={confirmRoute !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRoute(null);
+        }}
+        title={confirmRoute?.action.title ?? "Update ride"}
+        description={
+          confirmRoute
+            ? confirmationDescription(confirmRoute.route, confirmRoute.action)
+            : undefined
+        }
+        confirmLabel={confirmRoute?.action.confirmLabel ?? "Confirm"}
+        confirmingLabel={confirmRoute?.action.confirmingLabel}
+        cancelLabel="Cancel"
+        variant={confirmRoute?.action.variant ?? "primary"}
+        confirming={
+          confirmRoute ? busyRoutes.has(confirmRoute.route.id) : false
+        }
+        onConfirm={() =>
+          confirmRoute
+            ? handleDriverAction(confirmRoute.route, confirmRoute.action)
+            : undefined
+        }
+      >
+        {error && <p role="alert">{error}</p>}
+      </ConfirmActionModal>
     </main>
   );
 }

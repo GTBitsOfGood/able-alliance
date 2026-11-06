@@ -7,28 +7,3 @@ export const getEmailRoute = (routeId: string) =>
     where: { id: routeId.toLowerCase() },
     include: adminRouteInclude,
   });
-
-export const getDailySummaryUsers = () =>
-  db.user.findMany({
-    where: {
-      types: { hasSome: ["Student", "Driver"] },
-      status: "active",
-      settings: { is: { dailySummary: true } },
-    },
-  });
-
-export const getDailySummaryRoutes = (
-  userIds: string[],
-  dayStart: Date,
-  dayEnd: Date,
-) =>
-  db.route.findMany({
-    include: {
-      pickup: { select: { name: true } },
-      dropoff: { select: { name: true } },
-    },
-    where: {
-      scheduledPickupTime: { gte: dayStart, lte: dayEnd },
-      OR: [{ studentId: { in: userIds } }, { driverId: { in: userIds } }],
-    },
-  });

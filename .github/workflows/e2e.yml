@@ -26,9 +26,6 @@ jobs:
       CI: "true"
       TZ: America/New_York
       DATABASE_URL: postgresql://able:able@127.0.0.1:5432/able_alliance_e2e
-      # Required by email imports; test rides must not use a real email service.
-      JUNO_API_KEY: e2e-placeholder
-      JUNO_BASE_URL: http://127.0.0.1:9
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
