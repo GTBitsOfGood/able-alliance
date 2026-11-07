@@ -2,10 +2,12 @@ import type { Express } from "express";
 import type { AppNamespace } from "./types.js";
 import { debugLog } from "./utils/logger.js";
 import { UserType } from "@db/generated/enums";
+import { revokeMatchingSockets } from "./reauthorize.js";
 
 export function registerHttpRoutes(
   app: Express,
   notificationsNsp: AppNamespace,
+  routeNsp?: AppNamespace,
 ) {
   app.get("/", (req, res) => {
     res.json({ message: "Express server running", ok: true });
@@ -47,6 +49,45 @@ export function registerHttpRoutes(
       .emit("notification", { type, message, activeType });
 
     res.status(200).json({ ok: true, delivered });
+  });
+
+  // Internal endpoint: the Next.js app calls this the moment someone's
+  // access changes — a driver reassigned off a ride, an account archived, a
+  // role removed — so open sockets are re-checked immediately instead of
+  // surviving until the next sweep. Each candidate is re-verified, so a
+  // socket that is still allowed is left connected.
+  app.post("/revoke", async (req, res) => {
+    const secret = req.headers["x-internal-secret"];
+    if (
+      !process.env.WEBSOCKET_INTERNAL_SECRET ||
+      secret !== process.env.WEBSOCKET_INTERNAL_SECRET
+    ) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { userId, routeId } = req.body ?? {};
+    const hasUser = typeof userId === "string" && userId.length > 0;
+    const hasRoute = typeof routeId === "string" && routeId.length > 0;
+    if (!hasUser && !hasRoute) {
+      return res.status(400).json({ error: "userId or routeId is required" });
+    }
+
+    try {
+      const namespaces = routeNsp
+        ? [routeNsp, notificationsNsp]
+        : [notificationsNsp];
+      const revoked = await revokeMatchingSockets(namespaces, {
+        userId: hasUser ? userId : undefined,
+        routeId: hasRoute ? routeId : undefined,
+      });
+      debugLog(
+        `/revoke: user=${userId ?? "*"} route=${routeId ?? "*"} revoked=${revoked}`,
+      );
+      return res.status(200).json({ ok: true, revoked });
+    } catch (error) {
+      console.error("/revoke failed:", error);
+      return res.status(500).json({ error: "Revocation failed" });
+    }
   });
 
   // Internal endpoint: the Next.js app calls this after a route or location

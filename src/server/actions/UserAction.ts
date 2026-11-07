@@ -5,6 +5,7 @@ import { Prisma, type UserSettings } from "@db/generated/client";
 import type { UserType } from "@db/generated/enums";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { recordAudit } from "@db/audit";
+import { revokeSocketAccess } from "@/server/notifications/revokeSocketAccess";
 
 type UserWithDetails = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 
@@ -109,6 +110,8 @@ export async function archiveUser(id: string, actorId: string) {
       before: userAuditSnapshot(before),
       after: userAuditSnapshot(updated),
     });
+    // An archived account keeps any socket it already had open, so drop them.
+    revokeSocketAccess({ userId: updated.id });
     return updated;
   });
 }

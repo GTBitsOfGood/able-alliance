@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
 import BogButton from "@/components/BogButton/BogButton";
+import { useChatSender } from "@/hooks/useChatSender";
 
 type ChatMessage = {
   id: string;
@@ -118,11 +119,6 @@ export default function AdminChatView({
       );
     });
     nextSocket.on("receiveChatMessage", (message: ChatMessage) => {
-      if (message.senderId === session?.user?.userId) {
-        setInput((currentInput) =>
-          currentInput.trim() === message.text ? "" : currentInput,
-        );
-      }
       setChatlog((current) =>
         current
           ? { ...current, messages: [...current.messages, message] }
@@ -150,10 +146,12 @@ export default function AdminChatView({
   ]);
 
   const messages = useMemo(() => chatlog?.messages ?? [], [chatlog]);
+  const { pending, send, retry, discard } = useChatSender(socketRef);
+
+  // The draft is only cleared once the message is queued, and it stays
+  // visible as a pending bubble until the server confirms the save.
   const sendMessage = () => {
-    const text = input.trim();
-    if (!text || !socketRef.current?.connected) return;
-    socketRef.current.emit("sendChatMessage", text);
+    if (send(input)) setInput("");
   };
 
   return (
@@ -215,6 +213,51 @@ export default function AdminChatView({
                 </div>
               );
             })}
+            {pending.map((item) => (
+              <div
+                key={item.clientId}
+                className={`rounded border p-3 ${
+                  item.status === "failed"
+                    ? "border-red-200 bg-red-50"
+                    : "border-blue-200 bg-blue-50 opacity-70"
+                }`}
+              >
+                <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
+                  You · Admin
+                </div>
+                <p>{item.text}</p>
+                {item.status === "sending" ? (
+                  <span className="text-xs text-gray-500">Sending…</span>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-red-700" role="alert">
+                      {item.error ?? "Not sent"}
+                    </span>
+                    {item.retryable && (
+                      <button
+                        type="button"
+                        className="font-semibold underline"
+                        onClick={() => retry(item.clientId)}
+                      >
+                        Retry
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => {
+                        setInput((current) =>
+                          current.trim() ? current : item.text,
+                        );
+                        discard(item.clientId);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
           {chatlog?.status === "active" ? (
             <form

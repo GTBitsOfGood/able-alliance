@@ -4,9 +4,14 @@ import { getChatHistory } from "../actions.js";
 import { registerChatHandler } from "./chat.js";
 import { registerLocationHandler } from "./location.js";
 import { registerCloseRouteRoomHandler } from "./closeRouteRoom.js";
+import { scheduleTokenExpiry } from "../reauthorize.js";
 
 export function handleConnection(io: AppServer, socket: AppSocket) {
   console.log("A user connected", socket.id);
+
+  // Drop the connection the moment its token lapses, rather than letting it
+  // live on until the next re-authorization sweep.
+  scheduleTokenExpiry(socket);
 
   const room = socket.data.routeId;
   try {

@@ -16,6 +16,7 @@ import { authenticateSocket, authenticateNotificationSocket } from "./auth.js";
 import { handleConnection } from "./handlers/connection.js";
 import { handleNotificationConnection } from "./handlers/notifications.js";
 import { startRideSeriesCron } from "./jobs/rideSeriesCron.js";
+import { startReauthorizationSweep } from "./reauthorize.js";
 
 dotenv.config();
 
@@ -64,7 +65,15 @@ export async function startServer(requestHandler?: RequestListener) {
     notificationsNsp.use(authenticateNotificationSocket);
     notificationsNsp.on("connection", handleNotificationConnection);
 
-    registerHttpRoutes(app, notificationsNsp);
+    registerHttpRoutes(app, notificationsNsp, io.of("/"));
+
+    // Permissions are re-checked on a timer so a connection that stays open
+    // cannot outlive the access it was granted under.
+    const stopReauthorization = startReauthorizationSweep([
+      io.of("/"),
+      notificationsNsp,
+    ]);
+    server.once("close", stopReauthorization);
 
     // Recurring rides are generated on a schedule from this process.
     const stopRideSeriesCron = startRideSeriesCron();

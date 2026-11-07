@@ -36,6 +36,7 @@ import {
   notifyRideChangesAccepted,
 } from "@/server/notifications/routeNotifications";
 import { recordAudit } from "@db/audit";
+import { revokeSocketAccess } from "@/server/notifications/revokeSocketAccess";
 
 function routeAuditSnapshot(route: {
   id: string;
@@ -457,6 +458,14 @@ export async function scheduleRouteWhileLocked(
       route,
       assigned.priorDriverId ? [assigned.priorDriverId] : [],
     );
+    // A driver taken off the ride must lose the live chat and location feed
+    // straight away, not whenever their socket happens to reconnect.
+    if (assigned.previousDriver) {
+      revokeSocketAccess({
+        userId: assigned.previousDriver.id,
+        routeId: route.id,
+      });
+    }
     void notifyRideAssigned(assigned);
   });
 

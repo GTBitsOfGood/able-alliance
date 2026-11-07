@@ -193,7 +193,11 @@ model Message {
   sender   User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
   text     String
   time     DateTime @db.Timestamptz(3)
+  /// Sender-generated id for the send attempt. Lets a client retry a message
+  /// whose acknowledgement was lost without creating a duplicate.
+  clientId String?  @db.Uuid
 
+  @@unique([senderId, clientId])
   @@index([routeId, time, id])
   @@index([senderId])
 }

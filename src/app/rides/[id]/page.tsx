@@ -25,6 +25,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import { useChatSender } from "@/hooks/useChatSender";
+import PendingMessages from "./PendingMessages";
 import StopTime from "./StopTime";
 import DriverRideActions from "../DriverRideActions";
 import { getStudentStatusChipStyle } from "@/app/rides/RideCard";
@@ -145,7 +147,12 @@ export default function RideDetailPage({
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const {
+    pending: pendingMessages,
+    send: sendChatMessage,
+    retry: retryChatMessage,
+    discard: discardChatMessage,
+  } = useChatSender(socketRef);
 
   // Open the chat deep link once the ride is loaded and its chat is open.
   useEffect(() => {
@@ -640,16 +647,14 @@ export default function RideDetailPage({
   }, [selfLocation]);
 
   const handleSendMessage = useCallback(() => {
-    if (!chatInput.trim() || !socket || sendingMessage) return;
-
-    setSendingMessage(true);
-    // Server broadcasts receiveChatMessage back to all room members including
-    // the sender, so we don't optimistically add here — the echo is the add.
-    socket.emit("sendChatMessage", chatInput.trim());
-    setChatInput("");
-    setChatError(null);
-    setSendingMessage(false);
-  }, [chatInput, socket, sendingMessage]);
+    // The text is handed to the pending list before the input is cleared, so
+    // it survives a failed send or a dropped connection; the server's
+    // acknowledgement is what finally removes it.
+    if (sendChatMessage(chatInput)) {
+      setChatInput("");
+      setChatError(null);
+    }
+  }, [chatInput, sendChatMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -966,6 +971,16 @@ export default function RideDetailPage({
                 </div>
               );
             })}
+            <PendingMessages
+              pending={pendingMessages}
+              onRetry={retryChatMessage}
+              onEdit={(item) => {
+                setChatInput((current) =>
+                  current.trim() ? current : item.text,
+                );
+                discardChatMessage(item.clientId);
+              }}
+            />
           </div>
           <div className={styles.chatInputContainer}>
             <input
@@ -975,13 +990,13 @@ export default function RideDetailPage({
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={!socket || sendingMessage}
+              disabled={!socket}
             />
             <button
               type="button"
               className={styles.sendButton}
               onClick={handleSendMessage}
-              disabled={!chatInput.trim() || !socket || sendingMessage}
+              disabled={!chatInput.trim() || !socket}
               aria-label="Send message"
             >
               <BogIcon name="arrow-right" size={18} />
@@ -1521,6 +1536,16 @@ export default function RideDetailPage({
                   </div>
                 );
               })}
+              <PendingMessages
+                pending={pendingMessages}
+                onRetry={retryChatMessage}
+                onEdit={(item) => {
+                  setChatInput((current) =>
+                    current.trim() ? current : item.text,
+                  );
+                  discardChatMessage(item.clientId);
+                }}
+              />
             </div>
 
             <div className={styles.chatInputContainer}>
@@ -1531,13 +1556,13 @@ export default function RideDetailPage({
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={!socket || sendingMessage}
+                disabled={!socket}
               />
               <button
                 type="button"
                 className={styles.sendButton}
                 onClick={handleSendMessage}
-                disabled={!chatInput.trim() || !socket || sendingMessage}
+                disabled={!chatInput.trim() || !socket}
                 aria-label="Send message"
               >
                 <BogIcon name="arrow-right" size={18} />

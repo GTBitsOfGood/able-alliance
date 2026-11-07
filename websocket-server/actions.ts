@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { RouteStatus } from "@db/generated/client";
+import { Prisma, RouteStatus } from "@db/generated/client";
 import { z } from "zod";
 import { recordAudit } from "@db/audit";
 
@@ -33,10 +33,32 @@ const closedChatStatuses = new Set<RouteStatus>([
   RouteStatus.CancelledByAdmin,
 ]);
 
+/** True once the ride has ended, by any route — the chat room may close. */
+export function isChatClosed(status: RouteStatus) {
+  return closedChatStatuses.has(status);
+}
+
+export function getRouteStatus(routeId: string) {
+  if (!routeIdSchema.safeParse(routeId).success)
+    throw new Error("Invalid route ID");
+  return db.route.findUnique({
+    where: { id: routeId.toLowerCase() },
+    select: { status: true },
+  });
+}
+
+/**
+ * Appends a chat message.
+ *
+ * `clientId` is the sender's id for this send attempt. Retrying with the same
+ * one returns the message already stored instead of writing a second copy, so
+ * a client whose acknowledgement was lost can retry safely.
+ */
 export async function appendMessage(
   routeId: string,
   senderId: string,
   text: string,
+  clientId?: string,
 ) {
   const route = await db.route.findUnique({
     where: { id: routeId },
@@ -47,22 +69,46 @@ export async function appendMessage(
     throw new Error("Chat is closed for this route");
   }
 
-  return db.$transaction(async (tx) => {
-    const message = await tx.message.create({
-      data: {
-        route: { connect: { id: routeId } },
-        sender: { connect: { id: senderId } },
-        text,
-        time: new Date(),
-      },
+  if (clientId) {
+    const existing = await db.message.findUnique({
+      where: { senderId_clientId: { senderId, clientId } },
     });
-    await recordAudit(tx, {
-      actorId: senderId,
-      entityType: "Message",
-      entityId: message.id,
-      action: "Create",
-      after: message,
+    if (existing) return existing;
+  }
+
+  try {
+    return await db.$transaction(async (tx) => {
+      const message = await tx.message.create({
+        data: {
+          route: { connect: { id: routeId } },
+          sender: { connect: { id: senderId } },
+          text,
+          time: new Date(),
+          clientId,
+        },
+      });
+      await recordAudit(tx, {
+        actorId: senderId,
+        entityType: "Message",
+        entityId: message.id,
+        action: "Create",
+        after: message,
+      });
+      return message;
     });
-    return message;
-  });
+  } catch (error) {
+    // Two retries of the same attempt can race past the check above; the
+    // unique index settles it and the loser returns the stored message.
+    if (
+      clientId &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const stored = await db.message.findUnique({
+        where: { senderId_clientId: { senderId, clientId } },
+      });
+      if (stored) return stored;
+    }
+    throw error;
+  }
 }
