@@ -6,7 +6,7 @@
  *
  * Differences from BogTable, all required by the admin rides design:
  *   - the search field takes a caller-supplied placeholder
- *   - fixed-width columns, typed sort values, and individual filters
+ *   - resizable columns, typed sort values, and individual filters
  *   - contextual row actions without a dedicated Action column
  *   - no selection checkboxes
  *   - body cells use the weaker row divider the design asks for
@@ -54,6 +54,8 @@ interface AdminRidesTableProps {
   /** Rendered to the right of the search field. */
   toolbarActions?: ReactNode;
   filters?: ReactNode;
+  /** Enable visibility, resizing, and autofit controls for the rides page. */
+  columnControls?: boolean;
   size?: "small" | "medium" | "large" | "responsive";
   /** Shown in place of the body when no row survives the search. */
   emptyMessage?: ReactNode;
@@ -77,11 +79,96 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
   searchPlaceholder = "Enter text to search",
   toolbarActions,
   filters,
+  columnControls = false,
   size = "responsive",
   emptyMessage,
   className,
 }) => {
   const breakpoint = useResponsive();
+  const tableRef = React.useRef<HTMLDivElement>(null);
+  const [columnWidths, setColumnWidths] = React.useState<number[] | null>(null);
+  const drag = React.useRef<{
+    index: number;
+    x: number;
+    widths: number[];
+  } | null>(null);
+  const minimumWidth = 40;
+  const [hiddenColumns, setHiddenColumns] = React.useState<number[]>([]);
+  const visibleIndices = columnHeaders.flatMap((_, index) =>
+    columnControls && hiddenColumns.includes(index) ? [] : [index],
+  );
+
+  const readWidths = () => {
+    const headers = tableRef.current?.querySelectorAll<HTMLElement>("thead th");
+    const widths = columnHeaders.map(
+      (_, index) => columnWidths?.[index] ?? minimumWidth,
+    );
+    headers?.forEach((header) => {
+      widths[Number(header.dataset.columnIndex)] =
+        header.getBoundingClientRect().width;
+    });
+    return widths;
+  };
+
+  const resizeColumn = (
+    index: number,
+    width: number,
+    widths = readWidths(),
+  ) => {
+    setColumnWidths(
+      widths.map((current, i) =>
+        i === index ? Math.max(minimumWidth, Math.round(width)) : current,
+      ),
+    );
+  };
+
+  // Measure rendered content, including chips and nested time labels, at its
+  // natural width. The hidden copy leaves the live table and its focus intact.
+  const autofit = (index?: number) => {
+    const table = tableRef.current?.querySelector("table");
+    if (!table) return;
+    const copy = table.cloneNode(true) as HTMLTableElement;
+    copy.setAttribute("aria-hidden", "true");
+    copy.inert = true;
+    Object.assign(copy.style, {
+      position: "fixed",
+      visibility: "hidden",
+      pointerEvents: "none",
+      tableLayout: "auto",
+      width: "max-content",
+      minWidth: "0",
+      top: "0",
+      left: "0",
+    });
+    copy.querySelectorAll("th").forEach((cell) => {
+      cell.style.width = "auto";
+    });
+    copy
+      .querySelectorAll<HTMLElement>("[data-column-content]")
+      .forEach((content) => {
+        Object.assign(content.style, {
+          width: "max-content",
+          maxWidth: "none",
+          whiteSpace: "nowrap",
+        });
+      });
+    const widths = readWidths();
+    table.parentElement?.appendChild(copy);
+    try {
+      copy.querySelectorAll<HTMLElement>("thead th").forEach((cell) => {
+        const columnIndex = Number(cell.dataset.columnIndex);
+        if (index === undefined || index === columnIndex) {
+          widths[columnIndex] = Math.max(
+            minimumWidth,
+            Math.ceil(cell.getBoundingClientRect().width),
+          );
+        }
+      });
+      setColumnWidths(widths);
+    } finally {
+      copy.remove();
+    }
+  };
   const [sorts, setSorts] = React.useState<
     { index: number; direction: "asc" | "desc" }[]
   >([]);
@@ -154,22 +241,114 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
           )}
         </div>
 
-        {filters && <div className={styles.filters}>{filters}</div>}
+        {(columnControls || filters) && (
+          <div className={styles.filters}>
+            {columnControls && (
+              <>
+                <div className={styles.columnTools}>
+                  <DropdownMenu.Root modal={false}>
+                    <DropdownMenu.Trigger asChild>
+                      <button type="button" className={styles.autofitButton}>
+                        Columns <BogIcon name="chevron-down" size={20} />
+                      </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.Content
+                        className={styles.menu}
+                        align="start"
+                        sideOffset={8}
+                        collisionPadding={16}
+                      >
+                        <DropdownMenu.Label className={styles.columnsLabel}>
+                          Visible columns
+                        </DropdownMenu.Label>
+                        {columnHeaders.map((header, index) => {
+                          const visible = visibleIndices.includes(index);
+                          return (
+                            <DropdownMenu.CheckboxItem
+                              key={header.content}
+                              className={`${styles.menuItem} ${styles.columnOption}`}
+                              checked={visible}
+                              disabled={visible && visibleIndices.length === 1}
+                              onSelect={(event) => event.preventDefault()}
+                              onCheckedChange={(checked) => {
+                                setColumnWidths(readWidths());
+                                setHiddenColumns((current) =>
+                                  checked
+                                    ? current.filter(
+                                        (column) => column !== index,
+                                      )
+                                    : [...current, index],
+                                );
+                                if (!checked)
+                                  setSorts((current) =>
+                                    current.filter(
+                                      (sort) => sort.index !== index,
+                                    ),
+                                  );
+                              }}
+                            >
+                              <span className={styles.columnCheckbox}>
+                                <DropdownMenu.ItemIndicator>
+                                  <BogIcon name="check" size={14} />
+                                </DropdownMenu.ItemIndicator>
+                              </span>
+                              {header.content}
+                            </DropdownMenu.CheckboxItem>
+                          );
+                        })}
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Root>
+                  <button
+                    type="button"
+                    className={styles.autofitButton}
+                    onClick={() => autofit()}
+                  >
+                    Autofit
+                  </button>
+                </div>
+                {filters && (
+                  <div
+                    className={styles.toolbarDivider}
+                    role="separator"
+                    aria-orientation="vertical"
+                  />
+                )}
+              </>
+            )}
+            {filters}
+          </div>
+        )}
         <div className={styles.container}>
           <Table.Root
+            ref={tableRef}
             size={radixSize}
             layout="fixed"
-            className={`${styles.root} ${className || ""}`}
+            style={
+              columnControls && columnWidths
+                ? {
+                    width: visibleIndices.reduce(
+                      (sum, index) => sum + columnWidths[index],
+                      0,
+                    ),
+                    minWidth: 0,
+                  }
+                : undefined
+            }
+            className={`${styles.root} ${columnControls ? styles.adjustable : ""} ${className || ""}`}
           >
             <Table.Header>
               <Table.Row>
                 {columnHeaders.map((header, i) => {
+                  if (!visibleIndices.includes(i)) return null;
                   const direction = sorts.find(
                     (sort) => sort.index === i,
                   )?.direction;
                   return (
                     <Table.ColumnHeaderCell
                       key={header.content}
+                      data-column-index={i}
                       className={styles.columnHeaderCell}
                       aria-sort={
                         direction === "asc"
@@ -178,11 +357,16 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
                             ? "descending"
                             : "none"
                       }
-                      style={header.width ? { width: header.width } : undefined}
+                      style={{
+                        width:
+                          (columnControls ? columnWidths?.[i] : undefined) ??
+                          header.width,
+                      }}
                     >
                       <button
                         type="button"
                         className={styles.sortHeader}
+                        data-column-content
                         aria-label={`Sort by ${header.content}${direction ? `, ${direction === "asc" ? "ascending" : "descending"}` : ""}`}
                         onClick={() => toggleSort(i)}
                       >
@@ -208,6 +392,80 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
                           />
                         </span>
                       </button>
+                      {columnControls && (
+                        <div
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={`Resize ${header.content} column`}
+                          aria-valuemin={minimumWidth}
+                          aria-valuenow={columnWidths?.[i]}
+                          tabIndex={0}
+                          className={styles.resizeHandle}
+                          title="Drag to resize; double-click to autofit. Arrow keys resize; Enter autofits."
+                          onDoubleClick={() => autofit(i)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              autofit(i);
+                            } else if (
+                              event.key === "ArrowLeft" ||
+                              event.key === "ArrowRight"
+                            ) {
+                              event.preventDefault();
+                              const widths = readWidths();
+                              resizeColumn(
+                                i,
+                                widths[i] +
+                                  (event.key === "ArrowRight" ? 1 : -1) *
+                                    (event.shiftKey ? 40 : 10),
+                                widths,
+                              );
+                            }
+                          }}
+                          onPointerDown={(event) => {
+                            if (event.button !== 0) return;
+                            event.preventDefault();
+                            event.currentTarget.focus();
+                            event.currentTarget.setPointerCapture(
+                              event.pointerId,
+                            );
+                            drag.current = {
+                              index: i,
+                              x: event.clientX,
+                              widths: readWidths(),
+                            };
+                          }}
+                          onPointerMove={(event) => {
+                            const current = drag.current;
+                            if (!current) return;
+                            resizeColumn(
+                              current.index,
+                              current.widths[current.index] +
+                                event.clientX -
+                                current.x,
+                              current.widths,
+                            );
+                          }}
+                          onPointerUp={(event) => {
+                            drag.current = null;
+                            if (
+                              event.currentTarget.hasPointerCapture(
+                                event.pointerId,
+                              )
+                            ) {
+                              event.currentTarget.releasePointerCapture(
+                                event.pointerId,
+                              );
+                            }
+                          }}
+                          onLostPointerCapture={() => {
+                            drag.current = null;
+                          }}
+                          onPointerCancel={() => {
+                            drag.current = null;
+                          }}
+                        />
+                      )}
                     </Table.ColumnHeaderCell>
                   );
                 })}
@@ -222,63 +480,67 @@ const AdminRidesTable: React.FC<AdminRidesTableProps> = ({
                     className={`${styles.row} ${row.styleProps?.className ?? ""}`}
                     data-route-id={row.key}
                   >
-                    {row.cells.map((cell, cIdx) => (
-                      <Table.Cell
-                        key={`${row.key}-cell-${cIdx}`}
-                        {...cell.styleProps}
-                        className={styles.cell}
-                      >
-                        <div
-                          className={
-                            cell.wrap ? styles.cellWrapped : styles.cellText
-                          }
-                          title={
-                            cell.wrap
-                              ? undefined
-                              : extractText(cell.content) ||
-                                String(cell.value ?? "")
-                          }
+                    {row.cells.map((cell, cIdx) =>
+                      visibleIndices.includes(cIdx) ? (
+                        <Table.Cell
+                          key={`${row.key}-cell-${cIdx}`}
+                          {...cell.styleProps}
+                          className={styles.cell}
                         >
-                          {cell.content}
-                        </div>
-                        {cIdx === row.cells.length - 1 && row.actions && (
-                          <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                              <button
-                                type="button"
-                                className={styles.rowActions}
-                                aria-label={`Actions for ${row.label ?? row.key}`}
-                              >
-                                <Image
-                                  src="/ride-actions-menu.svg"
-                                  alt=""
-                                  width={20}
-                                  height={20}
-                                />
-                              </button>
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Portal>
-                              <DropdownMenu.Content
-                                className={styles.menu}
-                                align="end"
-                                sideOffset={4}
-                              >
-                                {row.actions.map((action) => (
-                                  <DropdownMenu.Item
-                                    key={action.label}
-                                    className={styles.menuItem}
-                                    disabled={action.disabled}
-                                    onSelect={action.onSelect}
+                          <div
+                            data-column-content
+                            className={
+                              cell.wrap ? styles.cellWrapped : styles.cellText
+                            }
+                            title={
+                              cell.wrap
+                                ? undefined
+                                : extractText(cell.content) ||
+                                  String(cell.value ?? "")
+                            }
+                          >
+                            {cell.content}
+                          </div>
+                          {cIdx === visibleIndices[visibleIndices.length - 1] &&
+                            row.actions && (
+                              <DropdownMenu.Root>
+                                <DropdownMenu.Trigger asChild>
+                                  <button
+                                    type="button"
+                                    className={styles.rowActions}
+                                    aria-label={`Actions for ${row.label ?? row.key}`}
                                   >
-                                    {action.label}
-                                  </DropdownMenu.Item>
-                                ))}
-                              </DropdownMenu.Content>
-                            </DropdownMenu.Portal>
-                          </DropdownMenu.Root>
-                        )}
-                      </Table.Cell>
-                    ))}
+                                    <Image
+                                      src="/ride-actions-menu.svg"
+                                      alt=""
+                                      width={20}
+                                      height={20}
+                                    />
+                                  </button>
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Portal>
+                                  <DropdownMenu.Content
+                                    className={styles.menu}
+                                    align="end"
+                                    sideOffset={4}
+                                  >
+                                    {row.actions.map((action) => (
+                                      <DropdownMenu.Item
+                                        key={action.label}
+                                        className={styles.menuItem}
+                                        disabled={action.disabled}
+                                        onSelect={action.onSelect}
+                                      >
+                                        {action.label}
+                                      </DropdownMenu.Item>
+                                    ))}
+                                  </DropdownMenu.Content>
+                                </DropdownMenu.Portal>
+                              </DropdownMenu.Root>
+                            )}
+                        </Table.Cell>
+                      ) : null,
+                    )}
                   </Table.Row>
                 );
                 if (!row.actions?.length) return tableRow;

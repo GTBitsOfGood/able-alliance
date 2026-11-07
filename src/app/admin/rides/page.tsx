@@ -275,6 +275,7 @@ export default function AdminRidesPage() {
           )}
 
           <AdminRidesTable
+            columnControls
             columnHeaders={COLUMNS}
             rows={rows}
             searchPlaceholder="Search for a ride..."
