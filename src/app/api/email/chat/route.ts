@@ -4,7 +4,6 @@ import { z } from "zod";
 import { idSchema } from "@/schemas/id";
 import { getEmailRoute } from "@/server/actions/EmailAction";
 import { isUserActive } from "@/server/actions/UserAction";
-import { EmailClient } from "@/server/EmailClient";
 import { sendNewMessageFromDriver } from "@/server/email/email";
 import { getRouteMessage } from "@/server/actions/MessageAction";
 import { emitToast } from "@/server/notifications/emitToast";
