@@ -25,6 +25,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import CancelScopeOptions, {
+  type CancelScope,
+} from "@/components/CancelScopeOptions/CancelScopeOptions";
 import StopTime from "./StopTime";
 import RideChat from "@/components/RideChat/RideChat";
 import { mergeChatMessages } from "@/utils/chat";
@@ -123,6 +126,7 @@ export default function RideDetailPage({
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingRide, setCancellingRide] = useState(false);
+  const [cancelScope, setCancelScope] = useState<CancelScope>("single");
 
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -716,7 +720,7 @@ export default function RideDetailPage({
       const res = await fetch("/api/routes/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
+        body: JSON.stringify({ routeId, scope: cancelScope }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -730,7 +734,7 @@ export default function RideDetailPage({
     } finally {
       setCancellingRide(false);
     }
-  }, [routeId, router]);
+  }, [routeId, router, cancelScope]);
 
   const handleDriverAction = useCallback(
     async (endpoint: string, errorMsg: string, terminal = false) => {
@@ -1203,17 +1207,32 @@ export default function RideDetailPage({
       <ConfirmActionModal
         open={showCancelModal}
         onOpenChange={(open) => {
-          if (!open) setShowCancelModal(false);
+          if (!open) {
+            setShowCancelModal(false);
+            setCancelScope("single");
+          }
         }}
         onConfirm={() => void handleCancelRide()}
         variant="destructive"
         title="Cancel Ride?"
-        description="Are you sure you want to cancel this ride?"
-        confirmLabel="Cancel ride"
+        description={
+          route?.seriesId
+            ? "This is a recurring ride. Which rides do you want to cancel?"
+            : "Are you sure you want to cancel this ride?"
+        }
+        confirmLabel={cancelScope === "series" ? "Cancel rides" : "Cancel ride"}
         confirmingLabel="Cancelling…"
         cancelLabel="Nevermind"
         confirming={cancellingRide}
-      />
+      >
+        {route?.seriesId && (
+          <CancelScopeOptions
+            value={cancelScope}
+            onChange={setCancelScope}
+            disabled={cancellingRide}
+          />
+        )}
+      </ConfirmActionModal>
       <DelayRideModal
         open={showDelayModal}
         onOpenChange={(open) => {

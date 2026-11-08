@@ -26,7 +26,6 @@ export const shiftSchema = z
   });
 
 export const notificationSettingsSchema = z.object({
-  dailySummary: z.boolean().optional(),
   driverAssigned: z.boolean().optional(),
   driverEnRoute: z.boolean().optional(),
   rideCancelled: z.boolean().optional(),

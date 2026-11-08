@@ -13,6 +13,9 @@ import AdminRidesTable, {
 } from "@/components/AdminRidesTable/AdminRidesTable";
 import RideFilter from "@/components/admin/RideFilter";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import CancelScopeOptions, {
+  type CancelScope,
+} from "@/components/CancelScopeOptions/CancelScopeOptions";
 import { routeStatusLabels } from "@/utils/route-status";
 import { formatEstDate, formatEstTime, withDelay } from "@/utils/dateEst";
 
@@ -103,6 +106,7 @@ export default function AdminRidesPage() {
     error,
     refreshError,
     refreshRoute,
+    refreshRoutes,
   } = useAdminRides();
 
   const [statuses, setStatuses] = useState<string[]>([]);
@@ -115,6 +119,7 @@ export default function AdminRidesPage() {
   const [pendingCancel, setPendingCancel] = useState<RouteEntry | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelScope, setCancelScope] = useState<CancelScope>("single");
 
   const statusOptions = Object.entries(routeStatusLabels).map(
     ([value, label]) => ({
@@ -157,13 +162,14 @@ export default function AdminRidesPage() {
       const res = await fetch("/api/routes/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
+        body: JSON.stringify({ routeId, scope: cancelScope }),
       });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      refreshRoute(routeId);
+      if (cancelScope === "series") refreshRoutes();
+      else refreshRoute(routeId);
       setPendingCancel(null);
     } catch (e) {
       setCancelError(
@@ -221,6 +227,7 @@ export default function AdminRidesPage() {
           disabled: !canCancel,
           onSelect: () => {
             setCancelError(null);
+            setCancelScope("single");
             setPendingCancel(route);
           },
         },
@@ -363,6 +370,8 @@ export default function AdminRidesPage() {
                 {pendingCancel
                   ? `This cancels the ride for ${fullName(pendingCancel.student)}. This action cannot be undone.`
                   : "This cancels the ride. This action cannot be undone."}
+                {pendingCancel?.seriesId &&
+                  " This is a recurring ride. Choose which rides to cancel."}
                 {cancelError && (
                   <span className={styles.modalError} role="alert">
                     {cancelError}
@@ -370,11 +379,21 @@ export default function AdminRidesPage() {
                 )}
               </>
             }
-            confirmLabel="Cancel ride"
+            confirmLabel={
+              cancelScope === "series" ? "Cancel rides" : "Cancel ride"
+            }
             confirmingLabel="Canceling…"
             cancelLabel="Keep ride"
             confirming={canceling}
-          />
+          >
+            {pendingCancel?.seriesId && (
+              <CancelScopeOptions
+                value={cancelScope}
+                onChange={setCancelScope}
+                disabled={canceling}
+              />
+            )}
+          </ConfirmActionModal>
         </>
       )}
     </div>

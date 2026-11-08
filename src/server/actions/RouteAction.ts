@@ -238,6 +238,7 @@ export async function cancelRoute(
   status:
     typeof RouteStatus.CancelledByStudent | typeof RouteStatus.CancelledByAdmin,
   actorId: string,
+  options?: { notify?: boolean; tx?: Prisma.TransactionClient },
 ) {
   if (
     status !== RouteStatus.CancelledByStudent &&
@@ -257,6 +258,7 @@ export async function cancelRoute(
     ],
     status,
     actorId,
+    options,
   );
   return route;
 }
@@ -586,9 +588,11 @@ export async function transitionRoute(
   expected: RouteStatus[],
   status: RouteStatus,
   actorId: string,
+  /** Transaction callers publish events and notifications after committing. */
+  options?: { notify?: boolean; tx?: Prisma.TransactionClient },
 ) {
   routeId = routeId.toLowerCase();
-  const route = await db.$transaction(async (tx) => {
+  const update = async (tx: Prisma.TransactionClient) => {
     const before = await tx.route.findUnique({ where: { id: routeId } });
     if (!before) throw new NotFoundError("Route not found");
     const { count } = await tx.route.updateMany({
@@ -629,9 +633,14 @@ export async function transitionRoute(
       after: routeAuditSnapshot(updated),
     });
     return updated;
-  });
-  emitRouteUpdate(route);
-  void notifyRideStatusChanged(route);
+  };
+  const route = options?.tx
+    ? await update(options.tx)
+    : await db.$transaction(update);
+  if (!options?.tx) {
+    emitRouteUpdate(route);
+    if (options?.notify !== false) void notifyRideStatusChanged(route);
+  }
 
   return route;
 }

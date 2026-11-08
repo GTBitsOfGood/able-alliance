@@ -89,7 +89,6 @@ model AuditEntry {
 model UserSettings {
   userId               String  @id @db.Uuid
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dailySummary         Boolean @default(true)
   driverAssigned       Boolean @default(true)
   driverEnRoute        Boolean @default(true)
   rideCancelled        Boolean @default(true)

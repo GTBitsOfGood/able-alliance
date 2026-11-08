@@ -39,7 +39,7 @@ export default function BogRadioItem({
       >
         <RadioGroup.Indicator className={styles.indicator} />
       </RadioGroup.Item>
-      <label className={styles.label} data-disabled={disabled}>
+      <label htmlFor={id} className={styles.label} data-disabled={disabled}>
         {label}
       </label>
     </div>
