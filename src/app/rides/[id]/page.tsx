@@ -7,6 +7,7 @@ import {
   studentEditDisabledReason,
   routeDisplayLabel,
   isRouteDelayed,
+  isRideChatOpen,
 } from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
@@ -25,6 +26,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import StopTime from "./StopTime";
+import DriverRideActions from "../DriverRideActions";
 import { getStudentStatusChipStyle } from "@/app/rides/RideCard";
 import styles from "./styles.module.css";
 import { useRouteUpdates } from "@/hooks/useRouteUpdates";
@@ -43,12 +45,6 @@ const CANCELLABLE_STATUSES = new Set<RouteStatus>([
   RouteStatus.Scheduled,
   RouteStatus.EnRoute,
   RouteStatus.Arrived,
-]);
-const CLOSED_CHAT_STATUSES = new Set<RouteStatus>([
-  RouteStatus.Completed,
-  RouteStatus.Missing,
-  RouteStatus.CancelledByStudent,
-  RouteStatus.CancelledByAdmin,
 ]);
 
 function createCustomPin(
@@ -156,7 +152,7 @@ export default function RideDetailPage({
     if (
       searchParams.get("chat") === "1" &&
       route &&
-      !CLOSED_CHAT_STATUSES.has(route.status)
+      isRideChatOpen(route.status)
     ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowChatModal(true);
@@ -458,17 +454,13 @@ export default function RideDetailPage({
 
     const shouldConnect =
       !!route &&
-      !CLOSED_CHAT_STATUSES.has(route.status) &&
+      isRideChatOpen(route.status) &&
       !!routeId &&
       !!session?.user?.accessToken &&
       (isDriver || isStudent);
 
     if (!shouldConnect) {
-      if (
-        route &&
-        CLOSED_CHAT_STATUSES.has(route.status) &&
-        socketRef.current
-      ) {
+      if (route && !isRideChatOpen(route.status) && socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
         setSocket(null);
@@ -705,6 +697,7 @@ export default function RideDetailPage({
           throw new Error(body.error ?? res.statusText);
         }
         const updated: RouteData = await res.json();
+        beginRequest();
         setRoute(updated);
         if (terminal) socketRef.current?.emit("closeRouteRoom");
         return true;
@@ -715,7 +708,7 @@ export default function RideDetailPage({
         setDriverActionBusy(false);
       }
     },
-    [routeId],
+    [routeId, beginRequest],
   );
 
   const handleStartRide = useCallback(
@@ -759,6 +752,7 @@ export default function RideDetailPage({
         throw new Error(body.error ?? res.statusText);
       }
       const updated: RouteData = await res.json();
+      beginRequest();
       setRoute(updated);
       socketRef.current?.emit("closeRouteRoom");
       return true;
@@ -770,7 +764,7 @@ export default function RideDetailPage({
     } finally {
       setMarkingMissing(false);
     }
-  }, [routeId]);
+  }, [routeId, beginRequest]);
 
   const handleMarkDelay = useCallback(
     async (minutes: number) => {
@@ -789,6 +783,7 @@ export default function RideDetailPage({
           throw new Error(body.error ?? res.statusText);
         }
         const updated: RouteData = await res.json();
+        beginRequest();
         setRoute(updated);
         return true;
       } catch (e) {
@@ -801,7 +796,7 @@ export default function RideDetailPage({
         setDelayActionBusy(false);
       }
     },
-    [routeId],
+    [routeId, beginRequest],
   );
 
   if (sessionStatus === "loading" || loading) {
@@ -1152,91 +1147,32 @@ export default function RideDetailPage({
                   type="button"
                   className={styles.chatButton}
                   onClick={() => setShowChatModal(true)}
-                  disabled={CLOSED_CHAT_STATUSES.has(route.status)}
+                  disabled={!isRideChatOpen(route.status)}
                 >
                   <BogIcon name="chats" size={18} />
                   <span>Chat with student</span>
                 </button>
               </div>
 
-              {/* Scheduled: Start ride */}
-              {route.status === RouteStatus.Scheduled && (
-                <button
-                  type="button"
-                  className={styles.startRideButton}
-                  onClick={() => void handleStartRide()}
-                  disabled={driverActionBusy}
-                >
-                  {driverActionBusy ? "Starting…" : "Start ride"}
-                </button>
-              )}
-
-              {/* En-route: confirm arrival before pickup or no-show. */}
-              {route.status === RouteStatus.EnRoute && (
-                <button
-                  type="button"
-                  className={
-                    styles.outlineButton + " " + styles.greenOutlineButton
-                  }
-                  onClick={() => {
+              <DriverRideActions
+                status={route.status}
+                busy={driverActionBusy}
+                missingBusy={markingMissing}
+                onAction={(action) => {
+                  if (action.endpoint === "missing") {
+                    setMissingError(null);
+                    setShowNoShowModal(true);
+                  } else {
                     setDriverActionError(null);
-                    setShowArrivalModal(true);
-                  }}
-                  disabled={driverActionBusy}
-                >
-                  {driverActionBusy ? "Updating…" : "Arrived at pickup"}
-                </button>
-              )}
-
-              {route.status === RouteStatus.Arrived && (
-                <div className={styles.enRouteActions}>
-                  <div className={styles.pickupActions}>
-                    <button
-                      type="button"
-                      className={
-                        styles.outlineButton + " " + styles.greenOutlineButton
-                      }
-                      onClick={() => {
-                        setDriverActionError(null);
-                        setShowPickupModal(true);
-                      }}
-                      disabled={driverActionBusy}
-                    >
-                      {driverActionBusy ? "Updating…" : "Student picked up"}
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        styles.outlineButton + " " + styles.redOutlineButton
-                      }
-                      onClick={() => {
-                        setMissingError(null);
-                        setShowNoShowModal(true);
-                      }}
-                      disabled={markingMissing}
-                    >
-                      {markingMissing ? "Marking…" : "Student no-show"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Pickedup: Student dropped off */}
-              {route.status === RouteStatus.Pickedup && (
-                <button
-                  type="button"
-                  className={
-                    styles.outlineButton + " " + styles.greenOutlineButton
+                    if (action.endpoint === "start") void handleStartRide();
+                    else if (action.endpoint === "arrive")
+                      setShowArrivalModal(true);
+                    else if (action.endpoint === "pickup")
+                      setShowPickupModal(true);
+                    else setShowDropoffModal(true);
                   }
-                  onClick={() => {
-                    setDriverActionError(null);
-                    setShowDropoffModal(true);
-                  }}
-                  disabled={driverActionBusy}
-                >
-                  {driverActionBusy ? "Completing…" : "Student dropped off"}
-                </button>
-              )}
+                }}
+              />
 
               {(missingError || delayActionError || driverActionError) && (
                 <p
@@ -1445,7 +1381,7 @@ export default function RideDetailPage({
               type="button"
               className={styles.chatButton}
               onClick={() => setShowChatModal(true)}
-              disabled={CLOSED_CHAT_STATUSES.has(route.status)}
+              disabled={!isRideChatOpen(route.status)}
             >
               <BogIcon name="chats" size={18} />
               <span>Chat with driver</span>

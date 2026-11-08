@@ -38,8 +38,8 @@ export class InternalError extends HttpError {
 export class EmailFailedToSendException extends Error {
   code: HTTP_STATUS_CODE = HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR;
 
-  constructor(message = "Failed to send email") {
-    super(message);
+  constructor(message = "Failed to send email", options?: ErrorOptions) {
+    super(message, options);
     this.name = "EmailFailedToSendException";
   }
 }

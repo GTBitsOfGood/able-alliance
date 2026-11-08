@@ -1,5 +1,7 @@
 "use client";
 
+import DriverRideActions from "./DriverRideActions";
+
 import { RouteStatus } from "@db/generated/enums";
 
 import {
@@ -7,12 +9,13 @@ import {
   studentEditDisabledReason,
   isRouteDelayed,
   routeDisplayLabel,
+  type DriverRideAction,
+  isRideChatOpen,
 } from "@/utils/route-status";
 import React from "react";
 import { withDelay } from "@/utils/dateEst";
 import { useWindowSize } from "react-use";
 import Link from "next/link";
-import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
@@ -36,8 +39,9 @@ type RideCardProps = {
   cancelling?: boolean;
   onDelay?: (routeId: string) => void;
   delaying?: boolean;
-  onStart?: () => void;
-  startBusy?: boolean;
+  onDriverAction?: (action: DriverRideAction) => void;
+  noShowBusy?: boolean;
+  driverActionBusy?: boolean;
 };
 
 function formatTime(iso: string, delayMinutes = 0): string {
@@ -72,12 +76,6 @@ function CardTime({
       )}
     </span>
   );
-}
-
-function isToday(iso: string): boolean {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
-  return fmt(new Date(iso)) === fmt(new Date());
 }
 
 export function getStudentStatusChipStyle(
@@ -154,8 +152,9 @@ export function RideCard({
   cancelling = false,
   onDelay,
   delaying = false,
-  onStart,
-  startBusy = false,
+  onDriverAction,
+  driverActionBusy = false,
+  noShowBusy = false,
 }: RideCardProps) {
   const { width: windowWidth } = useWindowSize();
   const isMobileLayout = windowWidth <= 768;
@@ -168,17 +167,7 @@ export function RideCard({
     const studentName =
       `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
 
-    const canStart = route.status === RouteStatus.Scheduled;
-    const CHAT_DISABLED_STATUSES = new Set<RouteStatus>([
-      RouteStatus.Pickedup,
-      RouteStatus.Completed,
-      RouteStatus.Missing,
-      RouteStatus.CancelledByStudent,
-      RouteStatus.CancelledByAdmin,
-    ]);
-    const canChat =
-      isToday(route.scheduledPickupTime) &&
-      !CHAT_DISABLED_STATUSES.has(route.status);
+    const canChat = isRideChatOpen(route.status);
 
     return (
       <div
@@ -243,36 +232,27 @@ export function RideCard({
         <div className={styles.rideCardDriverDivider} aria-hidden />
 
         <div className={styles.rideCardDriverButtons}>
-          <BogButton
-            variant="secondary"
-            size="medium"
-            onClick={onStart}
-            disabled={!canStart || startBusy}
-            className={styles.rideCardDriverButton}
-          >
-            {startBusy ? "Starting…" : "Start ride"}
-          </BogButton>
           {canChat && href ? (
-            <Link href={`${href}?chat=1`}>
-              <BogButton
-                variant="secondary"
-                size="medium"
-                className={styles.rideCardDriverButton}
-                style={{ width: "100%" }}
-              >
-                Chat with student
-              </BogButton>
+            <Link href={`${href}?chat=1`} className={styles.rideCardDriverChat}>
+              <BogIcon name="chats" size={18} />
+              Chat with student
             </Link>
           ) : (
-            <BogButton
-              variant="secondary"
-              size="medium"
-              disabled={!canChat}
-              className={styles.rideCardDriverButton}
+            <button
+              type="button"
+              disabled
+              className={styles.rideCardDriverChat}
             >
+              <BogIcon name="chats" size={18} />
               Chat with student
-            </BogButton>
+            </button>
           )}
+          <DriverRideActions
+            status={route.status}
+            onAction={onDriverAction}
+            busy={driverActionBusy}
+            missingBusy={noShowBusy}
+          />
         </div>
       </div>
     );
@@ -280,12 +260,7 @@ export function RideCard({
 
   // Student card — Figma design
 
-  const chatEligible =
-    isToday(route.scheduledPickupTime) &&
-    (route.status === RouteStatus.Scheduled ||
-      route.status === RouteStatus.EnRoute ||
-      route.status === RouteStatus.Arrived ||
-      route.status === RouteStatus.Pickedup);
+  const chatEligible = isRideChatOpen(route.status);
 
   const chipStyle = getStudentStatusChipStyle(
     route.status,
@@ -379,17 +354,19 @@ export function RideCard({
         {chatEligible && href ? (
           <Link
             href={`${href}?chat=1`}
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnChat}`}
             style={{ textDecoration: "none", textAlign: "center" }}
           >
+            <BogIcon name="chats" size={18} />
             Chat with driver
           </Link>
         ) : (
           <button
             type="button"
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${styles.rideCardActionBtnDisabled}`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnChat}`}
             disabled
           >
+            <BogIcon name="chats" size={18} />
             Chat with driver
           </button>
         )}

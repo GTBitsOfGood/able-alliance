@@ -643,14 +643,6 @@ export function ProfileView({
               {hasUserType(displayUser, "Student") && (
                 <>
                   <BogSwitch
-                    checked={draftNotifications.dailySummary}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("dailySummary", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Daily Summary"
-                  />
-                  <BogSwitch
                     checked={draftNotifications.driverAssigned}
                     onCheckedChange={(value) =>
                       handleNotificationToggle("driverAssigned", value)
@@ -695,14 +687,6 @@ export function ProfileView({
 
               {hasUserType(displayUser, "Driver") && (
                 <>
-                  <BogSwitch
-                    checked={draftNotifications.dailySummary}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("dailySummary", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Daily Summary"
-                  />
                   <BogSwitch
                     checked={draftNotifications.rideAssigned}
                     onCheckedChange={(value) =>

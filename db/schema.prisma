@@ -89,14 +89,14 @@ model AuditEntry {
 model UserSettings {
   userId               String  @id @db.Uuid
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dailySummary         Boolean @default(false)
-  driverAssigned       Boolean @default(false)
-  driverEnRoute        Boolean @default(false)
-  rideCancelled        Boolean @default(false)
-  rideAssigned         Boolean @default(false)
-  rideCompleted        Boolean @default(false)
-  rideDelayed          Boolean @default(false)
-  newMessageFromDriver Boolean @default(false)
+  dailySummary         Boolean @default(true)
+  driverAssigned       Boolean @default(true)
+  driverEnRoute        Boolean @default(true)
+  rideCancelled        Boolean @default(true)
+  rideAssigned         Boolean @default(true)
+  rideCompleted        Boolean @default(true)
+  rideDelayed          Boolean @default(true)
+  newMessageFromDriver Boolean @default(true)
 }
 
 model StudentProfile {

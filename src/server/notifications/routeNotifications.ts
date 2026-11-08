@@ -2,7 +2,16 @@ import type { Prisma } from "@db/generated/client";
 import { RouteStatus } from "@db/generated/enums";
 
 import type { adminRouteInclude, userInclude } from "@/server/queries";
-import { EmailClient } from "@/server/EmailClient";
+import {
+  getRideEmailDetails,
+  sendRideCancelled,
+  sendDriverEnRoute,
+  sendRideAssigned,
+  sendRideUpdated,
+  sendRideCompleted,
+  sendRideConfirmed,
+  sendRideDelayed,
+} from "@/server/email/email";
 import { formatEstDate, formatEstTime } from "@/utils/dateEst";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
 
@@ -55,19 +64,21 @@ export function notifyRideStatusChanged(
 
   if (status === RouteStatus.EnRoute && student.settings?.driverEnRoute) {
     deliveries.push(() =>
-      EmailClient.driverEnRoute(student.email, recipientName(student), {
-        name: driver ? `${driver.firstName} ${driver.lastName}` : "Driver",
-        eta: formatEstTime(route.scheduledPickupTime),
-        vehicle: route.vehicle?.licensePlate ?? "Assigned vehicle",
-      }),
+      sendDriverEnRoute(
+        student.email,
+        recipientName(student),
+        getRideEmailDetails(route),
+      ),
     );
   }
 
   if (status === RouteStatus.Completed && student.settings?.rideCompleted) {
     deliveries.push(() =>
-      EmailClient.rideCompleted(student.email, recipientName(student), {
-        rideId: route.id,
-      }),
+      sendRideCompleted(
+        student.email,
+        recipientName(student),
+        getRideEmailDetails(route),
+      ),
     );
   }
 
@@ -75,15 +86,17 @@ export function notifyRideStatusChanged(
     status === RouteStatus.CancelledByStudent ||
     status === RouteStatus.CancelledByAdmin
   ) {
-    const details = { rideId: route.id, reason: `Ride status: ${status}` };
+    const details = {
+      ...getRideEmailDetails(route),
+      reason:
+        status === RouteStatus.CancelledByStudent
+          ? "Cancelled by the rider."
+          : "Cancelled by an administrator.",
+    };
 
     if (student.settings?.rideCancelled) {
       deliveries.push(() =>
-        EmailClient.rideCancelled(
-          student.email,
-          recipientName(student),
-          details,
-        ),
+        sendRideCancelled(student.email, recipientName(student), details),
       );
     }
 
@@ -92,11 +105,7 @@ export function notifyRideStatusChanged(
 
       if (driver.settings?.rideCancelled) {
         deliveries.push(() =>
-          EmailClient.rideCancelled(
-            driver.email,
-            recipientName(driver),
-            details,
-          ),
+          sendRideCancelled(driver.email, recipientName(driver), details),
         );
       }
     }
@@ -110,9 +119,9 @@ export function notifyRideDelayed(route: NotificationRoute): Promise<void> {
     new Date(date.getTime() + route.delayMinutes * 60_000);
 
   const deliveries: Delivery[] = [
-    // The email client applies each recipient's rideDelayed preference.
+    // The email sender applies each recipient's rideDelayed preference.
     () =>
-      EmailClient.rideDelayed(route.id, {
+      sendRideDelayed(route.id, {
         delay: `${route.delayMinutes} minutes`,
         oldPickupTime: formatEstTime(route.scheduledPickupTime),
         newPickupTime: formatEstTime(shift(route.scheduledPickupTime)),
@@ -197,17 +206,16 @@ export function notifyRideAssigned({
   }
 
   if (!vehicleOnly && student.settings?.driverAssigned) {
-    deliveries.push(() => EmailClient.rideConfirmed(route.id));
+    deliveries.push(() => sendRideConfirmed(route.id));
   }
 
   if (!vehicleOnly && driver.settings?.rideAssigned) {
     deliveries.push(() =>
-      EmailClient.rideAssigned(driver.email, recipientName(driver), {
-        rideId: route.id,
-        pickup: route.pickupLocation,
-        dropoff: route.dropoffLocation,
-        time: rideTime,
-      }),
+      sendRideAssigned(
+        driver.email,
+        recipientName(driver),
+        getRideEmailDetails(route),
+      ),
     );
   }
 
@@ -246,7 +254,10 @@ export function notifyRideChangesAccepted(
 
     if (driver.settings?.rideAssigned)
       deliveries.push(() =>
-        EmailClient.rideUpdated(driver.email, recipientName(driver), details),
+        sendRideUpdated(driver.email, recipientName(driver), {
+          ...getRideEmailDetails(route),
+          message: details,
+        }),
       );
   }
 
@@ -257,11 +268,11 @@ export function notifyRideChangesAccepted(
 
     if (previousDriver.settings?.rideAssigned)
       deliveries.push(() =>
-        EmailClient.rideUpdated(
-          previousDriver.email,
-          recipientName(previousDriver),
-          notification.message,
-        ),
+        sendRideUpdated(previousDriver.email, recipientName(previousDriver), {
+          ...getRideEmailDetails(route),
+          message: notification.message,
+          rideUrl: new URL("/rides", process.env.DEPLOY_PRIME_URL!).href,
+        }),
       );
   }
 
