@@ -13,6 +13,9 @@ import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import CancelScopeOptions, {
+  type CancelScope,
+} from "@/components/CancelScopeOptions/CancelScopeOptions";
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { useRouteUpdates } from "@/hooks/useRouteUpdates";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -83,6 +86,8 @@ export default function RidesPage() {
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [cancelScope, setCancelScope] = useState<CancelScope>("single");
+  const cancelTarget = routes.find((route) => route.id === cancelTargetId);
   const [delayTargetId, setDelayTargetId] = useState<string | null>(null);
   const [delaying, setDelaying] = useState(false);
   const delayPending = useRef(false);
@@ -135,29 +140,39 @@ export default function RidesPage() {
   });
 
   const handleCancel = useCallback(
-    async (routeId: string) => {
+    async (routeId: string, scope: CancelScope) => {
       setCancellingId(routeId);
       try {
         const res = await fetch("/api/routes/cancel", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ routeId }),
+          body: JSON.stringify({ routeId, scope }),
         });
         if (!res.ok) {
           const body = await res.json();
           throw new Error(body.error ?? res.statusText);
         }
-        beginRequest();
-        setRoutes((prev) => prev.filter((r) => r.id !== routeId));
         setCancelTargetId(null);
+        if (scope === "series") {
+          // Later rides in the series were cancelled too.
+          void fetchRides();
+        } else {
+          beginRequest();
+          setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Cancellation failed.");
       } finally {
         setCancellingId(null);
       }
     },
-    [beginRequest],
+    [beginRequest, fetchRides],
   );
+
+  const openCancel = useCallback((routeId: string) => {
+    setCancelScope("single");
+    setCancelTargetId(routeId);
+  }, []);
 
   const handleDelay = async (minutes: number) => {
     if (!delayTargetId || delayPending.current) return;
@@ -279,7 +294,7 @@ export default function RidesPage() {
                   key={route.id}
                   route={route}
                   href={`/rides/${route.id}`}
-                  onCancel={(id) => setCancelTargetId(id)}
+                  onCancel={openCancel}
                   cancelling={cancellingId === route.id}
                   onDelay={(id) => {
                     setDelayError(null);
@@ -351,7 +366,7 @@ export default function RidesPage() {
           confirming={delaying}
           delayActionError={delayError ?? undefined}
           onCancelRide={() => {
-            setCancelTargetId(delayTarget.id);
+            openCancel(delayTarget.id);
             setDelayTargetId(null);
           }}
         />
@@ -362,16 +377,28 @@ export default function RidesPage() {
           if (!open) setCancelTargetId(null);
         }}
         onConfirm={() => {
-          if (cancelTargetId) void handleCancel(cancelTargetId);
+          if (cancelTargetId) void handleCancel(cancelTargetId, cancelScope);
         }}
         variant="destructive"
         title="Cancel Ride?"
-        description="Are you sure you want to cancel this ride?"
-        confirmLabel="Cancel ride"
+        description={
+          cancelTarget?.seriesId
+            ? "This is a recurring ride. Which rides do you want to cancel?"
+            : "Are you sure you want to cancel this ride?"
+        }
+        confirmLabel={cancelScope === "series" ? "Cancel rides" : "Cancel ride"}
         confirmingLabel="Cancelling…"
         cancelLabel="Nevermind"
         confirming={cancelTargetId !== null && cancellingId === cancelTargetId}
-      />
+      >
+        {cancelTarget?.seriesId && (
+          <CancelScopeOptions
+            value={cancelScope}
+            onChange={setCancelScope}
+            disabled={cancellingId !== null}
+          />
+        )}
+      </ConfirmActionModal>
       <main className={styles.main}>
         <div className={styles.mainHeader}>
           <h1 className={styles.pageTitle}>Your Rides</h1>

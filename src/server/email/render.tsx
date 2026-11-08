@@ -3,6 +3,7 @@ import RideUpdatedEmail from "../../../emails/RideUpdated";
 import RideAssignedEmail from "../../../emails/RideAssigned";
 import DriverEnRouteEmail from "../../../emails/DriverEnRoute";
 import RideCancelledEmail from "../../../emails/RideCancelled";
+import RideSeriesCancelledEmail from "../../../emails/RideSeriesCancelled";
 import type { ComponentProps, ReactElement } from "react";
 import { render, toPlainText } from "react-email";
 import NewMessageFromDriverEmail from "../../../emails/NewMessageFromDriver";
@@ -50,6 +51,17 @@ export function renderRideCancelled(
   props: ComponentProps<typeof RideCancelledEmail>,
 ) {
   return renderTemplate(<RideCancelledEmail {...props} />);
+}
+
+export type RideSeriesCancelledDetails = Omit<
+  ComponentProps<typeof RideSeriesCancelledEmail>,
+  "name" | "ridesUrl"
+>;
+
+export function renderRideSeriesCancelled(
+  props: ComponentProps<typeof RideSeriesCancelledEmail>,
+) {
+  return renderTemplate(<RideSeriesCancelledEmail {...props} />);
 }
 
 export function renderDriverEnRoute(

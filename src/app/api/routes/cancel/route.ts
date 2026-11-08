@@ -5,6 +5,7 @@ import { cancelRoute, getRouteById } from "@/server/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 import { RouteStatus } from "@db/generated/enums";
+import { cancelRideSeriesFrom } from "@/server/actions/RideSeriesAction";
 import { routeResponseForRole } from "@/server/queries";
 
 export async function POST(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
         { error: "Invalid request body" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
-    const { routeId } = body;
+    const { routeId, scope = "single" } = body;
 
     if (!routeId) {
       return NextResponse.json(
@@ -39,6 +40,13 @@ export async function POST(request: NextRequest) {
     if (!isValidId(routeId)) {
       return NextResponse.json(
         { error: "Invalid routeId" },
+        { status: HTTP_STATUS_CODE.BAD_REQUEST },
+      );
+    }
+
+    if (scope !== "single" && scope !== "series") {
+      return NextResponse.json(
+        { error: 'scope must be "single" or "series"' },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
       );
     }
@@ -64,7 +72,11 @@ export async function POST(request: NextRequest) {
       type === "Student"
         ? RouteStatus.CancelledByStudent
         : RouteStatus.CancelledByAdmin;
-    const updated = await cancelRoute(routeId, cancelStatus, userId);
+    // "series" cancels this ride plus every later one and stops the series.
+    const updated =
+      scope === "series"
+        ? (await cancelRideSeriesFrom(routeId, cancelStatus, userId)).route
+        : await cancelRoute(routeId, cancelStatus, userId);
     return NextResponse.json(routeResponseForRole(updated, type), {
       status: HTTP_STATUS_CODE.OK,
     });

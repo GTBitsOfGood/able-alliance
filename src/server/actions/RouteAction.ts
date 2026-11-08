@@ -238,6 +238,7 @@ export async function cancelRoute(
   status:
     typeof RouteStatus.CancelledByStudent | typeof RouteStatus.CancelledByAdmin,
   actorId: string,
+  options?: { notify?: boolean },
 ) {
   if (
     status !== RouteStatus.CancelledByStudent &&
@@ -257,6 +258,7 @@ export async function cancelRoute(
     ],
     status,
     actorId,
+    options,
   );
   return route;
 }
@@ -586,6 +588,8 @@ export async function transitionRoute(
   expected: RouteStatus[],
   status: RouteStatus,
   actorId: string,
+  /** notify: false lets a batch caller send one combined notification instead. */
+  options?: { notify?: boolean },
 ) {
   routeId = routeId.toLowerCase();
   const route = await db.$transaction(async (tx) => {
@@ -631,7 +635,7 @@ export async function transitionRoute(
     return updated;
   });
   emitRouteUpdate(route);
-  void notifyRideStatusChanged(route);
+  if (options?.notify !== false) void notifyRideStatusChanged(route);
 
   return route;
 }

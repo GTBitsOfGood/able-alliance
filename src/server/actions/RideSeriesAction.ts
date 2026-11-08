@@ -19,15 +19,16 @@
  */
 
 import { db } from "@db";
-import { Prisma } from "@db/generated/client";
+import { Prisma, RouteStatus } from "@db/generated/client";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
+import { notifyRideSeriesCancelled } from "@/server/notifications/routeNotifications";
 import { addDays, endOfDay, set } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
-import { createRoute } from "./RouteAction";
+import { cancelRoute, createRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/types/rideSeries";
 import type { RecurrenceRequest } from "@/schemas/rideSeries";
 import { createRouteSchema, type CreateRouteInput } from "@/schemas/ride";
-import { ArgumentError, ConflictError } from "@/utils/errors";
+import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { recordAudit } from "@db/audit";
 
@@ -396,4 +397,75 @@ export async function deactivateRideSeries(
     return true;
   });
   return changed;
+}
+
+/** Later rides that haven't started yet; in-progress or finished rides are left alone. */
+const FUTURE_CANCELLABLE_STATUSES: RouteStatus[] = [
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+];
+
+/**
+ * Cancel a recurring ride together with every later ride in its series, and stop
+ * the series from generating more.
+ *
+ * The selected ride is cancelled first so an invalid state (already finished,
+ * already cancelled) fails before anything else changes. The series is stopped
+ * next, before later rides are looked up: deactivating waits on the row lock a
+ * running materialization holds, so any ride it was creating is committed and
+ * visible to the lookup, and no new ride can appear afterwards. Each later ride
+ * goes through the normal cancellation path (audit, pending-change resolution),
+ * but notifications are batched: each person gets one toast and one email for
+ * the whole series rather than one per ride. Earlier and in-progress rides keep
+ * their history.
+ */
+export async function cancelRideSeriesFrom(
+  routeId: string,
+  status:
+    typeof RouteStatus.CancelledByStudent | typeof RouteStatus.CancelledByAdmin,
+  actorId: string,
+) {
+  const selected = await db.route.findUnique({
+    where: { id: routeId.toLowerCase() },
+    select: { id: true, seriesId: true, scheduledPickupTime: true },
+  });
+  if (!selected) throw new NotFoundError("Route not found");
+  if (!selected.seriesId)
+    throw new ArgumentError("Ride is not part of a recurring series");
+
+  const route = await cancelRoute(selected.id, status, actorId, {
+    notify: false,
+  });
+  const cancelled = [route];
+  try {
+    await deactivateRideSeries(selected.seriesId, actorId);
+
+    const later = await db.route.findMany({
+      where: {
+        seriesId: selected.seriesId,
+        scheduledPickupTime: { gt: selected.scheduledPickupTime },
+        status: { in: FUTURE_CANCELLABLE_STATUSES },
+      },
+      select: { id: true },
+      orderBy: { scheduledPickupTime: "asc" },
+    });
+    for (const { id } of later) {
+      try {
+        cancelled.push(
+          await cancelRoute(id, status, actorId, { notify: false }),
+        );
+      } catch (error) {
+        // The ride changed state (or was removed) since the lookup; leave it be.
+        if (error instanceof ConflictError || error instanceof NotFoundError)
+          continue;
+        throw error;
+      }
+    }
+  } finally {
+    // Whatever was cancelled before a failure still needs to be announced.
+    void notifyRideSeriesCancelled(cancelled);
+  }
+  return { route, cancelledCount: cancelled.length };
 }

@@ -101,6 +101,16 @@ export const RIDE_NOTIFICATIONS = {
     message: "Your ride has been cancelled by an administrator.",
   }),
 
+  seriesCancelled: (count: number, byAdmin: boolean): ToastPayload => ({
+    type: "error",
+    message: `Your recurring rides have been cancelled${byAdmin ? " by an administrator" : ""} (${count === 1 ? "1 ride" : `${count} rides`}).`,
+  }),
+
+  driverSeriesCancelled: (count: number): ToastPayload => ({
+    type: "error",
+    message: `${count === 1 ? "1 ride" : `${count} rides`} assigned to you ${count === 1 ? "has" : "have"} been cancelled.`,
+  }),
+
   studentDelayed: (minutes: number): ToastPayload => ({
     type: "info",
     message: `Your ride has been delayed by ${minutes} minutes.`,
