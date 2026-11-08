@@ -109,7 +109,8 @@ export default function AdminRidesPage() {
   const [pickups, setPickups] = useState<string[]>([]);
   const [dropoffs, setDropoffs] = useState<string[]>([]);
   const [attentionOnly, setAttentionOnly] = useState(false);
-  const [chatRoute, setChatRoute] = useState<RouteEntry | null>(null);
+  const [chatRouteId, setChatRouteId] = useState<string | null>(null);
+  const chatRoute = routes.find((route) => route.id === chatRouteId) ?? null;
   const [assignRoute, setAssignRoute] = useState<RouteEntry | null>(null);
   const [pendingCancel, setPendingCancel] = useState<RouteEntry | null>(null);
   const [canceling, setCanceling] = useState(false);
@@ -214,7 +215,7 @@ export default function AdminRidesPage() {
               },
             ]
           : []),
-        { label: "Ride chat", onSelect: () => setChatRoute(route) },
+        { label: "Ride chat", onSelect: () => setChatRouteId(route.id) },
         {
           label: "Cancel ride",
           disabled: !canCancel,
@@ -331,31 +332,23 @@ export default function AdminRidesPage() {
           )}
 
           {chatRoute && (
-            <div className={styles.drawerLayer}>
-              <button
-                type="button"
-                className={styles.drawerBackdrop}
-                aria-label="Close chat"
-                onClick={() => setChatRoute(null)}
-              />
-              <aside className={styles.drawer} aria-label="Chat transcript">
-                <AdminChatView
-                  routeId={chatRoute.id}
-                  rideLabel={[
-                    fullName(chatRoute.student),
-                    chatRoute.driver
-                      ? `Driver: ${fullName(chatRoute.driver)}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  routeStatus={chatRoute.status}
-                  studentId={chatRoute.student.id}
-                  driverId={chatRoute.driver?.id ?? null}
-                  onClose={() => setChatRoute(null)}
-                />
-              </aside>
-            </div>
+            <AdminChatView
+              key={chatRoute.id}
+              presentation="dialog"
+              routeId={chatRoute.id}
+              rideLabel={[
+                `Student: ${fullName(chatRoute.student)}`,
+                chatRoute.driver
+                  ? `Driver: ${fullName(chatRoute.driver)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              routeStatus={chatRoute.status}
+              studentId={chatRoute.student.id}
+              driverId={chatRoute.driver?.id ?? null}
+              onClose={() => setChatRouteId(null)}
+            />
           )}
 
           <ConfirmActionModal

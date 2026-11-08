@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { RouteStatus } from "@db/generated/client";
+import { RouteStatus, UserType } from "@db/generated/client";
 import { z } from "zod";
 import { recordAudit } from "@db/audit";
 
@@ -37,6 +37,7 @@ export async function appendMessage(
   routeId: string,
   senderId: string,
   text: string,
+  senderType: UserType,
 ) {
   const route = await db.route.findUnique({
     where: { id: routeId },
@@ -52,6 +53,7 @@ export async function appendMessage(
       data: {
         route: { connect: { id: routeId } },
         sender: { connect: { id: senderId } },
+        senderType,
         text,
         time: new Date(),
       },
