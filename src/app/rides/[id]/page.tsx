@@ -159,18 +159,23 @@ export default function RideDetailPage({
   const [chatError, setChatError] = useState<string | null>(null);
   const [chatHistoryError, setChatHistoryError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
+  const openedChatDeepLink = useRef<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
 
   // Open the chat deep link once the ride is loaded and its chat is open.
   useEffect(() => {
+    if (searchParams.get("chat") !== "1") {
+      openedChatDeepLink.current = null;
+      return;
+    }
     if (
-      searchParams.get("chat") === "1" &&
       route &&
+      openedChatDeepLink.current !== route.id &&
       (session?.user?.activeType === "Driver" ||
         !studentDriverChatDisabledReason(route)) &&
       isRideChatOpen(route.status)
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      openedChatDeepLink.current = route.id;
       setShowChatModal(true);
     }
   }, [searchParams, route, session?.user?.activeType]);
