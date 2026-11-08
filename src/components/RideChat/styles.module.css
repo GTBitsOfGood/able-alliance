@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--color-overlay);
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
@@ -18,7 +18,7 @@
   height: 100%;
   background-color: var(--color-solid-bg-base);
   border-radius: 0;
-  box-shadow: -0.2rem 0 1.6rem rgba(34, 7, 11, 0.16);
+  box-shadow: -0.2rem 0 1.6rem var(--color-shadow);
   animation: slideInFromRight 0.2s ease-out;
 }
 
@@ -39,7 +39,7 @@
   justify-content: space-between;
   padding: 2.1rem 1.7rem;
   background: var(--color-solid-bg-sunken);
-  border-bottom: 1px solid var(--color-grey-off-state);
+  border-bottom: 0.1rem solid var(--color-grey-off-state);
 }
 
 .chatModalHeader > div {
@@ -82,12 +82,12 @@
 .chatErrorBanner {
   padding: 1.2rem 2.4rem;
   background-color: var(--color-status-red-fill);
-  border-bottom: 1px solid var(--color-status-red-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-status-red-stroke-weak);
 }
 
 .chatErrorText {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: var(--text-mobile-paragraph-2);
   color: var(--color-status-red-text);
 }
 
@@ -127,7 +127,7 @@
 .panelChat .chatInputContainer {
   margin: 0 2.4rem 2.6rem;
   padding: 0.9rem 1rem 0.9rem 1.7rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 2.4rem;
   background: var(--color-solid-bg-sunken);
 }
@@ -144,7 +144,7 @@
   justify-content: center;
   min-height: 25rem;
   color: var(--color-grey-text-weak);
-  font-size: 1.4rem;
+  font-size: var(--text-mobile-paragraph-2);
 
   p {
     margin: 0;
@@ -171,11 +171,11 @@
   width: 3.6rem;
   height: 3.6rem;
   border-radius: 50%;
-  background-color: #111;
+  background-color: var(--color-grey-text-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-solid-bg-base);
   margin-top: 2.4rem;
 }
 
@@ -216,7 +216,7 @@
   }
 
   .messageRowOther & {
-    background-color: #efeded;
+    background-color: var(--color-status-grey);
     border-radius: 0.8rem 0.8rem 0.8rem 0;
   }
 }
@@ -238,15 +238,15 @@
 }
 
 .adminMessageBubble {
-  border: 1px solid #9bb8ed;
+  border: 0.1rem solid var(--color-brand-stroke-weak);
 }
 
 .adminMessageLabel {
   display: block;
   color: var(--color-grey-stroke-strong);
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
   font-weight: 400;
-  line-height: 1.8rem;
+  line-height: var(--text-desktop-small--line-height);
 }
 
 .chatInputContainer {
@@ -256,7 +256,7 @@
   flex-shrink: 0;
   margin: 0 2.4rem 2.6rem;
   padding: 0.9rem 1rem 0.9rem 1.7rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 2.4rem;
   background: var(--color-solid-bg-sunken);
 }
@@ -299,17 +299,17 @@
   border: none;
   border-radius: 50%;
   background-color: var(--color-brand-text);
-  color: white;
+  color: var(--color-solid-bg-base);
   cursor: pointer;
   transition: background-color 0.15s ease;
 
   &:hover:not(:disabled) {
-    background-color: #152d55;
+    background-color: var(--color-brand-pressed);
   }
 
   &:focus {
     outline: none;
-    background-color: #152d55;
+    background-color: var(--color-brand-pressed);
   }
 
   &:disabled {
@@ -324,7 +324,7 @@
   min-height: 32rem;
   max-height: 60rem;
   overflow: hidden;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.8rem;
 }
 
@@ -332,18 +332,20 @@
   margin: 0;
   padding: 1.4rem 2rem;
   color: var(--color-grey-text-weak);
-  font-size: 1.4rem;
+  font-size: var(--text-mobile-paragraph-2);
   text-align: center;
 }
 
 .subtitle {
   margin: 0.4rem 0 0;
   color: var(--color-grey-text-weak);
-  font-size: 1.4rem;
+  font-size: var(--text-mobile-paragraph-2);
 }
 
-@media (max-width: 640px) {
-  .chatModal {
+.chatModal[data-breakpoint="mobile"],
+.panelChat[data-breakpoint="mobile"],
+.inlineChat[data-breakpoint="mobile"] {
+  &.chatModal {
     width: 100%;
   }
   .chatInput {

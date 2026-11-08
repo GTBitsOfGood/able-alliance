@@ -140,7 +140,6 @@ export default function AdminChatView({
     });
     nextSocket.on("receiveChatMessage", (message: ChatMessage) => {
       onActivityRef.current?.();
-      setRevision((current) => current + 1);
       if (
         userId &&
         activeType &&

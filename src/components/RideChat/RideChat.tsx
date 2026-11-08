@@ -6,6 +6,7 @@ import ChatSystemMessage from "@/components/ChatSystemMessage/ChatSystemMessage"
 import type { ChatMessageResponse } from "@/types/api";
 import { getChatSenderType, isOwnChatMessage } from "@/utils/chat";
 import { UserType } from "@db/generated/enums";
+import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
 import styles from "./styles.module.css";
 
 type RideChatProps = {
@@ -48,6 +49,7 @@ export default function RideChat({
   loading = false,
   error,
 }: RideChatProps) {
+  const breakpoint = useResponsive();
   const transcriptRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const transcript = transcriptRef.current;
@@ -75,6 +77,7 @@ export default function RideChat({
       role={presentation === "dialog" ? "dialog" : undefined}
       aria-modal={presentation === "dialog" || undefined}
       aria-label={title}
+      data-breakpoint={breakpoint}
       onClick={(event) => event.stopPropagation()}
     >
       <div className={styles.chatModalHeader}>

@@ -2,6 +2,32 @@ import { db } from "@db";
 import { RouteStatus, UserType } from "@db/generated/client";
 import { z } from "zod";
 import { recordAudit } from "@db/audit";
+import type { Message, User } from "@db/generated/client";
+import type { ChatMessage } from "./types.js";
+
+const chatSenderSelect = {
+  firstName: true,
+  lastName: true,
+  preferredName: true,
+} as const;
+
+function messageForChat({
+  sender,
+  ...message
+}: Message & {
+  sender: Pick<User, "firstName" | "lastName" | "preferredName">;
+}): ChatMessage {
+  return {
+    ...message,
+    author: {
+      name: `${sender.preferredName || sender.firstName} ${sender.lastName}`.trim(),
+      role:
+        message.senderType === UserType.SuperAdmin
+          ? UserType.Admin
+          : message.senderType,
+    },
+  };
+}
 
 const routeIdSchema = z.uuid();
 
@@ -19,11 +45,13 @@ export async function getRouteForAuth(routeId: string) {
   });
 }
 
-export function getChatHistory(routeId: string) {
-  return db.message.findMany({
+export async function getChatHistory(routeId: string) {
+  const messages = await db.message.findMany({
     where: { routeId: routeId.toLowerCase() },
     orderBy: [{ time: "asc" }, { id: "asc" }],
+    include: { sender: { select: chatSenderSelect } },
   });
+  return messages.map(messageForChat);
 }
 
 const closedChatStatuses = new Set<RouteStatus>([
@@ -49,7 +77,7 @@ export async function appendMessage(
   }
 
   return db.$transaction(async (tx) => {
-    const message = await tx.message.create({
+    const created = await tx.message.create({
       data: {
         route: { connect: { id: routeId } },
         sender: { connect: { id: senderId } },
@@ -57,7 +85,9 @@ export async function appendMessage(
         text,
         time: new Date(),
       },
+      include: { sender: { select: chatSenderSelect } },
     });
+    const { sender, ...message } = created;
     await recordAudit(tx, {
       actorId: senderId,
       entityType: "Message",
@@ -65,6 +95,6 @@ export async function appendMessage(
       action: "Create",
       after: message,
     });
-    return message;
+    return messageForChat({ ...message, sender });
   });
 }

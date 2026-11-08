@@ -5,12 +5,14 @@ import { useSession } from "next-auth/react";
 import AdminChatView from "@/components/admin/AdminChatView";
 import BogButton from "@/components/BogButton/BogButton";
 import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
 import { isRideChatOpen } from "@/utils/route-status";
 import type { AdminChatSummaryResponse } from "@/types/api";
 import ChatListSection, { chatParticipants } from "./ChatListSection";
 import styles from "./styles.module.css";
 
 export default function AdminChatsPage() {
+  const breakpoint = useResponsive();
   const { data: session, status: sessionStatus } = useSession();
   const [chats, setChats] = useState<AdminChatSummaryResponse[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export default function AdminChatsPage() {
   return (
     <main
       className={`${styles.page} ${selected ? styles.hasSelection : ""}`}
+      data-breakpoint={breakpoint}
       aria-label="Ride chats"
     >
       <div className={styles.listPanel}>

@@ -151,6 +151,7 @@ export default function RideDetailPage({
   const [chatInput, setChatInput] = useState("");
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
+  const [chatHistoryError, setChatHistoryError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
 
@@ -283,17 +284,19 @@ export default function RideDetailPage({
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load ride chat history.");
         const history: ChatMessageResponse[] = await response.json();
-        if (!cancelled)
+        if (!cancelled) {
           setMessages((current) =>
             mergeChatMessages(
               current.filter((message) => message.routeId === routeId),
               history,
             ),
           );
+          setChatHistoryError(null);
+        }
       })
       .catch(() => {
         if (!cancelled)
-          setChatError(
+          setChatHistoryError(
             "Unable to load ride chat history. Reopen the chat to retry.",
           );
       });
@@ -575,7 +578,6 @@ export default function RideDetailPage({
 
     newSocket.on("receiveChatMessage", (message: ChatMessageResponse) => {
       if (socketRef.current !== newSocket) return;
-      setChatRevision((current) => current + 1);
       setMessages((prev) => mergeChatMessages(prev, [message]));
     });
 
@@ -959,7 +961,7 @@ export default function RideDetailPage({
       onClose={() => setShowChatModal(false)}
       connected={!!socket?.connected && !sendingMessage}
       readOnly={!isRideChatOpen(route.status)}
-      error={chatError}
+      error={chatHistoryError ?? chatError}
     />
   );
 
