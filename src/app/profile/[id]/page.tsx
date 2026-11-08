@@ -1,7 +1,10 @@
 import { hasAdminType } from "@/utils/userTypes";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getUserById } from "@/server/actions/UserAction";
+import {
+  driverProfileResponse,
+  getUserById,
+} from "@/server/actions/UserAction";
 import { isAdmin } from "@/utils/authUser";
 import { NotFoundError } from "@/utils/errors";
 import { ProfileView } from "@/app/profile/ProfileView";
@@ -36,9 +39,11 @@ export default async function ProfilePage({
 
   if (!data) redirect("/");
 
-  const user = data;
-
   const isOwnProfile = viewerId === targetId;
+  const user =
+    viewerType === "Driver" && !isOwnProfile
+      ? driverProfileResponse(data)
+      : data;
   const targetIsAdmin = hasAdminType(data);
   const canDelete =
     !isOwnProfile &&

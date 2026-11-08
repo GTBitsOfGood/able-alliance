@@ -8,6 +8,37 @@ import { recordAudit } from "@db/audit";
 
 type UserWithDetails = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 
+export type DriverProfileResponse = Pick<
+  UserWithDetails,
+  "id" | "firstName" | "lastName" | "preferredName" | "types"
+> & {
+  studentInfo:
+    | (Pick<NonNullable<UserWithDetails["studentInfo"]>, "notes"> & {
+        accessibilityNeeds: { label: string }[];
+      })
+    | null;
+};
+
+export function driverProfileResponse(
+  user: UserWithDetails,
+): DriverProfileResponse {
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    preferredName: user.preferredName,
+    types: user.types,
+    studentInfo: user.studentInfo
+      ? {
+          notes: user.studentInfo.notes,
+          accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
+            ({ label }) => ({ label }),
+          ),
+        }
+      : null,
+  };
+}
+
 function userAuditSnapshot(user: UserWithDetails) {
   return {
     id: user.id,
@@ -51,6 +82,14 @@ export async function getUserById(id: string) {
   });
   if (!user) throw new NotFoundError("User not found");
   return user;
+}
+
+export async function isUserActive(id: string) {
+  const user = await db.user.findUnique({
+    where: { id: id.toLowerCase() },
+    select: { status: true },
+  });
+  return user?.status === "active";
 }
 
 export const getProvisionedUserFromCAS = (username: string) =>

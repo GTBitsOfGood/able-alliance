@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { idSchema } from "@/schemas/id";
 import { getEmailRoute } from "@/server/actions/EmailAction";
+import { isUserActive } from "@/server/actions/UserAction";
 import { sendNewMessageFromDriver } from "@/server/email/email";
 import { getRouteMessage } from "@/server/actions/MessageAction";
 import { emitToast } from "@/server/notifications/emitToast";
@@ -47,6 +48,10 @@ export async function POST(req: NextRequest) {
     const route = await getEmailRoute(routeId);
 
     if (route?.driverId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!(await isUserActive(userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

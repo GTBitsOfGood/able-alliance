@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { RouteStatus, UserType } from "@db/generated/client";
+import { Prisma, RouteStatus, UserType } from "@db/generated/client";
 import { z } from "zod";
 import { recordAudit } from "@db/audit";
 import type { Message, User } from "@db/generated/client";
@@ -61,22 +61,43 @@ const closedChatStatuses = new Set<RouteStatus>([
   RouteStatus.CancelledByAdmin,
 ]);
 
+export function isChatClosed(status: RouteStatus) {
+  return closedChatStatuses.has(status);
+}
+
+export async function getRouteStatus(routeId: string) {
+  if (!routeIdSchema.safeParse(routeId).success)
+    throw new Error("Invalid route ID");
+  return db.route.findUnique({
+    where: { id: routeId.toLowerCase() },
+    select: { status: true },
+  });
+}
+
 export async function appendMessage(
   routeId: string,
   senderId: string,
   text: string,
   senderType: UserType,
 ) {
-  const route = await db.route.findUnique({
-    where: { id: routeId },
-    select: { status: true },
-  });
+  const route = await getRouteStatus(routeId);
 
-  if (!route || closedChatStatuses.has(route.status)) {
+  if (!route || isChatClosed(route.status)) {
     throw new Error("Chat is closed for this route");
   }
 
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "User" WHERE "id" = ${senderId}::uuid FOR UPDATE`,
+    );
+    const senderAccount = await tx.user.findUnique({
+      where: { id: senderId },
+      select: { status: true },
+    });
+    if (!senderAccount || senderAccount.status !== "active") {
+      throw new Error("Account is inactive");
+    }
+
     const created = await tx.message.create({
       data: {
         route: { connect: { id: routeId } },
