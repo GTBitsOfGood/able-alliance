@@ -5,6 +5,7 @@ import { RouteStatus } from "@db/generated/enums";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
+import { toast } from "react-toast";
 
 import type { ChatMessageResponse as ChatMessage } from "@/types/api";
 import RideChat from "@/components/RideChat/RideChat";
@@ -158,7 +159,7 @@ export default function AdminChatView({
           : current,
       );
     });
-    nextSocket.on("chatError", (message: string) => setSocketError(message));
+    nextSocket.on("chatError", (message: string) => toast.error(message));
     nextSocket.on("connect_error", (connectionError) => {
       setConnected(false);
       setSocketError(
