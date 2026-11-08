@@ -133,7 +133,7 @@ test("expected database failures use stable HTTP statuses", async ({
   expect(beforeResponse.status(), await beforeResponse.text()).toBe(200);
   const before = (await beforeResponse.json()) as {
     preferredName: string | null;
-    settings: { dailySummary: boolean };
+    settings: { rideDelayed: boolean };
     studentInfo: {
       notes: string | null;
       accessibilityNeeds: Array<{ label: string }>;
@@ -146,7 +146,7 @@ test("expected database failures use stable HTTP statuses", async ({
       data: {
         preferredName: "Must not persist",
         notes: "Must not persist",
-        settings: { dailySummary: !before.settings.dailySummary },
+        settings: { rideDelayed: !before.settings.rideDelayed },
         accessibilityNeeds: ["not-a-provisioned-accommodation"],
       },
     },
@@ -157,7 +157,7 @@ test("expected database failures use stable HTTP statuses", async ({
   expect(afterResponse.status(), await afterResponse.text()).toBe(200);
   const after = await afterResponse.json();
   expect(after.preferredName).toBe(before.preferredName);
-  expect(after.settings.dailySummary).toBe(before.settings.dailySummary);
+  expect(after.settings.rideDelayed).toBe(before.settings.rideDelayed);
   expect(after.studentInfo.notes).toBe(before.studentInfo.notes);
   expect(after.studentInfo.accessibilityNeeds).toEqual(
     before.studentInfo.accessibilityNeeds,
