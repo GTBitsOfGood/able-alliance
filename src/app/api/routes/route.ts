@@ -13,6 +13,7 @@ import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { RouteStatus } from "@db/generated/client";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
+import { getRideTimingError } from "@/utils/rideTiming";
 
 export async function GET(req: NextRequest) {
   let user;
@@ -203,6 +204,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Reject timing errors before creating any of the batch's rides.
+      for (const [index, ride] of batch.data.rides.entries()) {
+        const timingError = getRideTimingError(ride);
+        if (timingError)
+          throw new ArgumentError(`Ride #${index + 1}: ${timingError}`);
+        if (
+          ride.pickupLocation.toLowerCase() ===
+          ride.dropoffLocation.toLowerCase()
+        )
+          throw new ArgumentError(
+            `Ride #${index + 1}: Pickup and dropoff locations must differ.`,
+          );
+      }
       const created = [];
       for (const ride of batch.data.rides) {
         const routeData = {

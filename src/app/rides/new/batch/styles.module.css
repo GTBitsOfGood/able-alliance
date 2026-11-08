@@ -223,6 +223,13 @@
 }
 
 .errorBanner {
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  max-height: 50dvh;
+  overflow-y: auto;
+  scroll-margin-block: 1.6rem;
+  font: 400 1.6rem/2.4rem var(--font-paragraph);
   padding: 1.2rem 2rem;
   background: #fde8e8;
   color: #c73a3a;

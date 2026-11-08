@@ -64,6 +64,8 @@ type TimeInputProps = {
   min?: string;
   /** Latest selectable time, inclusive, in HH:MM format. */
   max?: string;
+  disabled?: boolean;
+  "aria-label"?: string;
 };
 
 export function TimeInput({
@@ -75,6 +77,8 @@ export function TimeInput({
   id,
   min,
   max,
+  disabled,
+  "aria-label": ariaLabel,
 }: TimeInputProps) {
   const selectedLabel = valueToLabel(value);
   const [draft, setDraft] = useState(selectedLabel);
@@ -147,6 +151,8 @@ export function TimeInput({
     <div ref={wrapperRef} className={`${styles.wrapper} ${className ?? ""}`}>
       <input
         id={id}
+        disabled={disabled}
+        aria-label={ariaLabel}
         type="text"
         autoComplete="off"
         placeholder={placeholder}

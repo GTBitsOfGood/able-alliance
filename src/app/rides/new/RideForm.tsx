@@ -2,7 +2,10 @@
 
 import RecurrenceFields from "@/components/RecurrenceFields/RecurrenceFields";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
-import type { RecurrenceRequest } from "@/schemas/rideSeries";
+import type {
+  RecurrenceFrequency,
+  RecurrenceRequest,
+} from "@/schemas/rideSeries";
 import type { RouteResponse } from "@/types/api";
 import {
   canStudentEditRide,
@@ -19,8 +22,16 @@ import Link from "next/link";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import { SearchableSelect } from "@/components/SearchableSelect/SearchableSelect";
 import { useLocationUpdates } from "@/hooks/useLocationUpdates";
-import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
+import {
+  PICKUP_WINDOW_MAX_MINUTES,
+  SERVICE_END_TIME,
+  SERVICE_START_TIME,
+} from "@/utils/consts";
 import styles from "./styles.module.css";
+import {
+  getEarliestPickupTime,
+  getPickupWindowBounds,
+} from "@/utils/rideTiming";
 
 import mapboxgl from "mapbox-gl";
 import { getDirectionsGeometry, getRouteLinePaint } from "@/utils/mapbox";
@@ -61,63 +72,6 @@ function startOfToday(): Date {
 
 function isPastDay(date: Date): boolean {
   return date < startOfToday();
-}
-
-const TIME_SLOT_MINUTES = 15;
-const PICKUP_WINDOW_MAX_MINUTES = 45;
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-}
-
-function clampTime(time: string, min: string, max: string): string {
-  if (time < min) return min;
-  if (time > max) return max;
-  return time;
-}
-
-// Earliest selectable pickup time on the given day: the next future
-// 15-minute slot for today, or the start of service for later days.
-// Returns null when no slots remain within service hours.
-function getEarliestPickupTime(date: Date): string | null {
-  const now = estNowWallClock();
-  if (date.toDateString() !== now.toDateString()) {
-    return SERVICE_START_TIME;
-  }
-  const nowMinutes = now.getHours() * 60 + now.getMinutes() + 1;
-  const nextSlot =
-    Math.ceil(nowMinutes / TIME_SLOT_MINUTES) * TIME_SLOT_MINUTES;
-  if (nextSlot >= 24 * 60) return null;
-  const earliest = minutesToTime(nextSlot);
-  if (earliest > SERVICE_END_TIME) return null;
-  return earliest < SERVICE_START_TIME ? SERVICE_START_TIME : earliest;
-}
-
-// The pickup window may extend at most 45 minutes on either side of the
-// pickup time, and must stay within service hours.
-function getPickupWindowBounds(pickupTime: string) {
-  const pickupMinutes = timeToMinutes(pickupTime);
-  return {
-    from: clampTime(
-      minutesToTime(Math.max(0, pickupMinutes - PICKUP_WINDOW_MAX_MINUTES)),
-      SERVICE_START_TIME,
-      SERVICE_END_TIME,
-    ),
-    to: clampTime(
-      minutesToTime(
-        Math.min(24 * 60 - 1, pickupMinutes + PICKUP_WINDOW_MAX_MINUTES),
-      ),
-      SERVICE_START_TIME,
-      SERVICE_END_TIME,
-    ),
-  };
 }
 
 // Today, or the next weekday if today is a weekend or service has ended.
@@ -188,10 +142,11 @@ export function RideForm({
   const [repeatDays, setRepeatDays] = useState<number[]>([
     getDefaultRideDate().getDay(),
   ]);
+  const [frequency, setFrequency] = useState<RecurrenceFrequency>("weekly");
   const [recurrenceEndsOn, setRecurrenceEndsOn] = useState("");
 
   const recurrenceRequest: RecurrenceRequest = {
-    frequency: "weekly",
+    frequency,
     daysOfWeek: repeatDays,
     ...(recurrenceEndsOn ? { endsOn: recurrenceEndsOn } : {}),
   };
@@ -200,6 +155,7 @@ export function RideForm({
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
     : "";
 
+  const errorRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   // map.loaded() is false whenever the camera is moving or tiles are loading,
@@ -213,7 +169,8 @@ export function RideForm({
 
   useEffect(() => {
     if (error) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      errorRef.current?.focus();
+      errorRef.current?.scrollIntoView({ block: "center" });
     }
   }, [error]);
 
@@ -591,11 +548,9 @@ export function RideForm({
     };
   }, []);
 
-  const locationNames = locations.map((l) => l.name);
-  const locationOptions = locationNames.map((name) => ({
-    value: name,
-    label: name,
-  }));
+  const locationOptions = locations
+    .map(({ name }) => ({ value: name, label: name }))
+    .toSorted((a, b) => a.label.localeCompare(b.label));
   // Hide the location chosen in the other field so pickup and drop-off
   // can't be set to the same place.
   const pickupLocationOptions = locationOptions.filter(
@@ -938,7 +893,12 @@ export function RideForm({
   return (
     <div className={styles.container}>
       {error && (
-        <div className={styles.errorBanner} role="alert">
+        <div
+          ref={errorRef}
+          tabIndex={-1}
+          className={styles.errorBanner}
+          role="alert"
+        >
           <svg
             width="20"
             height="20"
@@ -1104,7 +1064,7 @@ export function RideForm({
                           value={pickupWindowFromTime}
                           onChange={setPickupWindowFromTime}
                           min={pickupWindowBounds.from}
-                          max={pickupWindowBounds.to}
+                          max={pickupTime}
                           inputClassName={styles.pickupWindowInput}
                           className={styles.pickupWindowInputWrapper}
                         />
@@ -1163,6 +1123,8 @@ export function RideForm({
                     {isRecurring && (
                       <RecurrenceFields
                         compact
+                        frequency={frequency}
+                        onFrequencyChange={setFrequency}
                         daysOfWeek={repeatDays}
                         endsOn={recurrenceEndsOn}
                         minDate={selectedDateKey}

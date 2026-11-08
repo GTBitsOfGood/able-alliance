@@ -15,6 +15,7 @@ export enum HTTP_STATUS_CODE {
 // Pickup times and windows must fall inside these hours (America/New_York).
 export const SERVICE_START_TIME = "07:30";
 export const SERVICE_END_TIME = "19:45";
+export const PICKUP_WINDOW_MAX_MINUTES = 45;
 
 // Student edits require strictly more than this many hours before pickup.
 export const STUDENT_EDIT_MIN_NOTICE_HOURS = 3;
