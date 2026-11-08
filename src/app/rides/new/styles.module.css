@@ -1,5 +1,10 @@
 /* Error Banner */
 .errorBanner {
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  max-height: 50dvh;
+  overflow-y: auto;
   width: 100%;
   padding: 1.2rem 2rem;
   background: #fde8e8;
@@ -11,6 +16,7 @@
   font-size: 1.6rem;
   color: #c73a3a;
   box-sizing: border-box;
+  scroll-margin-block: 1.6rem;
 }
 
 .errorBannerIcon {

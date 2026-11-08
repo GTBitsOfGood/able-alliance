@@ -57,7 +57,7 @@ export default function ChatListSection({
   const headingId = title === "Active Chats" ? "active-chats" : "closed-chats";
   return (
     <section className={styles.listSection} aria-labelledby={headingId}>
-      <h1 id={headingId} className={styles.sectionTitle}>
+      <h1 id={headingId} className="text-display m-0">
         {title}
       </h1>
       <label className={styles.searchLabel}>

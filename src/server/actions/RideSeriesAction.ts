@@ -22,7 +22,7 @@ import { db } from "@db";
 import { Prisma, RouteStatus } from "@db/generated/client";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 import { notifyRideSeriesCancelled } from "@/server/notifications/routeNotifications";
-import { addDays, endOfDay, set } from "date-fns";
+import { addDays, endOfDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { cancelRoute, createRoute, transitionRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/types/rideSeries";
@@ -31,6 +31,9 @@ import { createRouteSchema, type CreateRouteInput } from "@/schemas/ride";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { recordAudit } from "@db/audit";
+
+import { nextOccurrence } from "@/utils/rideRecurrence";
+export { nextOccurrence } from "@/utils/rideRecurrence";
 
 const TZ = "America/New_York";
 
@@ -70,39 +73,6 @@ function seriesAuditSnapshot(series: {
 
 /** How far ahead rides are kept scheduled, in Eastern calendar days. */
 export const SCHEDULING_HORIZON_DAYS = 28;
-
-/**
- * The first occurrence on a later Eastern day than `after`, falling on one of
- * `daysOfWeek` at the first ride's time of day.
- *
- * `after` is always a previous occurrence (or the first ride), so its Eastern
- * date is the day already handled. The arithmetic happens in Eastern wall-clock
- * time, so a 1:00 PM ride stays 1:00 PM across a DST boundary instead of sliding
- * to 12:00 or 2:00.
- */
-export function nextOccurrence(
-  firstPickupTime: Date,
-  daysOfWeek: number[],
-  after: Date,
-): Date {
-  const timeOfDay = toZonedTime(firstPickupTime, TZ);
-  const handled = toZonedTime(after, TZ);
-  for (let offset = 1; offset <= 7; offset++) {
-    const day = addDays(handled, offset);
-    if (daysOfWeek.includes(day.getDay())) {
-      return fromZonedTime(
-        set(day, {
-          hours: timeOfDay.getHours(),
-          minutes: timeOfDay.getMinutes(),
-          seconds: timeOfDay.getSeconds(),
-          milliseconds: timeOfDay.getMilliseconds(),
-        }),
-        TZ,
-      );
-    }
-  }
-  throw new Error("Ride series has no days of week to repeat on");
-}
 
 /**
  * Last instant that may be scheduled right now: the end of the Eastern day
@@ -154,6 +124,7 @@ async function materializeSeries(
             series.firstPickupTime,
             series.daysOfWeek,
             series.materializedThrough,
+            series.frequency,
           );
           // Past its end date the series has nothing left to generate, so retire
           // it instead of rechecking it on every cron tick.

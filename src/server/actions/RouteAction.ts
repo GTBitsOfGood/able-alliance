@@ -36,6 +36,7 @@ import {
   notifyRideChangesAccepted,
 } from "@/server/notifications/routeNotifications";
 import { recordAudit } from "@db/audit";
+import { getRideTimingError } from "@/utils/rideTiming";
 
 function routeAuditSnapshot(route: {
   id: string;
@@ -79,6 +80,12 @@ export async function createRoute(
 ) {
   const client = options?.tx ?? db;
   const parsed = createRouteSchema.parse(data);
+  const timingError = getRideTimingError(parsed);
+  if (timingError) throw new ArgumentError(timingError);
+  if (
+    parsed.pickupLocation.toLowerCase() === parsed.dropoffLocation.toLowerCase()
+  )
+    throw new ArgumentError("Pickup and dropoff locations must differ.");
   const input = {
     ...parsed,
     pickupLocation: parsed.pickupLocation.toLowerCase(),

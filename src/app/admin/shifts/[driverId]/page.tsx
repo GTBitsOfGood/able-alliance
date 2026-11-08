@@ -264,7 +264,7 @@ export default function ShiftDetailPage({
         Back to shifts
       </Link>
 
-      <h1 className={styles.title}>Shift Details</h1>
+      <h1 className="text-display m-0">Shift Details</h1>
 
       {/* Info card */}
       <div className={styles.infoCard}>

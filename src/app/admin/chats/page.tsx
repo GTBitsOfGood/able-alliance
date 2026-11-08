@@ -79,7 +79,7 @@ export default function AdminChatsPage() {
   if (sessionStatus !== "loading" && !isAuthorized)
     return (
       <main className={styles.accessError}>
-        <h1>Chats</h1>
+        <h1 className="text-display m-0">Chats</h1>
         <p role="alert">You do not have access to chats.</p>
       </main>
     );

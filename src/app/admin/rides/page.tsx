@@ -267,7 +267,7 @@ export default function AdminRidesPage() {
 
   return (
     <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 min-w-0 w-full lg:pt-[6.4rem] lg:pl-[5.6rem] lg:pr-[2.6rem]">
-      <h1 className="text-display mb-[6.4rem]">Rides</h1>
+      <h1 className="text-display mb-[2.4rem]">Rides</h1>
       {loading ? (
         <p className={styles.notice}>Loading…</p>
       ) : error ? (

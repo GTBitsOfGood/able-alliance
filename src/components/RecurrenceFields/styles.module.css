@@ -17,6 +17,15 @@
   font: inherit;
 }
 
+.hint {
+  grid-column: 1 / -1;
+  order: 1;
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+  line-height: 2rem;
+}
+
 .fields input,
 .fields select {
   box-sizing: border-box;

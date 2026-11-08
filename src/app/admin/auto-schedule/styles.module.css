@@ -7,17 +7,6 @@
   min-width: 0;
 }
 
-.title {
-  display: flex;
-  align-items: center;
-  gap: 1.2rem;
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-desktop-display);
-  line-height: var(--text-desktop-display--line-height);
-  color: var(--color-grey-text-strong);
-}
-
 .experimental {
   padding: 0.3rem 0.9rem;
   border-radius: 999rem;

@@ -200,6 +200,8 @@ model Message {
 
 enum RecurrenceFrequency {
   weekly
+  biweekly
+  monthly
 }
 
 model RideSeries {

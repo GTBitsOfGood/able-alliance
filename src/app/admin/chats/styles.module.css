@@ -23,12 +23,6 @@
   gap: 1.6rem;
   min-width: 0;
 }
-.sectionTitle {
-  margin: 0;
-  font-family: var(--font-heading-display);
-  font-size: var(--text-desktop-heading-1);
-  line-height: var(--text-desktop-heading-1--line-height);
-}
 .searchLabel {
   display: block;
 }
@@ -190,9 +184,5 @@
   }
   &.hasSelection .conversationPanel {
     display: block;
-  }
-  .sectionTitle {
-    font-size: var(--text-mobile-heading-1);
-    line-height: var(--text-mobile-heading-1--line-height);
   }
 }

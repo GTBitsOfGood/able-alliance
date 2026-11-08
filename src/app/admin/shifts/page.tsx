@@ -105,7 +105,7 @@ export default function ShiftsPage() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>Shifts</h1>
+      <h1 className="text-display m-0">Shifts</h1>
 
       {/* Week filter */}
       <div className={styles.filterRow}>
