@@ -39,6 +39,7 @@ import type {
 } from "@/types/api";
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { withDelay } from "@/utils/dateEst";
+import { toast } from "react-toast";
 
 const CANCELLABLE_STATUSES = new Set<RouteStatus>([
   RouteStatus.Requested,
@@ -588,7 +589,7 @@ export default function RideDetailPage({
       },
     );
 
-    newSocket.on("chatError", (msg: string) => setChatError(msg));
+    newSocket.on("chatError", (msg: string) => toast.error(msg));
   }, [route, routeId, session, wsUrl]);
 
   // Disconnect only on unmount — not on dep changes
