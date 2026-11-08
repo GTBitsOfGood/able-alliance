@@ -61,18 +61,28 @@ const closedChatStatuses = new Set<RouteStatus>([
   RouteStatus.CancelledByAdmin,
 ]);
 
+export function isChatClosed(status: RouteStatus) {
+  return closedChatStatuses.has(status);
+}
+
+export async function getRouteStatus(routeId: string) {
+  if (!routeIdSchema.safeParse(routeId).success)
+    throw new Error("Invalid route ID");
+  return db.route.findUnique({
+    where: { id: routeId.toLowerCase() },
+    select: { status: true },
+  });
+}
+
 export async function appendMessage(
   routeId: string,
   senderId: string,
   text: string,
   senderType: UserType,
 ) {
-  const route = await db.route.findUnique({
-    where: { id: routeId },
-    select: { status: true },
-  });
+  const route = await getRouteStatus(routeId);
 
-  if (!route || closedChatStatuses.has(route.status)) {
+  if (!route || isChatClosed(route.status)) {
     throw new Error("Chat is closed for this route");
   }
 
@@ -80,11 +90,11 @@ export async function appendMessage(
     await tx.$queryRaw(
       Prisma.sql`SELECT "id" FROM "User" WHERE "id" = ${senderId}::uuid FOR UPDATE`,
     );
-    const sender = await tx.user.findUnique({
+    const senderAccount = await tx.user.findUnique({
       where: { id: senderId },
       select: { status: true },
     });
-    if (!sender || sender.status !== "active") {
+    if (!senderAccount || senderAccount.status !== "active") {
       throw new Error("Account is inactive");
     }
 
