@@ -8,6 +8,37 @@ import { recordAudit } from "@db/audit";
 
 type UserWithDetails = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 
+export type DriverProfileResponse = Pick<
+  UserWithDetails,
+  "id" | "firstName" | "lastName" | "preferredName" | "types"
+> & {
+  studentInfo:
+    | (Pick<NonNullable<UserWithDetails["studentInfo"]>, "notes"> & {
+        accessibilityNeeds: { label: string }[];
+      })
+    | null;
+};
+
+export function driverProfileResponse(
+  user: UserWithDetails,
+): DriverProfileResponse {
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    preferredName: user.preferredName,
+    types: user.types,
+    studentInfo: user.studentInfo
+      ? {
+          notes: user.studentInfo.notes,
+          accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
+            ({ label }) => ({ label }),
+          ),
+        }
+      : null,
+  };
+}
+
 function userAuditSnapshot(user: UserWithDetails) {
   return {
     id: user.id,
