@@ -106,6 +106,7 @@ export default function AdminRidesPage() {
     error,
     refreshError,
     refreshRoute,
+    refreshRoutes,
   } = useAdminRides();
 
   const [statuses, setStatuses] = useState<string[]>([]);
@@ -166,8 +167,8 @@ export default function AdminRidesPage() {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      // Later rides cancelled by a series cancel arrive via route updates.
-      refreshRoute(routeId);
+      if (cancelScope === "series") refreshRoutes();
+      else refreshRoute(routeId);
       setPendingCancel(null);
     } catch (e) {
       setCancelError(

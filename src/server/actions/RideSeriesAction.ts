@@ -24,7 +24,7 @@ import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 import { notifyRideSeriesCancelled } from "@/server/notifications/routeNotifications";
 import { addDays, endOfDay, set } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
-import { cancelRoute, createRoute } from "./RouteAction";
+import { cancelRoute, createRoute, transitionRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/types/rideSeries";
 import type { RecurrenceRequest } from "@/schemas/rideSeries";
 import { createRouteSchema, type CreateRouteInput } from "@/schemas/ride";
@@ -388,8 +388,9 @@ export async function createRideSeries(
 export async function deactivateRideSeries(
   seriesId: string,
   actorId: string | null = null,
+  tx?: Prisma.TransactionClient,
 ): Promise<boolean> {
-  const changed = await db.$transaction(async (tx) => {
+  const deactivate = async (tx: Prisma.TransactionClient) => {
     const before = await tx.rideSeries.findUnique({
       where: { id: seriesId.toLowerCase() },
     });
@@ -407,8 +408,8 @@ export async function deactivateRideSeries(
       after: seriesAuditSnapshot(updated),
     });
     return true;
-  });
-  return changed;
+  };
+  return tx ? deactivate(tx) : db.$transaction(deactivate);
 }
 
 /** Later rides that haven't started yet; in-progress or finished rides are left alone. */
@@ -423,15 +424,10 @@ const FUTURE_CANCELLABLE_STATUSES: RouteStatus[] = [
  * Cancel a recurring ride together with every later ride in its series, and stop
  * the series from generating more.
  *
- * The selected ride is cancelled first so an invalid state (already finished,
- * already cancelled) fails before anything else changes. The series is stopped
- * next, before later rides are looked up: deactivating waits on the row lock a
- * running materialization holds, so any ride it was creating is committed and
- * visible to the lookup, and no new ride can appear afterwards. Each later ride
- * goes through the normal cancellation path (audit, pending-change resolution),
- * but notifications are batched: each person gets one toast and one email for
- * the whole series rather than one per ride. Earlier and in-progress rides keep
- * their history.
+ * Lock the series before changing rides, matching materialization's lock order.
+ * Stop generation and cancel rides in one transaction, including audit entries
+ * and pending-change resolution. Later rides must still be unstarted when their
+ * status is updated. Events and combined notices are sent only after commit.
  */
 export async function cancelRideSeriesFrom(
   routeId: string,
@@ -447,37 +443,49 @@ export async function cancelRideSeriesFrom(
   if (!selected.seriesId)
     throw new ArgumentError("Ride is not part of a recurring series");
 
-  const route = await cancelRoute(selected.id, status, actorId, {
-    notify: false,
-  });
-  const cancelled = [route];
-  try {
-    await deactivateRideSeries(selected.seriesId, actorId);
+  const seriesId = selected.seriesId;
+  const { route, cancelled } = await db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "RideSeries" WHERE "id" = ${seriesId}::uuid FOR UPDATE
+      `);
+      const route = await cancelRoute(selected.id, status, actorId, { tx });
+      const cancelled = [route];
+      if (!(await deactivateRideSeries(seriesId, actorId, tx)))
+        throw new NotFoundError("Ride series not found");
 
-    const later = await db.route.findMany({
-      where: {
-        seriesId: selected.seriesId,
-        scheduledPickupTime: { gt: selected.scheduledPickupTime },
-        status: { in: FUTURE_CANCELLABLE_STATUSES },
-      },
-      select: { id: true },
-      orderBy: { scheduledPickupTime: "asc" },
-    });
-    for (const { id } of later) {
-      try {
-        cancelled.push(
-          await cancelRoute(id, status, actorId, { notify: false }),
-        );
-      } catch (error) {
-        // The ride changed state (or was removed) since the lookup; leave it be.
-        if (error instanceof ConflictError || error instanceof NotFoundError)
-          continue;
-        throw error;
+      const later = await tx.route.findMany({
+        where: {
+          seriesId,
+          scheduledPickupTime: { gt: selected.scheduledPickupTime },
+          status: { in: FUTURE_CANCELLABLE_STATUSES },
+        },
+        select: { id: true },
+        orderBy: { scheduledPickupTime: "asc" },
+      });
+      for (const { id } of later) {
+        try {
+          cancelled.push(
+            await transitionRoute(
+              id,
+              FUTURE_CANCELLABLE_STATUSES,
+              status,
+              actorId,
+              { tx },
+            ),
+          );
+        } catch (error) {
+          // The ride changed state (or was removed) since the lookup; leave it be.
+          if (error instanceof ConflictError || error instanceof NotFoundError)
+            continue;
+          throw error;
+        }
       }
-    }
-  } finally {
-    // Whatever was cancelled before a failure still needs to be announced.
-    void notifyRideSeriesCancelled(cancelled);
-  }
+      return { route, cancelled };
+    },
+    { timeout: 60000 },
+  );
+  for (const cancelledRoute of cancelled) emitRouteUpdate(cancelledRoute);
+  void notifyRideSeriesCancelled(cancelled);
   return { route, cancelledCount: cancelled.length };
 }

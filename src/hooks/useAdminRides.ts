@@ -211,6 +211,10 @@ export function useAdminRidesData() {
     [enqueue],
   );
 
+  const refreshRoutes = useCallback(() => {
+    enqueue({ routeIds: null });
+  }, [enqueue]);
+
   return {
     routes,
     actionRequiredCount: routes.filter(
@@ -224,5 +228,6 @@ export function useAdminRidesData() {
     error,
     refreshError,
     refreshRoute,
+    refreshRoutes,
   };
 }
