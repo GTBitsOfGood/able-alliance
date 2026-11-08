@@ -50,8 +50,8 @@ export function estDayRange(offsetDays: 0 | 1): [Date, Date] {
   ];
 }
 
-/** [start, end] UTC dates for week 0 (this) or week 1 (next), Sunday-anchored, in America/New_York. */
-export function estWeekRange(offsetWeeks: 0 | 1): [Date, Date] {
+/** [start, end] UTC dates for the given week offset, Sunday-anchored, in America/New_York. */
+export function estWeekRange(offsetWeeks: number): [Date, Date] {
   const todayZoned = toZonedTime(new Date(), TZ);
   const sundayZoned = startOfWeek(todayZoned, { weekStartsOn: 0 });
   const weekStartZoned = addWeeks(sundayZoned, offsetWeeks);

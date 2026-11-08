@@ -5,6 +5,7 @@ import { RouteStatus } from "@db/generated/enums";
 import {
   canStudentEditRide,
   studentEditDisabledReason,
+  studentDriverChatDisabledReason,
   routeDisplayLabel,
   isRouteDelayed,
   isRideChatOpen,
@@ -165,12 +166,14 @@ export default function RideDetailPage({
     if (
       searchParams.get("chat") === "1" &&
       route &&
+      (session?.user?.activeType === "Driver" ||
+        !studentDriverChatDisabledReason(route)) &&
       isRideChatOpen(route.status)
     ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowChatModal(true);
     }
-  }, [searchParams, route]);
+  }, [searchParams, route, session?.user?.activeType]);
 
   // Driver actions
   const [markingMissing, setMarkingMissing] = useState(false);
@@ -893,6 +896,7 @@ export default function RideDetailPage({
   const dropoffLocationName = route.dropoff.name;
   const driverName = getDriverName(route.driver);
   const hasDriver = !!driverName;
+  const studentChatDisabledReason = studentDriverChatDisabledReason(route);
 
   const delayMinutes = route.delayMinutes ?? 0;
   const isDelayed = delayMinutes > 0;
@@ -944,31 +948,32 @@ export default function RideDetailPage({
     isRouteDelayed(route),
   );
 
-  const chatModal = showChatModal && (
-    <RideChat
-      presentation="dialog"
-      title={
-        session?.user?.activeType === "Driver"
-          ? `Chat with Student: ${route.student.preferredName || route.student.firstName} ${route.student.lastName}`
-          : driverName
-            ? `Chat with Driver: ${driverName}`
-            : "Ride chat"
-      }
-      messages={messages}
-      subtitle={`${pickupLocationName} → ${dropoffLocationName} · ${formatTime(scheduledPickup)}`}
-      currentUserId={session?.user?.userId ?? ""}
-      currentUserType={session?.user?.activeType ?? "Student"}
-      studentId={route.student.id}
-      driverId={route.driver?.id ?? null}
-      input={chatInput}
-      onInputChange={setChatInput}
-      onSend={handleSendMessage}
-      onClose={() => setShowChatModal(false)}
-      connected={!!socket?.connected && !sendingMessage}
-      readOnly={!isRideChatOpen(route.status)}
-      error={chatHistoryError ?? chatError}
-    />
-  );
+  const chatModal = showChatModal &&
+    (session?.user?.activeType === "Driver" || !studentChatDisabledReason) && (
+      <RideChat
+        presentation="dialog"
+        title={
+          session?.user?.activeType === "Driver"
+            ? `Chat with Student: ${route.student.preferredName || route.student.firstName} ${route.student.lastName}`
+            : driverName
+              ? `Chat with Driver: ${driverName}`
+              : "Ride chat"
+        }
+        messages={messages}
+        subtitle={`${pickupLocationName} → ${dropoffLocationName} · ${formatTime(scheduledPickup)}`}
+        currentUserId={session?.user?.userId ?? ""}
+        currentUserType={session?.user?.activeType ?? "Student"}
+        studentId={route.student.id}
+        driverId={route.driver?.id ?? null}
+        input={chatInput}
+        onInputChange={setChatInput}
+        onSend={handleSendMessage}
+        onClose={() => setShowChatModal(false)}
+        connected={!!socket?.connected && !sendingMessage}
+        readOnly={!isRideChatOpen(route.status)}
+        error={chatHistoryError ?? chatError}
+      />
+    );
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.activeType === "Driver") {
@@ -1389,6 +1394,8 @@ export default function RideDetailPage({
             <button
               type="button"
               className={styles.chatButton}
+              disabled={!!studentChatDisabledReason}
+              title={studentChatDisabledReason}
               onClick={() => setShowChatModal(true)}
             >
               <BogIcon name="chats" size={18} />
