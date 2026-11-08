@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import styles from "./AdminSidebar.module.css";
 import { useAdminRides } from "@/hooks/useAdminRides";
+import BogIcon from "@/components/BogIcon/BogIcon";
 
 export default function AdminSidebar() {
   const { actionRequiredCount, loading } = useAdminRides();
@@ -49,6 +50,15 @@ export default function AdminSidebar() {
                 {actionRequiredCount}
               </span>
             )}
+          </Link>
+
+          <Link
+            href="/admin/chats"
+            className={`${styles.navItem} ${isActive("/admin/chats") ? styles.active : ""}`}
+            aria-current={isActive("/admin/chats") ? "page" : undefined}
+          >
+            <BogIcon name="chats" size={20} weight="regular" />
+            <span>Chats</span>
           </Link>
 
           {/* Shifts */}

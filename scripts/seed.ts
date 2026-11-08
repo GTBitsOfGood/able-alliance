@@ -12,6 +12,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import {
   PrismaClient,
   RouteStatus,
+  UserType,
   type Location,
   type Vehicle,
   type Prisma,
@@ -581,16 +582,19 @@ async function seed() {
     const examples = [
       {
         senderId: chatRoute.studentId,
+        senderType: UserType.Student,
         text: "Hi, I’m ready for my ride. I’ll be at the pickup location.",
       },
       {
         senderId: adminUser.id,
+        senderType: UserType.Admin,
         text: "Thanks for letting us know. Your ride is scheduled.",
       },
       ...(chatRoute.driverId
         ? [
             {
               senderId: chatRoute.driverId,
+              senderType: UserType.Driver,
               text: "I’m on my way to the pickup location.",
             },
           ]
@@ -602,6 +606,7 @@ async function seed() {
         where: {
           routeId: chatRoute.id,
           senderId: example.senderId,
+          senderType: example.senderType,
           text: example.text,
         },
       });
@@ -611,6 +616,7 @@ async function seed() {
         data: {
           routeId: chatRoute.id,
           senderId: example.senderId,
+          senderType: example.senderType,
           text: example.text,
           time: new Date(Date.now() - (examples.length - index) * 60_000),
         },

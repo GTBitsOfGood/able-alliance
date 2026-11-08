@@ -8,6 +8,10 @@ import type {
 
 export type Coordinates = Pick<DatabaseLocation, "latitude" | "longitude">;
 
+export type ChatMessage = Message & {
+  author: { name: string; role: Exclude<User["types"][number], "SuperAdmin"> };
+};
+
 export interface ClientEvents {
   sendChatMessage: (text: unknown) => void;
   updateLocation: (location: Coordinates) => void;
@@ -15,8 +19,8 @@ export interface ClientEvents {
 }
 
 export interface ServerEvents {
-  chatHistory: (history: Message[]) => void;
-  receiveChatMessage: (message: Message) => void;
+  chatHistory: (history: ChatMessage[]) => void;
+  receiveChatMessage: (message: ChatMessage) => void;
   broadcastLocation: (location: Coordinates) => void;
   routeClosed: () => void;
   chatError: (message: string) => void;
