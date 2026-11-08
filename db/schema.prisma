@@ -100,10 +100,10 @@ model UserSettings {
 }
 
 model StudentProfile {
-  userId             String          @id @db.Uuid
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String                 @id @db.Uuid
+  user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   notes              String?
-  accessibilityNeeds Accommodation[]
+  accessibilityNeeds StudentAccommodation[]
 }
 
 model Shift {
@@ -148,9 +148,22 @@ model Vehicle {
 }
 
 model Accommodation {
-  id       String           @id @default(uuid()) @db.Uuid
-  label    String           @unique
-  students StudentProfile[]
+  id       String                 @id @default(uuid()) @db.Uuid
+  label    String                 @unique
+  students StudentAccommodation[]
+}
+
+// Explicit join so deleting an accommodation can be restricted while it's assigned. 
+// The student side still cascades, so removing a student drops the link.
+model StudentAccommodation {
+  accommodation   Accommodation  @relation(fields: [accommodationId], references: [id], onDelete: Restrict, map: "_AccommodationToStudentProfile_A_fkey")
+  accommodationId String         @map("A") @db.Uuid
+  student         StudentProfile @relation(fields: [studentId], references: [userId], onDelete: Cascade, map: "_AccommodationToStudentProfile_B_fkey")
+  studentId       String         @map("B") @db.Uuid
+
+  @@id([accommodationId, studentId], map: "_AccommodationToStudentProfile_AB_pkey")
+  @@index([studentId], map: "_AccommodationToStudentProfile_B_index")
+  @@map("_AccommodationToStudentProfile")
 }
 
 model Route {

@@ -128,8 +128,10 @@ export async function POST(request: NextRequest) {
                 create: {
                   notes: studentInfo.notes,
                   accessibilityNeeds: {
-                    connect: (studentInfo.accessibilityNeeds ?? []).map(
-                      (label) => ({ label }),
+                    create: (studentInfo.accessibilityNeeds ?? []).map(
+                      (label) => ({
+                        accommodation: { connect: { label } },
+                      }),
                     ),
                   },
                 },

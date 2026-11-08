@@ -23,7 +23,7 @@ function userAuditSnapshot(user: UserWithDetails) {
       ? {
           notes: user.studentInfo.notes,
           accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
-            ({ label }) => label,
+            ({ accommodation }) => accommodation.label,
           ),
         }
       : null,
@@ -142,25 +142,34 @@ export async function updateUser(
       patch.accessibilityNeeds === undefined
         ? undefined
         : (patch.accessibilityNeeds ?? []);
+    const links =
+      labels === undefined
+        ? {}
+        : {
+            accessibilityNeeds: {
+              create: labels.map((label) => ({
+                accommodation: { connect: { label } },
+              })),
+            },
+          };
     data.studentInfo = {
       upsert: {
         create: {
           ...notes,
-          ...(labels
-            ? {
-                accessibilityNeeds: {
-                  connect: labels.map((label) => ({ label })),
-                },
-              }
-            : {}),
+          ...links,
         },
         update: {
           ...notes,
-          ...(labels
-            ? {
-                accessibilityNeeds: { set: labels.map((label) => ({ label })) },
-              }
-            : {}),
+          ...(labels === undefined
+            ? {}
+            : {
+                accessibilityNeeds: {
+                  deleteMany: {},
+                  create: labels.map((label) => ({
+                    accommodation: { connect: { label } },
+                  })),
+                },
+              }),
         },
       },
     };

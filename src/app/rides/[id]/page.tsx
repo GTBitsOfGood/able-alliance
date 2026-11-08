@@ -897,7 +897,7 @@ export default function RideDetailPage({
       : "—";
     const accommodations =
       studentObj?.studentInfo?.accessibilityNeeds
-        .map(({ label }) => label)
+        .map(({ accommodation }) => accommodation.label)
         .join(", ") || "—";
     const additionalComments = studentObj?.studentInfo?.notes || "—";
 
