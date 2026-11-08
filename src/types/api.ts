@@ -42,7 +42,32 @@ export type RouteResponse =
 export type UserResponse = Prisma.UserGetPayload<{
   include: typeof userInclude;
 }>;
-export type ChatMessageResponse = Serialized<Message>;
+export type ChatAuthor = {
+  name: string;
+  role: "Student" | "Driver" | "Admin";
+};
+export type AdminChatSummaryResponse = {
+  id: string;
+  student: Pick<User, "id" | "firstName" | "lastName" | "preferredName">;
+  driver: Pick<User, "id" | "firstName" | "lastName" | "preferredName"> | null;
+  pickup: { name: string };
+  dropoff: { name: string };
+  scheduledPickupTime: string;
+  estimatedDropoffTime: string | null;
+  delayMinutes: number;
+  status: AdminRouteResponse["status"];
+  lastActivity: string;
+  preview: string;
+};
+export type ChatMessageResponse = Serialized<
+  Omit<Message, "senderId" | "senderType">
+> & {
+  /** Null identifies an automatic ride-status entry. */
+  senderId: string | null;
+  senderType: User["types"][number] | null;
+  /** Sender for messages; the person who changed the status for system entries. */
+  author?: ChatAuthor | null;
+};
 
 export type ShiftDetailResponse = Pick<Shift, "startTime" | "endTime"> & {
   driver: UserResponse;

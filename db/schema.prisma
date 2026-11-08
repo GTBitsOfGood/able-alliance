@@ -186,13 +186,14 @@ model Route {
 }
 
 model Message {
-  id       String   @id @default(uuid()) @db.Uuid
-  routeId  String   @db.Uuid
-  route    Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
-  senderId String   @db.Uuid
-  sender   User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
-  text     String
-  time     DateTime @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  routeId    String   @db.Uuid
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  senderId   String   @db.Uuid
+  senderType UserType
+  sender     User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  text       String
+  time       DateTime @db.Timestamptz(3)
 
   @@index([routeId, time, id])
   @@index([senderId])

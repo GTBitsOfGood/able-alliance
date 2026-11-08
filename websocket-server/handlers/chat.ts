@@ -2,6 +2,7 @@ import type { AppServer, AppSocket } from "../types.js";
 import { appendMessage } from "../actions.js";
 import { debugLog } from "../utils/logger.js";
 import { notifyDriverMessage } from "../utils/email.js";
+import { UserType } from "@db/generated/enums";
 
 export function registerChatHandler(
   io: AppServer,
@@ -18,10 +19,22 @@ export function registerChatHandler(
       }
 
       const routeId = socket.data.routeId;
-      const message = await appendMessage(routeId, socket.data.user, text);
+      const senderType = Object.values(UserType).find(
+        (role) => role === socket.data.userType,
+      );
+      if (!senderType) throw new Error("Invalid sender role");
+      const message = await appendMessage(
+        routeId,
+        socket.data.user,
+        text,
+        senderType,
+      );
       io.to(room).emit("receiveChatMessage", message);
       debugLog(`User ${socket.data.user} sent a message to room ${room}`);
-      if (message.senderId === socket.data.routeDriver?.id) {
+      if (
+        senderType === UserType.Driver &&
+        message.senderId === socket.data.routeDriver?.id
+      ) {
         void notifyDriverMessage(
           routeId,
           message.id,

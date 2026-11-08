@@ -26,6 +26,8 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import StopTime from "./StopTime";
+import RideChat from "@/components/RideChat/RideChat";
+import { mergeChatMessages } from "@/utils/chat";
 import DriverRideActions from "../DriverRideActions";
 import { getStudentStatusChipStyle } from "@/app/rides/RideCard";
 import styles from "./styles.module.css";
@@ -92,7 +94,10 @@ function getStudentId(student: RouteData["student"]): string {
 
 function getDriverName(driver: RouteData["driver"]): string | null {
   if (!driver) return null;
-  return `${driver.firstName} ${driver.lastName}`.trim() || null;
+  return (
+    `${driver.preferredName || driver.firstName} ${driver.lastName}`.trim() ||
+    null
+  );
 }
 
 function getDriverId(driver: RouteData["driver"]): string | null {
@@ -121,6 +126,7 @@ export default function RideDetailPage({
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const socketIdentityRef = useRef<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   // map.loaded() is false whenever the camera is moving or tiles are loading,
@@ -141,9 +147,11 @@ export default function RideDetailPage({
     longitude: number;
   } | null>(null);
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
+  const [chatRevision, setChatRevision] = useState(0);
   const [chatInput, setChatInput] = useState("");
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
+  const [chatHistoryError, setChatHistoryError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
 
@@ -262,9 +270,40 @@ export default function RideDetailPage({
   useRouteUpdates(
     () => {
       void fetchRoute({ silent: true });
+      setChatRevision((current) => current + 1);
     },
     { routeId },
   );
+
+  // Fetch the persisted timeline on status changes, including the final event
+  // after the ride's chat socket disconnects. Opening archived chats works too.
+  useEffect(() => {
+    if (!routeId || !route?.status || sessionStatus !== "authenticated") return;
+    let cancelled = false;
+    void fetch(`/api/routes/${routeId}/messages`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load ride chat history.");
+        const history: ChatMessageResponse[] = await response.json();
+        if (!cancelled) {
+          setMessages((current) =>
+            mergeChatMessages(
+              current.filter((message) => message.routeId === routeId),
+              history,
+            ),
+          );
+          setChatHistoryError(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled)
+          setChatHistoryError(
+            "Unable to load ride chat history. Reopen the chat to retry.",
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [routeId, route?.status, sessionStatus, showChatModal, chatRevision]);
 
   // Initialize and update Mapbox map
   useEffect(() => {
@@ -441,9 +480,8 @@ export default function RideDetailPage({
 
   // ── WebSocket lifecycle ─────────────────────────────────────────────────────
   //
-  // Single connection effect.  Intentionally returns no cleanup function so
-  // the socket stays alive across status / modal changes — the unmount effect
-  // below is the only place that actually disconnects.
+  // Keep the connection across modal/status updates. Reconnect when the
+  // authenticated user or active role changes; disconnect on unmount.
   //
   // Keep participant chat available for the full lifetime of an open ride,
   // regardless of its scheduled date. The server enforces terminal statuses.
@@ -451,6 +489,14 @@ export default function RideDetailPage({
   useEffect(() => {
     const isDriver = session?.user?.activeType === "Driver";
     const isStudent = session?.user?.activeType === "Student";
+    const identity = `${routeId}:${session?.user?.userId}:${session?.user?.activeType}:${session?.user?.accessToken}`;
+    if (socketIdentityRef.current !== identity) {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      socketIdentityRef.current = identity;
+      setSocket(null);
+      setChatInput("");
+    }
 
     const shouldConnect =
       !!route &&
@@ -482,6 +528,7 @@ export default function RideDetailPage({
     socketRef.current = newSocket;
 
     newSocket.on("connect", () => {
+      if (socketRef.current !== newSocket) return;
       setSocket(newSocket);
       setChatError(null);
     });
@@ -512,7 +559,14 @@ export default function RideDetailPage({
     });
 
     newSocket.on("chatHistory", (history: ChatMessageResponse[]) => {
-      setMessages(history);
+      if (socketRef.current !== newSocket) return;
+      setChatRevision((current) => current + 1);
+      setMessages((current) =>
+        mergeChatMessages(
+          current.filter((message) => message.routeId === routeId),
+          history,
+        ),
+      );
     });
 
     newSocket.on("routeClosed", () => {
@@ -523,7 +577,8 @@ export default function RideDetailPage({
     });
 
     newSocket.on("receiveChatMessage", (message: ChatMessageResponse) => {
-      setMessages((prev) => [...prev, message]);
+      if (socketRef.current !== newSocket) return;
+      setMessages((prev) => mergeChatMessages(prev, [message]));
     });
 
     newSocket.on(
@@ -641,6 +696,8 @@ export default function RideDetailPage({
 
   const handleSendMessage = useCallback(() => {
     if (!chatInput.trim() || !socket || sendingMessage) return;
+    const identity = `${routeId}:${session?.user?.userId}:${session?.user?.activeType}:${session?.user?.accessToken}`;
+    if (socketIdentityRef.current !== identity || !socket.connected) return;
 
     setSendingMessage(true);
     // Server broadcasts receiveChatMessage back to all room members including
@@ -649,14 +706,7 @@ export default function RideDetailPage({
     setChatInput("");
     setChatError(null);
     setSendingMessage(false);
-  }, [chatInput, socket, sendingMessage]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+  }, [chatInput, socket, sendingMessage, routeId, session]);
 
   const handleCancelRide = useCallback(async () => {
     if (!routeId) return;
@@ -889,6 +939,32 @@ export default function RideDetailPage({
     isRouteDelayed(route),
   );
 
+  const chatModal = showChatModal && (
+    <RideChat
+      presentation="dialog"
+      title={
+        session?.user?.activeType === "Driver"
+          ? `Chat with Student: ${route.student.preferredName || route.student.firstName} ${route.student.lastName}`
+          : driverName
+            ? `Chat with Driver: ${driverName}`
+            : "Ride chat"
+      }
+      messages={messages}
+      subtitle={`${pickupLocationName} → ${dropoffLocationName} · ${formatTime(scheduledPickup)}`}
+      currentUserId={session?.user?.userId ?? ""}
+      currentUserType={session?.user?.activeType ?? "Student"}
+      studentId={route.student.id}
+      driverId={route.driver?.id ?? null}
+      input={chatInput}
+      onInputChange={setChatInput}
+      onSend={handleSendMessage}
+      onClose={() => setShowChatModal(false)}
+      connected={!!socket?.connected && !sendingMessage}
+      readOnly={!isRideChatOpen(route.status)}
+      error={chatHistoryError ?? chatError}
+    />
+  );
+
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.activeType === "Driver") {
     const studentObj = route.student;
@@ -900,96 +976,6 @@ export default function RideDetailPage({
         .map(({ label }) => label)
         .join(", ") || "—";
     const additionalComments = studentObj?.studentInfo?.notes || "—";
-
-    const chatModal = showChatModal && (
-      <div
-        className={styles.chatModalOverlay}
-        onClick={() => setShowChatModal(false)}
-      >
-        <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.chatModalHeader}>
-            <h2 className={styles.chatModalTitle}>Chat with Student</h2>
-            <button
-              type="button"
-              className={styles.chatModalCloseButton}
-              onClick={() => setShowChatModal(false)}
-              aria-label="Close chat"
-            >
-              <BogIcon name="x" size={20} />
-            </button>
-          </div>
-          {chatError && (
-            <div className={styles.chatErrorBanner}>
-              <p className={styles.chatErrorText}>{chatError}</p>
-            </div>
-          )}
-          <div className={styles.messagesContainer}>
-            {messages.length === 0 && (
-              <div className={styles.noMessages}>
-                <p>No messages yet. Start the conversation!</p>
-              </div>
-            )}
-            {messages.map((msg, idx) => {
-              const isUser = msg.senderId === session?.user.userId;
-              const isAdminMessage =
-                msg.senderId !== route.student.id &&
-                msg.senderId !== route.driver?.id;
-              const prevIsOther =
-                !isUser &&
-                idx > 0 &&
-                messages[idx - 1].senderId === msg.senderId;
-              return (
-                <div
-                  key={msg.id}
-                  className={`${styles.messageRow} ${
-                    isUser ? styles.messageRowUser : styles.messageRowOther
-                  }`}
-                >
-                  {!isUser &&
-                    (prevIsOther ? (
-                      <div className={styles.messageAvatarSpacer} />
-                    ) : (
-                      <div className={styles.messageAvatar}>
-                        <BogIcon name="user" size={18} />
-                      </div>
-                    ))}
-                  <div
-                    className={`${styles.messageBubble} ${
-                      isAdminMessage ? styles.adminMessageBubble : ""
-                    }`}
-                  >
-                    {isAdminMessage && (
-                      <span className={styles.adminMessageLabel}>Admin</span>
-                    )}
-                    <p className={styles.messageText}>{msg.text}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className={styles.chatInputContainer}>
-            <input
-              type="text"
-              className={styles.chatInput}
-              placeholder="Type a message..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={!socket || sendingMessage}
-            />
-            <button
-              type="button"
-              className={styles.sendButton}
-              onClick={handleSendMessage}
-              disabled={!chatInput.trim() || !socket || sendingMessage}
-              aria-label="Send message"
-            >
-              <BogIcon name="arrow-right" size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
 
     return (
       <div className={styles.rideDetailPage}>
@@ -1147,10 +1133,13 @@ export default function RideDetailPage({
                   type="button"
                   className={styles.chatButton}
                   onClick={() => setShowChatModal(true)}
-                  disabled={!isRideChatOpen(route.status)}
                 >
                   <BogIcon name="chats" size={18} />
-                  <span>Chat with student</span>
+                  <span>
+                    {isRideChatOpen(route.status)
+                      ? "Chat with student"
+                      : "View ride chat"}
+                  </span>
                 </button>
               </div>
 
@@ -1381,10 +1370,13 @@ export default function RideDetailPage({
               type="button"
               className={styles.chatButton}
               onClick={() => setShowChatModal(true)}
-              disabled={!isRideChatOpen(route.status)}
             >
               <BogIcon name="chats" size={18} />
-              <span>Chat with driver</span>
+              <span>
+                {isRideChatOpen(route.status)
+                  ? "Chat with driver"
+                  : "View ride chat"}
+              </span>
             </button>
 
             <button
@@ -1450,102 +1442,7 @@ export default function RideDetailPage({
         </div>
       </main>
 
-      {/* Chat Modal */}
-      {showChatModal && (
-        <div
-          className={styles.chatModalOverlay}
-          onClick={() => setShowChatModal(false)}
-        >
-          <div
-            className={styles.chatModal}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.chatModalHeader}>
-              <h2 className={styles.chatModalTitle}>Chat with Driver</h2>
-              <button
-                type="button"
-                className={styles.chatModalCloseButton}
-                onClick={() => setShowChatModal(false)}
-                aria-label="Close chat"
-              >
-                <BogIcon name="x" size={20} />
-              </button>
-            </div>
-
-            {chatError && (
-              <div className={styles.chatErrorBanner}>
-                <p className={styles.chatErrorText}>{chatError}</p>
-              </div>
-            )}
-
-            <div className={styles.messagesContainer}>
-              {messages.length === 0 && (
-                <div className={styles.noMessages}>
-                  <p>No messages yet. Start the conversation!</p>
-                </div>
-              )}
-              {messages.map((msg, idx) => {
-                const isUser = msg.senderId === session?.user.userId;
-                const isAdminMessage =
-                  msg.senderId !== route.student.id &&
-                  msg.senderId !== route.driver?.id;
-                const prevIsOther =
-                  !isUser &&
-                  idx > 0 &&
-                  messages[idx - 1].senderId === msg.senderId;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`${styles.messageRow} ${
-                      isUser ? styles.messageRowUser : styles.messageRowOther
-                    }`}
-                  >
-                    {!isUser &&
-                      (prevIsOther ? (
-                        <div className={styles.messageAvatarSpacer} />
-                      ) : (
-                        <div className={styles.messageAvatar}>
-                          <BogIcon name="user" size={18} />
-                        </div>
-                      ))}
-                    <div
-                      className={`${styles.messageBubble} ${
-                        isAdminMessage ? styles.adminMessageBubble : ""
-                      }`}
-                    >
-                      {isAdminMessage && (
-                        <span className={styles.adminMessageLabel}>Admin</span>
-                      )}
-                      <p className={styles.messageText}>{msg.text}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className={styles.chatInputContainer}>
-              <input
-                type="text"
-                className={styles.chatInput}
-                placeholder="Type a message..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={!socket || sendingMessage}
-              />
-              <button
-                type="button"
-                className={styles.sendButton}
-                onClick={handleSendMessage}
-                disabled={!chatInput.trim() || !socket || sendingMessage}
-                aria-label="Send message"
-              >
-                <BogIcon name="arrow-right" size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {chatModal}
     </div>
   );
 }

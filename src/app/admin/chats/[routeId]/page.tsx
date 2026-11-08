@@ -6,6 +6,7 @@ import BogButton from "@/components/BogButton/BogButton";
 import AdminChatView from "@/components/admin/AdminChatView";
 import { routeStatusLabels } from "@/utils/route-status";
 import type { RouteStatus } from "@db/generated/enums";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
 
 type RouteDetails = {
   student: { id: string; firstName: string; lastName: string };
@@ -18,6 +19,11 @@ export default function AdminChatPage() {
   const router = useRouter();
   const [route, setRoute] = useState<RouteDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+
+  useRouteUpdates(() => setRevision((current) => current + 1), {
+    routeId: params.routeId,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +38,10 @@ export default function AdminChatPage() {
         }
 
         const data = (await response.json()) as RouteDetails;
-        if (!cancelled) setRoute(data);
+        if (!cancelled) {
+          setRoute(data);
+          setError(null);
+        }
       } catch (caught) {
         if (!cancelled) {
           setError(
@@ -48,7 +57,7 @@ export default function AdminChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.routeId]);
+  }, [params.routeId, revision]);
 
   if (error) {
     return (

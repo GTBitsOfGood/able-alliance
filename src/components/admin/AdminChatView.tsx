@@ -5,14 +5,12 @@ import { RouteStatus } from "@db/generated/enums";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useSession } from "next-auth/react";
-import BogButton from "@/components/BogButton/BogButton";
 
-type ChatMessage = {
-  id: string;
-  senderId: string;
-  text: string;
-  time: string | Date;
-};
+import type { ChatMessageResponse as ChatMessage } from "@/types/api";
+import RideChat from "@/components/RideChat/RideChat";
+import { isOwnChatMessage, mergeChatMessages } from "@/utils/chat";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import RideStatusChip from "@/components/admin/RideStatusChip";
 
 type Chatlog = {
   status: "active" | "archived";
@@ -33,6 +31,8 @@ export default function AdminChatView({
   studentId,
   driverId,
   onClose,
+  presentation = "inline",
+  onActivity,
 }: {
   routeId: string;
   rideLabel: string;
@@ -40,6 +40,8 @@ export default function AdminChatView({
   studentId: string;
   driverId: string | null;
   onClose: () => void;
+  presentation?: "inline" | "panel" | "dialog";
+  onActivity?: () => void;
 }) {
   const { data: session } = useSession();
   const [chatlog, setChatlog] = useState<Chatlog | null>(null);
@@ -49,12 +51,18 @@ export default function AdminChatView({
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const [revision, setRevision] = useState(0);
+  const onActivityRef = useRef(onActivity);
+  useEffect(() => {
+    onActivityRef.current = onActivity;
+  }, [onActivity]);
+
+  useRouteUpdates(() => setRevision((current) => current + 1), { routeId });
 
   useEffect(() => {
     let cancelled = false;
 
     const loadMessages = async () => {
-      setLoading(true);
       setLoadError(null);
       try {
         const response = await fetch(
@@ -64,12 +72,17 @@ export default function AdminChatView({
           throw new Error("Unable to load this ride transcript.");
         const data = (await response.json()) as ChatMessage[];
         if (!cancelled) {
-          setChatlog({
+          setChatlog((current) => ({
             status: CLOSED_ROUTE_STATUSES.has(routeStatus)
               ? "archived"
               : "active",
-            messages: Array.isArray(data) ? data : [],
-          });
+            messages: mergeChatMessages(
+              current?.messages.filter(
+                (message) => message.routeId === routeId,
+              ) ?? [],
+              Array.isArray(data) ? data : [],
+            ),
+          }));
         }
       } catch (caught) {
         if (!cancelled) {
@@ -88,10 +101,12 @@ export default function AdminChatView({
     return () => {
       cancelled = true;
     };
-  }, [routeId, routeStatus]);
+  }, [routeId, routeStatus, revision]);
 
   useEffect(() => {
     const token = session?.user?.accessToken;
+    const userId = session?.user?.userId;
+    const activeType = session?.user?.activeType;
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
     if (!token || !wsUrl || chatlog?.status !== "active") return;
 
@@ -113,19 +128,33 @@ export default function AdminChatView({
       setSocketError("This ride has ended. The chat is now read-only.");
     });
     nextSocket.on("chatHistory", (messages: ChatMessage[]) => {
+      setRevision((current) => current + 1);
       setChatlog((current) =>
-        current ? { ...current, messages } : { status: "active", messages },
+        current
+          ? {
+              ...current,
+              messages: mergeChatMessages(current.messages, messages),
+            }
+          : { status: "active", messages },
       );
     });
     nextSocket.on("receiveChatMessage", (message: ChatMessage) => {
-      if (message.senderId === session?.user?.userId) {
+      onActivityRef.current?.();
+      if (
+        userId &&
+        activeType &&
+        isOwnChatMessage(message, userId, activeType)
+      ) {
         setInput((currentInput) =>
           currentInput.trim() === message.text ? "" : currentInput,
         );
       }
       setChatlog((current) =>
         current
-          ? { ...current, messages: [...current.messages, message] }
+          ? {
+              ...current,
+              messages: mergeChatMessages(current.messages, [message]),
+            }
           : current,
       );
     });
@@ -147,6 +176,9 @@ export default function AdminChatView({
     routeId,
     session?.user?.accessToken,
     session?.user?.userId,
+    session?.user?.activeType,
+    studentId,
+    driverId,
   ]);
 
   const messages = useMemo(() => chatlog?.messages ?? [], [chatlog]);
@@ -157,91 +189,30 @@ export default function AdminChatView({
   };
 
   return (
-    <section
-      aria-label={`Chat for ${rideLabel}`}
-      className="mt-6 rounded-lg border p-5"
-    >
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Ride chat</h2>
-          <p className="text-sm text-gray-600">{rideLabel}</p>
-        </div>
-        <BogButton variant="secondary" size="small" onClick={onClose}>
-          Close
-        </BogButton>
-      </div>
-      {loading && <p>Loading transcript...</p>}
-      {loadError && <p className="mb-3 text-sm text-red-700">{loadError}</p>}
-      {!loading && !loadError && (
-        <>
-          {socketError && (
-            <p className="mb-3 text-sm text-red-700" role="alert">
-              {socketError}
-            </p>
-          )}
-          <div className="max-h-80 space-y-3 overflow-y-auto rounded border bg-gray-50 p-4">
-            {messages.length === 0 && (
-              <p className="text-sm text-gray-600">No messages yet.</p>
-            )}
-            {messages.map((message, index) => {
-              const isOwnMessage = message.senderId === session?.user?.userId;
-              const isStudentMessage = message.senderId === studentId;
-              const isDriverMessage =
-                driverId !== null && message.senderId === driverId;
-              const isAdminMessage = !isStudentMessage && !isDriverMessage;
-              const senderLabel = isStudentMessage
-                ? "Student"
-                : isDriverMessage
-                  ? "Driver"
-                  : isOwnMessage
-                    ? "You · Admin"
-                    : "Admin";
-              return (
-                <div
-                  key={message.id ?? `${message.time}-${index}`}
-                  className={`rounded border p-3 ${
-                    isAdminMessage
-                      ? "border-blue-200 bg-blue-50"
-                      : "border-transparent bg-white"
-                  }`}
-                >
-                  <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600">
-                    {senderLabel}
-                  </div>
-                  <p>{message.text}</p>
-                  <time className="text-xs text-gray-500">
-                    {new Date(message.time).toLocaleString()}
-                  </time>
-                </div>
-              );
-            })}
-          </div>
-          {chatlog?.status === "active" ? (
-            <form
-              className="mt-4 flex gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                sendMessage();
-              }}
-            >
-              <input
-                className="min-w-0 flex-1 rounded border px-3 py-2"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="Message the ride participants"
-                aria-label="Chat message"
-              />
-              <BogButton type="submit" disabled={!connected || !input.trim()}>
-                Send
-              </BogButton>
-            </form>
-          ) : (
-            <p className="mt-4 text-sm text-gray-600">
-              This ride has ended. The chat is read-only.
-            </p>
-          )}
-        </>
-      )}
-    </section>
+    <RideChat
+      presentation={presentation}
+      title={presentation === "inline" ? "Ride chat" : rideLabel}
+      subtitle={presentation === "inline" ? rideLabel : undefined}
+      headerAccessory={
+        presentation !== "inline" ? (
+          <RideStatusChip status={routeStatus} />
+        ) : undefined
+      }
+      messages={messages}
+      currentUserId={session?.user?.userId ?? ""}
+      currentUserType={session?.user?.activeType ?? "Admin"}
+      studentId={studentId}
+      driverId={driverId}
+      input={input}
+      onInputChange={setInput}
+      onSend={sendMessage}
+      onClose={onClose}
+      connected={connected && !loadError}
+      readOnly={
+        CLOSED_ROUTE_STATUSES.has(routeStatus) || chatlog?.status === "archived"
+      }
+      loading={loading}
+      error={loadError ?? socketError}
+    />
   );
 }
