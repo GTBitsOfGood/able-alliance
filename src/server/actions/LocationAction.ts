@@ -3,6 +3,7 @@ import { Prisma } from "@db/generated/client";
 import type { LocationInput } from "@/schemas/location";
 import { ConflictError, NotFoundError } from "@/utils/errors";
 import { recordAudit } from "@db/audit";
+import { RouteStatus } from "@db/generated/client";
 
 export async function createLocation(data: LocationInput, actorId: string) {
   try {
@@ -41,6 +42,25 @@ export async function archiveLocation(id: string, actorId: string) {
       where: { id: id.toLowerCase() },
     });
     if (!before) throw new NotFoundError("Location not found");
+    const activeRide = await tx.route.findFirst({
+      where: {
+        status: {
+          notIn: [
+            RouteStatus.Completed,
+            RouteStatus.Missing,
+            RouteStatus.CancelledByStudent,
+            RouteStatus.CancelledByAdmin,
+          ],
+        },
+        OR: [{ pickupLocation: before.id }, { dropoffLocation: before.id }],
+      },
+      select: { id: true },
+    });
+    if (activeRide) {
+      throw new ConflictError(
+        "This location is used by an active ride and cannot be archived.",
+      );
+    }
     const updated = await tx.location.update({
       where: { id: before.id },
       data: { status: "archived" },

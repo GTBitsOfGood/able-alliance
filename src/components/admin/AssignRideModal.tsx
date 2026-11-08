@@ -2,7 +2,7 @@
 
 import { RouteStatus } from "@db/generated/enums";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import BogModal from "@/components/BogModal/BogModal";
 import BogButton from "@/components/BogButton/BogButton";
@@ -43,11 +43,68 @@ export default function AssignRideModal({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<{
+    routeId: string;
+    driverIds: Set<string>;
+    error: string | null;
+  }>({ routeId: "", driverIds: new Set(), error: null });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/routes/${route.id}/available-drivers`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error ?? "Unable to check driver availability.");
+        }
+        return res.json() as Promise<{ driverIds: string[] }>;
+      })
+      .then(({ driverIds }) => {
+        if (controller.signal.aborted) return;
+        setAvailability({
+          routeId: route.id,
+          driverIds: new Set(driverIds),
+          error: null,
+        });
+        if (route.driver && !driverIds.includes(route.driver.id)) {
+          setDriver("");
+        }
+      })
+      .catch((availabilityIssue: unknown) => {
+        if (controller.signal.aborted) return;
+        setAvailability({
+          routeId: route.id,
+          driverIds: new Set(),
+          error:
+            availabilityIssue instanceof Error
+              ? availabilityIssue.message
+              : "Unable to check driver availability.",
+        });
+      });
+    return () => controller.abort();
+  }, [route.id, route.driver]);
+
+  const availabilityReady = availability.routeId === route.id;
+  const checkingAvailability = !availabilityReady;
+  const availabilityError = availabilityReady ? availability.error : null;
+  const availableDrivers = useMemo(
+    () =>
+      availabilityReady
+        ? drivers.filter((candidate) =>
+            availability.driverIds.has(candidate.id),
+          )
+        : [],
+    [drivers, availability, availabilityReady],
+  );
+  const selectedDriver = availableDrivers.find(
+    (candidate) => driverLabel(candidate) === driver,
+  );
 
   const pickupAt = new Date(route.scheduledPickupTime);
 
   const handleConfirm = async () => {
-    const selectedDriver = drivers.find((d) => driverLabel(d) === driver);
     const selectedVehicle = vehicles.find((v) => vehicleLabel(v) === vehicle);
     if (!selectedDriver || !selectedVehicle) return;
 
@@ -123,13 +180,29 @@ export default function AssignRideModal({
         <BogDropdown
           name={`assign-driver-${route.id}`}
           label="Choose a driver"
-          options={drivers.map(driverLabel)}
-          placeholder="Select..."
+          options={availableDrivers.map(driverLabel)}
+          placeholder={
+            checkingAvailability
+              ? "Checking availability..."
+              : availableDrivers.length
+                ? "Select..."
+                : "No drivers available"
+          }
+          disabled={
+            checkingAvailability ||
+            Boolean(availabilityError) ||
+            availableDrivers.length === 0
+          }
           value={driver}
           onSelectionChange={(selection) =>
             setDriver(typeof selection === "string" ? selection : selection[0])
           }
         />
+        {availabilityError && (
+          <p className={styles.error} role="alert">
+            {availabilityError}
+          </p>
+        )}
         <BogDropdown
           name={`assign-vehicle-${route.id}`}
           label="Choose a vehicle"
@@ -160,7 +233,7 @@ export default function AssignRideModal({
           <BogButton
             variant="primary"
             size="large"
-            disabled={submitting || !driver || !vehicle}
+            disabled={submitting || !selectedDriver || !vehicle}
             onClick={() => void handleConfirm()}
             style={{ fontWeight: 600 }}
           >

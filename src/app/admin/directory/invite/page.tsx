@@ -96,7 +96,7 @@ export default function InviteUserPage() {
       <Link href="/admin/directory/students" className={styles.back}>
         Back to directory
       </Link>
-      <h1>Invite user</h1>
+      <h1 className="text-display m-0">Invite user</h1>
       <form onSubmit={invite} className={styles.form}>
         <fieldset disabled={submitting} className={styles.fields}>
           <div className={styles.row}>

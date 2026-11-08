@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DropdownMenu } from "radix-ui";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./ridesTable.module.css";
@@ -15,8 +16,18 @@ export default function RideFilter({
   selected: string[];
   onChange: (values: string[]) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const filteredOptions = options.filter((option) =>
+    option.label.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
+  );
+
   return (
-    <DropdownMenu.Root modal={false}>
+    <DropdownMenu.Root
+      modal={false}
+      onOpenChange={(open) => {
+        if (!open) setQuery("");
+      }}
+    >
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
@@ -40,7 +51,18 @@ export default function RideFilter({
           <DropdownMenu.Label className={styles.filterLabel}>
             {label}
           </DropdownMenu.Label>
-          {options.map((option) => (
+          <div className={styles.filterSearchWrap}>
+            <input
+              type="search"
+              className={styles.filterSearch}
+              placeholder={`Search ${label.toLowerCase()}...`}
+              aria-label={`Search ${label.toLowerCase()} options`}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+            />
+          </div>
+          {filteredOptions.map((option) => (
             <DropdownMenu.CheckboxItem
               key={option.value}
               className={styles.filterItem}
@@ -62,8 +84,10 @@ export default function RideFilter({
               {option.label}
             </DropdownMenu.CheckboxItem>
           ))}
-          {options.length === 0 && (
-            <div className={styles.filterLabel}>No locations available</div>
+          {filteredOptions.length === 0 && (
+            <div className={styles.filterLabel}>
+              {options.length === 0 ? "No options available" : "No matches"}
+            </div>
           )}
           <DropdownMenu.Separator className={styles.filterSeparator} />
           <DropdownMenu.Item

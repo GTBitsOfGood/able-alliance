@@ -45,6 +45,7 @@ export default function AdminTableContent({
   const [newLocationPoint, setNewLocationPoint] = useState<LngLat | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // Selection is by row index, so drop it whenever the rows are replaced
   // (e.g. a real-time update) to avoid acting on a different row.
@@ -60,9 +61,11 @@ export default function AdminTableContent({
   const handleDelete = async () => {
     if (selectedRows.size === 0) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteRows(selectedRows);
+      const result = await deleteRows(selectedRows);
       setSelectedRows(new Set());
+      if (result.error) setDeleteError(result.error);
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -338,6 +341,11 @@ export default function AdminTableContent({
               </h2>
             )}
           </div>
+          {deleteError && (
+            <p className="mb-4 text-sm text-amber-700" role="alert">
+              {deleteError}
+            </p>
+          )}
           <>
             {error && (
               <p className="mb-4 text-sm text-amber-700" role="status">

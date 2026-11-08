@@ -377,7 +377,7 @@ export default function AutoSchedulePage() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>
+      <h1 className="text-display m-0 flex items-center gap-[1.2rem]">
         Auto-Schedule <span className={styles.experimental}>Experimental</span>
       </h1>
 

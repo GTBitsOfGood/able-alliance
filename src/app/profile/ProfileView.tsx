@@ -68,7 +68,6 @@ export function ProfileView({
   const settings = "settings" in user ? user.settings : null;
 
   const [notifications, setNotifications] = useState({
-    dailySummary: settings?.dailySummary ?? false,
     driverAssigned: settings?.driverAssigned ?? false,
     driverEnRoute: settings?.driverEnRoute ?? false,
     rideCancelled: settings?.rideCancelled ?? false,

@@ -327,8 +327,10 @@ export function useAdminTableData(tableType: AdminTableType) {
     };
   }, [tableType, refreshKey, activeType, status]);
 
-  const deleteRows = async (indices: Set<number>): Promise<number> => {
-    if (!isAdmin(activeType)) return 0;
+  const deleteRows = async (
+    indices: Set<number>,
+  ): Promise<{ deleted: number; error: string | null }> => {
+    if (!isAdmin(activeType)) return { deleted: 0, error: "Forbidden" };
     const endpoint =
       tableType === "Vehicles"
         ? "/api/vehicles"
@@ -336,18 +338,24 @@ export function useAdminTableData(tableType: AdminTableType) {
           ? "/api/locations"
           : "/api/users";
     let deleted = 0;
+    let deleteError: string | null = null;
     for (const idx of indices) {
       const id = rowIds[idx];
       if (!id || protectedIds.has(id)) continue;
       try {
         const res = await fetch(`${endpoint}/${id}`, { method: "DELETE" });
         if (res.ok) deleted++;
+        else {
+          const body = await res.json().catch(() => ({}));
+          deleteError ??=
+            body.error ?? `Unable to archive ${tableType.toLowerCase()}.`;
+        }
       } catch {
-        // skip failed deletes
+        deleteError ??= `Unable to archive ${tableType.toLowerCase()}.`;
       }
     }
     if (deleted > 0) refresh();
-    return deleted;
+    return { deleted, error: deleteError };
   };
 
   return {

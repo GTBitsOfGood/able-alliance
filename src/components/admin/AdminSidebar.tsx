@@ -8,6 +8,7 @@ import { useSession } from "next-auth/react";
 import styles from "./AdminSidebar.module.css";
 import { useAdminRides } from "@/hooks/useAdminRides";
 import BogIcon from "@/components/BogIcon/BogIcon";
+import { MenuCloseIcon, MenuHamburgerIcon } from "@/components/AppNavbar.icons";
 
 export default function AdminSidebar() {
   const { actionRequiredCount, loading } = useAdminRides();
@@ -16,6 +17,12 @@ export default function AdminSidebar() {
 
   const [directoryOpen, setDirectoryOpen] = useState(true);
   const [configOpen, setConfigOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpenedForPathname, setMenuOpenedForPathname] = useState(pathname);
+  if (pathname !== menuOpenedForPathname) {
+    setMenuOpenedForPathname(pathname);
+    if (menuOpen) setMenuOpen(false);
+  }
 
   const userType = session?.user?.activeType;
   const isSuperAdmin = userType === "SuperAdmin";
@@ -30,15 +37,48 @@ export default function AdminSidebar() {
     pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <aside className={styles.sidebar}>
+    <aside
+      className={`${styles.sidebar} ${menuOpen ? styles.mobileMenuOpen : ""}`}
+    >
+      <div className={styles.mobileHeader}>
+        <h3 className={styles.mobileBrand}>GT Paratransit</h3>
+        <Link
+          href={`/profile/${userId}`}
+          className={styles.mobileProfile}
+          aria-label={`Profile: ${fullName}`}
+        >
+          <span className={styles.avatar} aria-hidden="true">
+            {avatarLetter}
+          </span>
+        </Link>
+        <button
+          type="button"
+          className={styles.mobileToggle}
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-controls="admin-mobile-navigation"
+        >
+          {menuOpen ? (
+            <MenuCloseIcon className={styles.menuIcon} />
+          ) : (
+            <MenuHamburgerIcon className={styles.menuIcon} />
+          )}
+        </button>
+      </div>
       <div className={styles.top}>
         <h3 className={styles.brand}>GT Paratransit</h3>
 
-        <nav className={styles.nav}>
+        <nav
+          className={styles.nav}
+          id="admin-mobile-navigation"
+          aria-label="Admin navigation"
+        >
           {/* Rides */}
           <Link
             href="/admin/rides"
             className={`${styles.navItem} ${isActive("/admin/rides") ? styles.active : ""}`}
+            aria-label="Rides"
           >
             <Image src="/car.svg" alt="" width={20} height={16} />
             <span>Rides</span>
@@ -56,6 +96,7 @@ export default function AdminSidebar() {
             href="/admin/chats"
             className={`${styles.navItem} ${isActive("/admin/chats") ? styles.active : ""}`}
             aria-current={isActive("/admin/chats") ? "page" : undefined}
+            aria-label="Chats"
           >
             <BogIcon name="chats" size={20} weight="regular" />
             <span>Chats</span>
@@ -65,6 +106,7 @@ export default function AdminSidebar() {
           <Link
             href="/admin/shifts"
             className={`${styles.navItem} ${pathname.startsWith("/admin/shifts") ? styles.active : ""}`}
+            aria-label="Shifts"
           >
             <Image src="/clock.svg" alt="" width={20} height={20} />
             <span>Shifts</span>
@@ -74,6 +116,7 @@ export default function AdminSidebar() {
           <Link
             href="/admin/auto-schedule"
             className={`${styles.navItem} ${pathname.startsWith("/admin/auto-schedule") ? styles.active : ""}`}
+            aria-label="Auto-Schedule"
           >
             <Image src="/calendar.svg" alt="" width={20} height={20} />
             <span>Auto-Schedule</span>
@@ -82,6 +125,7 @@ export default function AdminSidebar() {
           <Link
             href="/admin/audit-log"
             className={`${styles.navItem} ${pathname.startsWith("/admin/audit-log") ? styles.active : ""}`}
+            aria-label="Audit Log"
           >
             <Image src="/archive.svg" alt="" width={20} height={20} />
             <span>Audit Log</span>
@@ -92,6 +136,8 @@ export default function AdminSidebar() {
             <button
               className={styles.navGroup}
               onClick={() => setDirectoryOpen((o) => !o)}
+              aria-label="Directory"
+              aria-expanded={directoryOpen}
             >
               <Image src="/folder.svg" alt="" width={20} height={20} />
               <span>Directory</span>
@@ -127,6 +173,8 @@ export default function AdminSidebar() {
             <button
               className={styles.navGroup}
               onClick={() => setConfigOpen((o) => !o)}
+              aria-label="Configurations"
+              aria-expanded={configOpen}
             >
               <Image src="/settings.svg" alt="" width={20} height={20} />
               <span>Configurations</span>

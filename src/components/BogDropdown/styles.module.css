@@ -96,7 +96,10 @@
   .dropdownContent {
     width: var(--radix-dropdown-menu-trigger-width);
     max-width: var(--radix-dropdown-menu-content-available-width);
-    max-height: min(28rem, var(--radix-dropdown-menu-content-available-height));
+    max-height: min(
+      28rem,
+      var(--radix-dropdown-menu-content-available-height, calc(100dvh - 4rem))
+    );
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;

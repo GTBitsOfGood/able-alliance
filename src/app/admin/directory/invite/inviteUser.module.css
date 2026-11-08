@@ -10,12 +10,6 @@
   margin-bottom: 1.2rem;
   color: inherit;
 }
-.page h1 {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 4rem;
-  line-height: 1.2;
-}
 .intro {
   color: var(--color-grey-text-weak);
   margin: 1.2rem 0 2.4rem;
@@ -70,9 +64,6 @@
 @media (width < 640px) {
   .page {
     padding: 2.4rem 1.6rem;
-  }
-  .page h1 {
-    font-size: 3.2rem;
   }
   .form {
     padding: 2rem 1.6rem;
