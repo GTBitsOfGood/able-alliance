@@ -28,6 +28,7 @@ export function getNextRide<T extends UpcomingRide>(
       )
         return false;
       return (
+        route.status === RouteStatus.Scheduled ||
         route.status === RouteStatus.EnRoute ||
         route.status === RouteStatus.Arrived ||
         route.status === RouteStatus.Pickedup ||

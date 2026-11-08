@@ -665,8 +665,9 @@ export async function getAvailableDriversForRoute(
   routeId: string,
   client: Prisma.TransactionClient = db,
 ): Promise<string[]> {
+  routeId = routeId.toLowerCase();
   const route = await client.route.findUnique({
-    where: { id: routeId.toLowerCase() },
+    where: { id: routeId },
     select: { scheduledPickupTime: true },
   });
   if (!route) return [];
