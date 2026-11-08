@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { RouteStatus } from "@db/generated/client";
+import { Prisma, RouteStatus } from "@db/generated/client";
 import { z } from "zod";
 import { recordAudit } from "@db/audit";
 
@@ -48,6 +48,17 @@ export async function appendMessage(
   }
 
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "User" WHERE "id" = ${senderId}::uuid FOR UPDATE`,
+    );
+    const sender = await tx.user.findUnique({
+      where: { id: senderId },
+      select: { status: true },
+    });
+    if (!sender || sender.status !== "active") {
+      throw new Error("Account is inactive");
+    }
+
     const message = await tx.message.create({
       data: {
         route: { connect: { id: routeId } },

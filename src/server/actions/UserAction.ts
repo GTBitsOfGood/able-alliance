@@ -84,6 +84,14 @@ export async function getUserById(id: string) {
   return user;
 }
 
+export async function isUserActive(id: string) {
+  const user = await db.user.findUnique({
+    where: { id: id.toLowerCase() },
+    select: { status: true },
+  });
+  return user?.status === "active";
+}
+
 export const getProvisionedUserFromCAS = (username: string) =>
   db.user.findUnique({ where: { username }, include: userInclude });
 

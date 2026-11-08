@@ -3,11 +3,11 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { idSchema } from "@/schemas/id";
 import { getEmailRoute } from "@/server/actions/EmailAction";
+import { isUserActive } from "@/server/actions/UserAction";
 import { EmailClient } from "@/server/EmailClient";
 import { getRouteMessage } from "@/server/actions/MessageAction";
 import { emitToast } from "@/server/notifications/emitToast";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
-import { db } from "@db";
 
 const requestSchema = z.object({
   routeId: idSchema,
@@ -50,11 +50,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const sender = await db.user.findUnique({
-      where: { id: userId },
-      select: { status: true },
-    });
-    if (!sender || sender.status !== "active") {
+    if (!(await isUserActive(userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
