@@ -40,7 +40,9 @@ function seriesAuditSnapshot(series: {
   pickupLocation: string;
   dropoffLocation: string;
   frequency: string;
+  daysOfWeek: number[];
   firstPickupTime: Date;
+  endsAt: Date | null;
   pickupWindowStartOffsetMs: number;
   pickupWindowEndOffsetMs: number;
   materializedThrough: Date;
@@ -54,7 +56,9 @@ function seriesAuditSnapshot(series: {
     pickupLocation: series.pickupLocation,
     dropoffLocation: series.dropoffLocation,
     frequency: series.frequency,
+    daysOfWeek: series.daysOfWeek,
     firstPickupTime: series.firstPickupTime,
+    endsAt: series.endsAt,
     pickupWindowStartOffsetMs: series.pickupWindowStartOffsetMs,
     pickupWindowEndOffsetMs: series.pickupWindowEndOffsetMs,
     materializedThrough: series.materializedThrough,
@@ -154,9 +158,17 @@ async function materializeSeries(
           // Past its end date the series has nothing left to generate, so retire
           // it instead of rechecking it on every cron tick.
           if (series.endsAt && next > series.endsAt) {
-            await tx.rideSeries.update({
+            const retired = await tx.rideSeries.update({
               where: { id: seriesId },
               data: { active: false },
+            });
+            // System action (no actor): the series ran past its end date.
+            await recordAudit(tx, {
+              entityType: "RideSeries",
+              entityId: retired.id,
+              action: "Update",
+              before: seriesAuditSnapshot(series),
+              after: seriesAuditSnapshot(retired),
             });
             return null;
           }
