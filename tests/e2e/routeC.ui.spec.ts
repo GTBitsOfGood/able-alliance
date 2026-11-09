@@ -18,7 +18,8 @@ test("route C: student cancellation requires confirmation (UI)", async ({
   const created = await createRequestedRide(studentApi, {
     pickupLocation: LOCATIONS.studentCenter.id,
     dropoffLocation: LOCATIONS.exhibitionHall.id,
-    hoursFromNow: 55,
+    serviceDaysAhead: 2,
+    time: "15:00",
   });
   const routeId = created.id;
 

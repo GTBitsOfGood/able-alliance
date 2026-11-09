@@ -71,12 +71,16 @@ test("route A: student creates, admin schedules (UI)", async ({
   const { id: routeId } = (await createRes.json()) as { id: string };
   await expect(student).toHaveURL(/\/rides$/);
 
-  // Weeks start Sunday; a lower weekday means the ride is in next week.
-  const weekTab =
-    rideDate.getDay() <= today.getDay() ? "Next week" : "This week";
-  await student.getByRole("tab", { name: weekTab, exact: true }).click();
+  // Weeks start on Sunday; a lower weekday means the ride is in next week.
+  const upcoming = student.getByRole("region", { name: "Upcoming Rides" });
+  if (rideDate.getDay() <= today.getDay()) {
+    await upcoming
+      .getByRole("navigation", { name: "Browse rides by week" })
+      .getByRole("button", { name: "Next week", exact: true })
+      .click();
+  }
 
-  const studentCard = student.getByTestId("ride-card").filter({
+  const studentCard = upcoming.getByTestId("ride-card").filter({
     hasText: PICKUP_TIME,
   });
   await expect(studentCard).toHaveCount(1);
@@ -91,19 +95,27 @@ test("route A: student creates, admin schedules (UI)", async ({
 
   // ── Driver sees the scheduled ride ─────────────────────────────────────
   const driver = await pageAs("driver");
-  // The driver list only covers today and tomorrow, not Monday after a weekend.
-  if (rideDate.toDateString() === estDateDaysFromNow(1).toDateString()) {
-    await driver.goto("/rides");
-    await driver.getByText("Tomorrow", { exact: true }).click();
-    const driverCard = driver
-      .getByTestId("ride-card")
-      .filter({ hasText: PICKUP.name })
-      .filter({ hasText: DROPOFF.name });
-    await expect(driverCard).toHaveCount(1);
-    await expect(
-      driverCard.getByText("Scheduled", { exact: true }),
-    ).toBeVisible();
+  await driver.goto("/rides");
+  const schedule = driver.getByRole("region", {
+    name: "Driver ride schedule",
+  });
+  if (rideDate.getDay() <= today.getDay()) {
+    await schedule
+      .getByRole("navigation", { name: "Browse rides by week" })
+      .getByRole("button", { name: "Next week", exact: true })
+      .click();
   }
+  // The week list shows every day; other specs reuse these locations in the
+  // reverse direction, so match the time too.
+  const driverCard = schedule
+    .getByTestId("ride-card")
+    .filter({ hasText: PICKUP_TIME })
+    .filter({ hasText: PICKUP.name })
+    .filter({ hasText: DROPOFF.name });
+  await expect(driverCard).toHaveCount(1);
+  await expect(
+    driverCard.getByText("Scheduled", { exact: true }),
+  ).toBeVisible();
   await driver.goto(`/rides/${routeId}`);
   await expect(
     driver

@@ -1,25 +1,55 @@
-import type { APIRequestContext, Page } from "@playwright/test";
-import { addDays } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
+import { addDays, isWeekend, set } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { expect } from "./fixtures";
 import { PERSONAS, VEHICLE } from "./seed";
 
-const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
+const TZ = "America/New_York";
 
 import type { AdminRouteResponse, StudentRouteResponse } from "@/types/api";
 
 export function estDateDaysFromNow(days: number): Date {
-  return addDays(toZonedTime(new Date(), "America/New_York"), days);
+  return addDays(toZonedTime(new Date(), TZ), days);
+}
+
+/** The Nth upcoming weekday (1 = next weekday) as a New York wall-clock date. */
+export function serviceDateAhead(serviceDays: number): Date {
+  let date = estDateDaysFromNow(0);
+  for (let remaining = serviceDays; remaining > 0;) {
+    date = addDays(date, 1);
+    if (!isWeekend(date)) remaining--;
+  }
+  return date;
 }
 
 export function nextServiceDate(): Date {
-  let offset = 1;
-  let date = estDateDaysFromNow(offset);
-  while (date.getDay() === 0 || date.getDay() === 6) {
-    date = estDateDaysFromNow(++offset);
-  }
-  return date;
+  return serviceDateAhead(1);
+}
+
+// Pickup time is unique, and a retried test must not collide with its own earlier attempt
+export function servicePickupTime(
+  serviceDaysAhead: number,
+  time: string,
+): Date {
+  const [hours, minutes] = time.split(":").map(Number);
+  const wallClock = set(serviceDateAhead(serviceDaysAhead), {
+    hours,
+    minutes,
+    seconds: 0,
+    milliseconds: 0,
+  });
+  return new Date(
+    fromZonedTime(wallClock, TZ).getTime() + (Date.now() % MINUTE),
+  );
+}
+
+export function pickupWindow(pickup: Date) {
+  return {
+    scheduledPickupTime: pickup.toISOString(),
+    pickupWindowStart: new Date(pickup.getTime() - 30 * MINUTE).toISOString(),
+    pickupWindowEnd: new Date(pickup.getTime() + 30 * MINUTE).toISOString(),
+  };
 }
 
 type LocationField = "Pickup location" | "Dropoff location";
@@ -52,6 +82,13 @@ export async function selectLocation(
   await expect(input).toHaveValue(name);
 }
 
+function dropdownTrigger(dialog: Locator, label: string) {
+  return dialog
+    .getByText(label)
+    .locator("xpath=ancestor::div[1]")
+    .getByRole("button", { name: "Select...", exact: true });
+}
+
 /** Schedule through the current admin row menu and Schedule ride modal. */
 export async function scheduleRideInAdmin(page: Page, routeId: string) {
   const row = page.locator(`tr[data-route-id="${routeId}"]`);
@@ -66,17 +103,14 @@ export async function scheduleRideInAdmin(page: Page, routeId: string) {
   await expect(
     dialog.getByRole("heading", { name: "Schedule ride", exact: true }),
   ).toBeVisible();
-  await dialog
-    .getByRole("button", { name: "Select...", exact: true })
-    .first()
-    .click();
+  await dropdownTrigger(dialog, "Choose a driver").click();
   await page
     .getByRole("menuitem", {
       name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
       exact: true,
     })
     .click();
-  await dialog.getByRole("button", { name: "Select...", exact: true }).click();
+  await dropdownTrigger(dialog, "Choose a vehicle").click();
   await page
     .getByRole("menuitem", {
       name: `${VEHICLE.name} (${VEHICLE.licensePlate})`,
@@ -128,22 +162,19 @@ export async function createRequestedRide(
   {
     pickupLocation,
     dropoffLocation,
-    hoursFromNow,
+    serviceDaysAhead,
+    time,
   }: {
     pickupLocation: string;
     dropoffLocation: string;
-    hoursFromNow: number;
+    /** See servicePickupTime. */
+    serviceDaysAhead: number;
+    time: string;
   },
 ): Promise<StudentRouteResponse> {
-  const pickup = new Date(Date.now() + hoursFromNow * HOUR);
+  const pickup = servicePickupTime(serviceDaysAhead, time);
   const res = await student.post("/api/routes", {
-    data: {
-      pickupLocation,
-      dropoffLocation,
-      scheduledPickupTime: pickup.toISOString(),
-      pickupWindowStart: new Date(pickup.getTime() - 30 * MINUTE).toISOString(),
-      pickupWindowEnd: new Date(pickup.getTime() + 30 * MINUTE).toISOString(),
-    },
+    data: { pickupLocation, dropoffLocation, ...pickupWindow(pickup) },
   });
   expect(res.status(), await res.text()).toBe(201);
   return (await res.json()) as StudentRouteResponse;
