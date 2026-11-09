@@ -6,12 +6,12 @@ import {
   getUserById,
   archiveUser,
   updateUser,
-} from "@/server/db/actions/UserAction";
-import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
+} from "@/server/actions/UserAction";
+import { findInvalidAccommodations } from "@/server/actions/AccommodationAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
 import { z } from "zod";
-import { notificationSettingsSchema, shiftSchema } from "@/utils/types/user";
+import { notificationSettingsSchema, shiftSchema } from "@/schemas/user";
 
 export async function GET(
   req: NextRequest,

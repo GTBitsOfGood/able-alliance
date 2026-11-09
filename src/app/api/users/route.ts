@@ -3,14 +3,14 @@ import { UserType } from "@db/generated/enums";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
-import { createUser, getUsers } from "@/server/db/actions/UserAction";
+import { createUser, getUsers } from "@/server/actions/UserAction";
 import {
   baseUserSchema,
   studentSchema,
   type StudentInput,
-} from "@/utils/types/user";
+} from "@/schemas/user";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
-import { findInvalidAccommodations } from "@/server/db/actions/AccommodationAction";
+import { findInvalidAccommodations } from "@/server/actions/AccommodationAction";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
 export async function GET(request: NextRequest) {

@@ -3,8 +3,8 @@ import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { errorResponse } from "@/utils/errors";
-import { getRouteById } from "@/server/db/actions/RouteAction";
-import { getMessagesForRoute } from "@/server/db/actions/MessageAction";
+import { getRouteById } from "@/server/actions/RouteAction";
+import { getMessagesForRoute } from "@/server/actions/MessageAction";
 
 export async function GET(
   req: NextRequest,
@@ -31,8 +31,8 @@ export async function GET(
     const route = await getRouteById(routeId, user.activeType);
     if (
       !isAdmin(user.activeType) &&
-      route.student?.id !== user.userId &&
-      route.driver?.id !== user.userId
+      !(user.activeType === "Student" && route.student?.id === user.userId) &&
+      !(user.activeType === "Driver" && route.driver?.id === user.userId)
     ) {
       return NextResponse.json(
         { error: "Forbidden" },

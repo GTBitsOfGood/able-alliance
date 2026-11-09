@@ -10,10 +10,12 @@ import { ProfileRidesTab } from "./ProfileRidesTab";
 import styles from "./profile.module.css";
 import type { UserType } from "@/utils/authUser";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
+import type { DriverProfileResponse } from "@/server/actions/UserAction";
 
 type ProfileTab = "profile" | "rides" | "shifts" | "settings";
 
-import type { UserResponse } from "@/utils/types/api";
+import type { UserResponse } from "@/types/api";
+type ProfileUserResponse = UserResponse | DriverProfileResponse;
 
 function avatarClass(type: UserType): string {
   switch (type) {
@@ -36,7 +38,7 @@ export function ProfileView({
   isOwnProfile = false,
   canDelete = false,
 }: {
-  user: UserResponse;
+  user: ProfileUserResponse;
   canEdit?: boolean;
   viewerType?: UserType;
   isOwnProfile?: boolean;
@@ -63,16 +65,16 @@ export function ProfileView({
   const [accommodationOptions, setAccommodationOptions] = useState<string[]>(
     [],
   );
+  const settings = "settings" in user ? user.settings : null;
 
   const [notifications, setNotifications] = useState({
-    dailySummary: user.settings?.dailySummary ?? false,
-    driverAssigned: user.settings?.driverAssigned ?? false,
-    driverEnRoute: user.settings?.driverEnRoute ?? false,
-    rideCancelled: user.settings?.rideCancelled ?? false,
-    rideAssigned: user.settings?.rideAssigned ?? false,
-    rideCompleted: user.settings?.rideCompleted ?? false,
-    rideDelayed: user.settings?.rideDelayed ?? false,
-    newMessageFromDriver: user.settings?.newMessageFromDriver ?? false,
+    driverAssigned: settings?.driverAssigned ?? false,
+    driverEnRoute: settings?.driverEnRoute ?? false,
+    rideCancelled: settings?.rideCancelled ?? false,
+    rideAssigned: settings?.rideAssigned ?? false,
+    rideCompleted: settings?.rideCompleted ?? false,
+    rideDelayed: settings?.rideDelayed ?? false,
+    newMessageFromDriver: settings?.newMessageFromDriver ?? false,
   });
 
   const [draftNotifications, setDraftNotifications] = useState(notifications);
@@ -99,9 +101,9 @@ export function ProfileView({
 
   const avatarLetter =
     displayUser.firstName.trim().charAt(0).toUpperCase() || "?";
-  const displayName =
-    [displayUser.firstName, displayUser.lastName].filter(Boolean).join(" ") ||
-    displayUser.email;
+  const displayName = [displayUser.firstName, displayUser.lastName]
+    .filter(Boolean)
+    .join(" ");
   const showAccommodations = hasUserType(displayUser, "Student");
 
   function handleEdit() {
@@ -132,7 +134,7 @@ export function ProfileView({
         const err = await res.json().catch(() => ({}));
         throw new Error(err?.error ?? "Failed to delete user");
       }
-      router.push("/admin");
+      router.push("/admin/directory/students");
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete user");
       setDeleting(false);
@@ -226,7 +228,7 @@ export function ProfileView({
   const showSettingsTab =
     canEdit &&
     (hasUserType(displayUser, "Student") || hasUserType(displayUser, "Driver"));
-  const showShiftsTab = hasUserType(displayUser, "Driver");
+  const showShiftsTab = canEdit && hasUserType(displayUser, "Driver");
   const showRidesTab =
     (hasUserType(displayUser, "Student") ||
       hasUserType(displayUser, "Driver")) &&
@@ -397,24 +399,25 @@ export function ProfileView({
                 </div>
               </div>
 
-              {/* Row 3: GT Email */}
-              <div className={styles.profileFieldRow}>
-                <div className={styles.profileFieldHalf}>
-                  <span className={styles.fieldLabel}>GT Email</span>
-                  {editing ? (
-                    <input
-                      className={styles.inlineInputDisabled}
-                      value={displayUser.email}
-                      disabled
-                      readOnly
-                    />
-                  ) : (
-                    <span className={styles.fieldValue}>
-                      {displayUser.email}
-                    </span>
-                  )}
+              {"email" in displayUser && (
+                <div className={styles.profileFieldRow}>
+                  <div className={styles.profileFieldHalf}>
+                    <span className={styles.fieldLabel}>GT Email</span>
+                    {editing ? (
+                      <input
+                        className={styles.inlineInputDisabled}
+                        value={displayUser.email}
+                        disabled
+                        readOnly
+                      />
+                    ) : (
+                      <span className={styles.fieldValue}>
+                        {displayUser.email}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             {/* Accommodations section */}
             {showAccommodations && (
@@ -557,7 +560,7 @@ export function ProfileView({
                             displayUser.studentInfo?.accessibilityNeeds ?? []
                           ).map((need) => (
                             <span
-                              key={need.id}
+                              key={need.label}
                               className={styles.sectionRowValue}
                             >
                               {need.label}
@@ -639,14 +642,6 @@ export function ProfileView({
               {hasUserType(displayUser, "Student") && (
                 <>
                   <BogSwitch
-                    checked={draftNotifications.dailySummary}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("dailySummary", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Daily Summary"
-                  />
-                  <BogSwitch
                     checked={draftNotifications.driverAssigned}
                     onCheckedChange={(value) =>
                       handleNotificationToggle("driverAssigned", value)
@@ -679,14 +674,6 @@ export function ProfileView({
                     label="Ride Completed"
                   />
                   <BogSwitch
-                    checked={draftNotifications.rideDelayed}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("rideDelayed", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Ride Delayed"
-                  />
-                  <BogSwitch
                     checked={draftNotifications.newMessageFromDriver}
                     onCheckedChange={(value) =>
                       handleNotificationToggle("newMessageFromDriver", value)
@@ -699,14 +686,6 @@ export function ProfileView({
 
               {hasUserType(displayUser, "Driver") && (
                 <>
-                  <BogSwitch
-                    checked={draftNotifications.dailySummary}
-                    onCheckedChange={(value) =>
-                      handleNotificationToggle("dailySummary", value)
-                    }
-                    disabled={!editingNotifications}
-                    label="Daily Summary"
-                  />
                   <BogSwitch
                     checked={draftNotifications.rideAssigned}
                     onCheckedChange={(value) =>
@@ -725,11 +704,22 @@ export function ProfileView({
                   />
                 </>
               )}
+              {(hasUserType(displayUser, "Student") ||
+                hasUserType(displayUser, "Driver")) && (
+                <BogSwitch
+                  checked={draftNotifications.rideDelayed}
+                  onCheckedChange={(value) =>
+                    handleNotificationToggle("rideDelayed", value)
+                  }
+                  disabled={!editingNotifications}
+                  label="Ride Delayed"
+                />
+              )}
             </div>
           </section>
         )}
 
-        {activeTab === "shifts" && showShiftsTab && (
+        {activeTab === "shifts" && showShiftsTab && "shifts" in displayUser && (
           <Shifts
             user={displayUser}
             canEdit={canEdit}

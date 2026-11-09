@@ -50,8 +50,8 @@ export function estDayRange(offsetDays: 0 | 1): [Date, Date] {
   ];
 }
 
-/** [start, end] UTC dates for week 0 (this) or week 1 (next), Sunday-anchored, in America/New_York. */
-export function estWeekRange(offsetWeeks: 0 | 1): [Date, Date] {
+/** [start, end] UTC dates for the given week offset, Sunday-anchored, in America/New_York. */
+export function estWeekRange(offsetWeeks: number): [Date, Date] {
   const todayZoned = toZonedTime(new Date(), TZ);
   const sundayZoned = startOfWeek(todayZoned, { weekStartsOn: 0 });
   const weekStartZoned = addWeeks(sundayZoned, offsetWeeks);
@@ -96,4 +96,8 @@ export function estNowWallClock(): Date {
 /** True if the UTC Date falls on today's calendar day in America/New_York. */
 export function isEstToday(date: Date): boolean {
   return estDateKey(date) === estDateKey(new Date());
+}
+
+export function withDelay(date: Date, delayMinutes: number): Date {
+  return new Date(date.getTime() + delayMinutes * 60_000);
 }

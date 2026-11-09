@@ -1,0 +1,347 @@
+/* Derived from BogTable's stylesheet; see AdminRidesTable.tsx for why this is
+   kept separate from the version-controlled design-system component. */
+
+@layer base {
+  .ridesTable {
+    display: flex;
+    flex-direction: column;
+    gap: 2.4rem;
+  }
+
+  /* Search field, then the toolbar actions, as laid out in the design. */
+  .topBar {
+    display: flex;
+    gap: 3.2rem;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .searchWrapper {
+    position: relative;
+    flex: 1;
+  }
+
+  .searchWithIcon input {
+    height: 3.6rem !important;
+    padding-right: 2.6rem !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 0.6rem !important;
+    background-color: var(--color-solid-bg-base) !important;
+    font-family: var(--font-paragraph) !important;
+    font-size: var(--text-mobile-paragraph-2) !important;
+  }
+
+  .searchWithIcon input:hover:not(:disabled) {
+    border-color: #9ca3af !important;
+  }
+
+  .searchWithIcon input:focus {
+    border-color: #6b7280 !important;
+    outline: none !important;
+  }
+
+  .searchIcon {
+    position: absolute;
+    top: 50%;
+    right: 1.2rem;
+    transform: translateY(-50%);
+    color: var(--color-grey-stroke-strong);
+    pointer-events: none;
+  }
+
+  .tableActions {
+    display: flex;
+    align-items: center;
+    gap: 2.4rem;
+    flex-shrink: 0;
+  }
+
+  .container {
+    position: relative;
+    min-height: auto !important;
+    overflow: auto;
+    padding-right: 4rem;
+    font-family: var(--font-paragraph);
+  }
+
+  .container .radix-themes:where([data-is-root-theme="true"]) {
+    min-height: auto !important;
+  }
+
+  .root {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 100rem;
+  }
+
+  /* Table.Root renders a div. Set the layout on its actual table so long
+     content cannot impose a minimum column width. */
+  .adjustable :global(.rt-TableRootTable) {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  /* Radix's intrinsic table wrapper would otherwise expand to fit content. */
+  .adjustable :global(.rt-ScrollAreaViewport) > div {
+    display: block !important;
+    min-width: 0 !important;
+  }
+
+  .columnHeaderCell.columnHeaderCell {
+    position: relative;
+    height: 5.6rem;
+    padding: 0 1.2rem;
+    border-bottom: 1px solid var(--color-grey-stroke-weak) !important;
+    box-shadow: none !important;
+    background-color: var(--color-admin-bg) !important;
+    color: var(--color-grey-text-strong);
+    font-family: var(--font-paragraph) !important;
+    font-size: var(--text-desktop-paragraph-2) !important;
+    font-weight: 700 !important;
+    vertical-align: middle;
+  }
+
+  /* Short rule between header cells, as in the design. */
+  .columnHeaderCell:not(:first-child)::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 0.1rem;
+    height: 2.2rem;
+    transform: translateY(-50%);
+    background: var(--color-grey-fill-weak) !important;
+    pointer-events: none;
+  }
+
+  .cell.cell {
+    position: relative;
+    height: 5.6rem;
+    padding: 0 1.6rem;
+    border-bottom: 1px solid var(--color-grey-fill-weak) !important;
+    box-shadow: none !important;
+    background-color: var(--color-solid-bg-base);
+    color: var(--color-grey-text-weak);
+    font-size: var(--text-mobile-paragraph-2);
+    vertical-align: middle;
+  }
+
+  .empty {
+    margin: 0;
+    padding: 2.4rem 1.6rem;
+    background-color: var(--color-solid-bg-base);
+    color: var(--color-grey-text-weak);
+    font-size: var(--text-desktop-paragraph-2);
+    text-align: center;
+  }
+}
+
+/* The outer container owns scrolling. Radix's inner viewport otherwise clips
+   the action button placed in the gutter just beyond the Vehicle cell. */
+.root :global(.rt-ScrollAreaRoot),
+.root :global(.rt-ScrollAreaViewport) {
+  overflow: visible !important;
+}
+
+.row:hover .cell.cell,
+.row:focus-within .cell.cell,
+.row[data-state="open"] .cell.cell,
+.row:has(.rowActions[data-state="open"]) .cell.cell {
+  background-color: #f4f2f3 !important;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2.4rem;
+}
+
+.sortHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sortIcons {
+  display: inline-flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sortIcons svg + svg {
+  margin-top: -0.4rem;
+}
+.sortActive {
+  color: var(--color-grey-text-strong);
+}
+.sortInactive {
+  color: var(--color-grey-off-state);
+}
+.cellText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowActions {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+}
+.row:hover .rowActions,
+.row:focus-within .rowActions,
+.row[data-state="open"] .rowActions,
+.rowActions[data-state="open"] {
+  opacity: 1;
+}
+.sortHeader:focus-visible,
+.rowActions:focus-visible {
+  outline: 0.2rem solid var(--color-brand-stroke-strong);
+  outline-offset: 0.2rem;
+  border-radius: 0.4rem;
+}
+.menu {
+  z-index: 50;
+  min-width: 11.5rem;
+  padding: 0.4rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-sunken);
+  color: var(--color-grey-text-strong);
+  box-shadow: var(--shadow-popover);
+  font-family: var(--font-paragraph);
+  font-size: var(--text-desktop-paragraph-2);
+}
+.menuItem {
+  display: flex;
+  align-items: center;
+  min-height: 4.4rem;
+  padding: 0.8rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  outline: none;
+}
+.menuItem[data-highlighted] {
+  background: var(--color-admin-bg);
+}
+.menuItem[data-disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (hover: none) {
+  .rowActions {
+    opacity: 1;
+  }
+}
+@media (width < 640px) {
+  .topBar {
+    flex-wrap: wrap;
+    gap: 1.6rem;
+  }
+  .searchWrapper {
+    min-width: 20rem;
+  }
+  .filters {
+    gap: 1.2rem;
+  }
+}
+
+.cellWrapped {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Keep header text inside narrow columns without covering the resize target. */
+.adjustable .sortHeader {
+  min-width: 0;
+  overflow: hidden;
+}
+.adjustable .sortHeader > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 0.8rem;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  z-index: 1;
+}
+.resizeHandle:hover,
+.resizeHandle:focus-visible {
+  background: var(--color-brand-stroke-strong);
+  outline: none;
+}
+.autofitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 3.8rem;
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  padding: 0.8rem 1.2rem;
+  border: 0.1rem solid var(--color-grey-text-strong);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  font-size: var(--text-desktop-paragraph-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+.autofitButton:focus-visible {
+  outline: 0.2rem solid var(--color-brand-stroke-strong);
+  outline-offset: 0.2rem;
+}
+
+.columnTools {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.toolbarDivider {
+  width: 0.1rem;
+  height: 2.8rem;
+  flex-shrink: 0;
+  background: var(--color-grey-stroke-weak);
+}
+.columnsLabel {
+  padding: 0.8rem;
+  font-weight: 600;
+}
+.columnOption {
+  gap: 0.8rem;
+}
+.columnCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0.1rem solid var(--color-grey-stroke-strong);
+  border-radius: 0.2rem;
+}

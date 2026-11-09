@@ -1,3 +1,4 @@
+import type { RouteStatus } from "../db/generated/enums.js";
 import type { Server, Socket, Namespace } from "socket.io";
 import type {
   User,
@@ -7,6 +8,10 @@ import type {
 
 export type Coordinates = Pick<DatabaseLocation, "latitude" | "longitude">;
 
+export type ChatMessage = Message & {
+  author: { name: string; role: Exclude<User["types"][number], "SuperAdmin"> };
+};
+
 export interface ClientEvents {
   sendChatMessage: (text: unknown) => void;
   updateLocation: (location: Coordinates) => void;
@@ -14,16 +19,20 @@ export interface ClientEvents {
 }
 
 export interface ServerEvents {
-  chatHistory: (history: Message[]) => void;
-  receiveChatMessage: (message: Message) => void;
+  chatHistory: (history: ChatMessage[]) => void;
+  receiveChatMessage: (message: ChatMessage) => void;
   broadcastLocation: (location: Coordinates) => void;
   routeClosed: () => void;
   chatError: (message: string) => void;
   locationError: (message: string) => void;
   connectionError: (message: string) => void;
   closeRouteRoomError: (message: string) => void;
-  notification: (payload: { type: string; message: string }) => void;
-  routeUpdated: (payload: { routeId: string; status: string }) => void;
+  notification: (payload: {
+    type: string;
+    message: string;
+    activeType: string;
+  }) => void;
+  routeUpdated: (payload: { routeId: string; status: RouteStatus }) => void;
   locationsUpdated: () => void;
 }
 

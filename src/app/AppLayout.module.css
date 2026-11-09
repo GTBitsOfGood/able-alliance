@@ -1,0 +1,17 @@
+.adminLayout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.adminMain {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+@media (width < 1024px) {
+  .adminLayout {
+    flex-direction: column;
+  }
+}

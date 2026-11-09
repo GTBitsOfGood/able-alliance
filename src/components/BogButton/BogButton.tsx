@@ -1,9 +1,9 @@
 import React, { ButtonHTMLAttributes, ReactNode, CSSProperties } from "react";
-import type { IconProps } from "../../utils/design-system/types/types";
+import type { IconProps } from "@/utils/design-system/types/types";
 import styles from "./styles.module.css";
-import { useResponsive } from "../../utils/design-system/hooks/useResponsive";
-import { getSizeFromBreakpoint } from "../../utils/design-system/breakpoints/breakpoints";
-import BogIcon from "../BogIcon/BogIcon";
+import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
+import { getSizeFromBreakpoint } from "@/utils/design-system/breakpoints/breakpoints";
+import BogIcon from "@/components/BogIcon/BogIcon";
 
 interface BogButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** The type of the button. Values are "primary", "secondary", or "tertiary" */

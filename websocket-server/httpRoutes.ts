@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { AppNamespace } from "./types.js";
 import { debugLog } from "./utils/logger.js";
+import { UserType } from "@db/generated/enums";
 
 export function registerHttpRoutes(
   app: Express,
@@ -25,22 +26,25 @@ export function registerHttpRoutes(
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { userId, type, message } = req.body ?? {};
+    const { userId, activeType, type, message } = req.body ?? {};
     if (
       typeof userId !== "string" ||
+      !Object.values(UserType).some((role) => role === activeType) ||
       typeof type !== "string" ||
       typeof message !== "string"
     ) {
       return res.status(400).json({ error: "Invalid payload" });
     }
 
-    const room = `user:${userId}`;
+    const room = `user:${userId}:role:${activeType}`;
     const delivered = (notificationsNsp.adapter.rooms.get(room)?.size ?? 0) > 0;
     debugLog(
       `/notify: user=${userId} type=${type} delivered=${delivered} (room size=${notificationsNsp.adapter.rooms.get(room)?.size ?? 0})`,
     );
 
-    notificationsNsp.to(room).emit("notification", { type, message });
+    notificationsNsp
+      .to(room)
+      .emit("notification", { type, message, activeType });
 
     res.status(200).json({ ok: true, delivered });
   });

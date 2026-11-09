@@ -19,6 +19,7 @@ export type IconName =
   | "arrow-down"
   | "arrow-left"
   | "arrow-right"
+  | "paper-plane-right"
   | "check"
   | "map-pin"
   | "chats"

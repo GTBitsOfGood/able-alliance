@@ -1,10 +1,11 @@
+import { RouteStatus } from "@db/generated/enums";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";
 import { isValidId } from "@/utils/ids";
 import {
   BookingConflictError,
   scheduleRoute,
-} from "@/server/db/actions/RouteAction";
+} from "@/server/actions/RouteAction";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { ArgumentError, errorResponse } from "@/utils/errors";
 
@@ -52,6 +53,12 @@ export async function POST(request: NextRequest) {
       driverId,
       vehicleId,
       user.userId,
+      [
+        RouteStatus.Requested,
+        RouteStatus.Scheduled,
+        RouteStatus.ActionRequiredByAdmin,
+        RouteStatus.ActionRequiredByStudent,
+      ],
     );
     return NextResponse.json(updated, { status: HTTP_STATUS_CODE.OK });
   } catch (error) {

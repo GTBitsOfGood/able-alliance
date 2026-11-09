@@ -1,5 +1,10 @@
 /* Error Banner */
 .errorBanner {
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  max-height: 50dvh;
+  overflow-y: auto;
   width: 100%;
   padding: 1.2rem 2rem;
   background: #fde8e8;
@@ -11,6 +16,7 @@
   font-size: 1.6rem;
   color: #c73a3a;
   box-sizing: border-box;
+  scroll-margin-block: 1.6rem;
 }
 
 .errorBannerIcon {
@@ -624,27 +630,29 @@
   padding: 0.45rem 1.1rem;
   border: 0.2rem solid var(--color-grey-text-strong);
   border-radius: 1.6rem;
-  background-color: var(--color-map-pin);
+  background-color: var(--pin-color);
   color: var(--color-solid-bg-base);
   font-weight: 700;
   font-size: 1.1rem;
   font-family: var(--font-paragraph);
   line-height: 1.4rem;
-  white-space: nowrap;
+  max-width: 15rem;
+  text-align: center;
+  overflow-wrap: anywhere;
   box-shadow: none;
 }
 
 .mapPinStem {
   width: 0.2rem;
   height: 2.2rem;
-  background-color: var(--color-map-pin);
+  background-color: var(--pin-color);
 }
 
 .mapPinDot {
   width: 1.4rem;
   height: 1.4rem;
   border-radius: 50%;
-  background-color: var(--color-map-pin);
+  background-color: var(--pin-color);
   border: 0.2rem solid var(--color-grey-text-strong);
   box-shadow: none;
 }
@@ -920,4 +928,18 @@
   .rideDetailsOutline {
     padding: 2.4rem 0 2rem;
   }
+}
+
+.editHint {
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font: 1.6rem/2.4rem var(--font-paragraph);
+}
+
+.recurrenceToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6rem;
+  font: 1.8rem/2.4rem var(--font-paragraph);
 }

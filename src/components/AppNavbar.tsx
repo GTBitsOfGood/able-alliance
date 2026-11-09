@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import RoleSwitcher from "./RoleSwitcher";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -103,7 +102,6 @@ export default function AppNavbar() {
         </div>
 
         <div className={styles.right}>
-          <RoleSwitcher />
           <Link
             href={profileHref}
             className={styles.profileLink}

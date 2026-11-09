@@ -1,6 +1,6 @@
 import { db } from "@db";
 import { hasUserType } from "./userTypes";
-import { auth } from "../auth";
+import { auth } from "@/auth";
 
 import type { User } from "@db/generated/browser";
 export type { UserType } from "@db/generated/browser";

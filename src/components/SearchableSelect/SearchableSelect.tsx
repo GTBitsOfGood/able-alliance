@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "./styles.module.css";
-import BogIcon from "../BogIcon/BogIcon";
+import BogIcon from "@/components/BogIcon/BogIcon";
 
 export type SearchableSelectOption = { value: string; label: string };
 

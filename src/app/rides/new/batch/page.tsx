@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { fromZonedTime } from "date-fns-tz";
 import { estDateKey, estNowWallClock } from "@/utils/dateEst";
@@ -9,8 +9,16 @@ import type { Location } from "@db/generated/browser";
 import { SERVICE_END_TIME, SERVICE_START_TIME } from "@/utils/consts";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./styles.module.css";
+import RecurrenceFields from "@/components/RecurrenceFields/RecurrenceFields";
 import BogSwitch from "@/components/BogSwitch/BogSwitch";
 import BogButton from "@/components/BogButton/BogButton";
+import { SearchableSelect } from "@/components/SearchableSelect/SearchableSelect";
+import {
+  getEarliestPickupTime,
+  getPickupWindowBounds,
+  getRideTimingError,
+} from "@/utils/rideTiming";
+import type { RecurrenceFrequency } from "@/schemas/rideSeries";
 
 type RideDraft = {
   date: string;
@@ -20,7 +28,8 @@ type RideDraft = {
   pickup: string;
   dropoff: string;
   recurring: boolean;
-  repeatsOn: string[];
+  frequency: RecurrenceFrequency;
+  repeatsOn: number[];
   ends: string;
 };
 
@@ -39,9 +48,13 @@ function todayKey(): string {
 // Today, or the following Monday if today is a weekend.
 function defaultRideDate(): string {
   const date = estNowWallClock();
-  const day = date.getDay();
-  if (day === 6) date.setDate(date.getDate() + 2);
-  else if (day === 0) date.setDate(date.getDate() + 1);
+  while (
+    date.getDay() === 0 ||
+    date.getDay() === 6 ||
+    !getEarliestPickupTime(date)
+  ) {
+    date.setDate(date.getDate() + 1);
+  }
   return toDateKey(date);
 }
 
@@ -53,6 +66,7 @@ const newRide = (): RideDraft => ({
   pickup: "",
   dropoff: "",
   recurring: false,
+  frequency: "weekly",
   repeatsOn: [],
   ends: "",
 });
@@ -66,9 +80,13 @@ function toEstUtc(date: string, time: string): Date {
   );
 }
 
-function isWeekday(date: string) {
+function weekdayOf(date: string) {
   const [year, month, day] = date.split("-").map(Number);
-  const weekday = new Date(year, month - 1, day).getDay();
+  return new Date(year, month - 1, day).getDay();
+}
+
+function isWeekday(date: string) {
+  const weekday = weekdayOf(date);
   return weekday >= 1 && weekday <= 5;
 }
 
@@ -78,6 +96,10 @@ export default function BatchRidePage() {
   const [rides, setRides] = useState<RideDraft[]>([newRide()]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const locationOptions = locations
+    .map(({ name }) => ({ value: name, label: name }))
+    .toSorted((a, b) => a.label.localeCompare(b.label));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,21 +121,41 @@ export default function BatchRidePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.focus();
+      errorRef.current?.scrollIntoView({ block: "center" });
+    }
+  }, [error]);
+
   function updateRide(index: number, patch: Partial<RideDraft>) {
     setRides((current) =>
-      current.map((ride, rideIndex) =>
-        rideIndex === index ? { ...ride, ...patch } : ride,
-      ),
+      current.map((ride, rideIndex) => {
+        if (rideIndex !== index) return ride;
+        const next = { ...ride, ...patch };
+        if (
+          patch.date &&
+          ride.repeatsOn.length === 1 &&
+          ride.repeatsOn[0] === weekdayOf(ride.date)
+        ) {
+          next.repeatsOn = [weekdayOf(patch.date)];
+        }
+        if (patch.recurring && !next.repeatsOn.length)
+          next.repeatsOn = [weekdayOf(next.date)];
+        if (patch.date && next.pickupTime) {
+          const [y, m, d] = patch.date.split("-").map(Number);
+          const earliest = getEarliestPickupTime(new Date(y, m - 1, d));
+          if (earliest && next.pickupTime < earliest)
+            next.pickupTime = earliest;
+        }
+        if (next.pickupTime !== ride.pickupTime) {
+          const bounds = getPickupWindowBounds(next.pickupTime);
+          next.windowFrom = bounds.from;
+          next.windowTo = bounds.to;
+        }
+        return next;
+      }),
     );
-  }
-
-  function toggleDay(index: number, day: string) {
-    const ride = rides[index];
-    updateRide(index, {
-      repeatsOn: ride.repeatsOn.includes(day)
-        ? ride.repeatsOn.filter((selectedDay) => selectedDay !== day)
-        : [...ride.repeatsOn, day],
-    });
   }
 
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
@@ -148,27 +190,26 @@ export default function BatchRidePage() {
       const start = toEstUtc(ride.date, ride.windowFrom);
       const end = toEstUtc(ride.date, ride.windowTo);
       const pickup = toEstUtc(ride.date, ride.pickupTime);
-      if (end <= start) {
-        setError(`Ride #${index + 1} has an invalid pickup window.`);
+      const timingError = getRideTimingError({
+        scheduledPickupTime: pickup,
+        pickupWindowStart: start,
+        pickupWindowEnd: end,
+      });
+      if (timingError) {
+        setError(`Ride #${index + 1}: ${timingError}`);
         return;
       }
-      if (pickup <= new Date()) {
-        setError(`Ride #${index + 1} pickup time cannot be in the past.`);
-        return;
-      }
-      if (pickup < start || pickup > end) {
-        setError(
-          `Ride #${index + 1} pickup time must be within its pickup window.`,
-        );
-        return;
-      }
-      if (
-        [ride.pickupTime, ride.windowFrom, ride.windowTo].some(
-          (time) => time < SERVICE_START_TIME || time > SERVICE_END_TIME,
-        )
-      ) {
-        setError(`Ride #${index + 1} must be within service hours.`);
-        return;
+      if (ride.recurring) {
+        if (!ride.repeatsOn.includes(weekdayOf(ride.date))) {
+          setError(
+            `Ride #${index + 1} must repeat on the day of its first ride.`,
+          );
+          return;
+        }
+        if (ride.ends && ride.ends < ride.date) {
+          setError(`Ride #${index + 1} must end on or after its first ride.`);
+          return;
+        }
       }
     }
 
@@ -193,7 +234,15 @@ export default function BatchRidePage() {
                 ride.windowFrom,
               ).toISOString(),
               pickupWindowEnd: toEstUtc(ride.date, ride.windowTo).toISOString(),
-              ...(ride.recurring ? { recurring: { frequency: "weekly" } } : {}),
+              ...(ride.recurring
+                ? {
+                    recurring: {
+                      frequency: ride.frequency,
+                      daysOfWeek: ride.repeatsOn,
+                      ...(ride.ends ? { endsOn: ride.ends } : {}),
+                    },
+                  }
+                : {}),
             };
           }),
         }),
@@ -221,7 +270,12 @@ export default function BatchRidePage() {
   return (
     <div className={styles.container}>
       {error && (
-        <div className={styles.errorBanner} role="alert">
+        <div
+          ref={errorRef}
+          tabIndex={-1}
+          className={styles.errorBanner}
+          role="alert"
+        >
           {error}
         </div>
       )}
@@ -232,156 +286,140 @@ export default function BatchRidePage() {
         <h1 className={styles.pageTitle}>Request Multiple Rides</h1>
         <form onSubmit={submit}>
           <div className={styles.cards}>
-            {rides.map((ride, index) => (
-              <section className={styles.card} key={index}>
-                <div className={styles.cardHeader}>
-                  <h2>Ride #{index + 1}</h2>
-                  {rides.length > 1 && (
-                    <BogButton
-                      type="button"
-                      className={styles.removeButton}
-                      onClick={() =>
-                        setRides((current) =>
-                          current.filter((_, rideIndex) => rideIndex !== index),
-                        )
-                      }
-                    >
-                      Remove
-                    </BogButton>
-                  )}
-                </div>
-                <div className={styles.fields}>
-                  <label>
-                    Ride Date
-                    <input
-                      type="date"
-                      value={ride.date}
-                      min={todayKey()}
-                      onChange={(event) =>
-                        updateRide(index, { date: event.target.value })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Pickup Time
-                    <TimeInput
-                      value={ride.pickupTime}
-                      onChange={(value) =>
-                        updateRide(index, { pickupTime: value })
-                      }
-                      min={SERVICE_START_TIME}
-                      max={SERVICE_END_TIME}
-                    />
-                  </label>
-                  <label className={styles.windowLabel}>
-                    Pickup Time Window
-                    <span className={styles.window}>
-                      <TimeInput
-                        value={ride.windowFrom}
-                        onChange={(value) =>
-                          updateRide(index, { windowFrom: value })
+            {rides.map((ride, index) => {
+              const bounds = getPickupWindowBounds(ride.pickupTime);
+              const [year, month, day] = ride.date.split("-").map(Number);
+              const earliest = getEarliestPickupTime(
+                new Date(year, month - 1, day),
+              );
+              return (
+                <section className={styles.card} key={index}>
+                  <div className={styles.cardHeader}>
+                    <h2>Ride #{index + 1}</h2>
+                    {rides.length > 1 && (
+                      <BogButton
+                        type="button"
+                        className={styles.removeButton}
+                        onClick={() =>
+                          setRides((current) =>
+                            current.filter(
+                              (_, rideIndex) => rideIndex !== index,
+                            ),
+                          )
                         }
-                        min={SERVICE_START_TIME}
-                        max={SERVICE_END_TIME}
-                      />
-                      <span>—</span>
-                      <TimeInput
-                        value={ride.windowTo}
-                        onChange={(value) =>
-                          updateRide(index, { windowTo: value })
-                        }
-                        min={SERVICE_START_TIME}
-                        max={SERVICE_END_TIME}
-                      />
-                    </span>
-                  </label>
-                  <label>
-                    Pickup Location
-                    <select
-                      value={ride.pickup}
-                      onChange={(event) =>
-                        updateRide(index, { pickup: event.target.value })
-                      }
-                    >
-                      <option value="">Enter pickup location</option>
-                      {locations.map((location) => (
-                        <option key={location.id} value={location.name}>
-                          {location.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Dropoff Location
-                    <select
-                      value={ride.dropoff}
-                      onChange={(event) =>
-                        updateRide(index, { dropoff: event.target.value })
-                      }
-                    >
-                      <option value="">Enter dropoff location</option>
-                      {locations.map((location) => (
-                        <option key={location.id} value={location.name}>
-                          {location.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={styles.toggle}>
-                    <span>Recurring</span>
-                    <BogSwitch
-                      checked={ride.recurring}
-                      onCheckedChange={(checked) =>
-                        updateRide(index, { recurring: checked })
-                      }
-                    />
-                  </label>
-                </div>
-                {ride.recurring && (
-                  <div className={styles.recurrenceFields}>
+                      >
+                        Remove
+                      </BogButton>
+                    )}
+                  </div>
+                  <div className={styles.fields}>
                     <label>
-                      Frequency
-                      <select defaultValue="Weekly">
-                        <option>Weekly</option>
-                      </select>
-                    </label>
-                    <fieldset>
-                      <legend>Repeats on</legend>
-                      <div className={styles.dayButtons}>
-                        {["M", "Tu", "W", "Th", "F"].map((day) => (
-                          <BogButton
-                            key={day}
-                            type="button"
-                            className={
-                              ride.repeatsOn.includes(day)
-                                ? styles.dayButtonSelected
-                                : styles.dayButton
-                            }
-                            onClick={() => toggleDay(index, day)}
-                          >
-                            {day}
-                          </BogButton>
-                        ))}
-                      </div>
-                    </fieldset>
-                    <label>
-                      Ends
+                      Ride Date
                       <input
                         type="date"
-                        value={ride.ends}
+                        value={ride.date}
+                        min={todayKey()}
                         onChange={(event) =>
-                          updateRide(index, { ends: event.target.value })
+                          updateRide(index, { date: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Pickup Time
+                      <TimeInput
+                        value={ride.pickupTime}
+                        onChange={(value) =>
+                          updateRide(index, { pickupTime: value })
+                        }
+                        min={earliest ?? SERVICE_END_TIME}
+                        max={SERVICE_END_TIME}
+                        disabled={!earliest}
+                        aria-label={`Ride ${index + 1} pickup time`}
+                      />
+                    </label>
+                    <label className={styles.windowLabel}>
+                      Pickup Time Window
+                      <span className={styles.window}>
+                        <TimeInput
+                          value={ride.windowFrom}
+                          onChange={(value) =>
+                            updateRide(index, { windowFrom: value })
+                          }
+                          min={bounds.from}
+                          max={ride.pickupTime}
+                          disabled={!ride.pickupTime}
+                          aria-label={`Ride ${index + 1} pickup window start`}
+                        />
+                        <span>—</span>
+                        <TimeInput
+                          value={ride.windowTo}
+                          onChange={(value) =>
+                            updateRide(index, { windowTo: value })
+                          }
+                          min={ride.pickupTime}
+                          max={bounds.to}
+                          disabled={!ride.pickupTime}
+                          aria-label={`Ride ${index + 1} pickup window end`}
+                        />
+                      </span>
+                    </label>
+                    <label>
+                      Pickup Location
+                      <SearchableSelect
+                        value={ride.pickup}
+                        onChange={(pickup) => updateRide(index, { pickup })}
+                        options={locationOptions.filter(
+                          (option) => option.value !== ride.dropoff,
+                        )}
+                        placeholder="Search pickup location"
+                        aria-label={`Ride ${index + 1} pickup location`}
+                      />
+                    </label>
+                    <label>
+                      Dropoff Location
+                      <SearchableSelect
+                        value={ride.dropoff}
+                        onChange={(dropoff) => updateRide(index, { dropoff })}
+                        options={locationOptions.filter(
+                          (option) => option.value !== ride.pickup,
+                        )}
+                        placeholder="Search dropoff location"
+                        aria-label={`Ride ${index + 1} dropoff location`}
+                      />
+                    </label>
+                    <label className={styles.toggle}>
+                      <span>Recurring</span>
+                      <BogSwitch
+                        checked={ride.recurring}
+                        onCheckedChange={(checked) =>
+                          updateRide(index, { recurring: checked })
                         }
                       />
                     </label>
                   </div>
-                )}
-              </section>
-            ))}
+                  {ride.recurring && (
+                    <RecurrenceFields
+                      frequency={ride.frequency}
+                      onFrequencyChange={(frequency) =>
+                        updateRide(index, { frequency })
+                      }
+                      daysOfWeek={ride.repeatsOn}
+                      endsOn={ride.ends}
+                      minDate={ride.date}
+                      onDaysChange={(repeatsOn) =>
+                        updateRide(index, { repeatsOn })
+                      }
+                      onEndChange={(ends) => updateRide(index, { ends })}
+                    />
+                  )}
+                </section>
+              );
+            })}
           </div>
           <BogButton
             type="button"
             className={styles.addButton}
+            disabled={rides.length >= 25 || submitting}
             onClick={() => setRides((current) => [...current, newRide()])}
           >
             Add ride request

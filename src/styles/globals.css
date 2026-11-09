@@ -1,11 +1,21 @@
 @import "tailwindcss";
 
+/* Always emit these tokens: Mapbox reads route paint values from JavaScript. */
+@theme static {
+  --color-map-pickup: #eb2525;
+  --color-map-dropoff: #16a34a;
+  --color-map-route: #2563eb;
+  --map-route-width: 5;
+  --map-route-opacity: 0.8;
+}
+
 @theme {
   --breakpoint-mobile: 640px;
   --breakpoint-tablet: 768px;
   --breakpoint-desktop: 1024px;
 
   --color-brand-text: #183777;
+  --color-brand-pressed: #152d55;
   --color-brand-stroke-strong: #416ebccc;
   --color-brand-stroke-weak: #416ebc33;
   --color-brand-hover: #416ebc80;
@@ -37,6 +47,11 @@
   --color-status-red-fill: #c73a3a0d;
   --color-solid-bg-sunken: #f9f9f9;
   --color-solid-bg-base: #ffffff;
+  --color-overlay: rgb(0 0 0 / 30%);
+  --color-shadow: rgb(34 7 11 / 16%);
+  --shadow-popover:
+    0 0.8rem 0.8rem -0.4rem rgb(0 0 0 / 4%),
+    0 2rem 2.4rem -0.4rem rgb(0 0 0 / 8%);
 
   --color-checkbox-checked: #183777;
   --color-checkbox-border: #416ebc;

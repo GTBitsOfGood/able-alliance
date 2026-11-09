@@ -1,180 +1,150 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import BogTable, {
-  type ColumnHeaderCellContent,
-  type TableRow,
-} from "@/components/BogTable/BogTable";
-import AdminChatView from "@/app/admin/AdminChatView";
-import { routeStatusLabels } from "@/utils/route-status";
-import type { AdminRouteResponse } from "@/utils/types/api";
+import AdminChatView from "@/components/admin/AdminChatView";
+import BogButton from "@/components/BogButton/BogButton";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useResponsive } from "@/utils/design-system/hooks/useResponsive";
+import { isRideChatOpen } from "@/utils/route-status";
+import type { AdminChatSummaryResponse } from "@/types/api";
+import ChatListSection, { chatParticipants } from "./ChatListSection";
 import styles from "./styles.module.css";
 
-type ChatUser = {
-  id: string;
-  firstName: string;
-  lastName: string;
-};
-
-type ChatEntry = {
-  id: string;
-  student: ChatUser;
-  driver: ChatUser | null;
-  scheduledPickupTime: string;
-  status: string;
-};
-
-const COLUMNS: ColumnHeaderCellContent[] = [
-  { content: "Student", datatype: "string" },
-  { content: "Driver", datatype: "string" },
-  { content: "Ride time", datatype: "string" },
-  { content: "Status", datatype: "string" },
-  { content: "Chat", datatype: "string" },
-];
-
 export default function AdminChatsPage() {
+  const breakpoint = useResponsive();
   const { data: session, status: sessionStatus } = useSession();
-  const [routes, setRoutes] = useState<ChatEntry[]>([]);
-  const [selectedRoute, setSelectedRoute] = useState<ChatEntry | null>(null);
+  const [chats, setChats] = useState<AdminChatSummaryResponse[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeSearch, setActiveSearch] = useState("");
+  const [closedSearch, setClosedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
   const isAuthorized =
     session?.user?.activeType === "Admin" ||
     session?.user?.activeType === "SuperAdmin";
 
-  useEffect(() => {
-    if (sessionStatus !== "authenticated") return;
-    if (
-      session.user.activeType !== "Admin" &&
-      session.user.activeType !== "SuperAdmin"
-    )
-      return;
-
-    const loadRoutes = async () => {
+  const loadChats = useCallback(
+    async (signal?: AbortSignal) => {
+      if (sessionStatus !== "authenticated" || !isAuthorized) return;
+      const current = ++requestId.current;
       try {
-        const response = await fetch("/api/routes");
-        if (!response.ok) throw new Error("Unable to load chats.");
-        const data = await response.json();
-        setRoutes(
-          Array.isArray(data)
-            ? (data as AdminRouteResponse[])
-                .map((route) => ({
-                  id: route.id,
-                  student: route.student,
-                  driver: route.driver,
-                  scheduledPickupTime: route.scheduledPickupTime,
-                  status: route.status,
-                }))
-                .sort(
-                  (a, b) =>
-                    new Date(b.scheduledPickupTime).getTime() -
-                    new Date(a.scheduledPickupTime).getTime(),
-                )
-            : [],
-        );
+        const response = await fetch("/api/chats", { signal });
+        if (!response.ok)
+          throw new Error("Unable to load chats. Please try again.");
+        const data: AdminChatSummaryResponse[] = await response.json();
+        if (current !== requestId.current || signal?.aborted) return;
+        setChats(data);
+        setError(null);
       } catch (caught) {
-        setError(
-          caught instanceof Error ? caught.message : "Unable to load chats.",
-        );
+        if (current === requestId.current && !signal?.aborted)
+          setError(
+            caught instanceof Error ? caught.message : "Unable to load chats.",
+          );
       } finally {
-        setLoading(false);
+        if (current === requestId.current && !signal?.aborted)
+          setLoading(false);
       }
+    },
+    [sessionStatus, isAuthorized],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // This starts an asynchronous API request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadChats(controller.signal);
+    // Refresh previews for conversations other than the one currently open.
+    const refresh = () => {
+      if (document.visibilityState === "visible")
+        void loadChats(controller.signal);
     };
+    const interval = window.setInterval(refresh, 15_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadChats]);
+  useRouteUpdates(() => {
+    void loadChats();
+  });
 
-    void loadRoutes();
-  }, [session, sessionStatus]);
+  const selected = chats.find((chat) => chat.id === selectedId);
+  const active = chats.filter((chat) => isRideChatOpen(chat.status));
+  const closed = chats.filter((chat) => !isRideChatOpen(chat.status));
 
-  if (sessionStatus === "loading") {
-    return <main className="p-6 text-gray-600">Loading chats...</main>;
-  }
-
-  if (!isAuthorized) {
+  if (sessionStatus !== "loading" && !isAuthorized)
     return (
-      <main className={styles.page}>
-        <h1 className={styles.title}>Chats</h1>
-        <p className={styles.error} role="alert">
-          You do not have access to chats.
-        </p>
+      <main className={styles.accessError}>
+        <h1 className="text-display m-0">Chats</h1>
+        <p role="alert">You do not have access to chats.</p>
       </main>
     );
-  }
-
-  const rows: TableRow[] = routes.map((route) => ({
-    styleProps: { id: `chat-${route.id}` },
-    cells: [
-      { content: `${route.student.firstName} ${route.student.lastName}` },
-      {
-        content: route.driver
-          ? `${route.driver.firstName} ${route.driver.lastName}`
-          : "—",
-      },
-      { content: new Date(route.scheduledPickupTime).toLocaleString() },
-      {
-        content:
-          routeStatusLabels[route.status as keyof typeof routeStatusLabels] ??
-          route.status,
-      },
-      { content: <span className={styles.viewChat}>View chat</span> },
-    ],
-  }));
 
   return (
-    <main className={styles.page}>
-      <h1 className={styles.title}>Chats</h1>
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-      {!error && (
-        <div className={styles.tableWrap}>
-          {loading ? (
-            <p className={styles.empty}>Loading chats...</p>
-          ) : routes.length === 0 ? (
-            <p className={styles.empty}>No chats found.</p>
-          ) : (
-            <BogTable
-              columnHeaders={COLUMNS}
-              rows={rows}
-              onRowClick={(_, rowElement) => {
-                const routeId = rowElement.id.replace(/^chat-/, "");
-                setSelectedRoute(
-                  routes.find((route) => route.id === routeId) ?? null,
-                );
+    <main
+      className={`${styles.page} ${selected ? styles.hasSelection : ""}`}
+      data-breakpoint={breakpoint}
+      aria-label="Ride chats"
+    >
+      <div className={styles.listPanel}>
+        {error && (
+          <div className={styles.error} role="alert">
+            <p>{error}</p>
+            <BogButton
+              variant="secondary"
+              size="small"
+              onClick={() => {
+                void loadChats();
               }}
-            />
-          )}
-        </div>
-      )}
-
-      {selectedRoute && (
-        <div className={styles.drawerLayer}>
-          <button
-            type="button"
-            className={styles.drawerBackdrop}
-            aria-label="Close chat"
-            onClick={() => setSelectedRoute(null)}
+            >
+              Retry
+            </BogButton>
+          </div>
+        )}
+        <ChatListSection
+          title="Active Chats"
+          chats={active}
+          search={activeSearch}
+          onSearch={setActiveSearch}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          loading={loading}
+        />
+        <ChatListSection
+          title="Closed Chats"
+          chats={closed}
+          search={closedSearch}
+          onSearch={setClosedSearch}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          loading={loading}
+        />
+      </div>
+      <div id="chat-conversation" className={styles.conversationPanel}>
+        {selected ? (
+          <AdminChatView
+            key={selected.id}
+            presentation="panel"
+            routeId={selected.id}
+            rideLabel={chatParticipants(selected)}
+            routeStatus={selected.status}
+            studentId={selected.student.id}
+            driverId={selected.driver?.id ?? null}
+            onClose={() => setSelectedId(null)}
+            onActivity={() => {
+              void loadChats();
+            }}
           />
-          <aside className={styles.drawer} aria-label="Chat transcript">
-            <AdminChatView
-              routeId={selectedRoute.id}
-              rideLabel={[
-                `${selectedRoute.student.firstName} ${selectedRoute.student.lastName}`,
-                selectedRoute.driver
-                  ? `Driver: ${selectedRoute.driver.firstName} ${selectedRoute.driver.lastName}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-              routeStatus={selectedRoute.status}
-              studentId={selectedRoute.student.id}
-              driverId={selectedRoute.driver?.id ?? null}
-              onClose={() => setSelectedRoute(null)}
-            />
-          </aside>
-        </div>
-      )}
+        ) : (
+          <div className={styles.emptyConversation}>
+            <p>Select a chat to view.</p>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

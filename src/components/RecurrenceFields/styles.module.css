@@ -1,0 +1,107 @@
+.fields {
+  display: grid;
+  grid-template-columns: 31.4rem 39.8rem 10.7rem;
+  gap: 3.2rem;
+  align-items: end;
+  padding-top: 1.2rem;
+  font-family: var(--font-paragraph);
+  font-size: var(--text-mobile-paragraph-1);
+  line-height: var(--text-mobile-paragraph-1--line-height);
+}
+
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  color: var(--color-grey-text-strong);
+  font: inherit;
+}
+
+.hint {
+  grid-column: 1 / -1;
+  order: 1;
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+  line-height: 2rem;
+}
+
+.fields input,
+.fields select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.4rem;
+  padding: 0 0.8rem;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-sunken);
+  color: var(--color-grey-text-weak);
+  font: inherit;
+}
+
+.fields fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.fields legend {
+  margin-bottom: 0.8rem;
+  color: var(--color-grey-text-strong);
+  font: inherit;
+}
+
+.dayButtons {
+  display: flex;
+  gap: 1.2rem;
+}
+
+.day,
+.selectedDay {
+  width: 7rem;
+  height: 4.4rem;
+  padding: 0;
+  border: 0.1rem solid var(--color-grey-stroke-weak);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-sunken);
+  color: var(--color-grey-text-weak);
+  cursor: pointer;
+  font: inherit;
+}
+
+.selectedDay {
+  border-color: var(--color-brand-text);
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
+}
+
+.compact {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+
+.compact .day,
+.compact .selectedDay {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .fields:not(.compact) {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fields:not(.compact) fieldset {
+    grid-column: span 2;
+  }
+  .dayButtons {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fields {
+    font-size: var(--text-desktop-paragraph-2);
+    line-height: var(--text-desktop-paragraph-2--line-height);
+  }
+}

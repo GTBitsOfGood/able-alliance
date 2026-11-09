@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { encode } from "next-auth/jwt";
-import { getProvisionedUserFromCAS } from "@/server/db/actions/UserAction";
+import { getProvisionedUserFromCAS } from "@/server/actions/UserAction";
 import { authConfig } from "@/auth";
 import {
   casServiceUrl,
   casValidateUrl,
   loginErrorRedirect,
   readCASConfig,
-} from "@/server/cas/config";
-import { parseCASResponse } from "@/server/cas/parseResponse";
+  parseCASResponse,
+} from "@/server/cas";
 
 /**
  * GET /api/auth/cas/callback?ticket=ST-xxx

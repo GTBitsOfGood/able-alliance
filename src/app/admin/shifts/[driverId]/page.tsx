@@ -1,5 +1,7 @@
 "use client";
 
+import { RouteStatus } from "@db/generated/enums";
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -8,7 +10,7 @@ import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
 import type { Vehicle } from "@db/generated/browser";
-import type { ShiftDetailResponse as ShiftDetail } from "@/utils/types/api";
+import type { ShiftDetailResponse as ShiftDetail } from "@/types/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -262,7 +264,7 @@ export default function ShiftDetailPage({
         Back to shifts
       </Link>
 
-      <h1 className={styles.title}>Shift Details</h1>
+      <h1 className="text-display m-0">Shift Details</h1>
 
       {/* Info card */}
       <div className={styles.infoCard}>
@@ -476,7 +478,9 @@ export default function ShiftDetailPage({
                                 : styles.badgeRequested
                             }`}
                           >
-                            {isSelected ? "Scheduled" : "Requested"}
+                            {isSelected
+                              ? RouteStatus.Scheduled
+                              : RouteStatus.Requested}
                           </span>
                         </td>
                         <td>

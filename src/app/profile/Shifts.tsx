@@ -7,8 +7,8 @@ import BogButton from "@/components/BogButton/BogButton";
 import { TimeInput } from "@/components/TimeInput/TimeInput";
 import styles from "./profile.module.css";
 
-import type { Shift } from "@/utils/types/user";
-import type { UserResponse } from "@/utils/types/api";
+import type { Shift } from "@/schemas/user";
+import type { UserResponse } from "@/types/api";
 import type { UserType } from "@db/generated/browser";
 
 const DAY_NAMES = [

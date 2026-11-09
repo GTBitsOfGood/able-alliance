@@ -27,12 +27,14 @@ export async function GET(request: NextRequest) {
     100,
     Math.max(1, Number.parseInt(params.get("pageSize") ?? "50", 10) || 50),
   );
-  const entityType = params.get("entityType");
-  const action = params.get("action");
+  const entityType = params.getAll("entityType");
+  const action = params.getAll("action");
   const query: Parameters<typeof getAuditEntries>[0] = { page, pageSize };
+  const entityId = params.get("entityId");
+  if (entityId) query.entityId = entityId;
 
-  if (entityType) {
-    if (!isAuditEntityType(entityType)) {
+  if (entityType.length) {
+    if (!entityType.every(isAuditEntityType)) {
       return NextResponse.json(
         { error: "Invalid entity type" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },
@@ -40,8 +42,8 @@ export async function GET(request: NextRequest) {
     }
     query.entityType = entityType;
   }
-  if (action) {
-    if (!isAuditAction(action)) {
+  if (action.length) {
+    if (!action.every(isAuditAction)) {
       return NextResponse.json(
         { error: "Invalid audit action" },
         { status: HTTP_STATUS_CODE.BAD_REQUEST },

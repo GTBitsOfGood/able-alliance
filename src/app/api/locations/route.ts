@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  createLocation,
-  getLocations,
-} from "@/server/db/actions/LocationAction";
-import { locationSchema } from "@/utils/types";
+import { createLocation, getLocations } from "@/server/actions/LocationAction";
+import { locationSchema } from "@/schemas/location";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
 import { emitLocationsUpdate } from "@/server/notifications/emitLocationsUpdate";
 import { getUserFromRequest, isAdmin } from "@/utils/authUser";

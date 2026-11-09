@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  casLoginUrl,
-  loginErrorRedirect,
-  readCASConfig,
-} from "@/server/cas/config";
+import { casLoginUrl, loginErrorRedirect, readCASConfig } from "@/server/cas";
 
 /**
  * GET /api/auth/cas/login

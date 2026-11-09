@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { DropdownMenu } from "radix-ui";
+import { CheckIcon } from "@radix-ui/react-icons";
 import { userTypeHome, userTypeLabel } from "@/utils/userTypes";
 import type { UserType } from "@db/generated/enums";
 import styles from "./RoleSwitcher.module.css";
@@ -45,20 +47,28 @@ export default function RoleSwitcher() {
           className={styles.trigger}
           disabled={switching || sessionLoading}
           aria-label={`Switch role, currently ${userTypeLabel(activeType)}`}
+          aria-busy={switching}
         >
-          <span>{switching ? "Switching…" : userTypeLabel(activeType)}</span>
-          <span aria-hidden="true">⌄</span>
+          <Image
+            className={styles.buttonIcon}
+            src="/role-switcher/button.svg"
+            alt=""
+            width={76}
+            height={76}
+          />
+          <span className={styles.tooltip} aria-hidden="true">
+            {switching ? "Switching…" : "Switch role"}
+          </span>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             className={styles.menu}
+            side="top"
             sideOffset={8}
-            align="end"
+            align="center"
             collisionPadding={12}
+            aria-label="Switch role"
           >
-            <DropdownMenu.Label className={styles.label}>
-              Switch role
-            </DropdownMenu.Label>
             <DropdownMenu.RadioGroup
               value={activeType}
               onValueChange={switchRole}
@@ -68,14 +78,22 @@ export default function RoleSwitcher() {
                   className={styles.item}
                   value={role}
                   key={role}
+                  disabled={switching || sessionLoading}
                 >
+                  <span className={styles.indicator}>
+                    <DropdownMenu.ItemIndicator asChild>
+                      <CheckIcon aria-hidden="true" width={24} height={24} />
+                    </DropdownMenu.ItemIndicator>
+                  </span>
                   <span>{userTypeLabel(role)}</span>
-                  <DropdownMenu.ItemIndicator aria-hidden="true">
-                    ✓
-                  </DropdownMenu.ItemIndicator>
                 </DropdownMenu.RadioItem>
               ))}
             </DropdownMenu.RadioGroup>
+            <DropdownMenu.Arrow
+              className={styles.menuArrow}
+              width={27}
+              height={13}
+            />
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

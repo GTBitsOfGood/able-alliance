@@ -7,16 +7,13 @@ import {
   schedulingLockKeys,
   scheduleRouteWhileLocked,
   withSchedulingLock,
-} from "@/server/db/actions/RouteAction";
-import {
-  type Assignment,
-  applyAssignments,
-} from "@/server/scheduling/applyAssignments";
+} from "@/server/actions/RouteAction";
+import { type Assignment, applyAssignments } from "@/server/applyAssignments";
 import {
   planDay,
   formatMinutes,
   AutoScheduleConflictError,
-} from "@/server/scheduling/autoSchedule";
+} from "@/server/autoSchedule";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

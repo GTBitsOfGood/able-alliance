@@ -23,14 +23,6 @@
   color: var(--color-grey-text-strong);
 }
 
-.title {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-desktop-display);
-  line-height: var(--text-desktop-display--line-height);
-  color: var(--color-grey-text-strong);
-}
-
 /* ── Info card ── */
 .infoCard {
   border: 1px solid var(--color-grey-stroke-weak);

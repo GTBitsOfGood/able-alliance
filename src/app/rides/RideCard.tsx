@@ -1,16 +1,35 @@
 "use client";
 
-import { routeStatusLabels } from "@/utils/route-status";
+import DriverRideActions from "./DriverRideActions";
+
+import { RouteStatus } from "@db/generated/enums";
+
+import {
+  canStudentEditRide,
+  studentEditDisabledReason,
+  studentDriverChatDisabledReason,
+  isRouteDelayed,
+  routeDisplayLabel,
+  type DriverRideAction,
+  isRideChatOpen,
+} from "@/utils/route-status";
 import React from "react";
+import { withDelay } from "@/utils/dateEst";
 import { useWindowSize } from "react-use";
 import Link from "next/link";
-import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
-import type { RouteResponse as RideCardRoute } from "@/utils/types/api";
+import type { RouteResponse as RideCardRoute } from "@/types/api";
 
-const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
+const CANCELLABLE_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+  RouteStatus.EnRoute,
+  RouteStatus.Arrived,
+]);
 
 type RideCardProps = {
   route: RideCardRoute;
@@ -19,12 +38,15 @@ type RideCardProps = {
   href?: string;
   onCancel?: (routeId: string) => void;
   cancelling?: boolean;
-  onStart?: () => void;
-  startBusy?: boolean;
+  onDelay?: (routeId: string) => void;
+  delaying?: boolean;
+  onDriverAction?: (action: DriverRideAction) => void;
+  noShowBusy?: boolean;
+  driverActionBusy?: boolean;
 };
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
+function formatTime(iso: string, delayMinutes = 0): string {
+  const d = withDelay(new Date(iso), delayMinutes);
   return d.toLocaleTimeString("en-US", {
     timeZone: "America/New_York",
     hour: "numeric",
@@ -33,29 +55,64 @@ function formatTime(iso: string): string {
   });
 }
 
-function isToday(iso: string): boolean {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-US", { timeZone: "America/New_York" });
-  return fmt(new Date(iso)) === fmt(new Date());
+function CardTime({
+  iso,
+  delayMinutes,
+}: {
+  iso: string | null;
+  delayMinutes: number;
+}) {
+  return (
+    <span className={styles.rideCardTimeStack}>
+      <span
+        className={`${styles.rideCardStopTime} ${iso && delayMinutes > 0 ? styles.rideCardTimeDelayed : ""}`}
+      >
+        {iso ? formatTime(iso, delayMinutes) : "N/A"}
+      </span>
+      {iso && delayMinutes > 0 && (
+        <span className={styles.rideCardTimeOriginal}>
+          <span className="sr-only">Originally </span>
+          {formatTime(iso)}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function getStudentStatusChipStyle(
   status: RideCardRoute["status"],
+  delayed = false,
 ): React.CSSProperties {
+  if (delayed) {
+    return {
+      background: "var(--color-status-yellow)",
+      color: "var(--color-grey-text-strong)",
+    };
+  }
   switch (status) {
-    case "Scheduled":
-      return { background: "#ffd17f", color: "#22070b" };
-    case "Requested":
+    case RouteStatus.Scheduled:
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
+      };
+    case RouteStatus.ActionRequiredByStudent:
+    case RouteStatus.ActionRequiredByAdmin:
+      return { background: "var(--color-status-pink)", color: "#22070b" };
+    case RouteStatus.Requested:
       return { background: "#432c30", color: "#ffffff" };
-    case "EnRoute":
-    case "Pickedup":
-      return { background: "#ffd17f", color: "#22070b" };
-    case "Completed":
+    case RouteStatus.EnRoute:
+    case RouteStatus.Arrived:
+    case RouteStatus.Pickedup:
+      return {
+        background: "var(--color-status-yellow)",
+        color: "var(--color-grey-text-strong)",
+      };
+    case RouteStatus.Completed:
       return { background: "#70cd87", color: "#22070b" };
-    case "CancelledByStudent":
-    case "CancelledByAdmin":
-    case "Missing":
-      return { background: "#f4a0a0", color: "#22070b" };
+    case RouteStatus.CancelledByStudent:
+    case RouteStatus.CancelledByAdmin:
+    case RouteStatus.Missing:
+      return { background: "var(--color-status-pink)", color: "#22070b" };
     default:
       return { background: "#e0e0e0", color: "#22070b" };
   }
@@ -63,20 +120,25 @@ export function getStudentStatusChipStyle(
 
 function getDriverStatusChipColor(
   status: RideCardRoute["status"],
+  delayed = false,
 ): "green" | "red" | "amber" | "blue" | "gray" {
+  if (delayed) {
+    return "amber";
+  }
   switch (status) {
-    case "Completed":
+    case RouteStatus.Completed:
       return "green";
-    case "CancelledByStudent":
-    case "CancelledByAdmin":
-    case "Missing":
+    case RouteStatus.CancelledByStudent:
+    case RouteStatus.CancelledByAdmin:
+    case RouteStatus.Missing:
       return "red";
-    case "EnRoute":
-    case "Pickedup":
+    case RouteStatus.EnRoute:
+    case RouteStatus.Arrived:
+    case RouteStatus.Pickedup:
       return "green";
-    case "Requested":
+    case RouteStatus.Requested:
       return "amber";
-    case "Scheduled":
+    case RouteStatus.Scheduled:
       return "gray";
     default:
       return "gray";
@@ -89,34 +151,24 @@ export function RideCard({
   href,
   onCancel,
   cancelling = false,
-  onStart,
-  startBusy = false,
+  onDelay,
+  delaying = false,
+  onDriverAction,
+  driverActionBusy = false,
+  noShowBusy = false,
 }: RideCardProps) {
   const { width: windowWidth } = useWindowSize();
   const isMobileLayout = windowWidth <= 768;
 
+  const delayMinutes = route.delayMinutes ?? 0;
   const pickupName = route.pickup.name;
   const dropoffName = route.dropoff.name;
 
   if (isDriverCard) {
     const studentName =
-      `${route.student.firstName} ${route.student.lastName}`.trim();
+      `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
 
-    const dropoffTimeDisplay = route.estimatedDropoffTime
-      ? formatTime(route.estimatedDropoffTime)
-      : "N/A";
-
-    const canStart = route.status === "Scheduled";
-    const CHAT_DISABLED_STATUSES = new Set([
-      "Pickedup",
-      "Completed",
-      "Missing",
-      "CancelledByStudent",
-      "CancelledByAdmin",
-    ]);
-    const canChat =
-      isToday(route.scheduledPickupTime) &&
-      !CHAT_DISABLED_STATUSES.has(route.status);
+    const canChat = isRideChatOpen(route.status);
 
     return (
       <div
@@ -131,9 +183,10 @@ export function RideCard({
             <div className={styles.rideCardPickupDropoffNew}>
               <div className={styles.rideCardStopBlockNew}>
                 <span className={styles.rideCardStopLabelNew}>Pickup</span>
-                <span className={styles.rideCardStopTime}>
-                  {formatTime(route.scheduledPickupTime)}
-                </span>
+                <CardTime
+                  iso={route.scheduledPickupTime}
+                  delayMinutes={delayMinutes}
+                />
                 <span className={styles.rideCardStopLocationNew}>
                   {pickupName}
                 </span>
@@ -143,9 +196,10 @@ export function RideCard({
                 className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
               >
                 <span className={styles.rideCardStopLabelNew}>Dropoff</span>
-                <span className={styles.rideCardStopTime}>
-                  {dropoffTimeDisplay}
-                </span>
+                <CardTime
+                  iso={route.estimatedDropoffTime}
+                  delayMinutes={delayMinutes}
+                />
                 <span className={styles.rideCardStopLocationNew}>
                   {dropoffName}
                 </span>
@@ -155,9 +209,9 @@ export function RideCard({
           <div className={styles.rideCardBottomRow}>
             <div className={styles.rideCardDriverChipsRow}>
               <span
-                className={`${styles.rideCardDriverChip} ${styles[`rideCardDriverChip--${getDriverStatusChipColor(route.status)}`]}`}
+                className={`${styles.rideCardDriverChip} ${styles[`rideCardDriverChip--${getDriverStatusChipColor(route.status, isRouteDelayed(route))}`]}`}
               >
-                {routeStatusLabels[route.status]}
+                {routeDisplayLabel(route)}
               </span>
               {route.vehicle && route.vehicle.vehicleId && (
                 <span
@@ -179,65 +233,45 @@ export function RideCard({
         <div className={styles.rideCardDriverDivider} aria-hidden />
 
         <div className={styles.rideCardDriverButtons}>
-          <BogButton
-            variant="secondary"
-            size="medium"
-            onClick={onStart}
-            disabled={!canStart || startBusy}
-            className={styles.rideCardDriverButton}
-          >
-            {startBusy ? "Starting…" : "Start ride"}
-          </BogButton>
           {canChat && href ? (
-            <Link href={`${href}?chat=1`}>
-              <BogButton
-                variant="secondary"
-                size="medium"
-                className={styles.rideCardDriverButton}
-                style={{ width: "100%" }}
-              >
-                Chat with student
-              </BogButton>
+            <Link href={`${href}?chat=1`} className={styles.rideCardDriverChat}>
+              <BogIcon name="chats" size={18} />
+              Chat with student
             </Link>
           ) : (
-            <BogButton
-              variant="secondary"
-              size="medium"
-              disabled={!canChat}
-              className={styles.rideCardDriverButton}
+            <button
+              type="button"
+              disabled
+              className={styles.rideCardDriverChat}
             >
+              <BogIcon name="chats" size={18} />
               Chat with student
-            </BogButton>
+            </button>
           )}
-          <BogButton
-            variant="secondary"
-            size="medium"
-            style={{
-              color: "var(--color-status-red-text)",
-              border: "1px solid var(--color-status-red-text)",
-              width: "100%",
-            }}
-            className={styles.rideCardDelayButton}
-          >
-            Delay ride
-          </BogButton>
+          <DriverRideActions
+            status={route.status}
+            onAction={onDriverAction}
+            busy={driverActionBusy}
+            missingBusy={noShowBusy}
+          />
         </div>
       </div>
     );
   }
 
   // Student card — Figma design
-  const dropoffTimeDisplay = route.estimatedDropoffTime
-    ? formatTime(route.estimatedDropoffTime)
-    : "N/A";
 
-  const chatEligible =
-    isToday(route.scheduledPickupTime) &&
-    (route.status === "Scheduled" ||
-      route.status === "EnRoute" ||
-      route.status === "Pickedup");
+  const chatDisabledReason =
+    studentDriverChatDisabledReason(route) ??
+    (!isRideChatOpen(route.status)
+      ? "Chat is unavailable for closed rides."
+      : undefined);
+  const chatEligible = !chatDisabledReason;
 
-  const chipStyle = getStudentStatusChipStyle(route.status);
+  const chipStyle = getStudentStatusChipStyle(
+    route.status,
+    isRouteDelayed(route),
+  );
   const canCancel = CANCELLABLE_STATUSES.has(route.status);
 
   return (
@@ -254,13 +288,15 @@ export function RideCard({
               <span className={styles.rideCardStopLabelNew}>Dropoff</span>
             </div>
             <div className={styles.rideCardStopTimesRow}>
-              <span className={styles.rideCardStopTime}>
-                {formatTime(route.scheduledPickupTime)}
-              </span>
+              <CardTime
+                iso={route.scheduledPickupTime}
+                delayMinutes={delayMinutes}
+              />
               <div className={styles.rideCardHorizontalDivider} aria-hidden />
-              <span className={styles.rideCardStopTime}>
-                {dropoffTimeDisplay}
-              </span>
+              <CardTime
+                iso={route.estimatedDropoffTime}
+                delayMinutes={delayMinutes}
+              />
             </div>
             <div className={styles.rideCardStopLocationsRow}>
               <span className={styles.rideCardStopLocationNew}>
@@ -275,9 +311,10 @@ export function RideCard({
           <div className={styles.rideCardPickupDropoffNew}>
             <div className={styles.rideCardStopBlockNew}>
               <span className={styles.rideCardStopLabelNew}>Pickup</span>
-              <span className={styles.rideCardStopTime}>
-                {formatTime(route.scheduledPickupTime)}
-              </span>
+              <CardTime
+                iso={route.scheduledPickupTime}
+                delayMinutes={delayMinutes}
+              />
               <span className={styles.rideCardStopLocationNew}>
                 {pickupName}
               </span>
@@ -287,9 +324,10 @@ export function RideCard({
               className={`${styles.rideCardStopBlockNew} ${styles.rideCardStopBlockRight}`}
             >
               <span className={styles.rideCardStopLabelNew}>Dropoff</span>
-              <span className={styles.rideCardStopTime}>
-                {dropoffTimeDisplay}
-              </span>
+              <CardTime
+                iso={route.estimatedDropoffTime}
+                delayMinutes={delayMinutes}
+              />
               <span className={styles.rideCardStopLocationNew}>
                 {dropoffName}
               </span>
@@ -299,16 +337,11 @@ export function RideCard({
 
         <div className={styles.rideCardStatusRow}>
           <span className={styles.rideCardStatusChip} style={chipStyle}>
-            {routeStatusLabels[route.status]}
+            {routeDisplayLabel(route)}
           </span>
           {href ? (
             <Link href={href} className={styles.rideDetailsLink}>
-              <span className={styles.rideDetailsLinkDesktopText}>
-                View details
-              </span>
-              <span className={styles.rideDetailsLinkMobileText}>
-                View details
-              </span>
+              <span className={styles.rideDetailsLinkText}>View details</span>
               <BogIcon
                 name="chevron-right"
                 size={20}
@@ -327,31 +360,61 @@ export function RideCard({
         {chatEligible && href ? (
           <Link
             href={`${href}?chat=1`}
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnChat}`}
             style={{ textDecoration: "none", textAlign: "center" }}
           >
+            <BogIcon name="chats" size={18} />
             Chat with driver
           </Link>
         ) : (
           <button
             type="button"
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${styles.rideCardActionBtnDisabled}`}
+            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnChat}`}
             disabled
+            title={chatDisabledReason}
           >
+            <BogIcon name="chats" size={18} />
             Chat with driver
           </button>
         )}
         <div className={styles.rideCardStudentSecondaryActions}>
-          <button
-            type="button"
-            className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            Edit ride
-          </button>
+          {canStudentEditRide(route) ? (
+            <Link
+              href={`/rides/${route.id}/edit`}
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            >
+              Edit ride
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand} ${styles.rideCardActionBtnDisabled}`}
+              title={studentEditDisabledReason(route)}
+            >
+              Edit ride
+            </button>
+          )}
+          {route.status === RouteStatus.ActionRequiredByStudent && (
+            <Link
+              href={`/rides/${route.id}/review`}
+              className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnBrand}`}
+            >
+              Review changes
+            </Link>
+          )}
+          {(route.status === RouteStatus.Scheduled ||
+            route.status === RouteStatus.EnRoute) &&
+            onDelay && (
+              <button
+                type="button"
+                className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnCancel}`}
+                onClick={() => onDelay(route.id)}
+                disabled={delaying || cancelling}
+              >
+                {delaying ? "Delaying…" : "Delay ride"}
+              </button>
+            )}
           {canCancel && onCancel && (
             <button
               type="button"
@@ -361,7 +424,7 @@ export function RideCard({
                 e.stopPropagation();
                 onCancel(route.id);
               }}
-              disabled={cancelling}
+              disabled={cancelling || delaying}
             >
               {cancelling ? "Cancelling…" : "Cancel ride"}
             </button>

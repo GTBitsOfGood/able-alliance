@@ -4,19 +4,20 @@
  * attachment on the failed test says which request or error.
  *
  *   student  /rides/new          fills the form            Requested
- *   admin    /admin?tab=Rides    assigns driver + vehicle  Scheduled
+ *   admin    /admin/rides    assigns driver + vehicle  Scheduled
  *   driver   /rides/:id          Start ride                En-route
- *   driver   /rides/:id          Student picked up         Pickedup
+ *   driver   /rides/:id          Student picked up         Picked up
  *   driver   /rides/:id          Student dropped off       Completed
  *   student  /rides/:id          sees Completed
  */
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
-import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
+import { LOCATIONS } from "./seed";
 import {
   clearLocations,
   nextServiceDate,
   selectLocation,
+  scheduleRideInAdmin,
   showCalendarMonth,
 } from "./routeTestHelpers";
 
@@ -71,34 +72,8 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
 
   // ── Admin schedules it ─────────────────────────────────────────────────
   const admin = await pageAs("admin");
-  await admin.goto("/admin?tab=Rides");
-  const row = admin
-    .getByRole("row")
-    .filter({ hasText: PERSONAS.student.lastName })
-    .filter({ hasText: LOCATIONS.exhibitionHall.name })
-    .filter({ hasText: LOCATIONS.techSquare.name });
-  await expect(row).toHaveCount(1);
-
-  await row.getByText("Select driver").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
-    })
-    .click();
-  await row.getByText("Select vehicle").click();
-  await admin
-    .getByRole("menuitem", {
-      name: `${VEHICLE.name} (${VEHICLE.licensePlate})`,
-    })
-    .click();
-
-  const scheduled = admin.waitForResponse((r) =>
-    r.url().endsWith("/api/routes/schedule"),
-  );
-  await row.getByRole("button", { name: "Assign" }).click();
-  const scheduleRes = await scheduled;
-  expect(scheduleRes.status(), await scheduleRes.text()).toBe(200);
-  await expect(row).toHaveCount(0);
+  await admin.goto("/admin/rides");
+  await scheduleRideInAdmin(admin, routeId);
 
   // ── Driver runs the ride ───────────────────────────────────────────────
   const driver = await pageAs("driver");
@@ -112,6 +87,30 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
   await expect(chip).toHaveText("En-route");
   await expect(
     driver.getByRole("button", { name: "Student picked up" }),
+  ).toBeHidden();
+  await expect(
+    driver.getByRole("button", { name: "Student no-show" }),
+  ).toBeHidden();
+  await driver.getByRole("button", { name: "Arrived at pickup" }).click();
+  const arrivalDialog = driver.getByRole("dialog");
+  await expect(
+    arrivalDialog.getByRole("heading", { name: "Arrived at Pickup" }),
+  ).toBeVisible();
+  await arrivalDialog
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(chip).toHaveText("En-route");
+  await driver.getByRole("button", { name: "Arrived at pickup" }).click();
+  await driver
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm Arrival" })
+    .click();
+  await expect(chip).toHaveText("Arrived");
+  await expect(
+    driver.getByRole("button", { name: "Arrived at pickup" }),
+  ).toBeHidden();
+  await expect(
+    driver.getByRole("button", { name: "Student picked up" }),
   ).toBeVisible();
   await expect(
     driver.getByRole("button", { name: "Student no-show" }),
@@ -122,11 +121,16 @@ test("route B: driver start → pickup → dropoff (UI)", async ({
     pickupDialog.getByRole("heading", { name: "Student Picked Up" }),
   ).toBeVisible();
   await pickupDialog.getByRole("button", { name: "Confirm Pickup" }).click();
-  await expect(chip).toHaveText("Pickedup");
+  await expect(chip).toHaveText("Picked up");
   await expect(
     driver.getByRole("button", { name: "Student dropped off" }),
   ).toBeVisible();
   await driver.getByRole("button", { name: "Student dropped off" }).click();
+  const dropoffDialog = driver.getByRole("dialog");
+  await expect(
+    dropoffDialog.getByRole("heading", { name: "Student Dropped Off" }),
+  ).toBeVisible();
+  await dropoffDialog.getByRole("button", { name: "Confirm Dropoff" }).click();
   await expect(chip).toHaveText("Completed");
   await expect(
     driver.getByRole("button", { name: "Student dropped off" }),

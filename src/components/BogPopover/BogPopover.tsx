@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Popover } from "radix-ui";
-import BogIcon from "../BogIcon/BogIcon";
+import BogIcon from "@/components/BogIcon/BogIcon";
 import styles from "./styles.module.css";
 
 interface OpenState {

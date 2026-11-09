@@ -1,0 +1,45 @@
+.changes {
+  padding: 0.8rem 0;
+}
+
+.summaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes,
+.changes p,
+.summaryList,
+.summaryItem,
+.summaryItem span {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.summaryItem {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.summaryField,
+.summaryAfter {
+  color: var(--color-grey-text-strong);
+  font-weight: 600;
+}
+
+.arrow {
+  color: var(--color-grey-text-weak);
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:focus-visible {
+  outline: 2px solid var(--color-brand-stroke-strong);
+  outline-offset: -2px;
+}

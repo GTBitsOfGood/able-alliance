@@ -1,0 +1,92 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+    env_file: .env
+    develop:
+      watch:
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: package-lock.json
+        - action: rebuild
+          path: Dockerfile.dev
+    volumes:
+      - ./src:/app/src
+      - ./emails:/app/emails
+      - ./emails-preview:/app/emails-preview
+      - ./db:/app/db
+      - ./scripts:/app/scripts
+      - ./public:/app/public
+      - ./prisma.config.ts:/app/prisma.config.ts
+      - ./next.config.ts:/app/next.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./postcss.config.mjs:/app/postcss.config.mjs
+      - next_cache:/app/.next
+    ports:
+      - "3000:3000"
+    networks:
+      - able-alliance-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cas:
+        condition: service_started
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: able
+      POSTGRES_PASSWORD: able
+      POSTGRES_DB: able_alliance
+    ports:
+      - "5432:5432"
+    networks:
+      - able-alliance-net
+    volumes:
+      # PostgreSQL 18 stores versioned PGDATA beneath this directory.
+      - postgresql-data:/var/lib/postgresql
+    logging:
+      driver: "none"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U able -d able_alliance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  cas:
+    build:
+      context: ./mock-cas-server
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      PORT: "8443"
+    ports:
+      - "8443:8443"
+    networks:
+      - able-alliance-net
+
+  websocket:
+    build:
+      context: .
+      dockerfile: websocket-server/Dockerfile
+    ports:
+      - "4000:4000"
+    env_file: .env
+    environment:
+      PORT: "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - able-alliance-net
+
+networks:
+  able-alliance-net:
+    driver: bridge
+
+volumes:
+  postgresql-data:
+  next_cache:

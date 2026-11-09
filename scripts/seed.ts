@@ -11,13 +11,15 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   PrismaClient,
+  RouteStatus,
+  UserType,
   type Location,
   type Vehicle,
   type Prisma,
   type Route,
 } from "@db/generated/client";
-import type { LocationInput } from "@/utils/types";
-import type { VehicleInput } from "@/utils/types/vehicle";
+import type { LocationInput } from "@/schemas/location";
+import type { VehicleInput } from "@/schemas/vehicle";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 const DATABASE_URL =
@@ -490,13 +492,14 @@ async function seed() {
               pickupWindowStart: windowStart,
               pickupWindowEnd: windowEnd,
               estimatedDropoffTime: dropoff,
+              delayMinutes: 0,
               status: requested
-                ? "Requested"
+                ? RouteStatus.Requested
                 : dropoff <= now
-                  ? "Completed"
+                  ? RouteStatus.Completed
                   : pickup <= now
-                    ? "Pickedup"
-                    : "Scheduled",
+                    ? RouteStatus.Pickedup
+                    : RouteStatus.Scheduled,
             };
             if (planned.some((other) => conflicts(candidate, other))) continue;
             planned.push(candidate);
@@ -559,28 +562,39 @@ async function seed() {
         "America/New_York",
         "yyyy-MM-dd",
       ) === today &&
-      ["Scheduled", "EnRoute", "Pickedup"].includes(route.status),
+      new Set<RouteStatus>([
+        RouteStatus.Scheduled,
+        RouteStatus.EnRoute,
+        RouteStatus.Pickedup,
+      ]).has(route.status),
   );
   const chatRoute =
     todayActiveRoute ??
     chatRoutes.find((route) =>
-      ["Scheduled", "EnRoute", "Pickedup"].includes(route.status),
+      new Set<RouteStatus>([
+        RouteStatus.Scheduled,
+        RouteStatus.EnRoute,
+        RouteStatus.Pickedup,
+      ]).has(route.status),
     );
 
   if (chatRoute) {
     const examples = [
       {
         senderId: chatRoute.studentId,
+        senderType: UserType.Student,
         text: "Hi, I’m ready for my ride. I’ll be at the pickup location.",
       },
       {
         senderId: adminUser.id,
+        senderType: UserType.Admin,
         text: "Thanks for letting us know. Your ride is scheduled.",
       },
       ...(chatRoute.driverId
         ? [
             {
               senderId: chatRoute.driverId,
+              senderType: UserType.Driver,
               text: "I’m on my way to the pickup location.",
             },
           ]
@@ -592,6 +606,7 @@ async function seed() {
         where: {
           routeId: chatRoute.id,
           senderId: example.senderId,
+          senderType: example.senderType,
           text: example.text,
         },
       });
@@ -601,6 +616,7 @@ async function seed() {
         data: {
           routeId: chatRoute.id,
           senderId: example.senderId,
+          senderType: example.senderType,
           text: example.text,
           time: new Date(Date.now() - (examples.length - index) * 60_000),
         },

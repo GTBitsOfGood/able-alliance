@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { routeStatusLabels } from "@/utils/route-status";
-import styles from "./profileRides.module.css";
-import { estWeekRange, formatEstTime, formatEstDate } from "@/utils/dateEst";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import { RouteStatus } from "@db/generated/enums";
 
-import type { RouteResponse as Route } from "@/utils/types/api";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { isRouteDelayed, routeDisplayLabel } from "@/utils/route-status";
+import styles from "./profileRides.module.css";
+import {
+  estWeekRange,
+  formatEstTime,
+  formatEstDate,
+  withDelay,
+} from "@/utils/dateEst";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+
+import type { RouteResponse as Route } from "@/types/api";
 
 type Filter = "all" | "this-week" | "next-week";
 
@@ -26,8 +33,8 @@ function fmtWeekLabel(start: Date, end: Date): string {
   return `Week of ${s} - ${e}`;
 }
 
-function fmtTime(iso: string): string {
-  return formatEstTime(new Date(iso));
+function fmtTime(iso: string, delayMinutes = 0): string {
+  return formatEstTime(withDelay(new Date(iso), delayMinutes));
 }
 
 function fmtDate(iso: string): string {
@@ -38,36 +45,46 @@ function fmtDate(iso: string): string {
   });
 }
 
-function statusChipStyle(status: Route["status"]): React.CSSProperties {
+function statusChipStyle(
+  status: Route["status"],
+  delayed = false,
+): React.CSSProperties {
+  if (delayed) {
+    return {
+      background: "var(--color-status-yellow)",
+      color: "var(--color-grey-text-strong)",
+    };
+  }
   switch (status) {
-    case "Scheduled":
+    case RouteStatus.Scheduled:
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-grey-text-strong)",
       };
-    case "EnRoute":
-    case "Pickedup":
+    case RouteStatus.EnRoute:
+    case RouteStatus.Arrived:
+    case RouteStatus.Pickedup:
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-grey-text-strong)",
       };
-    case "Completed":
+    case RouteStatus.Completed:
       return {
         background: "var(--color-status-green)",
         color: "var(--color-status-green-text)",
       };
-    case "Requested":
+    case RouteStatus.Requested:
       return {
         background: "var(--color-admin-bg)",
         color: "var(--color-grey-text-strong)",
       };
-    case "CancelledByStudent":
-    case "CancelledByAdmin":
+    case RouteStatus.CancelledByStudent:
+    case RouteStatus.CancelledByAdmin:
       return {
         background: "var(--color-status-yellow)",
-        color: "var(--color-status-yellow-text)",
+        color: "var(--color-grey-text-strong)",
       };
-    case "Missing":
+    case RouteStatus.Missing:
       return {
         background: "var(--color-status-pink)",
         color: "var(--color-grey-text-strong)",
@@ -249,16 +266,16 @@ export function ProfileRidesTab({
                       ? route.driver
                         ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
                         : "—"
-                      : `${route.student.firstName} ${route.student.lastName}`.trim();
+                      : `${route.student.preferredName || route.student.firstName} ${route.student.lastName}`.trim();
                   const col2 =
                     userType === "Vehicle"
                       ? route.driver
                         ? `${route.driver.firstName} ${route.driver.lastName}`.trim()
                         : "—"
                       : (route.vehicle?.vehicleId ?? "—");
-                  const pickup = `${fmtTime(route.scheduledPickupTime)} @ ${route.pickup.name}`;
+                  const pickup = `${fmtTime(route.scheduledPickupTime, route.delayMinutes)} @ ${route.pickup.name}`;
                   const dropoff = route.estimatedDropoffTime
-                    ? `${fmtTime(route.estimatedDropoffTime)} @ ${route.dropoff.name}`
+                    ? `${fmtTime(route.estimatedDropoffTime, route.delayMinutes)} @ ${route.dropoff.name}`
                     : `— @ ${route.dropoff.name}`;
                   return (
                     <tr key={route.id} className={styles.row}>
@@ -272,9 +289,12 @@ export function ProfileRidesTab({
                       <td className={styles.td}>
                         <span
                           className={styles.statusChip}
-                          style={statusChipStyle(route.status)}
+                          style={statusChipStyle(
+                            route.status,
+                            isRouteDelayed(route),
+                          )}
                         >
-                          {routeStatusLabels[route.status]}
+                          {routeDisplayLabel(route)}
                         </span>
                       </td>
                     </tr>

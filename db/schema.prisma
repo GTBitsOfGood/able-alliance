@@ -20,9 +20,12 @@ enum VehicleAccessibility {
 }
 
 enum RouteStatus {
+  ActionRequiredByAdmin
+  ActionRequiredByStudent
   Requested
   Scheduled
   EnRoute
+  Arrived
   Pickedup
   Completed
   Missing
@@ -42,23 +45,24 @@ enum AuditAction {
 }
 
 model User {
-  id            String          @id @default(uuid()) @db.Uuid
-  firstName     String
-  lastName      String
-  preferredName String?
-  username      String          @unique
-  email         String          @unique
-  types         UserType[]
-  status        Status          @default(active)
-  settings      UserSettings?
-  studentInfo   StudentProfile?
-  shifts        Shift[]
-  studentRoutes Route[]         @relation("StudentRoutes")
-  driverRoutes  Route[]         @relation("DriverRoutes")
-  rideSeries    RideSeries[]
-  sentMessages  Message[]
-  auditEntries  AuditEntry[]    @relation("AuditActor")
-  subjectAudits AuditEntry[]    @relation("AuditSubjectUser")
+  id                  String               @id @default(uuid()) @db.Uuid
+  firstName           String
+  lastName            String
+  preferredName       String?
+  username            String               @unique
+  email               String               @unique
+  types               UserType[]
+  status              Status               @default(active)
+  settings            UserSettings?
+  studentInfo         StudentProfile?
+  shifts              Shift[]
+  studentRoutes       Route[]              @relation("StudentRoutes")
+  driverRoutes        Route[]              @relation("DriverRoutes")
+  rideSeries          RideSeries[]
+  sentMessages        Message[]
+  auditEntries        AuditEntry[]         @relation("AuditActor")
+  subjectAudits       AuditEntry[]         @relation("AuditSubjectUser")
+  proposedRideChanges ProposedRideChange[]
 
   @@index([types], type: Gin)
   @@index([status])
@@ -85,14 +89,13 @@ model AuditEntry {
 model UserSettings {
   userId               String  @id @db.Uuid
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dailySummary         Boolean @default(false)
-  driverAssigned       Boolean @default(false)
-  driverEnRoute        Boolean @default(false)
-  rideCancelled        Boolean @default(false)
-  rideAssigned         Boolean @default(false)
-  rideCompleted        Boolean @default(false)
-  rideDelayed          Boolean @default(false)
-  newMessageFromDriver Boolean @default(false)
+  driverAssigned       Boolean @default(true)
+  driverEnRoute        Boolean @default(true)
+  rideCancelled        Boolean @default(true)
+  rideAssigned         Boolean @default(true)
+  rideCompleted        Boolean @default(true)
+  rideDelayed          Boolean @default(true)
+  newMessageFromDriver Boolean @default(true)
 }
 
 model StudentProfile {
@@ -114,15 +117,17 @@ model Shift {
 }
 
 model Location {
-  id             String       @id @default(uuid()) @db.Uuid
-  name           String       @unique
-  latitude       Float
-  longitude      Float
-  status         Status       @default(active)
-  pickups        Route[]      @relation("PickupLocation")
-  dropoffs       Route[]      @relation("DropoffLocation")
-  seriesPickups  RideSeries[] @relation("SeriesPickupLocation")
-  seriesDropoffs RideSeries[] @relation("SeriesDropoffLocation")
+  id                     String               @id @default(uuid()) @db.Uuid
+  name                   String               @unique
+  latitude               Float
+  longitude              Float
+  status                 Status               @default(active)
+  pickups                Route[]              @relation("PickupLocation")
+  dropoffs               Route[]              @relation("DropoffLocation")
+  seriesPickups          RideSeries[]         @relation("SeriesPickupLocation")
+  seriesDropoffs         RideSeries[]         @relation("SeriesDropoffLocation")
+  proposedChangePickups  ProposedRideChange[] @relation("ProposedChangePickup")
+  proposedChangeDropoffs ProposedRideChange[] @relation("ProposedChangeDropoff")
 
   @@index([status])
 }
@@ -148,25 +153,27 @@ model Accommodation {
 }
 
 model Route {
-  id                   String      @id @default(uuid()) @db.Uuid
-  pickupLocation       String      @db.Uuid
-  dropoffLocation      String      @db.Uuid
-  studentId            String      @db.Uuid
-  driverId             String?     @db.Uuid
-  vehicleId            String?     @db.Uuid
-  pickup               Location    @relation("PickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
-  dropoff              Location    @relation("DropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
-  student              User        @relation("StudentRoutes", fields: [studentId], references: [id], onDelete: Restrict)
-  driver               User?       @relation("DriverRoutes", fields: [driverId], references: [id], onDelete: Restrict)
-  vehicle              Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  scheduledPickupTime  DateTime    @db.Timestamptz(3)
-  pickupWindowStart    DateTime    @db.Timestamptz(3)
-  pickupWindowEnd      DateTime    @db.Timestamptz(3)
-  estimatedDropoffTime DateTime?   @db.Timestamptz(3)
-  status               RouteStatus @default(Requested)
-  seriesId             String?     @db.Uuid
-  series               RideSeries? @relation(fields: [seriesId], references: [id], onDelete: Restrict)
+  id                   String              @id @default(uuid()) @db.Uuid
+  pickupLocation       String              @db.Uuid
+  dropoffLocation      String              @db.Uuid
+  studentId            String              @db.Uuid
+  driverId             String?             @db.Uuid
+  vehicleId            String?             @db.Uuid
+  pickup               Location            @relation("PickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
+  dropoff              Location            @relation("DropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
+  student              User                @relation("StudentRoutes", fields: [studentId], references: [id], onDelete: Restrict)
+  driver               User?               @relation("DriverRoutes", fields: [driverId], references: [id], onDelete: Restrict)
+  vehicle              Vehicle?            @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  scheduledPickupTime  DateTime            @db.Timestamptz(3)
+  pickupWindowStart    DateTime            @db.Timestamptz(3)
+  pickupWindowEnd      DateTime            @db.Timestamptz(3)
+  estimatedDropoffTime DateTime?           @db.Timestamptz(3)
+  delayMinutes         Int                 @default(0)
+  status               RouteStatus         @default(Requested)
+  seriesId             String?             @db.Uuid
+  series               RideSeries?         @relation(fields: [seriesId], references: [id], onDelete: Restrict)
   messages             Message[]
+  proposedRideChange   ProposedRideChange?
 
   @@unique([studentId, scheduledPickupTime])
   @@unique([seriesId, scheduledPickupTime])
@@ -178,13 +185,14 @@ model Route {
 }
 
 model Message {
-  id       String   @id @default(uuid()) @db.Uuid
-  routeId  String   @db.Uuid
-  route    Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
-  senderId String   @db.Uuid
-  sender   User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
-  text     String
-  time     DateTime @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  routeId    String   @db.Uuid
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  senderId   String   @db.Uuid
+  senderType UserType
+  sender     User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  text       String
+  time       DateTime @db.Timestamptz(3)
 
   @@index([routeId, time, id])
   @@index([senderId])
@@ -192,6 +200,8 @@ model Message {
 
 enum RecurrenceFrequency {
   weekly
+  biweekly
+  monthly
 }
 
 model RideSeries {
@@ -203,7 +213,11 @@ model RideSeries {
   pickup                    Location            @relation("SeriesPickupLocation", fields: [pickupLocation], references: [id], onDelete: Restrict)
   dropoff                   Location            @relation("SeriesDropoffLocation", fields: [dropoffLocation], references: [id], onDelete: Restrict)
   frequency                 RecurrenceFrequency @default(weekly)
+  /// Eastern weekdays a ride is scheduled on, 0 = Sunday … 6 = Saturday.
+  daysOfWeek                Int[]
   firstPickupTime           DateTime            @db.Timestamptz(3)
+  /// End of the last Eastern day a ride may be scheduled on; null repeats until deactivated.
+  endsAt                    DateTime?           @db.Timestamptz(3)
   pickupWindowStartOffsetMs Int
   pickupWindowEndOffsetMs   Int
   materializedThrough       DateTime            @db.Timestamptz(3)
@@ -216,4 +230,24 @@ model RideSeries {
   @@index([studentId])
   @@index([pickupLocation])
   @@index([dropoffLocation])
+}
+
+// The current proposal only; resolved and superseded proposals remain in the audit log
+model ProposedRideChange {
+  id              String   @id @default(uuid()) @db.Uuid
+  routeId         String   @unique @db.Uuid
+  route           Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  requestedById   String   @db.Uuid
+  requestedBy     User     @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+  requestedByRole UserType
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  pickupLocation       String    @db.Uuid
+  dropoffLocation      String    @db.Uuid
+  pickup               Location  @relation("ProposedChangePickup", fields: [pickupLocation], references: [id], onDelete: Restrict)
+  dropoff              Location  @relation("ProposedChangeDropoff", fields: [dropoffLocation], references: [id], onDelete: Restrict)
+  scheduledPickupTime  DateTime  @db.Timestamptz(3)
+  pickupWindowStart    DateTime  @db.Timestamptz(3)
+  pickupWindowEnd      DateTime  @db.Timestamptz(3)
+  estimatedDropoffTime DateTime? @db.Timestamptz(3)
 }

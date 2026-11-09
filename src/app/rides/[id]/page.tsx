@@ -1,6 +1,15 @@
 "use client";
 
-import { routeStatusLabels } from "@/utils/route-status";
+import { RouteStatus } from "@db/generated/enums";
+
+import {
+  canStudentEditRide,
+  studentEditDisabledReason,
+  studentDriverChatDisabledReason,
+  routeDisplayLabel,
+  isRouteDelayed,
+  isRideChatOpen,
+} from "@/utils/route-status";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWindowSize } from "react-use";
 import { useSession } from "next-auth/react";
@@ -8,25 +17,41 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, type Socket } from "socket.io-client";
 import mapboxgl from "mapbox-gl";
+import {
+  getDirectionsGeometry,
+  getRouteLinePaint,
+  type LineStringGeometry,
+} from "@/utils/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import BogIcon from "@/components/BogIcon/BogIcon";
 import BogButton from "@/components/BogButton/BogButton";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
-import { getStudentStatusChipStyle } from "../RideCard";
+import CancelScopeOptions, {
+  type CancelScope,
+} from "@/components/CancelScopeOptions/CancelScopeOptions";
+import StopTime from "./StopTime";
+import RideChat from "@/components/RideChat/RideChat";
+import { mergeChatMessages } from "@/utils/chat";
+import DriverRideActions from "../DriverRideActions";
+import { getStudentStatusChipStyle } from "@/app/rides/RideCard";
 import styles from "./styles.module.css";
-import { useRouteUpdates } from "@/components/NotificationProvider/useRouteUpdates";
-import { useLatestRequest } from "@/components/NotificationProvider/useLatestRequest";
+import { useRouteUpdates } from "@/hooks/useRouteUpdates";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import type {
   RouteDetailResponse as RouteData,
   ChatMessageResponse,
-} from "@/utils/types/api";
+} from "@/types/api";
+import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
+import { withDelay } from "@/utils/dateEst";
+import { toast } from "react-toast";
 
-const CANCELLABLE_STATUSES = new Set(["Requested", "Scheduled"]);
-const CLOSED_CHAT_STATUSES = new Set([
-  "Completed",
-  "Missing",
-  "CancelledByStudent",
-  "CancelledByAdmin",
+const CANCELLABLE_STATUSES = new Set<RouteStatus>([
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+  RouteStatus.EnRoute,
+  RouteStatus.Arrived,
 ]);
 
 function createCustomPin(
@@ -74,7 +99,10 @@ function getStudentId(student: RouteData["student"]): string {
 
 function getDriverName(driver: RouteData["driver"]): string | null {
   if (!driver) return null;
-  return `${driver.firstName} ${driver.lastName}`.trim() || null;
+  return (
+    `${driver.preferredName || driver.firstName} ${driver.lastName}`.trim() ||
+    null
+  );
 }
 
 function getDriverId(driver: RouteData["driver"]): string | null {
@@ -99,10 +127,12 @@ export default function RideDetailPage({
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingRide, setCancellingRide] = useState(false);
+  const [cancelScope, setCancelScope] = useState<CancelScope>("single");
 
   // Chat state
   const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const socketIdentityRef = useRef<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   // map.loaded() is false whenever the camera is moving or tiles are loading,
@@ -123,34 +153,50 @@ export default function RideDetailPage({
     longitude: number;
   } | null>(null);
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
+  const [chatRevision, setChatRevision] = useState(0);
   const [chatInput, setChatInput] = useState("");
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
   const [chatError, setChatError] = useState<string | null>(null);
+  const [chatHistoryError, setChatHistoryError] = useState<string | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
+  const openedChatDeepLink = useRef<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
 
   // Open the chat deep link once the ride is loaded and its chat is open.
   useEffect(() => {
+    if (searchParams.get("chat") !== "1") {
+      openedChatDeepLink.current = null;
+      return;
+    }
     if (
-      searchParams.get("chat") === "1" &&
       route &&
-      !CLOSED_CHAT_STATUSES.has(route.status)
+      openedChatDeepLink.current !== route.id &&
+      (session?.user?.activeType === "Driver" ||
+        !studentDriverChatDisabledReason(route)) &&
+      isRideChatOpen(route.status)
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      openedChatDeepLink.current = route.id;
       setShowChatModal(true);
     }
-  }, [searchParams, route]);
+  }, [searchParams, route, session?.user?.activeType]);
 
-  // Driver-specific state
+  // Driver actions
   const [markingMissing, setMarkingMissing] = useState(false);
   const [missingError, setMissingError] = useState<string | null>(null);
   const [driverActionBusy, setDriverActionBusy] = useState(false);
   const [driverActionError, setDriverActionError] = useState<string | null>(
     null,
   );
+  const [showArrivalModal, setShowArrivalModal] = useState(false);
+  const [showDropoffModal, setShowDropoffModal] = useState(false);
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [showNoShowModal, setShowNoShowModal] = useState(false);
-  const delayActionBusy = false;
+
+  // Student delay reporting
+  const [delayActionBusy, setDelayActionBusy] = useState(false);
+  const delayRequestPending = useRef(false);
+  const [delayActionError, setDelayActionError] = useState<string | null>(null);
+  const [showDelayModal, setShowDelayModal] = useState(false);
 
   // Extract ID from params
   useEffect(() => {
@@ -237,9 +283,40 @@ export default function RideDetailPage({
   useRouteUpdates(
     () => {
       void fetchRoute({ silent: true });
+      setChatRevision((current) => current + 1);
     },
     { routeId },
   );
+
+  // Fetch the persisted timeline on status changes, including the final event
+  // after the ride's chat socket disconnects. Opening archived chats works too.
+  useEffect(() => {
+    if (!routeId || !route?.status || sessionStatus !== "authenticated") return;
+    let cancelled = false;
+    void fetch(`/api/routes/${routeId}/messages`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load ride chat history.");
+        const history: ChatMessageResponse[] = await response.json();
+        if (!cancelled) {
+          setMessages((current) =>
+            mergeChatMessages(
+              current.filter((message) => message.routeId === routeId),
+              history,
+            ),
+          );
+          setChatHistoryError(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled)
+          setChatHistoryError(
+            "Unable to load ride chat history. Reopen the chat to retry.",
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [routeId, route?.status, sessionStatus, showChatModal, chatRevision]);
 
   // Initialize and update Mapbox map
   useEffect(() => {
@@ -247,7 +324,8 @@ export default function RideDetailPage({
       return;
     }
 
-    const initializeMap = async () => {
+    const initializeMap = () => {
+      let cancelled = false;
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
       const container = mapContainerRef.current;
       if (!container || !token) return;
@@ -279,13 +357,74 @@ export default function RideDetailPage({
       }
 
       const map = mapRef.current;
+      const updateRouteLine = (geometry: LineStringGeometry | null) => {
+        if (!geometry) {
+          if (map.getLayer("ride-route-line")) {
+            map.removeLayer("ride-route-line");
+          }
+          if (map.getSource("ride-route")) {
+            map.removeSource("ride-route");
+          }
+          return;
+        }
+
+        const source = map.getSource("ride-route");
+        if (source && "setData" in source) {
+          source.setData({
+            type: "Feature",
+            properties: {},
+            geometry,
+          });
+          return;
+        }
+
+        map.addSource("ride-route", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry,
+          },
+        });
+        map.addLayer({
+          id: "ride-route-line",
+          type: "line",
+          source: "ride-route",
+          layout: {
+            "line-cap": "round",
+            "line-join": "round",
+          },
+          paint: getRouteLinePaint(map.getContainer()),
+        });
+      };
+
+      const updateRoute = async () => {
+        let routeGeometry: LineStringGeometry | null = null;
+        try {
+          routeGeometry = await getDirectionsGeometry(
+            [pickup.longitude, pickup.latitude],
+            [dropoff.longitude, dropoff.latitude],
+            token,
+            "driving",
+          );
+        } catch (error) {
+          if (cancelled) return;
+          console.warn("[mapbox] Unable to load ride route:", error);
+        }
+        if (cancelled) return;
+        updateRouteLine(routeGeometry);
+      };
+
       const updateMap = () => {
+        if (cancelled) return;
         map.resize();
         fitToBounds(map);
+
         markerRefs.current.forEach((marker) => marker.remove());
         markerRefs.current = [];
 
-        const pinColor = "#183777";
+        const pickupPinColor = "var(--color-map-pickup)";
+        const dropoffPinColor = "var(--color-map-dropoff)";
         const pickupLngLat: [number, number] = [
           pickup.longitude,
           pickup.latitude,
@@ -300,7 +439,7 @@ export default function RideDetailPage({
         staticCoordsRef.current = [pickupLngLat, dropoffLngLat];
 
         const pickupMarker = new mapboxgl.Marker({
-          element: createCustomPin(`Pickup: ${pickup.name}`, pinColor),
+          element: createCustomPin(`Pickup: ${pickup.name}`, pickupPinColor),
           anchor: "bottom",
         })
           .setLngLat(pickupLngLat)
@@ -311,7 +450,7 @@ export default function RideDetailPage({
         const dropoffMarker = new mapboxgl.Marker({
           element: createCustomPin(
             `Dropoff: ${dropoff.name}`,
-            pinColor,
+            dropoffPinColor,
             overlap ? 50 : 0,
           ),
           anchor: "bottom",
@@ -319,13 +458,19 @@ export default function RideDetailPage({
           .setLngLat(dropoffLngLat)
           .addTo(map);
         markerRefs.current.push(dropoffMarker);
+        void updateRoute();
       };
 
       if (mapLoadedRef.current) updateMap();
       else map.once("load", updateMap);
+
+      return () => {
+        cancelled = true;
+        map.off("load", updateMap);
+      };
     };
 
-    initializeMap();
+    return initializeMap();
   }, [route]);
 
   useEffect(() => {
@@ -348,9 +493,8 @@ export default function RideDetailPage({
 
   // ── WebSocket lifecycle ─────────────────────────────────────────────────────
   //
-  // Single connection effect.  Intentionally returns no cleanup function so
-  // the socket stays alive across status / modal changes — the unmount effect
-  // below is the only place that actually disconnects.
+  // Keep the connection across modal/status updates. Reconnect when the
+  // authenticated user or active role changes; disconnect on unmount.
   //
   // Keep participant chat available for the full lifetime of an open ride,
   // regardless of its scheduled date. The server enforces terminal statuses.
@@ -358,20 +502,24 @@ export default function RideDetailPage({
   useEffect(() => {
     const isDriver = session?.user?.activeType === "Driver";
     const isStudent = session?.user?.activeType === "Student";
+    const identity = `${routeId}:${session?.user?.userId}:${session?.user?.activeType}:${session?.user?.accessToken}`;
+    if (socketIdentityRef.current !== identity) {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      socketIdentityRef.current = identity;
+      setSocket(null);
+      setChatInput("");
+    }
 
     const shouldConnect =
       !!route &&
-      !CLOSED_CHAT_STATUSES.has(route.status) &&
+      isRideChatOpen(route.status) &&
       !!routeId &&
       !!session?.user?.accessToken &&
       (isDriver || isStudent);
 
     if (!shouldConnect) {
-      if (
-        route &&
-        CLOSED_CHAT_STATUSES.has(route.status) &&
-        socketRef.current
-      ) {
+      if (route && !isRideChatOpen(route.status) && socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
         setSocket(null);
@@ -393,6 +541,7 @@ export default function RideDetailPage({
     socketRef.current = newSocket;
 
     newSocket.on("connect", () => {
+      if (socketRef.current !== newSocket) return;
       setSocket(newSocket);
       setChatError(null);
     });
@@ -423,7 +572,14 @@ export default function RideDetailPage({
     });
 
     newSocket.on("chatHistory", (history: ChatMessageResponse[]) => {
-      setMessages(history);
+      if (socketRef.current !== newSocket) return;
+      setChatRevision((current) => current + 1);
+      setMessages((current) =>
+        mergeChatMessages(
+          current.filter((message) => message.routeId === routeId),
+          history,
+        ),
+      );
     });
 
     newSocket.on("routeClosed", () => {
@@ -434,7 +590,8 @@ export default function RideDetailPage({
     });
 
     newSocket.on("receiveChatMessage", (message: ChatMessageResponse) => {
-      setMessages((prev) => [...prev, message]);
+      if (socketRef.current !== newSocket) return;
+      setMessages((prev) => mergeChatMessages(prev, [message]));
     });
 
     newSocket.on(
@@ -444,7 +601,7 @@ export default function RideDetailPage({
       },
     );
 
-    newSocket.on("chatError", (msg: string) => setChatError(msg));
+    newSocket.on("chatError", (msg: string) => toast.error(msg));
   }, [route, routeId, session, wsUrl]);
 
   // Disconnect only on unmount — not on dep changes
@@ -501,7 +658,8 @@ export default function RideDetailPage({
           longitude: pos.coords.longitude,
         });
         if (
-          routeStatusRef.current === "EnRoute" &&
+          (routeStatusRef.current === RouteStatus.EnRoute ||
+            routeStatusRef.current === RouteStatus.Arrived) &&
           socketRef.current?.connected
         ) {
           socketRef.current.emit("updateLocation", {
@@ -551,6 +709,8 @@ export default function RideDetailPage({
 
   const handleSendMessage = useCallback(() => {
     if (!chatInput.trim() || !socket || sendingMessage) return;
+    const identity = `${routeId}:${session?.user?.userId}:${session?.user?.activeType}:${session?.user?.accessToken}`;
+    if (socketIdentityRef.current !== identity || !socket.connected) return;
 
     setSendingMessage(true);
     // Server broadcasts receiveChatMessage back to all room members including
@@ -559,18 +719,7 @@ export default function RideDetailPage({
     setChatInput("");
     setChatError(null);
     setSendingMessage(false);
-  }, [chatInput, socket, sendingMessage]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const handleDelayRide = useCallback(async () => {
-    // TODO
-  }, []);
+  }, [chatInput, socket, sendingMessage, routeId, session]);
 
   const handleCancelRide = useCallback(async () => {
     if (!routeId) return;
@@ -579,7 +728,7 @@ export default function RideDetailPage({
       const res = await fetch("/api/routes/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
+        body: JSON.stringify({ routeId, scope: cancelScope }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -593,11 +742,11 @@ export default function RideDetailPage({
     } finally {
       setCancellingRide(false);
     }
-  }, [routeId, router]);
+  }, [routeId, router, cancelScope]);
 
   const handleDriverAction = useCallback(
     async (endpoint: string, errorMsg: string, terminal = false) => {
-      if (!routeId) return;
+      if (!routeId) return false;
       setDriverActionBusy(true);
       setDriverActionError(null);
       try {
@@ -611,15 +760,18 @@ export default function RideDetailPage({
           throw new Error(body.error ?? res.statusText);
         }
         const updated: RouteData = await res.json();
+        beginRequest();
         setRoute(updated);
         if (terminal) socketRef.current?.emit("closeRouteRoom");
+        return true;
       } catch (e) {
         setDriverActionError(e instanceof Error ? e.message : errorMsg);
+        return false;
       } finally {
         setDriverActionBusy(false);
       }
     },
-    [routeId],
+    [routeId, beginRequest],
   );
 
   const handleStartRide = useCallback(
@@ -630,6 +782,11 @@ export default function RideDetailPage({
   const handlePickupStudent = useCallback(
     () =>
       handleDriverAction("/api/routes/pickup", "Failed to mark as picked up."),
+    [handleDriverAction],
+  );
+
+  const handleArrive = useCallback(
+    () => handleDriverAction("/api/routes/arrive", "Failed to mark arrival."),
     [handleDriverAction],
   );
 
@@ -644,7 +801,7 @@ export default function RideDetailPage({
   );
 
   const handleMarkMissing = useCallback(async () => {
-    if (!routeId) return;
+    if (!routeId) return false;
     setMarkingMissing(true);
     setMissingError(null);
     try {
@@ -658,16 +815,52 @@ export default function RideDetailPage({
         throw new Error(body.error ?? res.statusText);
       }
       const updated: RouteData = await res.json();
+      beginRequest();
       setRoute(updated);
       socketRef.current?.emit("closeRouteRoom");
+      return true;
     } catch (e) {
       setMissingError(
         e instanceof Error ? e.message : "Failed to mark as missing.",
       );
+      return false;
     } finally {
       setMarkingMissing(false);
     }
-  }, [routeId]);
+  }, [routeId, beginRequest]);
+
+  const handleMarkDelay = useCallback(
+    async (minutes: number) => {
+      if (!routeId || delayRequestPending.current) return false;
+      delayRequestPending.current = true;
+      setDelayActionBusy(true);
+      setDelayActionError(null);
+      try {
+        const res = await fetch("/api/routes/delay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId, delayMinutes: minutes }),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? res.statusText);
+        }
+        const updated: RouteData = await res.json();
+        beginRequest();
+        setRoute(updated);
+        return true;
+      } catch (e) {
+        setDelayActionError(
+          e instanceof Error ? e.message : "Failed to mark as delayed.",
+        );
+        return false;
+      } finally {
+        delayRequestPending.current = false;
+        setDelayActionBusy(false);
+      }
+    },
+    [routeId, beginRequest],
+  );
 
   if (sessionStatus === "loading" || loading) {
     return (
@@ -708,8 +901,19 @@ export default function RideDetailPage({
   const dropoffLocationName = route.dropoff.name;
   const driverName = getDriverName(route.driver);
   const hasDriver = !!driverName;
+  const studentChatDisabledReason = studentDriverChatDisabledReason(route);
 
-  const scheduledDate = new Date(route.scheduledPickupTime);
+  const delayMinutes = route.delayMinutes ?? 0;
+  const isDelayed = delayMinutes > 0;
+  const scheduledPickup = new Date(route.scheduledPickupTime);
+  const delayedPickup = withDelay(scheduledPickup, delayMinutes);
+
+  const originalDropoff = route.estimatedDropoffTime
+    ? new Date(route.estimatedDropoffTime)
+    : null;
+  const delayedDropoff = originalDropoff
+    ? withDelay(originalDropoff, delayMinutes)
+    : null;
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("en-US", {
@@ -718,10 +922,6 @@ export default function RideDetailPage({
       minute: "2-digit",
       hour12: true,
     });
-
-  const dropoffTimeDisplay = route.estimatedDropoffTime
-    ? formatTime(new Date(route.estimatedDropoffTime))
-    : "N/A";
 
   const formatDateLabel = (d: Date) => {
     const tz = "America/New_York";
@@ -748,13 +948,43 @@ export default function RideDetailPage({
     });
   };
 
-  const statusChipStyle = getStudentStatusChipStyle(route.status);
+  const statusChipStyle = getStudentStatusChipStyle(
+    route.status,
+    isRouteDelayed(route),
+  );
+
+  const chatModal = showChatModal &&
+    (session?.user?.activeType === "Driver" || !studentChatDisabledReason) && (
+      <RideChat
+        presentation="dialog"
+        title={
+          session?.user?.activeType === "Driver"
+            ? `Chat with Student: ${route.student.preferredName || route.student.firstName} ${route.student.lastName}`
+            : driverName
+              ? `Chat with Driver: ${driverName}`
+              : "Ride chat"
+        }
+        messages={messages}
+        subtitle={`${pickupLocationName} → ${dropoffLocationName} · ${formatTime(scheduledPickup)}`}
+        currentUserId={session?.user?.userId ?? ""}
+        currentUserType={session?.user?.activeType ?? "Student"}
+        studentId={route.student.id}
+        driverId={route.driver?.id ?? null}
+        input={chatInput}
+        onInputChange={setChatInput}
+        onSend={handleSendMessage}
+        onClose={() => setShowChatModal(false)}
+        connected={!!socket?.connected && !sendingMessage}
+        readOnly={!isRideChatOpen(route.status)}
+        error={chatHistoryError ?? chatError}
+      />
+    );
 
   // ── Driver view ────────────────────────────────────────────────────────────
   if (session?.user?.activeType === "Driver") {
     const studentObj = route.student;
     const studentName = studentObj
-      ? `${studentObj.firstName} ${studentObj.lastName}`.trim()
+      ? `${studentObj.preferredName || studentObj.firstName} ${studentObj.lastName}`.trim()
       : "—";
     const accommodations =
       studentObj?.studentInfo?.accessibilityNeeds
@@ -762,105 +992,46 @@ export default function RideDetailPage({
         .join(", ") || "—";
     const additionalComments = studentObj?.studentInfo?.notes || "—";
 
-    const chatModal = showChatModal && (
-      <div
-        className={styles.chatModalOverlay}
-        onClick={() => setShowChatModal(false)}
-      >
-        <div className={styles.chatModal} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.chatModalHeader}>
-            <h2 className={styles.chatModalTitle}>Chat with Student</h2>
-            <button
-              type="button"
-              className={styles.chatModalCloseButton}
-              onClick={() => setShowChatModal(false)}
-              aria-label="Close chat"
-            >
-              <BogIcon name="x" size={20} />
-            </button>
-          </div>
-          {chatError && (
-            <div className={styles.chatErrorBanner}>
-              <p className={styles.chatErrorText}>{chatError}</p>
-            </div>
-          )}
-          <div className={styles.messagesContainer}>
-            {messages.length === 0 && (
-              <div className={styles.noMessages}>
-                <p>No messages yet. Start the conversation!</p>
-              </div>
-            )}
-            {messages.map((msg, idx) => {
-              const isUser = msg.senderId === session?.user.userId;
-              const isAdminMessage =
-                msg.senderId !== route.student.id &&
-                msg.senderId !== route.driver?.id;
-              const prevIsOther =
-                !isUser &&
-                idx > 0 &&
-                messages[idx - 1].senderId === msg.senderId;
-              return (
-                <div
-                  key={msg.id}
-                  className={`${styles.messageRow} ${
-                    isUser ? styles.messageRowUser : styles.messageRowOther
-                  }`}
-                >
-                  {!isUser &&
-                    (prevIsOther ? (
-                      <div className={styles.messageAvatarSpacer} />
-                    ) : (
-                      <div className={styles.messageAvatar}>
-                        <BogIcon name="user" size={18} />
-                      </div>
-                    ))}
-                  <div
-                    className={`${styles.messageBubble} ${
-                      isAdminMessage ? styles.adminMessageBubble : ""
-                    }`}
-                  >
-                    {isAdminMessage && (
-                      <span className={styles.adminMessageLabel}>Admin</span>
-                    )}
-                    <p className={styles.messageText}>{msg.text}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className={styles.chatInputContainer}>
-            <input
-              type="text"
-              className={styles.chatInput}
-              placeholder="Type a message..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={!socket || sendingMessage}
-            />
-            <button
-              type="button"
-              className={styles.sendButton}
-              onClick={handleSendMessage}
-              disabled={!chatInput.trim() || !socket || sendingMessage}
-              aria-label="Send message"
-            >
-              <BogIcon name="arrow-right" size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-
     return (
       <div className={styles.rideDetailPage}>
         {chatModal}
         <ConfirmActionModal
+          open={showArrivalModal}
+          onOpenChange={setShowArrivalModal}
+          onConfirm={async () => {
+            if (await handleArrive()) setShowArrivalModal(false);
+          }}
+          variant="primary"
+          title="Arrived at Pickup"
+          description={`I have arrived at ${pickupLocationName}. The student will be notified.`}
+          confirmLabel="Confirm Arrival"
+          confirmingLabel="Confirming…"
+          cancelLabel="Cancel"
+          confirming={driverActionBusy}
+        >
+          {driverActionError && <p role="alert">{driverActionError}</p>}
+        </ConfirmActionModal>
+        <ConfirmActionModal
+          open={showDropoffModal}
+          onOpenChange={setShowDropoffModal}
+          onConfirm={async () => {
+            if (await handleDropoffStudent()) setShowDropoffModal(false);
+          }}
+          variant="primary"
+          title="Student Dropped Off"
+          description={`I have dropped off ${studentName}. This will complete the ride.`}
+          confirmLabel="Confirm Dropoff"
+          confirmingLabel="Completing…"
+          cancelLabel="Cancel"
+          confirming={driverActionBusy}
+        >
+          {driverActionError && <p role="alert">{driverActionError}</p>}
+        </ConfirmActionModal>
+        <ConfirmActionModal
           open={showPickupModal}
           onOpenChange={setShowPickupModal}
           onConfirm={async () => {
-            await handlePickupStudent();
-            setShowPickupModal(false);
+            if (await handlePickupStudent()) setShowPickupModal(false);
           }}
           variant="primary"
           title="Student Picked Up"
@@ -869,13 +1040,14 @@ export default function RideDetailPage({
           confirmingLabel="Confirming…"
           cancelLabel="Cancel"
           confirming={driverActionBusy}
-        />
+        >
+          {driverActionError && <p role="alert">{driverActionError}</p>}
+        </ConfirmActionModal>
         <ConfirmActionModal
           open={showNoShowModal}
           onOpenChange={setShowNoShowModal}
           onConfirm={async () => {
-            await handleMarkMissing();
-            setShowNoShowModal(false);
+            if (await handleMarkMissing()) setShowNoShowModal(false);
           }}
           variant="destructive"
           title="Student No-Show"
@@ -884,7 +1056,10 @@ export default function RideDetailPage({
           confirmingLabel="Marking…"
           cancelLabel="Cancel"
           confirming={markingMissing}
-        />
+        >
+          {missingError && <p role="alert">{missingError}</p>}
+        </ConfirmActionModal>
+
         <main className={styles.main}>
           <header className={styles.header}>
             <Link href="/rides" className={styles.backLink}>
@@ -897,20 +1072,23 @@ export default function RideDetailPage({
           <div className={styles.titleRow}>
             <h1 className={styles.pageTitle}>Ride Details</h1>
             <span className={styles.statusChip} style={statusChipStyle}>
-              {routeStatusLabels[route.status]}
+              {routeDisplayLabel(route)}
             </span>
           </div>
 
           <div className={styles.rideSummaryCard}>
             <p className={styles.rideDateLabel}>
-              {formatDateLabel(scheduledDate)}
+              {formatDateLabel(scheduledPickup)}
             </p>
             <div className={styles.pickupDropoffRow}>
               <div className={styles.stopBlock}>
                 <span className={styles.stopLabel}>Pickup</span>
-                <span className={styles.stopTime}>
-                  {formatTime(scheduledDate)}
-                </span>
+                <StopTime
+                  time={formatTime(delayedPickup)}
+                  originalTime={
+                    isDelayed ? formatTime(scheduledPickup) : undefined
+                  }
+                />
                 <span className={styles.stopLocation}>
                   {pickupLocationName}
                 </span>
@@ -918,7 +1096,15 @@ export default function RideDetailPage({
               <div className={styles.stopDivider} />
               <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
                 <span className={styles.stopLabel}>Dropoff</span>
-                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <StopTime
+                  time={delayedDropoff ? formatTime(delayedDropoff) : "N/A"}
+                  originalTime={
+                    isDelayed && originalDropoff
+                      ? formatTime(originalDropoff)
+                      : undefined
+                  }
+                />
+
                 <span className={styles.stopLocationRight}>
                   {dropoffLocationName}
                 </span>
@@ -962,78 +1148,37 @@ export default function RideDetailPage({
                   type="button"
                   className={styles.chatButton}
                   onClick={() => setShowChatModal(true)}
-                  disabled={CLOSED_CHAT_STATUSES.has(route.status)}
                 >
                   <BogIcon name="chats" size={18} />
-                  <span>Chat with student</span>
+                  <span>
+                    {isRideChatOpen(route.status)
+                      ? "Chat with student"
+                      : "View ride chat"}
+                  </span>
                 </button>
               </div>
 
-              {/* Scheduled: Start ride */}
-              {route.status === "Scheduled" && (
-                <button
-                  type="button"
-                  className={styles.startRideButton}
-                  onClick={() => void handleStartRide()}
-                  disabled={driverActionBusy}
-                >
-                  {driverActionBusy ? "Starting…" : "Start ride"}
-                </button>
-              )}
-
-              {/* En-route: Student picked up + Student no-show */}
-              {route.status === "EnRoute" && (
-                <div className={styles.enRouteActions}>
-                  <button
-                    type="button"
-                    className={
-                      styles.outlineButton + " " + styles.redOutlineButton
-                    }
-                    onClick={() => void handleDelayRide()}
-                    disabled={delayActionBusy}
-                  >
-                    {delayActionBusy ? "Delaying..." : "Delay Ride"}
-                  </button>
-                  <div className={styles.pickupActions}>
-                    <button
-                      type="button"
-                      className={
-                        styles.outlineButton + " " + styles.greenOutlineButton
-                      }
-                      onClick={() => setShowPickupModal(true)}
-                      disabled={driverActionBusy}
-                    >
-                      {driverActionBusy ? "Updating…" : "Student picked up"}
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        styles.outlineButton + " " + styles.redOutlineButton
-                      }
-                      onClick={() => setShowNoShowModal(true)}
-                      disabled={markingMissing}
-                    >
-                      {markingMissing ? "Marking…" : "Student no-show"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Pickedup: Student dropped off */}
-              {route.status === "Pickedup" && (
-                <button
-                  type="button"
-                  className={
-                    styles.outlineButton + " " + styles.greenOutlineButton
+              <DriverRideActions
+                status={route.status}
+                busy={driverActionBusy}
+                missingBusy={markingMissing}
+                onAction={(action) => {
+                  if (action.endpoint === "missing") {
+                    setMissingError(null);
+                    setShowNoShowModal(true);
+                  } else {
+                    setDriverActionError(null);
+                    if (action.endpoint === "start") void handleStartRide();
+                    else if (action.endpoint === "arrive")
+                      setShowArrivalModal(true);
+                    else if (action.endpoint === "pickup")
+                      setShowPickupModal(true);
+                    else setShowDropoffModal(true);
                   }
-                  onClick={() => void handleDropoffStudent()}
-                  disabled={driverActionBusy}
-                >
-                  {driverActionBusy ? "Completing…" : "Student dropped off"}
-                </button>
-              )}
+                }}
+              />
 
-              {(missingError || driverActionError) && (
+              {(missingError || delayActionError || driverActionError) && (
                 <p
                   style={{
                     color: "var(--color-status-red-text)",
@@ -1041,7 +1186,7 @@ export default function RideDetailPage({
                     margin: 0,
                   }}
                 >
-                  {missingError || driverActionError}
+                  {missingError || delayActionError || driverActionError}
                 </p>
               )}
             </div>
@@ -1072,16 +1217,53 @@ export default function RideDetailPage({
       <ConfirmActionModal
         open={showCancelModal}
         onOpenChange={(open) => {
-          if (!open) setShowCancelModal(false);
+          if (!open) {
+            setShowCancelModal(false);
+            setCancelScope("single");
+          }
         }}
         onConfirm={() => void handleCancelRide()}
         variant="destructive"
         title="Cancel Ride?"
-        description="Are you sure you want to cancel this ride?"
-        confirmLabel="Cancel ride"
+        description={
+          route?.seriesId
+            ? "This is a recurring ride. Which rides do you want to cancel?"
+            : "Are you sure you want to cancel this ride?"
+        }
+        confirmLabel={cancelScope === "series" ? "Cancel rides" : "Cancel ride"}
         confirmingLabel="Cancelling…"
         cancelLabel="Nevermind"
         confirming={cancellingRide}
+      >
+        {route?.seriesId && (
+          <CancelScopeOptions
+            value={cancelScope}
+            onChange={setCancelScope}
+            disabled={cancellingRide}
+          />
+        )}
+      </ConfirmActionModal>
+      <DelayRideModal
+        open={showDelayModal}
+        onOpenChange={(open) => {
+          setShowDelayModal(open);
+          if (!open) {
+            setDelayActionError(null);
+          }
+        }}
+        onConfirm={async (minutes) => {
+          const ok = await handleMarkDelay(minutes);
+          if (ok) {
+            setShowDelayModal(false);
+          }
+        }}
+        currentDelayMinutes={delayMinutes}
+        onCancelRide={() => {
+          setShowDelayModal(false);
+          setShowCancelModal(true);
+        }}
+        confirming={delayActionBusy}
+        delayActionError={delayActionError ?? undefined}
       />
       <main className={styles.main}>
         <header className={styles.header}>
@@ -1096,14 +1278,14 @@ export default function RideDetailPage({
         <div className={styles.titleRow}>
           <h1 className={styles.pageTitle}>Ride Details</h1>
           <span className={styles.statusChip} style={statusChipStyle}>
-            {routeStatusLabels[route.status]}
+            {routeDisplayLabel(route)}
           </span>
         </div>
 
         {/* Ride summary card — full width */}
         <div className={styles.rideSummaryCard}>
           <p className={styles.rideDateLabel}>
-            {formatDateLabel(scheduledDate)}
+            {formatDateLabel(scheduledPickup)}
           </p>
           {isMobileLayout ? (
             <div className={styles.pickupDropoffStack}>
@@ -1112,11 +1294,25 @@ export default function RideDetailPage({
                 <span className={styles.stopLabel}>Dropoff</span>
               </div>
               <div className={styles.stopTimesRow}>
-                <span className={styles.stopTime}>
-                  {formatTime(scheduledDate)}
-                </span>
+                <div className={styles.stopTimeStack}>
+                  <StopTime
+                    time={formatTime(delayedPickup)}
+                    originalTime={
+                      isDelayed ? formatTime(scheduledPickup) : undefined
+                    }
+                  />
+                </div>
                 <div className={styles.stopDivider} aria-hidden />
-                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <div className={styles.stopTimeStack}>
+                  <StopTime
+                    time={delayedDropoff ? formatTime(delayedDropoff) : "N/A"}
+                    originalTime={
+                      isDelayed && originalDropoff
+                        ? formatTime(originalDropoff)
+                        : undefined
+                    }
+                  />
+                </div>
               </div>
               <div className={styles.stopLocationsRow}>
                 <span className={styles.stopLocation}>
@@ -1131,9 +1327,14 @@ export default function RideDetailPage({
             <div className={styles.pickupDropoffRow}>
               <div className={styles.stopBlock}>
                 <span className={styles.stopLabel}>Pickup</span>
-                <span className={styles.stopTime}>
-                  {formatTime(scheduledDate)}
-                </span>
+                <div className={styles.stopTimeStack}>
+                  <StopTime
+                    time={formatTime(delayedPickup)}
+                    originalTime={
+                      isDelayed ? formatTime(scheduledPickup) : undefined
+                    }
+                  />
+                </div>
                 <span className={styles.stopLocation}>
                   {pickupLocationName}
                 </span>
@@ -1141,7 +1342,15 @@ export default function RideDetailPage({
               <div className={styles.stopDivider} />
               <div className={`${styles.stopBlock} ${styles.stopBlockRight}`}>
                 <span className={styles.stopLabel}>Dropoff</span>
-                <span className={styles.stopTime}>{dropoffTimeDisplay}</span>
+                <StopTime
+                  time={delayedDropoff ? formatTime(delayedDropoff) : "N/A"}
+                  originalTime={
+                    isDelayed && originalDropoff
+                      ? formatTime(originalDropoff)
+                      : undefined
+                  }
+                />
+
                 <span className={styles.stopLocationRight}>
                   {dropoffLocationName}
                 </span>
@@ -1190,20 +1399,51 @@ export default function RideDetailPage({
             <button
               type="button"
               className={styles.chatButton}
+              disabled={!!studentChatDisabledReason}
+              title={studentChatDisabledReason}
               onClick={() => setShowChatModal(true)}
-              disabled={CLOSED_CHAT_STATUSES.has(route.status)}
             >
               <BogIcon name="chats" size={18} />
-              <span>Chat with driver</span>
+              <span>
+                {isRideChatOpen(route.status)
+                  ? "Chat with driver"
+                  : "View ride chat"}
+              </span>
             </button>
 
             <button
               type="button"
               className={styles.editButton}
-              onClick={() => {}}
+              disabled={!canStudentEditRide(route)}
+              title={studentEditDisabledReason(route)}
+              onClick={() => router.push(`/rides/${route.id}/edit`)}
             >
               Edit ride
             </button>
+
+            {route.status === RouteStatus.ActionRequiredByStudent && (
+              <Link
+                href={`/rides/${route.id}/review`}
+                className={styles.editButton}
+              >
+                Review changes
+              </Link>
+            )}
+            {route.status === RouteStatus.ActionRequiredByAdmin && (
+              <p>Your ride changes are awaiting administrator approval.</p>
+            )}
+
+            {(route.status === RouteStatus.Scheduled ||
+              route.status === RouteStatus.EnRoute) && (
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={() => setShowDelayModal(true)}
+                disabled={delayActionBusy || cancellingRide}
+              >
+                {delayActionBusy ? "Delaying…" : "Delay ride"}
+              </button>
+            )}
 
             {CANCELLABLE_STATUSES.has(route.status) && (
               <button
@@ -1234,102 +1474,7 @@ export default function RideDetailPage({
         </div>
       </main>
 
-      {/* Chat Modal */}
-      {showChatModal && (
-        <div
-          className={styles.chatModalOverlay}
-          onClick={() => setShowChatModal(false)}
-        >
-          <div
-            className={styles.chatModal}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.chatModalHeader}>
-              <h2 className={styles.chatModalTitle}>Chat with Driver</h2>
-              <button
-                type="button"
-                className={styles.chatModalCloseButton}
-                onClick={() => setShowChatModal(false)}
-                aria-label="Close chat"
-              >
-                <BogIcon name="x" size={20} />
-              </button>
-            </div>
-
-            {chatError && (
-              <div className={styles.chatErrorBanner}>
-                <p className={styles.chatErrorText}>{chatError}</p>
-              </div>
-            )}
-
-            <div className={styles.messagesContainer}>
-              {messages.length === 0 && (
-                <div className={styles.noMessages}>
-                  <p>No messages yet. Start the conversation!</p>
-                </div>
-              )}
-              {messages.map((msg, idx) => {
-                const isUser = msg.senderId === session?.user.userId;
-                const isAdminMessage =
-                  msg.senderId !== route.student.id &&
-                  msg.senderId !== route.driver?.id;
-                const prevIsOther =
-                  !isUser &&
-                  idx > 0 &&
-                  messages[idx - 1].senderId === msg.senderId;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`${styles.messageRow} ${
-                      isUser ? styles.messageRowUser : styles.messageRowOther
-                    }`}
-                  >
-                    {!isUser &&
-                      (prevIsOther ? (
-                        <div className={styles.messageAvatarSpacer} />
-                      ) : (
-                        <div className={styles.messageAvatar}>
-                          <BogIcon name="user" size={18} />
-                        </div>
-                      ))}
-                    <div
-                      className={`${styles.messageBubble} ${
-                        isAdminMessage ? styles.adminMessageBubble : ""
-                      }`}
-                    >
-                      {isAdminMessage && (
-                        <span className={styles.adminMessageLabel}>Admin</span>
-                      )}
-                      <p className={styles.messageText}>{msg.text}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className={styles.chatInputContainer}>
-              <input
-                type="text"
-                className={styles.chatInput}
-                placeholder="Type a message..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={!socket || sendingMessage}
-              />
-              <button
-                type="button"
-                className={styles.sendButton}
-                onClick={handleSendMessage}
-                disabled={!chatInput.trim() || !socket || sendingMessage}
-                aria-label="Send message"
-              >
-                <BogIcon name="arrow-right" size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {chatModal}
     </div>
   );
 }

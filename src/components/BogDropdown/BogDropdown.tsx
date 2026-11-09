@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { DropdownMenu } from "radix-ui";
 import styles from "./styles.module.css";
-import BogIcon from "../BogIcon/BogIcon";
-import BogCheckbox from "../BogCheckbox/BogCheckbox";
-import BogRadioItem from "../BogRadioItem/BogRadioItem";
-import BogRadioGroup from "../BogRadioGroup/BogRadioGroup";
+import BogIcon from "@/components/BogIcon/BogIcon";
+import BogCheckbox from "@/components/BogCheckbox/BogCheckbox";
+import BogRadioItem from "@/components/BogRadioItem/BogRadioItem";
+import BogRadioGroup from "@/components/BogRadioGroup/BogRadioGroup";
 import { CheckedState } from "@radix-ui/react-checkbox";
 
 interface BogDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -74,20 +74,7 @@ export default function BogDropdown({
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
   const [filter, setFilter] = useState<string>("");
-
-  useEffect(() => {
-    const updateWidth = () => {
-      if (triggerRef.current) {
-        setTriggerWidth(triggerRef.current.offsetWidth);
-      }
-    };
-
-    if (isOpen) {
-      updateWidth();
-    }
-  }, [isOpen]);
 
   const openInput = () => {
     if (inputRef.current) {
@@ -265,11 +252,13 @@ export default function BogDropdown({
             </>
           ) : (
             <>
-              {selected.length > 0
-                ? Array.isArray(selected)
-                  ? selected.join(", ")
-                  : selected
-                : placeholder}
+              <span className={styles.selectedText}>
+                {selected.length > 0
+                  ? Array.isArray(selected)
+                    ? selected.join(", ")
+                    : selected
+                  : placeholder}
+              </span>
               <div className={styles.iconHolder}>
                 {hasValues() && (
                   <span
@@ -298,23 +287,25 @@ export default function BogDropdown({
           )}
         </DropdownMenu.Trigger>
 
-        <DropdownMenu.Content
-          align="start"
-          sideOffset={4}
-          className={styles.dropdownContent}
-          style={{ width: triggerWidth || "auto" }}
-        >
-          {type === "radio" ? (
-            <BogRadioGroup
-              value={Array.isArray(selected) ? selected.join(", ") : selected}
-              onValueChange={(e) => handleSelect(e, e)}
-            >
-              {renderItems()}
-            </BogRadioGroup>
-          ) : (
-            <>{renderItems()}</>
-          )}
-        </DropdownMenu.Content>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="start"
+            sideOffset={4}
+            className={styles.dropdownContent}
+            collisionPadding={16}
+          >
+            {type === "radio" ? (
+              <BogRadioGroup
+                value={Array.isArray(selected) ? selected.join(", ") : selected}
+                onValueChange={(e) => handleSelect(e, e)}
+              >
+                {renderItems()}
+              </BogRadioGroup>
+            ) : (
+              <>{renderItems()}</>
+            )}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
       </DropdownMenu.Root>
     </div>
   );
