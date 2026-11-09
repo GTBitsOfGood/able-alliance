@@ -563,7 +563,7 @@ export function ProfileView({
                             displayUser.studentInfo?.accessibilityNeeds ?? []
                           ).map((need) => (
                             <span
-                              key={need.accommodation.id}
+                              key={need.accommodation.label}
                               className={styles.sectionRowValue}
                             >
                               {need.accommodation.label}

@@ -14,7 +14,7 @@ export type DriverProfileResponse = Pick<
 > & {
   studentInfo:
     | (Pick<NonNullable<UserWithDetails["studentInfo"]>, "notes"> & {
-        accessibilityNeeds: { label: string }[];
+        accessibilityNeeds: { accommodation: { label: string } }[];
       })
     | null;
 };
@@ -32,7 +32,9 @@ export function driverProfileResponse(
       ? {
           notes: user.studentInfo.notes,
           accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
-            ({ label }) => ({ label }),
+            ({ accommodation }) => ({
+              accommodation: { label: accommodation.label },
+            }),
           ),
         }
       : null,
