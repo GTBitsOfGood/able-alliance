@@ -1,6 +1,8 @@
 /**
- * Scheduling ride status through the pages. Stale assignment modals reject
- * rides that were cancelled or scheduled after the modal opened.
+ * Scheduling ride status through the pages. A stale assignment modal is
+ * rejected when the ride was cancelled after it opened, but still saves when
+ * the ride was scheduled in the meantime, since scheduled rides can be
+ * reassigned.
  */
 import { test, expect } from "./fixtures";
 import {
@@ -16,7 +18,7 @@ import {
   studentApi,
 } from "./schedulingTestHelpers";
 
-test("scheduling ride status: stale assignment modals reject assignment (UI)", async ({
+test("scheduling ride status: stale assignment modals follow the ride status (UI)", async ({
   apiAs,
   pageAs,
   playwright,
@@ -65,9 +67,7 @@ test("scheduling ride status: stale assignment modals reject assignment (UI)", a
       .click();
     expect((await cancelledResponse).status()).toBe(409);
     await expect(
-      cancelledAssignment.dialog.getByText(
-        /Route is no longer in Requested status/i,
-      ),
+      cancelledAssignment.dialog.getByText(/Route is not in Requested/i),
     ).toBeVisible();
     await cancelledAssignment.dialog
       .getByRole("button", { name: "Nevermind", exact: true })
@@ -94,21 +94,20 @@ test("scheduling ride status: stale assignment modals reject assignment (UI)", a
     await scheduledAssignment.dialog
       .getByRole("button", { name: "Save", exact: true })
       .click();
-    expect((await scheduledResponse).status()).toBe(409);
-    await expect(
-      scheduledAssignment.dialog.getByText(
-        /Route is no longer in Requested status/i,
-      ),
-    ).toBeVisible();
+    const saved = await scheduledResponse;
+    expect(saved.status(), await saved.text()).toBe(200);
+    await expect(scheduledAssignment.dialog).toBeHidden();
 
     expect((await routeState(adminApi, cancelledRoute)).status).toBe(
       "CancelledByStudent",
     );
-    expect((await routeState(adminApi, scheduledRoute)).status).toBe(
-      "Scheduled",
-    );
-    expect(diag.apiFailures).toHaveLength(2);
-    expect(diag.apiFailures.every(({ status }) => status === 409)).toBe(true);
+    expect(await routeState(adminApi, scheduledRoute)).toMatchObject({
+      status: "Scheduled",
+      driver: { id: driver.id },
+      vehicle: { id: vehicle.id },
+    });
+    expect(diag.apiFailures).toHaveLength(1);
+    expect(diag.apiFailures[0].status).toBe(409);
   } finally {
     await Promise.all(clients.map((client) => client.dispose()));
   }

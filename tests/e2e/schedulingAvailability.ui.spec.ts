@@ -11,6 +11,7 @@ import {
   createStudent,
   createVehicle,
   futureSlot,
+  modalDropdown,
   openScheduleModal,
   routeState,
   schedule,
@@ -24,11 +25,7 @@ async function expectDriverUnavailable(
   unavailable: TestUser,
   available: TestUser,
 ) {
-  const driverSelect = dialog
-    .getByRole("button", { name: "Select...", exact: true })
-    .first();
-  await expect(driverSelect).toBeEnabled();
-  await driverSelect.click();
+  await (await modalDropdown(dialog, "Choose a driver")).click();
   await expect(
     page.getByRole("menuitem", {
       name: `${unavailable.lastName}, ${unavailable.firstName}`,

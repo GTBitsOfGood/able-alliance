@@ -9,7 +9,7 @@ import { PrismaClient, RouteStatus } from "@db/generated/client";
 import {
   applyAssignments,
   type ScheduleAssignment,
-} from "@/server/scheduling/applyAssignments";
+} from "@/server/applyAssignments";
 import { test, expect } from "./fixtures";
 import { E2E } from "./env";
 import { PERSONAS } from "./seed";

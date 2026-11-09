@@ -1,10 +1,13 @@
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { addDays } from "date-fns";
-import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
+import { toZonedTime } from "date-fns-tz";
 import { expect, mintSessionToken } from "./fixtures";
 import { E2E } from "./env";
 import { LOCATIONS } from "./seed";
+
+import { modalDropdown } from "./routeTestHelpers";
+
+export { futureSlot, modalDropdown } from "./routeTestHelpers";
 
 const TZ = "America/New_York";
 const MINUTE = 60_000;
@@ -26,15 +29,6 @@ export type TestVehicle = {
 
 export function uniqueTag(prefix: string): string {
   return `${prefix}${randomUUID().replaceAll("-", "").slice(0, 10)}`;
-}
-
-export function futureSlot(daysAhead: number, time: string): Date {
-  const day = formatInTimeZone(
-    addDays(new Date(), daysAhead),
-    TZ,
-    "yyyy-MM-dd",
-  );
-  return fromZonedTime(`${day}T${time}:00`, TZ);
 }
 
 export async function createStudent(
@@ -191,19 +185,14 @@ export async function selectModalAssignment(
   driver: TestUser,
   vehicle: TestVehicle,
 ): Promise<void> {
-  const select = dialog.getByRole("button", {
-    name: "Select...",
-    exact: true,
-  });
-  await expect(select.first()).toBeEnabled();
-  await select.first().click();
+  await (await modalDropdown(dialog, "Choose a driver")).click();
   await page
     .getByRole("menuitem", {
       name: `${driver.lastName}, ${driver.firstName}`,
       exact: true,
     })
     .click();
-  await select.click();
+  await (await modalDropdown(dialog, "Choose a vehicle")).click();
   await page
     .getByRole("menuitem", {
       name: `${vehicle.name} (${vehicle.licensePlate})`,
