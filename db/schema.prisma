@@ -89,7 +89,6 @@ model AuditEntry {
 model UserSettings {
   userId               String  @id @db.Uuid
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dailySummary         Boolean @default(true)
   driverAssigned       Boolean @default(true)
   driverEnRoute        Boolean @default(true)
   rideCancelled        Boolean @default(true)
@@ -199,13 +198,14 @@ model Route {
 }
 
 model Message {
-  id       String   @id @default(uuid()) @db.Uuid
-  routeId  String   @db.Uuid
-  route    Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
-  senderId String   @db.Uuid
-  sender   User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
-  text     String
-  time     DateTime @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  routeId    String   @db.Uuid
+  route      Route    @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  senderId   String   @db.Uuid
+  senderType UserType
+  sender     User     @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  text       String
+  time       DateTime @db.Timestamptz(3)
 
   @@index([routeId, time, id])
   @@index([senderId])
@@ -213,6 +213,8 @@ model Message {
 
 enum RecurrenceFrequency {
   weekly
+  biweekly
+  monthly
 }
 
 model RideSeries {

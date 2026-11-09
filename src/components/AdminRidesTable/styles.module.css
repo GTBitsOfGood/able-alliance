@@ -74,6 +74,19 @@
     min-width: 100rem;
   }
 
+  /* Table.Root renders a div. Set the layout on its actual table so long
+     content cannot impose a minimum column width. */
+  .adjustable :global(.rt-TableRootTable) {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  /* Radix's intrinsic table wrapper would otherwise expand to fit content. */
+  .adjustable :global(.rt-ScrollAreaViewport) > div {
+    display: block !important;
+    min-width: 0 !important;
+  }
+
   .columnHeaderCell.columnHeaderCell {
     position: relative;
     height: 5.6rem;
@@ -139,6 +152,7 @@
 
 .filters {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 2.4rem;
 }
@@ -200,23 +214,21 @@
 }
 .sortHeader:focus-visible,
 .rowActions:focus-visible {
-  outline: 2px solid var(--color-brand-stroke-strong);
-  outline-offset: 2px;
+  outline: 0.2rem solid var(--color-brand-stroke-strong);
+  outline-offset: 0.2rem;
   border-radius: 0.4rem;
 }
 .menu {
   z-index: 50;
   min-width: 11.5rem;
   padding: 0.4rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.4rem;
-  background: var(--color-background-sunken, #f9f9f9);
+  background: var(--color-solid-bg-sunken);
   color: var(--color-grey-text-strong);
-  box-shadow:
-    0 8px 8px -4px rgb(0 0 0 / 4%),
-    0 20px 24px -4px rgb(0 0 0 / 8%);
+  box-shadow: var(--shadow-popover);
   font-family: var(--font-paragraph);
-  font-size: 1.6rem;
+  font-size: var(--text-desktop-paragraph-2);
 }
 .menuItem {
   display: flex;
@@ -255,4 +267,81 @@
 .cellWrapped {
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* Keep header text inside narrow columns without covering the resize target. */
+.adjustable .sortHeader {
+  min-width: 0;
+  overflow: hidden;
+}
+.adjustable .sortHeader > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 0.8rem;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  z-index: 1;
+}
+.resizeHandle:hover,
+.resizeHandle:focus-visible {
+  background: var(--color-brand-stroke-strong);
+  outline: none;
+}
+.autofitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 3.8rem;
+  line-height: var(--text-desktop-paragraph-2--line-height);
+  padding: 0.8rem 1.2rem;
+  border: 0.1rem solid var(--color-grey-text-strong);
+  border-radius: 0.4rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  font-size: var(--text-desktop-paragraph-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+.autofitButton:focus-visible {
+  outline: 0.2rem solid var(--color-brand-stroke-strong);
+  outline-offset: 0.2rem;
+}
+
+.columnTools {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.toolbarDivider {
+  width: 0.1rem;
+  height: 2.8rem;
+  flex-shrink: 0;
+  background: var(--color-grey-stroke-weak);
+}
+.columnsLabel {
+  padding: 0.8rem;
+  font-weight: 600;
+}
+.columnOption {
+  gap: 0.8rem;
+}
+.columnCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0.1rem solid var(--color-grey-stroke-strong);
+  border-radius: 0.2rem;
 }

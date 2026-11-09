@@ -2,6 +2,8 @@ import { formatEstDate, formatEstTime } from "@/utils/dateEst";
 import { sendEmail } from "@/server/email/send";
 import {
   renderRideCancelled,
+  renderRideSeriesCancelled,
+  type RideSeriesCancelledDetails,
   renderDriverEnRoute,
   renderRideAssigned,
   renderRideUpdated,
@@ -24,6 +26,27 @@ export async function sendRideCancelled(
 ) {
   const content = await renderRideCancelled({ ...details, name: toName });
   return sendEmail({ to, toName, subject: "Ride Cancelled", ...content });
+}
+
+export async function sendRideSeriesCancelled(
+  to: string,
+  toName: string,
+  details: RideSeriesCancelledDetails,
+) {
+  const content = await renderRideSeriesCancelled({
+    ...details,
+    name: toName,
+    ridesUrl: new URL("/rides", process.env.DEPLOY_PRIME_URL!).href,
+  });
+  return sendEmail({
+    to,
+    toName,
+    subject:
+      details.scheduleStopped === false
+        ? "Rides Cancelled"
+        : "Recurring Rides Cancelled",
+    ...content,
+  });
 }
 
 export async function sendDriverEnRoute(

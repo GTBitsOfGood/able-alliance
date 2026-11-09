@@ -9,6 +9,8 @@ export function fieldLabel(field: string) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export function summaryValue(
   field: string,
   value: unknown,
@@ -16,6 +18,12 @@ export function summaryValue(
 ): string {
   if (value === null || value === undefined) return "None";
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (
+    entityType === "RideSeries" &&
+    field === "daysOfWeek" &&
+    Array.isArray(value)
+  )
+    return value.map((day) => WEEKDAY_NAMES[day] ?? String(day)).join(", ");
   if (typeof value === "string") {
     if (!value) return '""';
     if (entityType === "Route" && field === "status")

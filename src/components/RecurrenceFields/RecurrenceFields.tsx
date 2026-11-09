@@ -1,6 +1,7 @@
 "use client";
 
 import BogButton from "@/components/BogButton/BogButton";
+import type { RecurrenceFrequency } from "@/schemas/rideSeries";
 import styles from "./styles.module.css";
 
 const DAYS = [
@@ -17,6 +18,8 @@ export default function RecurrenceFields({
   onDaysChange,
   onEndChange,
   minDate,
+  frequency,
+  onFrequencyChange,
   compact = false,
 }: {
   daysOfWeek: number[];
@@ -24,16 +27,39 @@ export default function RecurrenceFields({
   onDaysChange: (days: number[]) => void;
   onEndChange: (date: string) => void;
   minDate?: string;
+  frequency: RecurrenceFrequency;
+  onFrequencyChange: (frequency: RecurrenceFrequency) => void;
   compact?: boolean;
 }) {
   return (
     <div className={`${styles.fields} ${compact ? styles.compact : ""}`}>
       <label>
         Frequency
-        <select value="weekly" onChange={() => {}}>
+        <select
+          value={frequency}
+          onChange={(event) =>
+            onFrequencyChange(event.target.value as RecurrenceFrequency)
+          }
+        >
           <option value="weekly">Weekly</option>
+          <option value="biweekly">Every two weeks</option>
+          <option value="monthly">Monthly</option>
         </select>
       </label>
+      {frequency === "monthly" && minDate && (
+        <p className={styles.hint}>
+          Repeats on the{" "}
+          {
+            ["first", "second", "third", "fourth", "fifth"][
+              Math.floor((Number(minDate.slice(-2)) - 1) / 7)
+            ]
+          }{" "}
+          occurrence of each selected weekday every month.
+          {Number(minDate.slice(-2)) > 28
+            ? " Months without a fifth occurrence are skipped."
+            : ""}
+        </p>
+      )}
 
       <fieldset>
         <legend>Repeats on</legend>

@@ -4,15 +4,20 @@ import { RouteStatus } from "@db/generated/enums";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import * as Tabs from "@radix-ui/react-tabs";
+import { DropdownMenu } from "radix-ui";
+import RideWeekPicker from "./RideWeekPicker";
+import UpNextHeading from "./UpNextHeading";
 import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
 import BogIcon from "@/components/BogIcon/BogIcon";
-import tabStyles from "@/components/BogTabs/styles.module.css";
+import studentStyles from "./student-rides.module.css";
 import { RideCard } from "./RideCard";
 import DriverRidesView from "./DriverRidesView";
 import styles from "./styles.module.css";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import CancelScopeOptions, {
+  type CancelScope,
+} from "@/components/CancelScopeOptions/CancelScopeOptions";
 import DelayRideModal from "@/components/DelayRideModal/DelayRideModal";
 import { useRouteUpdates } from "@/hooks/useRouteUpdates";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -24,12 +29,9 @@ import {
   isEstToday,
 } from "@/utils/dateEst";
 
-import type { RouteResponse as Route } from "@/types/api";
+import { getNextRide } from "@/utils/nextRide";
 
-function formatWeekRangeHeader(start: Date, end: Date): string {
-  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  return `Week of ${formatEstDate(start, opts)} - ${formatEstDate(end, opts)}`;
-}
+import type { RouteResponse as Route } from "@/types/api";
 
 function formatDayGroupHeader(iso: string): string {
   const date = new Date(iso);
@@ -47,10 +49,6 @@ function formatDayGroupHeader(iso: string): string {
 
 function getDateKey(iso: string): string {
   return estDateKey(new Date(iso));
-}
-
-function getWeekRange(offset: 0 | 1): [Date, Date] {
-  return estWeekRange(offset);
 }
 
 function isInRange(iso: string, [start, end]: [Date, Date]): boolean {
@@ -83,12 +81,14 @@ export default function RidesPage() {
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [cancelScope, setCancelScope] = useState<CancelScope>("single");
+  const cancelTarget = routes.find((route) => route.id === cancelTargetId);
   const [delayTargetId, setDelayTargetId] = useState<string | null>(null);
   const [delaying, setDelaying] = useState(false);
   const delayPending = useRef(false);
   const [delayError, setDelayError] = useState<string | null>(null);
   const delayTarget = routes.find((route) => route.id === delayTargetId);
-  const [requestMenuOpen, setRequestMenuOpen] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     // Date-dependent UI must wait until hydration finishes.
@@ -135,29 +135,39 @@ export default function RidesPage() {
   });
 
   const handleCancel = useCallback(
-    async (routeId: string) => {
+    async (routeId: string, scope: CancelScope) => {
       setCancellingId(routeId);
       try {
         const res = await fetch("/api/routes/cancel", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ routeId }),
+          body: JSON.stringify({ routeId, scope }),
         });
         if (!res.ok) {
           const body = await res.json();
           throw new Error(body.error ?? res.statusText);
         }
-        beginRequest();
-        setRoutes((prev) => prev.filter((r) => r.id !== routeId));
         setCancelTargetId(null);
+        if (scope === "series") {
+          // Later rides in the series were cancelled too.
+          void fetchRides();
+        } else {
+          beginRequest();
+          setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Cancellation failed.");
       } finally {
         setCancellingId(null);
       }
     },
-    [beginRequest],
+    [beginRequest, fetchRides],
   );
+
+  const openCancel = useCallback((routeId: string) => {
+    setCancelScope("single");
+    setCancelTargetId(routeId);
+  }, []);
 
   const handleDelay = async (minutes: number) => {
     if (!delayTargetId || delayPending.current) return;
@@ -188,30 +198,20 @@ export default function RidesPage() {
     }
   };
 
-  const thisWeekRange = React.useMemo(
+  const weekRange = React.useMemo(
     () =>
-      mounted ? getWeekRange(0) : ([new Date(0), new Date(0)] as [Date, Date]),
-    [mounted],
+      mounted
+        ? estWeekRange(weekOffset)
+        : ([new Date(0), new Date(0)] as [Date, Date]),
+    [mounted, weekOffset],
   );
-  const nextWeekRange = React.useMemo(
-    () =>
-      mounted ? getWeekRange(1) : ([new Date(0), new Date(0)] as [Date, Date]),
-    [mounted],
+  const todayKey = mounted ? estDateKey(new Date()) : "";
+  const routesByDate = groupRoutesByDate(
+    routes.filter((route) => isInRange(route.scheduledPickupTime, weekRange)),
   );
-
-  const routesByDateThisWeek = React.useMemo(() => {
-    const filtered = routes.filter((r) =>
-      isInRange(r.scheduledPickupTime, thisWeekRange),
-    );
-    return groupRoutesByDate(filtered);
-  }, [routes, thisWeekRange]);
-
-  const routesByDateNextWeek = React.useMemo(() => {
-    const filtered = routes.filter((r) =>
-      isInRange(r.scheduledPickupTime, nextWeekRange),
-    );
-    return groupRoutesByDate(filtered);
-  }, [routes, nextWeekRange]);
+  const dateKeys = Object.keys(routesByDate)
+    .sort()
+    .filter((key) => key >= todayKey);
 
   const actionRequiredRoutes = routes.filter(
     (route) => route.status === RouteStatus.ActionRequiredByStudent,
@@ -219,15 +219,7 @@ export default function RidesPage() {
   const actionRequiredByDate = groupRoutesByDate(actionRequiredRoutes);
   const actionRequiredDateKeys = Object.keys(actionRequiredByDate).sort();
 
-  const todayKey = React.useMemo(
-    () => (mounted ? estDateKey(new Date()) : ""),
-    [mounted],
-  );
-
-  const dateKeysThisWeek = Object.keys(routesByDateThisWeek)
-    .sort()
-    .filter((k) => k >= todayKey);
-  const dateKeysNextWeek = Object.keys(routesByDateNextWeek).sort();
+  const upNext = mounted ? getNextRide(routes) : undefined;
 
   if (sessionStatus === "loading") {
     return (
@@ -247,94 +239,70 @@ export default function RidesPage() {
     );
   }
 
-  function renderRideList(
-    routesByDate: Record<string, Route[]>,
-    dateKeys: string[],
-    requestButton: React.ReactNode,
-  ) {
-    const isEmpty = dateKeys.length === 0;
+  function renderRideCard(route: Route) {
+    return (
+      <RideCard
+        key={route.id}
+        route={route}
+        href={`/rides/${route.id}`}
+        onCancel={openCancel}
+        cancelling={cancellingId === route.id}
+        onDelay={(id) => {
+          setDelayError(null);
+          setDelayTargetId(id);
+        }}
+        delaying={delaying && delayTargetId === route.id}
+      />
+    );
+  }
+
+  function renderRideList(grouped: Record<string, Route[]>, keys: string[]) {
     return (
       <div className={styles.rideList}>
-        {isEmpty && !loading && (
-          <>
-            <div className={`${styles.dayHeaderRow} ${styles.dayHeaderRowEnd}`}>
-              {requestButton}
-            </div>
-            <p className={styles.rideListEmpty}>No rides yet.</p>
-          </>
+        {keys.length === 0 && (
+          <p className={styles.rideListEmpty}>No rides yet.</p>
         )}
-        {dateKeys.map((dateKey, index) => (
-          <div key={dateKey} className={styles.dateGroup}>
-            <div className={styles.dayHeaderRow}>
-              <h4 className={styles.dayGroupHeading}>
-                {formatDayGroupHeader(
-                  routesByDate[dateKey][0].scheduledPickupTime,
-                )}
-              </h4>
-              {index === 0 ? requestButton : null}
-            </div>
+        {keys.map((dateKey) => (
+          <section key={dateKey} className={styles.dateGroup}>
+            <h3 className={studentStyles.dayHeading}>
+              {formatDayGroupHeader(grouped[dateKey][0].scheduledPickupTime)}
+            </h3>
             <div className={styles.dateGroupCards}>
-              {routesByDate[dateKey].map((route) => (
-                <RideCard
-                  key={route.id}
-                  route={route}
-                  href={`/rides/${route.id}`}
-                  onCancel={(id) => setCancelTargetId(id)}
-                  cancelling={cancellingId === route.id}
-                  onDelay={(id) => {
-                    setDelayError(null);
-                    setDelayTargetId(id);
-                  }}
-                  delaying={delaying && delayTargetId === route.id}
-                />
-              ))}
+              {grouped[dateKey].map(renderRideCard)}
             </div>
-          </div>
+          </section>
         ))}
       </div>
     );
   }
 
-  const thisWeekHeader = formatWeekRangeHeader(
-    thisWeekRange[0],
-    thisWeekRange[1],
-  );
-  const nextWeekHeader = formatWeekRangeHeader(
-    nextWeekRange[0],
-    nextWeekRange[1],
-  );
-
   const requestRideButton = (
     <div className={styles.requestRideButtonGroup}>
-      <Link href="/rides/new" className={styles.requestRideButtonLink}>
-        <BogButton className={styles.requestRideButton}>
-          <span className={styles.requestRideButtonContent}>
-            <BogIcon name="plus" size={20} color="currentColor" />
-            Request new ride
-          </span>
-        </BogButton>
+      <Link href="/rides/new" className={studentStyles.requestLink}>
+        <BogIcon name="plus" size={20} color="currentColor" />
+        Request new ride
       </Link>
-      <div className={styles.requestRideMenuWrap}>
-        <BogButton
-          className={styles.requestRideMenuButton}
-          aria-label="Request multiple rides"
-          aria-expanded={requestMenuOpen}
-          aria-haspopup="menu"
-          onClick={() => setRequestMenuOpen((open) => !open)}
-        >
-          <BogIcon name="chevron-down" size={20} color="currentColor" />
-        </BogButton>
-        {requestMenuOpen && (
-          <Link
-            href="/rides/new/batch"
-            className={styles.requestRidePopover}
-            role="menuitem"
-            onClick={() => setRequestMenuOpen(false)}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <BogButton
+            className={styles.requestRideMenuButton}
+            aria-label="More ride request options"
           >
-            Request multiple rides
-          </Link>
-        )}
-      </div>
+            <BogIcon name="chevron-down" size={20} color="currentColor" />
+          </BogButton>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            className={studentStyles.requestMenu}
+            align="end"
+            sideOffset={4}
+          >
+            <DropdownMenu.Item asChild>
+              <Link href="/rides/new/batch">Request multiple rides</Link>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     </div>
   );
 
@@ -351,7 +319,7 @@ export default function RidesPage() {
           confirming={delaying}
           delayActionError={delayError ?? undefined}
           onCancelRide={() => {
-            setCancelTargetId(delayTarget.id);
+            openCancel(delayTarget.id);
             setDelayTargetId(null);
           }}
         />
@@ -362,101 +330,98 @@ export default function RidesPage() {
           if (!open) setCancelTargetId(null);
         }}
         onConfirm={() => {
-          if (cancelTargetId) void handleCancel(cancelTargetId);
+          if (cancelTargetId) void handleCancel(cancelTargetId, cancelScope);
         }}
         variant="destructive"
         title="Cancel Ride?"
-        description="Are you sure you want to cancel this ride?"
-        confirmLabel="Cancel ride"
+        description={
+          cancelTarget?.seriesId
+            ? "This is a recurring ride. Which rides do you want to cancel?"
+            : "Are you sure you want to cancel this ride?"
+        }
+        confirmLabel={cancelScope === "series" ? "Cancel rides" : "Cancel ride"}
         confirmingLabel="Cancelling…"
         cancelLabel="Nevermind"
         confirming={cancelTargetId !== null && cancellingId === cancelTargetId}
-      />
-      <main className={styles.main}>
-        <div className={styles.mainHeader}>
-          <h1 className={styles.pageTitle}>Your Rides</h1>
+      >
+        {cancelTarget?.seriesId && (
+          <CancelScopeOptions
+            value={cancelScope}
+            onChange={setCancelScope}
+            disabled={cancellingId !== null}
+          />
+        )}
+      </ConfirmActionModal>
+      <main className={`${styles.main} ${styles.studentMain}`}>
+        <div className={studentStyles.header}>
+          <h1 className={studentStyles.title}>Your Rides</h1>
+          {requestRideButton}
         </div>
 
         {error && (
-          <p className={styles.errorMessage} role="status">
+          <p className={studentStyles.error} role="alert">
             {error}
           </p>
         )}
 
-        <Tabs.Root defaultValue="this-week" className={styles.tabsLayout}>
-          <div className={styles.tabsRow}>
-            <Tabs.List
-              className={`${tabStyles["bog-tabs-list"]} ${tabStyles["bog-tabs-mobile"]} ${styles.rideTabs} ${styles.studentTabs}`}
-              aria-label="Ride views"
-            >
-              <Tabs.Trigger
-                value="this-week"
-                className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
-              >
-                <div className={tabStyles["bog-tabs-label"]}>This week</div>
-              </Tabs.Trigger>
-              <Tabs.Trigger
-                value="next-week"
-                className={`${tabStyles["bog-tabs-trigger"]} ${tabStyles["bog-tabs-label-wrapper"]}`}
-              >
-                <div className={tabStyles["bog-tabs-label"]}>Next week</div>
-              </Tabs.Trigger>
-              <Tabs.Trigger
-                value="action-required"
-                className={`${styles.actionRequiredTab} ${actionRequiredRoutes.length ? styles.hasActions : ""}`}
-              >
-                {actionRequiredRoutes.length} action
-                {actionRequiredRoutes.length === 1 ? "" : "s"} required
-              </Tabs.Trigger>
-            </Tabs.List>
-          </div>
-          <Tabs.Content
-            value="action-required"
-            className={styles.tabContentPanel}
+        {!loading && actionRequiredRoutes.length > 0 && (
+          <section
+            className={studentStyles.attention}
+            aria-labelledby="attention-heading"
           >
+            <h2 id="attention-heading" className={studentStyles.sectionTitle}>
+              {actionRequiredRoutes.length} action
+              {actionRequiredRoutes.length === 1 ? "" : "s"} required
+            </h2>
+            <p className={studentStyles.description}>
+              Review the proposed changes to your rides.
+            </p>
+            {renderRideList(actionRequiredByDate, actionRequiredDateKeys)}
+          </section>
+        )}
+
+        <section
+          className={studentStyles.upNext}
+          aria-labelledby="up-next-heading"
+        >
+          <UpNextHeading
+            id="up-next-heading"
+            pickupTime={upNext?.scheduledPickupTime}
+            delayMinutes={upNext?.delayMinutes}
+          />
+          {loading ? (
+            <p className={styles.rideListLoading} role="status">
+              Loading…
+            </p>
+          ) : upNext ? (
+            renderRideCard(upNext)
+          ) : (
+            <p className={styles.rideListEmpty}>No upcoming rides.</p>
+          )}
+        </section>
+
+        <section
+          className={studentStyles.upcoming}
+          aria-labelledby="upcoming-heading"
+        >
+          <h2 id="upcoming-heading" className={studentStyles.sectionTitle}>
+            Upcoming Rides
+          </h2>
+          <RideWeekPicker
+            weekOffset={weekOffset}
+            onWeekChange={setWeekOffset}
+            ready={mounted}
+          />
+          <div aria-busy={loading}>
             {loading ? (
-              <p className={styles.rideListLoading}>Loading…</p>
-            ) : actionRequiredRoutes.length ? (
-              renderRideList(
-                actionRequiredByDate,
-                actionRequiredDateKeys,
-                requestRideButton,
-              )
-            ) : (
-              <p className={styles.rideListEmpty}>
-                No rides need your attention.
+              <p className={styles.rideListLoading} role="status">
+                Loading…
               </p>
-            )}
-          </Tabs.Content>
-          <Tabs.Content value="this-week" className={styles.tabContentPanel}>
-            <div className={styles.tabContentHeader}>
-              <h2 className={styles.dateHeader}>{thisWeekHeader}</h2>
-            </div>
-            {loading ? (
-              <p className={styles.rideListLoading}>Loading…</p>
             ) : (
-              renderRideList(
-                routesByDateThisWeek,
-                dateKeysThisWeek,
-                requestRideButton,
-              )
+              renderRideList(routesByDate, dateKeys)
             )}
-          </Tabs.Content>
-          <Tabs.Content value="next-week" className={styles.tabContentPanel}>
-            <div className={styles.tabContentHeader}>
-              <h2 className={styles.dateHeader}>{nextWeekHeader}</h2>
-            </div>
-            {loading ? (
-              <p className={styles.rideListLoading}>Loading…</p>
-            ) : (
-              renderRideList(
-                routesByDateNextWeek,
-                dateKeysNextWeek,
-                requestRideButton,
-              )
-            )}
-          </Tabs.Content>
-        </Tabs.Root>
+          </div>
+        </section>
       </main>
     </div>
   );

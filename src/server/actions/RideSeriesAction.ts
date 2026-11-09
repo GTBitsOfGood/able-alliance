@@ -19,17 +19,21 @@
  */
 
 import { db } from "@db";
-import { Prisma } from "@db/generated/client";
+import { Prisma, RouteStatus } from "@db/generated/client";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
-import { addDays, endOfDay, set } from "date-fns";
+import { notifyRideSeriesCancelled } from "@/server/notifications/routeNotifications";
+import { addDays, endOfDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
-import { createRoute } from "./RouteAction";
+import { cancelRoute, createRoute, transitionRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/types/rideSeries";
 import type { RecurrenceRequest } from "@/schemas/rideSeries";
 import { createRouteSchema, type CreateRouteInput } from "@/schemas/ride";
-import { ArgumentError, ConflictError } from "@/utils/errors";
+import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { recordAudit } from "@db/audit";
+
+import { nextOccurrence } from "@/utils/rideRecurrence";
+export { nextOccurrence } from "@/utils/rideRecurrence";
 
 const TZ = "America/New_York";
 
@@ -39,7 +43,9 @@ function seriesAuditSnapshot(series: {
   pickupLocation: string;
   dropoffLocation: string;
   frequency: string;
+  daysOfWeek: number[];
   firstPickupTime: Date;
+  endsAt: Date | null;
   pickupWindowStartOffsetMs: number;
   pickupWindowEndOffsetMs: number;
   materializedThrough: Date;
@@ -53,7 +59,9 @@ function seriesAuditSnapshot(series: {
     pickupLocation: series.pickupLocation,
     dropoffLocation: series.dropoffLocation,
     frequency: series.frequency,
+    daysOfWeek: series.daysOfWeek,
     firstPickupTime: series.firstPickupTime,
+    endsAt: series.endsAt,
     pickupWindowStartOffsetMs: series.pickupWindowStartOffsetMs,
     pickupWindowEndOffsetMs: series.pickupWindowEndOffsetMs,
     materializedThrough: series.materializedThrough,
@@ -65,39 +73,6 @@ function seriesAuditSnapshot(series: {
 
 /** How far ahead rides are kept scheduled, in Eastern calendar days. */
 export const SCHEDULING_HORIZON_DAYS = 28;
-
-/**
- * The first occurrence on a later Eastern day than `after`, falling on one of
- * `daysOfWeek` at the first ride's time of day.
- *
- * `after` is always a previous occurrence (or the first ride), so its Eastern
- * date is the day already handled. The arithmetic happens in Eastern wall-clock
- * time, so a 1:00 PM ride stays 1:00 PM across a DST boundary instead of sliding
- * to 12:00 or 2:00.
- */
-export function nextOccurrence(
-  firstPickupTime: Date,
-  daysOfWeek: number[],
-  after: Date,
-): Date {
-  const timeOfDay = toZonedTime(firstPickupTime, TZ);
-  const handled = toZonedTime(after, TZ);
-  for (let offset = 1; offset <= 7; offset++) {
-    const day = addDays(handled, offset);
-    if (daysOfWeek.includes(day.getDay())) {
-      return fromZonedTime(
-        set(day, {
-          hours: timeOfDay.getHours(),
-          minutes: timeOfDay.getMinutes(),
-          seconds: timeOfDay.getSeconds(),
-          milliseconds: timeOfDay.getMilliseconds(),
-        }),
-        TZ,
-      );
-    }
-  }
-  throw new Error("Ride series has no days of week to repeat on");
-}
 
 /**
  * Last instant that may be scheduled right now: the end of the Eastern day
@@ -149,13 +124,22 @@ async function materializeSeries(
             series.firstPickupTime,
             series.daysOfWeek,
             series.materializedThrough,
+            series.frequency,
           );
           // Past its end date the series has nothing left to generate, so retire
           // it instead of rechecking it on every cron tick.
           if (series.endsAt && next > series.endsAt) {
-            await tx.rideSeries.update({
+            const retired = await tx.rideSeries.update({
               where: { id: seriesId },
               data: { active: false },
+            });
+            // System action (no actor): the series ran past its end date.
+            await recordAudit(tx, {
+              entityType: "RideSeries",
+              entityId: retired.id,
+              action: "Update",
+              before: seriesAuditSnapshot(series),
+              after: seriesAuditSnapshot(retired),
             });
             return null;
           }
@@ -375,8 +359,9 @@ export async function createRideSeries(
 export async function deactivateRideSeries(
   seriesId: string,
   actorId: string | null = null,
+  tx?: Prisma.TransactionClient,
 ): Promise<boolean> {
-  const changed = await db.$transaction(async (tx) => {
+  const deactivate = async (tx: Prisma.TransactionClient) => {
     const before = await tx.rideSeries.findUnique({
       where: { id: seriesId.toLowerCase() },
     });
@@ -394,6 +379,84 @@ export async function deactivateRideSeries(
       after: seriesAuditSnapshot(updated),
     });
     return true;
+  };
+  return tx ? deactivate(tx) : db.$transaction(deactivate);
+}
+
+/** Later rides that haven't started yet; in-progress or finished rides are left alone. */
+const FUTURE_CANCELLABLE_STATUSES: RouteStatus[] = [
+  RouteStatus.Requested,
+  RouteStatus.ActionRequiredByAdmin,
+  RouteStatus.ActionRequiredByStudent,
+  RouteStatus.Scheduled,
+];
+
+/**
+ * Cancel a recurring ride together with every later ride in its series, and stop
+ * the series from generating more.
+ *
+ * Lock the series before changing rides, matching materialization's lock order.
+ * Stop generation and cancel rides in one transaction, including audit entries
+ * and pending-change resolution. Later rides must still be unstarted when their
+ * status is updated. Events and combined notices are sent only after commit.
+ */
+export async function cancelRideSeriesFrom(
+  routeId: string,
+  status:
+    typeof RouteStatus.CancelledByStudent | typeof RouteStatus.CancelledByAdmin,
+  actorId: string,
+) {
+  const selected = await db.route.findUnique({
+    where: { id: routeId.toLowerCase() },
+    select: { id: true, seriesId: true, scheduledPickupTime: true },
   });
-  return changed;
+  if (!selected) throw new NotFoundError("Route not found");
+  if (!selected.seriesId)
+    throw new ArgumentError("Ride is not part of a recurring series");
+
+  const seriesId = selected.seriesId;
+  const { route, cancelled } = await db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw(Prisma.sql`
+        SELECT "id" FROM "RideSeries" WHERE "id" = ${seriesId}::uuid FOR UPDATE
+      `);
+      const route = await cancelRoute(selected.id, status, actorId, { tx });
+      const cancelled = [route];
+      if (!(await deactivateRideSeries(seriesId, actorId, tx)))
+        throw new NotFoundError("Ride series not found");
+
+      const later = await tx.route.findMany({
+        where: {
+          seriesId,
+          scheduledPickupTime: { gt: selected.scheduledPickupTime },
+          status: { in: FUTURE_CANCELLABLE_STATUSES },
+        },
+        select: { id: true },
+        orderBy: { scheduledPickupTime: "asc" },
+      });
+      for (const { id } of later) {
+        try {
+          cancelled.push(
+            await transitionRoute(
+              id,
+              FUTURE_CANCELLABLE_STATUSES,
+              status,
+              actorId,
+              { tx },
+            ),
+          );
+        } catch (error) {
+          // The ride changed state (or was removed) since the lookup; leave it be.
+          if (error instanceof ConflictError || error instanceof NotFoundError)
+            continue;
+          throw error;
+        }
+      }
+      return { route, cancelled };
+    },
+    { timeout: 60000 },
+  );
+  for (const cancelledRoute of cancelled) emitRouteUpdate(cancelledRoute);
+  void notifyRideSeriesCancelled(cancelled);
+  return { route, cancelledCount: cancelled.length };
 }

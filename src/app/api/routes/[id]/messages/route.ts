@@ -31,8 +31,8 @@ export async function GET(
     const route = await getRouteById(routeId, user.activeType);
     if (
       !isAdmin(user.activeType) &&
-      route.student?.id !== user.userId &&
-      route.driver?.id !== user.userId
+      !(user.activeType === "Student" && route.student?.id === user.userId) &&
+      !(user.activeType === "Driver" && route.driver?.id === user.userId)
     ) {
       return NextResponse.json(
         { error: "Forbidden" },

@@ -3,10 +3,12 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { idSchema } from "@/schemas/id";
 import { getEmailRoute } from "@/server/actions/EmailAction";
+import { isUserActive } from "@/server/actions/UserAction";
 import { sendNewMessageFromDriver } from "@/server/email/email";
 import { getRouteMessage } from "@/server/actions/MessageAction";
 import { emitToast } from "@/server/notifications/emitToast";
 import { RIDE_NOTIFICATIONS } from "@/utils/consts";
+import { UserType } from "@db/generated/enums";
 
 const requestSchema = z.object({
   routeId: idSchema,
@@ -49,9 +51,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    if (!(await isUserActive(userId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const message = await getRouteMessage(routeId, messageId);
 
-    if (!message || message.senderId !== userId) {
+    if (
+      !message ||
+      message.senderId !== userId ||
+      message.senderType !== UserType.Driver
+    ) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
 

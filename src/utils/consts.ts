@@ -15,6 +15,7 @@ export enum HTTP_STATUS_CODE {
 // Pickup times and windows must fall inside these hours (America/New_York).
 export const SERVICE_START_TIME = "07:30";
 export const SERVICE_END_TIME = "19:45";
+export const PICKUP_WINDOW_MAX_MINUTES = 45;
 
 // Student edits require strictly more than this many hours before pickup.
 export const STUDENT_EDIT_MIN_NOTICE_HOURS = 3;
@@ -92,13 +93,23 @@ export const RIDE_NOTIFICATIONS = {
   }),
 
   CancelledByStudent: (): ToastPayload => ({
-    type: "error",
+    type: "success",
     message: "Your ride has been cancelled.",
   }),
 
   CancelledByAdmin: (): ToastPayload => ({
-    type: "error",
+    type: "success",
     message: "Your ride has been cancelled by an administrator.",
+  }),
+
+  seriesCancelled: (count: number, byAdmin: boolean): ToastPayload => ({
+    type: "success",
+    message: `Your recurring rides have been cancelled${byAdmin ? " by an administrator" : ""} (${count === 1 ? "1 ride" : `${count} rides`}).`,
+  }),
+
+  driverSeriesCancelled: (count: number): ToastPayload => ({
+    type: "success",
+    message: `${count === 1 ? "1 ride" : `${count} rides`} assigned to you ${count === 1 ? "has" : "have"} been cancelled.`,
   }),
 
   studentDelayed: (minutes: number): ToastPayload => ({

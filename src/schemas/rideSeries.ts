@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { idSchema } from "@/schemas/id";
 
-/**
- * Only weekly recurrence exists for now. Kept as an enum so adding
- * biweekly/monthly later is a schema change rather than a shape change.
- */
-export const recurrenceFrequencyEnum = z.enum(["weekly"]);
+export const recurrenceFrequencyEnum = z.enum([
+  "weekly",
+  "biweekly",
+  "monthly",
+]);
 export type RecurrenceFrequency = z.infer<typeof recurrenceFrequencyEnum>;
 
 /** Opt-in block the ride form sends alongside a normal create-ride payload. */
@@ -14,10 +14,10 @@ export const recurrenceRequestSchema = z
   .object({
     frequency: recurrenceFrequencyEnum.default("weekly"),
     /**
-     * Eastern weekdays to repeat on, 0 = Sunday … 6 = Saturday. Must include the
+     * Eastern weekdays to repeat on, 1 = Monday … 5 = Friday. Must include the
      * first ride's weekday; defaults to only that day when omitted.
      */
-    daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).optional(),
+    daysOfWeek: z.array(z.number().int().min(1).max(5)).min(1).optional(),
     /** Last Eastern calendar date (YYYY-MM-DD) to schedule on; omit to repeat indefinitely. */
     endsOn: z.iso
       .date({ error: "End date must be a valid calendar date (YYYY-MM-DD)" })

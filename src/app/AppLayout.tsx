@@ -6,6 +6,7 @@ import AppNavbar from "@/components/AppNavbar";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import AdminRidesProvider from "@/components/admin/AdminRidesProvider";
+import styles from "./AppLayout.module.css";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -35,11 +36,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isAdmin) {
     return (
       <AdminRidesProvider>
-        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+        <div className={styles.adminLayout}>
           <AdminSidebar />
-          <main style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-            {children}
-          </main>
+          <main className={styles.adminMain}>{children}</main>
         </div>
         <RoleSwitcher />
       </AdminRidesProvider>

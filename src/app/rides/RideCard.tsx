@@ -7,6 +7,7 @@ import { RouteStatus } from "@db/generated/enums";
 import {
   canStudentEditRide,
   studentEditDisabledReason,
+  studentDriverChatDisabledReason,
   isRouteDelayed,
   routeDisplayLabel,
   type DriverRideAction,
@@ -260,7 +261,12 @@ export function RideCard({
 
   // Student card — Figma design
 
-  const chatEligible = isRideChatOpen(route.status);
+  const chatDisabledReason =
+    studentDriverChatDisabledReason(route) ??
+    (!isRideChatOpen(route.status)
+      ? "Chat is unavailable for closed rides."
+      : undefined);
+  const chatEligible = !chatDisabledReason;
 
   const chipStyle = getStudentStatusChipStyle(
     route.status,
@@ -365,6 +371,7 @@ export function RideCard({
             type="button"
             className={`${styles.rideCardActionBtn} ${styles.rideCardActionBtnChat}`}
             disabled
+            title={chatDisabledReason}
           >
             <BogIcon name="chats" size={18} />
             Chat with driver

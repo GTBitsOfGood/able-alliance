@@ -5,6 +5,7 @@ import type { adminRouteInclude, userInclude } from "@/server/queries";
 import {
   getRideEmailDetails,
   sendRideCancelled,
+  sendRideSeriesCancelled,
   sendDriverEnRoute,
   sendRideAssigned,
   sendRideUpdated,
@@ -112,6 +113,82 @@ export function notifyRideStatusChanged(
   }
 
   return deliverNotifications(route.id, deliveries);
+}
+
+/**
+ * One toast and one email per person for a series cancelled from a ride onward,
+ * instead of one per ride. Drivers only hear about the rides assigned to them.
+ */
+export function notifyRideSeriesCancelled(
+  routes: NotificationRoute[],
+): Promise<void> {
+  if (routes.length === 0) return Promise.resolve();
+  const sorted = [...routes].sort(
+    (a, b) => a.scheduledPickupTime.getTime() - b.scheduledPickupTime.getTime(),
+  );
+  const { student, status } = sorted[0];
+  const byAdmin = status === RouteStatus.CancelledByAdmin;
+  const reason = byAdmin
+    ? "Cancelled by an administrator."
+    : "Cancelled by the rider.";
+  const rideDetails = (route: NotificationRoute) => {
+    // The series email lists rides only; per-ride links and driver info are dropped.
+    const { date, pickupTime, dropoffTime, pickupLocation, destination } =
+      getRideEmailDetails(route);
+    return { date, pickupTime, dropoffTime, pickupLocation, destination };
+  };
+
+  const deliveries: Delivery[] = [
+    () =>
+      emitToast(
+        student.id,
+        "Student",
+        RIDE_NOTIFICATIONS.seriesCancelled(sorted.length, byAdmin),
+      ),
+  ];
+
+  if (student.settings?.rideCancelled) {
+    deliveries.push(() =>
+      sendRideSeriesCancelled(student.email, recipientName(student), {
+        rides: sorted.map(rideDetails),
+        reason,
+      }),
+    );
+  }
+
+  const byDriver = new Map<
+    string,
+    { driver: NotificationUser; routes: NotificationRoute[] }
+  >();
+  for (const route of sorted) {
+    if (!route.driver) continue;
+    const entry = byDriver.get(route.driver.id) ?? {
+      driver: route.driver,
+      routes: [],
+    };
+    entry.routes.push(route);
+    byDriver.set(route.driver.id, entry);
+  }
+  for (const { driver, routes: driverRoutes } of byDriver.values()) {
+    deliveries.push(() =>
+      emitToast(
+        driver.id,
+        "Driver",
+        RIDE_NOTIFICATIONS.driverSeriesCancelled(driverRoutes.length),
+      ),
+    );
+    if (driver.settings?.rideCancelled) {
+      deliveries.push(() =>
+        sendRideSeriesCancelled(driver.email, recipientName(driver), {
+          rides: driverRoutes.map(rideDetails),
+          reason,
+          scheduleStopped: false,
+        }),
+      );
+    }
+  }
+
+  return deliverNotifications(sorted[0].id, deliveries);
 }
 
 export function notifyRideDelayed(route: NotificationRoute): Promise<void> {

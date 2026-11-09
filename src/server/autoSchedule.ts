@@ -661,3 +661,40 @@ export async function findBookingConflicts(
   const { byDriver, byVehicle } = indexBusy(busy);
   return bookingProblems(ride, driver, vehicle, byDriver, byVehicle);
 }
+
+/** Driver IDs on shift for the full ride and without an existing booking conflict. */
+export async function getAvailableDriversForRoute(
+  routeId: string,
+  client: Prisma.TransactionClient = db,
+): Promise<string[]> {
+  routeId = routeId.toLowerCase();
+  const route = await client.route.findUnique({
+    where: { id: routeId },
+    select: { scheduledPickupTime: true },
+  });
+  if (!route) return [];
+
+  const { drivers, requested, busy } = await loadDay(
+    formatInTimeZone(route.scheduledPickupTime, TZ, "yyyy-MM-dd"),
+    client,
+  );
+  const ride =
+    requested.find((candidate) => candidate.id === routeId) ??
+    busy.find((candidate) => candidate.id === routeId);
+  if (!ride) return [];
+
+  const busyByDriver = indexBusy(busy).byDriver;
+  return drivers
+    .filter(
+      (driver) =>
+        driver.active &&
+        driver.shifts.some(
+          (shift) => shift.start <= ride.start && ride.end <= shift.end,
+        ) &&
+        (busyByDriver.get(driver.id) ?? []).every(
+          (bookedRide) =>
+            bookedRide.id === ride.id || compatible(bookedRide, ride),
+        ),
+    )
+    .map((driver) => driver.id);
+}

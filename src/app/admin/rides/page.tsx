@@ -13,6 +13,9 @@ import AdminRidesTable, {
 } from "@/components/AdminRidesTable/AdminRidesTable";
 import RideFilter from "@/components/admin/RideFilter";
 import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
+import CancelScopeOptions, {
+  type CancelScope,
+} from "@/components/CancelScopeOptions/CancelScopeOptions";
 import { routeStatusLabels } from "@/utils/route-status";
 import { formatEstDate, formatEstTime, withDelay } from "@/utils/dateEst";
 
@@ -103,17 +106,20 @@ export default function AdminRidesPage() {
     error,
     refreshError,
     refreshRoute,
+    refreshRoutes,
   } = useAdminRides();
 
   const [statuses, setStatuses] = useState<string[]>([]);
   const [pickups, setPickups] = useState<string[]>([]);
   const [dropoffs, setDropoffs] = useState<string[]>([]);
   const [attentionOnly, setAttentionOnly] = useState(false);
-  const [chatRoute, setChatRoute] = useState<RouteEntry | null>(null);
+  const [chatRouteId, setChatRouteId] = useState<string | null>(null);
+  const chatRoute = routes.find((route) => route.id === chatRouteId) ?? null;
   const [assignRoute, setAssignRoute] = useState<RouteEntry | null>(null);
   const [pendingCancel, setPendingCancel] = useState<RouteEntry | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelScope, setCancelScope] = useState<CancelScope>("single");
 
   const statusOptions = Object.entries(routeStatusLabels).map(
     ([value, label]) => ({
@@ -156,13 +162,14 @@ export default function AdminRidesPage() {
       const res = await fetch("/api/routes/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ routeId }),
+        body: JSON.stringify({ routeId, scope: cancelScope }),
       });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error ?? res.statusText);
       }
-      refreshRoute(routeId);
+      if (cancelScope === "series") refreshRoutes();
+      else refreshRoute(routeId);
       setPendingCancel(null);
     } catch (e) {
       setCancelError(
@@ -214,12 +221,13 @@ export default function AdminRidesPage() {
               },
             ]
           : []),
-        { label: "Ride chat", onSelect: () => setChatRoute(route) },
+        { label: "Ride chat", onSelect: () => setChatRouteId(route.id) },
         {
           label: "Cancel ride",
           disabled: !canCancel,
           onSelect: () => {
             setCancelError(null);
+            setCancelScope("single");
             setPendingCancel(route);
           },
         },
@@ -259,7 +267,7 @@ export default function AdminRidesPage() {
 
   return (
     <div className="py-[var(--layout-content-pad-y)] px-[var(--layout-admin-pad-x)] relative flex flex-col flex-1 min-w-0 w-full lg:pt-[6.4rem] lg:pl-[5.6rem] lg:pr-[2.6rem]">
-      <h1 className="text-display mb-[6.4rem]">Rides</h1>
+      <h1 className="text-display mb-[2.4rem]">Rides</h1>
       {loading ? (
         <p className={styles.notice}>Loading…</p>
       ) : error ? (
@@ -275,6 +283,7 @@ export default function AdminRidesPage() {
           )}
 
           <AdminRidesTable
+            columnControls
             columnHeaders={COLUMNS}
             rows={rows}
             searchPlaceholder="Search for a ride..."
@@ -330,31 +339,23 @@ export default function AdminRidesPage() {
           )}
 
           {chatRoute && (
-            <div className={styles.drawerLayer}>
-              <button
-                type="button"
-                className={styles.drawerBackdrop}
-                aria-label="Close chat"
-                onClick={() => setChatRoute(null)}
-              />
-              <aside className={styles.drawer} aria-label="Chat transcript">
-                <AdminChatView
-                  routeId={chatRoute.id}
-                  rideLabel={[
-                    fullName(chatRoute.student),
-                    chatRoute.driver
-                      ? `Driver: ${fullName(chatRoute.driver)}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  routeStatus={chatRoute.status}
-                  studentId={chatRoute.student.id}
-                  driverId={chatRoute.driver?.id ?? null}
-                  onClose={() => setChatRoute(null)}
-                />
-              </aside>
-            </div>
+            <AdminChatView
+              key={chatRoute.id}
+              presentation="dialog"
+              routeId={chatRoute.id}
+              rideLabel={[
+                `Student: ${fullName(chatRoute.student)}`,
+                chatRoute.driver
+                  ? `Driver: ${fullName(chatRoute.driver)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              routeStatus={chatRoute.status}
+              studentId={chatRoute.student.id}
+              driverId={chatRoute.driver?.id ?? null}
+              onClose={() => setChatRouteId(null)}
+            />
           )}
 
           <ConfirmActionModal
@@ -369,6 +370,8 @@ export default function AdminRidesPage() {
                 {pendingCancel
                   ? `This cancels the ride for ${fullName(pendingCancel.student)}. This action cannot be undone.`
                   : "This cancels the ride. This action cannot be undone."}
+                {pendingCancel?.seriesId &&
+                  " This is a recurring ride. Choose which rides to cancel."}
                 {cancelError && (
                   <span className={styles.modalError} role="alert">
                     {cancelError}
@@ -376,11 +379,21 @@ export default function AdminRidesPage() {
                 )}
               </>
             }
-            confirmLabel="Cancel ride"
+            confirmLabel={
+              cancelScope === "series" ? "Cancel rides" : "Cancel ride"
+            }
             confirmingLabel="Canceling…"
             cancelLabel="Keep ride"
             confirming={canceling}
-          />
+          >
+            {pendingCancel?.seriesId && (
+              <CancelScopeOptions
+                value={cancelScope}
+                onChange={setCancelScope}
+                disabled={canceling}
+              />
+            )}
+          </ConfirmActionModal>
         </>
       )}
     </div>

@@ -37,6 +37,14 @@ export function isRideChatOpen(status: RouteStatus): boolean {
   return !CLOSED_CHAT_STATUSES.has(status);
 }
 
+export function studentDriverChatDisabledReason(route: {
+  driver: { id: string } | null;
+}): string | undefined {
+  return route.driver?.id
+    ? undefined
+    : "Chat will be available once a driver is assigned.";
+}
+
 export const driverRideActions = {
   Scheduled: {
     endpoint: "start",
