@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Prisma } from "@db/generated/client";
 import { isValidId } from "@/utils/ids";
 import { getUserFromRequest } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -9,6 +8,10 @@ import {
   scheduleRouteWhileLocked,
   withSchedulingLock,
 } from "@/server/db/actions/RouteAction";
+import {
+  type Assignment,
+  applyAssignments,
+} from "@/server/scheduling/applyAssignments";
 import {
   planDay,
   formatMinutes,
@@ -57,8 +60,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-type Assignment = { rideId: string; driverId: string; vehicleId: string };
-
 function badRequest(error: string, details: string[] = []) {
   return NextResponse.json(
     { error, details },
@@ -100,11 +101,6 @@ function validateBody(body: unknown): string[] {
   return problems;
 }
 
-function describeScheduleError(e: unknown) {
-  if (e instanceof HttpError) return e.message;
-  return "Unexpected scheduling error.";
-}
-
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
   if ("response" in auth) return auth.response;
@@ -133,12 +129,13 @@ export async function POST(req: NextRequest) {
     const results = await withSchedulingLock(
       schedulingLockKeys(assignments),
       (tx, afterCommit) =>
-        applyAssignments(date, assignments, tx, afterCommit, auth.user.userId),
+        applyAssignments(date, assignments, tx, afterCommit, auth.user.userId, {
+          scheduleAssignment: scheduleRouteWhileLocked,
+          planAssignments: planDay,
+          formatPickup: formatMinutes,
+        }),
     );
-    return NextResponse.json(
-      { results },
-      { status: results.every((r) => r.success) ? HTTP_STATUS_CODE.OK : 207 },
-    );
+    return NextResponse.json({ results }, { status: HTTP_STATUS_CODE.OK });
   } catch (e) {
     if (e instanceof AutoScheduleConflictError || e instanceof HttpError) {
       return NextResponse.json(
@@ -152,58 +149,4 @@ export async function POST(req: NextRequest) {
     console.error("[POST /api/routes/auto-schedule]", e);
     return errorResponse(e);
   }
-}
-
-async function applyAssignments(
-  date: string,
-  assignments: Assignment[],
-  tx: Prisma.TransactionClient,
-  afterCommit: (() => void)[],
-  actorId: string,
-) {
-  const plan = await planDay(date, assignments, tx);
-  const info = new Map(
-    plan.drivers.flatMap((d) =>
-      d.rides
-        .filter((r) => r.kind === "proposed")
-        .map((r) => [r.id, { ride: r, driverName: d.name }] as const),
-    ),
-  );
-
-  const results = [];
-  for (const a of assignments) {
-    const found = info.get(a.rideId);
-    const summary = {
-      rideId: a.rideId,
-      studentName: found?.ride.studentName ?? "Unknown student",
-      pickup: found ? formatMinutes(found.ride.start) : "",
-      driverName: found?.driverName ?? "Unknown driver",
-      vehicleLabel: found?.ride.vehicleLabel ?? "",
-    };
-    try {
-      const updated = await scheduleRouteWhileLocked(
-        a.rideId,
-        a.driverId,
-        a.vehicleId,
-        tx,
-        afterCommit,
-        actorId,
-      );
-      results.push({
-        ...summary,
-        success: !!updated,
-        error: updated
-          ? undefined
-          : "Ride is no longer requested; it may have been scheduled or cancelled.",
-      });
-    } catch (e) {
-      console.error("[POST /api/routes/auto-schedule] ride", a.rideId, e);
-      results.push({
-        ...summary,
-        success: false,
-        error: describeScheduleError(e),
-      });
-    }
-  }
-  return results;
 }

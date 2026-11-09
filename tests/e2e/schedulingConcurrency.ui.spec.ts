@@ -2,7 +2,6 @@
  * Scheduling concurrency through the pages. Two admins submit overlapping
  * assignments together; one succeeds and the other keeps its row with an error.
  */
-import type { Locator, Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import {
   createDriver,
@@ -10,33 +9,11 @@ import {
   createStudent,
   createVehicle,
   futureSlot,
+  openScheduleModal,
   routeState,
+  selectModalAssignment,
   studentApi,
-  type TestUser,
-  type TestVehicle,
 } from "./schedulingTestHelpers";
-
-async function selectAssignment(
-  page: Page,
-  row: Locator,
-  driver: TestUser,
-  vehicle: TestVehicle,
-) {
-  await row.getByText("Select driver").click();
-  await page
-    .getByRole("menuitem", {
-      name: `${driver.lastName}, ${driver.firstName}`,
-      exact: true,
-    })
-    .evaluate((item: HTMLElement) => item.click());
-  await row.getByText("Select vehicle").click();
-  await page
-    .getByRole("menuitem", {
-      name: `${vehicle.name} (${vehicle.licensePlate})`,
-      exact: true,
-    })
-    .evaluate((item: HTMLElement) => item.click());
-}
 
 test("scheduling concurrency: overlapping UI assignments cannot double-book resources", async ({
   apiAs,
@@ -73,26 +50,38 @@ test("scheduling concurrency: overlapping UI assignments cannot double-book reso
     const adminA = await pageAs("admin");
     const adminB = await pageAs("admin");
     await Promise.all([
-      adminA.goto("/admin?tab=Rides"),
-      adminB.goto("/admin?tab=Rides"),
+      adminA.goto("/admin/rides"),
+      adminB.goto("/admin/rides"),
     ]);
 
-    const driverRows = [
-      adminA.getByRole("row").filter({ hasText: students[0].lastName }),
-      adminB.getByRole("row").filter({ hasText: students[1].lastName }),
+    const driverAssignments = [
+      await openScheduleModal(adminA, routes[0]),
+      await openScheduleModal(adminB, routes[1]),
     ];
-    await expect(driverRows[0]).toHaveCount(1);
-    await expect(driverRows[1]).toHaveCount(1);
-    await selectAssignment(adminA, driverRows[0], driverA, vehicleA);
-    await selectAssignment(adminB, driverRows[1], driverA, vehicleB);
+    await selectModalAssignment(
+      adminA,
+      driverAssignments[0].dialog,
+      driverA,
+      vehicleA,
+    );
+    await selectModalAssignment(
+      adminB,
+      driverAssignments[1].dialog,
+      driverA,
+      vehicleB,
+    );
 
     const driverResponses = [
       adminA.waitForResponse((r) => r.url().endsWith("/api/routes/schedule")),
       adminB.waitForResponse((r) => r.url().endsWith("/api/routes/schedule")),
     ];
     await Promise.all([
-      driverRows[0].getByRole("button", { name: "Assign" }).click(),
-      driverRows[1].getByRole("button", { name: "Assign" }).click(),
+      driverAssignments[0].dialog
+        .getByRole("button", { name: "Save", exact: true })
+        .click(),
+      driverAssignments[1].dialog
+        .getByRole("button", { name: "Save", exact: true })
+        .click(),
     ]);
     const driverResults = await Promise.all(driverResponses);
     expect(driverResults.map((response) => response.status()).sort()).toEqual([
@@ -109,27 +98,46 @@ test("scheduling concurrency: overlapping UI assignments cannot double-book reso
       driverStates.filter((route) => route.status === "Requested"),
     ).toHaveLength(1);
     const driverLoser =
-      driverResults[0].status() === 409 ? driverRows[0] : driverRows[1];
+      driverResults[0].status() === 409
+        ? driverAssignments[0].dialog
+        : driverAssignments[1].dialog;
     await expect(
       driverLoser.getByText(
         "This assignment conflicts with existing bookings or accessibility requirements.",
       ),
     ).toBeVisible();
+    await driverLoser
+      .getByRole("button", { name: "Nevermind", exact: true })
+      .click();
 
-    const vehicleRows = [
-      adminA.getByRole("row").filter({ hasText: students[2].lastName }),
-      adminB.getByRole("row").filter({ hasText: students[3].lastName }),
+    const vehicleAssignments = [
+      await openScheduleModal(adminA, routes[2]),
+      await openScheduleModal(adminB, routes[3]),
     ];
-    await selectAssignment(adminA, vehicleRows[0], driverA, sharedVehicle);
-    await selectAssignment(adminB, vehicleRows[1], driverB, sharedVehicle);
+    await selectModalAssignment(
+      adminA,
+      vehicleAssignments[0].dialog,
+      driverA,
+      sharedVehicle,
+    );
+    await selectModalAssignment(
+      adminB,
+      vehicleAssignments[1].dialog,
+      driverB,
+      sharedVehicle,
+    );
 
     const vehicleResponses = [
       adminA.waitForResponse((r) => r.url().endsWith("/api/routes/schedule")),
       adminB.waitForResponse((r) => r.url().endsWith("/api/routes/schedule")),
     ];
     await Promise.all([
-      vehicleRows[0].getByRole("button", { name: "Assign" }).click(),
-      vehicleRows[1].getByRole("button", { name: "Assign" }).click(),
+      vehicleAssignments[0].dialog
+        .getByRole("button", { name: "Save", exact: true })
+        .click(),
+      vehicleAssignments[1].dialog
+        .getByRole("button", { name: "Save", exact: true })
+        .click(),
     ]);
     const vehicleResults = await Promise.all(vehicleResponses);
     expect(vehicleResults.map((response) => response.status()).sort()).toEqual([
@@ -146,7 +154,9 @@ test("scheduling concurrency: overlapping UI assignments cannot double-book reso
       vehicleStates.filter((route) => route.status === "Requested"),
     ).toHaveLength(1);
     const vehicleLoser =
-      vehicleResults[0].status() === 409 ? vehicleRows[0] : vehicleRows[1];
+      vehicleResults[0].status() === 409
+        ? vehicleAssignments[0].dialog
+        : vehicleAssignments[1].dialog;
     await expect(
       vehicleLoser.getByText(
         "This assignment conflicts with existing bookings or accessibility requirements.",

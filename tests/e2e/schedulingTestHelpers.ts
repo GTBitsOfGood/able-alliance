@@ -1,4 +1,4 @@
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { addDays } from "date-fns";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
@@ -101,7 +101,7 @@ export async function createVehicle(
     data: {
       vehicleId: tag,
       name: `Test vehicle ${tag}`,
-      licensePlate: tag.toUpperCase().slice(0, 12),
+      licensePlate: tag.toUpperCase().slice(-12),
       accessibility,
       seatCount: 4,
     },
@@ -164,6 +164,52 @@ export async function schedule(
   return admin.post("/api/routes/schedule", {
     data: { routeId, driverId, vehicleId },
   });
+}
+
+export async function openScheduleModal(
+  page: Page,
+  routeId: string,
+): Promise<{ dialog: Locator; row: Locator }> {
+  const row = page.locator(`tr[data-route-id="${routeId}"]`);
+  await expect(row).toHaveCount(1);
+  await row.hover();
+  await row.getByRole("button", { name: /^Actions for / }).click();
+  await page
+    .getByRole("menuitem", { name: "Schedule ride", exact: true })
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "Schedule ride", exact: true }),
+  ).toBeVisible();
+  return { dialog, row };
+}
+
+export async function selectModalAssignment(
+  page: Page,
+  dialog: Locator,
+  driver: TestUser,
+  vehicle: TestVehicle,
+): Promise<void> {
+  const select = dialog.getByRole("button", {
+    name: "Select...",
+    exact: true,
+  });
+  await expect(select.first()).toBeEnabled();
+  await select.first().click();
+  await page
+    .getByRole("menuitem", {
+      name: `${driver.lastName}, ${driver.firstName}`,
+      exact: true,
+    })
+    .click();
+  await select.click();
+  await page
+    .getByRole("menuitem", {
+      name: `${vehicle.name} (${vehicle.licensePlate})`,
+      exact: true,
+    })
+    .click();
 }
 
 export async function routeState(

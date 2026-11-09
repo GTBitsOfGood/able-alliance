@@ -49,7 +49,7 @@ test("scheduling availability: checks shifts and travel time", async ({
     );
     expect(firstAssignment.status(), await firstAssignment.text()).toBe(200);
 
-    const tooSoon = new Date(firstPickup.getTime() + 6 * 60_000);
+    const tooSoon = new Date(firstPickup.getTime() + 8 * 60_000);
     const travelRoute = await createRide(clients[1], tooSoon, {
       pickup: LOCATIONS.exhibitionHall.id,
       dropoff: LOCATIONS.techSquare.id,

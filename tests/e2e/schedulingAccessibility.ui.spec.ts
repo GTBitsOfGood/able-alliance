@@ -9,7 +9,9 @@ import {
   createStudent,
   createVehicle,
   futureSlot,
+  openScheduleModal,
   routeState,
+  selectModalAssignment,
   studentApi,
 } from "./schedulingTestHelpers";
 
@@ -31,36 +33,21 @@ test("scheduling accessibility: rejected assignment stays visible (UI)", async (
   try {
     const routeId = await createRide(studentClient, pickup);
     const admin = await pageAs("admin");
-    await admin.goto("/admin?tab=Rides");
+    await admin.goto("/admin/rides");
 
-    const row = admin.getByRole("row").filter({ hasText: student.lastName });
-    await expect(row).toHaveCount(1);
-
-    await row.getByText("Select driver").click();
-    await admin
-      .getByRole("menuitem", {
-        name: `${driver.lastName}, ${driver.firstName}`,
-        exact: true,
-      })
-      .evaluate((item: HTMLElement) => item.click());
-    await row.getByText("Select vehicle").click();
-    await admin
-      .getByRole("menuitem", {
-        name: `${vehicle.name} (${vehicle.licensePlate})`,
-        exact: true,
-      })
-      .evaluate((item: HTMLElement) => item.click());
+    const { dialog, row } = await openScheduleModal(admin, routeId);
+    await selectModalAssignment(admin, dialog, driver, vehicle);
 
     const rejected = admin.waitForResponse(
       (response) =>
         response.url().endsWith("/api/routes/schedule") &&
         response.request().method() === "POST",
     );
-    await row.getByRole("button", { name: "Assign" }).click();
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
     const response = await rejected;
     expect(response.status(), await response.text()).toBe(409);
     await expect(
-      row.getByText(
+      dialog.getByText(
         "This assignment conflicts with existing bookings or accessibility requirements.",
       ),
     ).toBeVisible();

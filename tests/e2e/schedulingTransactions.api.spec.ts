@@ -3,7 +3,16 @@
  * leaving no partial assignment, audit, or notification-triggering result.
  */
 import { formatInTimeZone } from "date-fns-tz";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { recordAudit } from "@db/audit";
+import { PrismaClient, RouteStatus } from "@db/generated/client";
+import {
+  applyAssignments,
+  type ScheduleAssignment,
+} from "@/server/scheduling/applyAssignments";
 import { test, expect } from "./fixtures";
+import { E2E } from "./env";
+import { PERSONAS } from "./seed";
 import {
   createDriver,
   createRide,
@@ -85,5 +94,117 @@ test("scheduling transactions: failed batch leaves no partial changes", async ({
     ).toBe(auditBefore);
   } finally {
     await Promise.all(clients.map((client) => client.dispose()));
+  }
+});
+
+test("scheduling transactions: later write failure rolls back earlier assignment", async ({
+  apiAs,
+  playwright,
+}) => {
+  const admin = await apiAs("admin");
+  const pickup = futureSlot(35, "10:00");
+  const driver = await createDriver(admin, "rollbackdriver", pickup);
+  const vehicle = await createVehicle(admin, "rollbackvehicle");
+  const students = await Promise.all([
+    createStudent(admin, "rollbackfirststudent"),
+    createStudent(admin, "rollbacksecondstudent"),
+  ]);
+  const clients = await Promise.all(
+    students.map((student) => studentApi(playwright, student)),
+  );
+  const directDb = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: E2E.databaseUrl }),
+  });
+
+  try {
+    const firstRoute = await createRide(clients[0], pickup);
+    const secondRoute = await createRide(clients[1], futureSlot(35, "14:00"));
+    const assignments = [firstRoute, secondRoute].map((rideId) => ({
+      rideId,
+      driverId: driver.id,
+      vehicleId: vehicle.id,
+    }));
+    const auditBefore = await routeUpdateAuditCount(admin, [
+      firstRoute,
+      secondRoute,
+    ]);
+    const attempted: string[] = [];
+    const failSecond: ScheduleAssignment = async (
+      routeId,
+      driverId,
+      vehicleId,
+      tx,
+    ) => {
+      attempted.push(routeId);
+      if (routeId === secondRoute)
+        throw new Error("Injected later assignment failure");
+      const before = await tx.route.findUniqueOrThrow({
+        where: { id: routeId },
+      });
+      const updated = await tx.route.update({
+        where: { id: routeId },
+        data: {
+          driverId,
+          vehicleId,
+          status: RouteStatus.Scheduled,
+        },
+      });
+      await recordAudit(tx, {
+        actorId: PERSONAS.admin.id,
+        entityType: "Route",
+        entityId: routeId,
+        action: "Update",
+        before,
+        after: updated,
+      });
+      return updated;
+    };
+
+    await expect(
+      directDb.$transaction((tx) =>
+        applyAssignments(
+          formatInTimeZone(pickup, TZ, "yyyy-MM-dd"),
+          assignments,
+          tx,
+          [],
+          PERSONAS.admin.id,
+          {
+            scheduleAssignment: failSecond,
+            planAssignments: async () => ({
+              drivers: [
+                {
+                  name: `${driver.firstName} ${driver.lastName}`,
+                  rides: assignments.map((assignment, index) => ({
+                    id: assignment.rideId,
+                    kind: "proposed" as const,
+                    studentName: `${students[index].firstName} ${students[index].lastName}`,
+                    start: index === 0 ? 10 * 60 : 14 * 60,
+                    vehicleLabel: vehicle.name,
+                  })),
+                },
+              ],
+            }),
+            formatPickup: String,
+          },
+        ),
+      ),
+    ).rejects.toThrow("Injected later assignment failure");
+
+    expect(attempted).toEqual([firstRoute, secondRoute]);
+    for (const routeId of [firstRoute, secondRoute]) {
+      expect(await routeState(admin, routeId)).toMatchObject({
+        status: "Requested",
+        driver: null,
+        vehicle: null,
+      });
+    }
+    expect(await routeUpdateAuditCount(admin, [firstRoute, secondRoute])).toBe(
+      auditBefore,
+    );
+  } finally {
+    await Promise.all([
+      ...clients.map((client) => client.dispose()),
+      directDb.$disconnect(),
+    ]);
   }
 });
