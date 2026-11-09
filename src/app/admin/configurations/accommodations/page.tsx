@@ -29,34 +29,51 @@ async function fetchAccommodations(): Promise<Accommodation[] | null> {
   }
 }
 
-/** Saved rows, plus only the renames, removals, and new labels that are not saved yet. */
+/** Returns remaining additions to be saved, in request order */
+function remainingAdditions(
+  pendingNew: string[],
+  newLabel: string,
+  confirmedCreations: number,
+) {
+  const staged = [
+    ...pendingNew.map((label) => ({ label, fromInput: false })),
+    ...(newLabel.trim() ? [{ label: newLabel, fromInput: true }] : []),
+  ].slice(confirmedCreations);
+  return {
+    pendingNew: staged
+      .filter((entry) => !entry.fromInput)
+      .map((entry) => entry.label),
+    newLabel:
+      staged.some((entry) => entry.fromInput) || !newLabel.trim()
+        ? newLabel
+        : "",
+  };
+}
+
 function reconcilePartialSave(
   server: Accommodation[],
   draft: Accommodation[],
   pendingNew: string[],
   newLabel: string,
-  removedIds: ReadonlySet<string>,
+  confirmedCreations: number,
 ) {
   const savedById = new Map(server.map((item) => [item.id, item]));
   const kept = new Set<string>();
   const nextDraft: Accommodation[] = [];
   for (const item of draft) {
     const saved = savedById.get(item.id);
-    if (!saved || removedIds.has(item.id)) continue;
+    if (!saved) continue;
     kept.add(saved.id);
     nextDraft.push({ ...saved, label: item.label.trim() });
   }
+
   for (const item of server) {
-    if (kept.has(item.id) || removedIds.has(item.id)) continue;
-    nextDraft.push(item);
+    if (!kept.has(item.id)) nextDraft.push(item);
   }
-  const savedLabels = new Set(server.map((item) => item.label));
   return {
     items: server,
     draft: nextDraft,
-    pendingNew: pendingNew.filter((label) => !savedLabels.has(label.trim())),
-    newLabel:
-      newLabel.trim() && savedLabels.has(newLabel.trim()) ? "" : newLabel,
+    ...remainingAdditions(pendingNew, newLabel, confirmedCreations),
   };
 }
 
@@ -129,6 +146,7 @@ export default function AccommodationsPage() {
     const deletedIds = new Set<string>();
     const renamed = new Map<string, string>();
     const created: Accommodation[] = [];
+    let confirmedCreations = 0;
     const failures: string[] = [];
 
     try {
@@ -188,7 +206,18 @@ export default function AccommodationsPage() {
             );
             break;
           }
-          created.push(await res.json());
+          confirmedCreations += 1;
+          const body = await res.json().catch(() => null);
+          if (
+            body &&
+            typeof body === "object" &&
+            "id" in body &&
+            typeof body.id === "string" &&
+            "label" in body &&
+            typeof body.label === "string"
+          ) {
+            created.push({ id: body.id, label: body.label });
+          }
         }
       }
     } catch (e) {
@@ -210,7 +239,7 @@ export default function AccommodationsPage() {
         draft,
         pendingNew,
         newLabel,
-        removedIds,
+        confirmedCreations,
       );
       setItems(saved.draft);
       setDraft([]);
@@ -227,7 +256,7 @@ export default function AccommodationsPage() {
       draft,
       pendingNew,
       newLabel,
-      removedIds,
+      confirmedCreations,
     );
     setItems(next.items);
     setDraft(next.draft);

@@ -128,11 +128,11 @@ export async function POST(request: NextRequest) {
                 create: {
                   notes: studentInfo.notes,
                   accessibilityNeeds: {
-                    create: (studentInfo.accessibilityNeeds ?? []).map(
-                      (label) => ({
-                        accommodation: { connect: { label } },
-                      }),
-                    ),
+                    create: [
+                      ...new Set(studentInfo.accessibilityNeeds ?? []),
+                    ].map((label) => ({
+                      accommodation: { connect: { label } },
+                    })),
                   },
                 },
               },

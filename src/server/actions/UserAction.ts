@@ -141,7 +141,7 @@ export async function updateUser(
     const labels =
       patch.accessibilityNeeds === undefined
         ? undefined
-        : (patch.accessibilityNeeds ?? []);
+        : [...new Set(patch.accessibilityNeeds ?? [])];
     const links =
       labels === undefined
         ? {}
