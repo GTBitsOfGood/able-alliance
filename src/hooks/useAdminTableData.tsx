@@ -125,7 +125,9 @@ function adaptUsersToStudentRows(data: unknown): StudentRowRaw[] {
       name: String(combineFullName(u.firstName, u.lastName) ?? ""),
       email: String(u.email ?? ""),
       accessibilityNeeds: Array.isArray(accessibilityNeeds)
-        ? accessibilityNeeds.map(({ label }) => label).join(", ")
+        ? accessibilityNeeds
+            .map(({ accommodation }) => accommodation.label)
+            .join(", ")
         : (accessibilityNeeds ?? ""),
       additionalComments: String(studentInfo?.notes ?? ""),
     };

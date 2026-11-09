@@ -116,7 +116,9 @@ async function seed() {
       studentInfo: {
         create: {
           accessibilityNeeds: {
-            connect: ["Wheelchair", "ExtraTime"].map((label) => ({ label })),
+            create: ["Wheelchair", "ExtraTime"].map((label) => ({
+              accommodation: { connect: { label } },
+            })),
           },
         },
       },
@@ -148,7 +150,7 @@ async function seed() {
       studentInfo: {
         create: {
           accessibilityNeeds: {
-            connect: [{ label: "LowMobility" }],
+            create: [{ accommodation: { connect: { label: "LowMobility" } } }],
           },
         },
       },
@@ -167,7 +169,9 @@ async function seed() {
       studentInfo: {
         create: {
           accessibilityNeeds: {
-            connect: [{ label: "VisualImpairment" }],
+            create: [
+              { accommodation: { connect: { label: "VisualImpairment" } } },
+            ],
           },
           notes: "Needs extra assistance at entry.",
         },

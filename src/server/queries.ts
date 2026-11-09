@@ -7,7 +7,8 @@ export const userInclude = {
   studentInfo: {
     include: {
       accessibilityNeeds: {
-        orderBy: { label: "asc" },
+        orderBy: { accommodation: { label: "asc" } },
+        include: { accommodation: { select: { id: true, label: true } } },
       },
     },
   },
@@ -67,7 +68,10 @@ export const driverRouteInclude = {
       studentInfo: {
         select: {
           notes: true,
-          accessibilityNeeds: { select: { label: true } },
+          accessibilityNeeds: {
+            orderBy: { accommodation: { label: "asc" } },
+            select: { accommodation: { select: { label: true } } },
+          },
         },
       },
     },
@@ -104,9 +108,11 @@ export function routeResponseForRole(route: FullRoute, role: UserType) {
         ? {
             notes: route.student.studentInfo.notes,
             accessibilityNeeds:
-              route.student.studentInfo.accessibilityNeeds.map(({ label }) => ({
-                label,
-              })),
+              route.student.studentInfo.accessibilityNeeds.map(
+                ({ accommodation }) => ({
+                  accommodation: { label: accommodation.label },
+                }),
+              ),
           }
         : null,
     },

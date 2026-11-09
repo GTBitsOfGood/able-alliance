@@ -14,7 +14,7 @@ export type DriverProfileResponse = Pick<
 > & {
   studentInfo:
     | (Pick<NonNullable<UserWithDetails["studentInfo"]>, "notes"> & {
-        accessibilityNeeds: { label: string }[];
+        accessibilityNeeds: { accommodation: { label: string } }[];
       })
     | null;
 };
@@ -32,7 +32,9 @@ export function driverProfileResponse(
       ? {
           notes: user.studentInfo.notes,
           accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
-            ({ label }) => ({ label }),
+            ({ accommodation }) => ({
+              accommodation: { label: accommodation.label },
+            }),
           ),
         }
       : null,
@@ -54,7 +56,7 @@ function userAuditSnapshot(user: UserWithDetails) {
       ? {
           notes: user.studentInfo.notes,
           accessibilityNeeds: user.studentInfo.accessibilityNeeds.map(
-            ({ label }) => label,
+            ({ accommodation }) => accommodation.label,
           ),
         }
       : null,
@@ -180,26 +182,35 @@ export async function updateUser(
     const labels =
       patch.accessibilityNeeds === undefined
         ? undefined
-        : (patch.accessibilityNeeds ?? []);
+        : [...new Set(patch.accessibilityNeeds ?? [])];
+    const links =
+      labels === undefined
+        ? {}
+        : {
+            accessibilityNeeds: {
+              create: labels.map((label) => ({
+                accommodation: { connect: { label } },
+              })),
+            },
+          };
     data.studentInfo = {
       upsert: {
         create: {
           ...notes,
-          ...(labels
-            ? {
-                accessibilityNeeds: {
-                  connect: labels.map((label) => ({ label })),
-                },
-              }
-            : {}),
+          ...links,
         },
         update: {
           ...notes,
-          ...(labels
-            ? {
-                accessibilityNeeds: { set: labels.map((label) => ({ label })) },
-              }
-            : {}),
+          ...(labels === undefined
+            ? {}
+            : {
+                accessibilityNeeds: {
+                  deleteMany: {},
+                  create: labels.map((label) => ({
+                    accommodation: { connect: { label } },
+                  })),
+                },
+              }),
         },
       },
     };

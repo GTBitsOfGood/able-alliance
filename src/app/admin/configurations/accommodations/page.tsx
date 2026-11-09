@@ -4,6 +4,79 @@ import React, { useEffect, useState } from "react";
 
 import type { Accommodation } from "@db/generated/browser";
 
+async function errorMessage(res: Response, fallback: string) {
+  const body = await res.json().catch(() => null);
+  if (
+    body &&
+    typeof body === "object" &&
+    "error" in body &&
+    typeof body.error === "string" &&
+    body.error
+  ) {
+    return body.error;
+  }
+  return fallback;
+}
+
+async function fetchAccommodations(): Promise<Accommodation[] | null> {
+  try {
+    const res = await fetch("/api/accommodations");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Returns remaining additions to be saved, in request order */
+function remainingAdditions(
+  pendingNew: string[],
+  newLabel: string,
+  confirmedCreations: number,
+) {
+  const staged = [
+    ...pendingNew.map((label) => ({ label, fromInput: false })),
+    ...(newLabel.trim() ? [{ label: newLabel, fromInput: true }] : []),
+  ].slice(confirmedCreations);
+  return {
+    pendingNew: staged
+      .filter((entry) => !entry.fromInput)
+      .map((entry) => entry.label),
+    newLabel:
+      staged.some((entry) => entry.fromInput) || !newLabel.trim()
+        ? newLabel
+        : "",
+  };
+}
+
+function reconcilePartialSave(
+  server: Accommodation[],
+  draft: Accommodation[],
+  pendingNew: string[],
+  newLabel: string,
+  confirmedCreations: number,
+) {
+  const savedById = new Map(server.map((item) => [item.id, item]));
+  const kept = new Set<string>();
+  const nextDraft: Accommodation[] = [];
+  for (const item of draft) {
+    const saved = savedById.get(item.id);
+    if (!saved) continue;
+    kept.add(saved.id);
+    nextDraft.push({ ...saved, label: item.label.trim() });
+  }
+
+  for (const item of server) {
+    if (!kept.has(item.id)) nextDraft.push(item);
+  }
+  return {
+    items: server,
+    draft: nextDraft,
+    ...remainingAdditions(pendingNew, newLabel, confirmedCreations),
+  };
+}
+
 export default function AccommodationsPage() {
   const [items, setItems] = useState<Accommodation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,13 +88,10 @@ export default function AccommodationsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/accommodations")
-      .then((r) => r.json())
-      .then((data) => {
-        setItems(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    fetchAccommodations().then((data) => {
+      if (data) setItems(data);
+      setLoading(false);
+    });
   }, []);
 
   function startEdit() {
@@ -51,71 +121,149 @@ export default function AccommodationsPage() {
   }
 
   async function saveChanges() {
+    const blankDraft = draft.find((d) => !d.label.trim());
+    if (blankDraft) {
+      setError("Accommodation labels cannot be empty");
+      return;
+    }
+
     setSaving(true);
     setError(null);
+    const removedIds = new Set(
+      items
+        .filter((item) => !draft.some((entry) => entry.id === item.id))
+        .map((item) => item.id),
+    );
+    const originalLabels = new Map(items.map((item) => [item.id, item.label]));
+    const toRename = draft.filter((item) => {
+      const label = item.label.trim();
+      return label && label !== originalLabels.get(item.id);
+    });
+    const additions = [
+      ...pendingNew.map((label) => label.trim()),
+      ...(newLabel.trim() ? [newLabel.trim()] : []),
+    ];
+    const deletedIds = new Set<string>();
+    const renamed = new Map<string, string>();
+    const created: Accommodation[] = [];
+    let confirmedCreations = 0;
+    const failures: string[] = [];
+
     try {
-      const originalMap = new Map(items.map((i) => [i.id, i.label]));
-      const draftIds = new Set(draft.map((d) => d.id));
-      const toDelete = items.filter((i) => !draftIds.has(i.id));
-      const toRename = draft.filter(
-        (d) => d.label.trim() && d.label.trim() !== originalMap.get(d.id),
+      const deleteResults = await Promise.all(
+        items
+          .filter((item) => removedIds.has(item.id))
+          .map(async (item): Promise<{ id: string } | { message: string }> => {
+            try {
+              const res = await fetch(`/api/accommodations/${item.id}`, {
+                method: "DELETE",
+              });
+              if (res.ok || res.status === 404) return { id: item.id };
+              return {
+                message: await errorMessage(
+                  res,
+                  `Failed to delete "${item.label}"`,
+                ),
+              };
+            } catch {
+              return { message: `Failed to delete "${item.label}"` };
+            }
+          }),
       );
-      const allNew = newLabel.trim()
-        ? [...pendingNew, newLabel.trim()]
-        : [...pendingNew];
+      for (const result of deleteResults) {
+        if ("id" in result) deletedIds.add(result.id);
+        else failures.push(result.message);
+      }
 
-      // Validate no blank labels
-      const blankDraft = draft.find((d) => !d.label.trim());
-      if (blankDraft) throw new Error("Accommodation labels cannot be empty");
-
-      await Promise.all(
-        toDelete.map((i) =>
-          fetch(`/api/accommodations/${i.id}`, { method: "DELETE" }).then(
-            (r) => {
-              if (!r.ok) throw new Error(`Failed to delete "${i.label}"`);
-            },
-          ),
-        ),
-      );
-
-      for (const item of toRename) {
-        const res = await fetch(`/api/accommodations/${item.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ label: item.label.trim() }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to rename "${item.label}"`);
+      if (failures.length === 0) {
+        for (const item of toRename) {
+          const label = item.label.trim();
+          const res = await fetch(`/api/accommodations/${item.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ label }),
+          });
+          if (!res.ok) {
+            failures.push(
+              await errorMessage(res, `Failed to rename "${item.label}"`),
+            );
+            break;
+          }
+          renamed.set(item.id, label);
         }
       }
 
-      const created: Accommodation[] = [];
-      for (const label of allNew) {
-        const res = await fetch("/api/accommodations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ label }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to create "${label}"`);
+      if (failures.length === 0) {
+        for (const label of additions) {
+          const res = await fetch("/api/accommodations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ label }),
+          });
+          if (!res.ok) {
+            failures.push(
+              await errorMessage(res, `Failed to create "${label}"`),
+            );
+            break;
+          }
+          confirmedCreations += 1;
+          const body = await res.json().catch(() => null);
+          if (
+            body &&
+            typeof body === "object" &&
+            "id" in body &&
+            typeof body.id === "string" &&
+            "label" in body &&
+            typeof body.label === "string"
+          ) {
+            created.push({ id: body.id, label: body.label });
+          }
         }
-        created.push(await res.json());
       }
-
-      setItems([
-        ...draft
-          .filter((d) => draftIds.has(d.id))
-          .map((d) => ({ ...d, label: d.label.trim() })),
-        ...created,
-      ]);
-      setEditing(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save");
-    } finally {
-      setSaving(false);
+      failures.push(e instanceof Error ? e.message : "Failed to save");
     }
+
+    const known = [
+      ...items
+        .filter((item) => !deletedIds.has(item.id))
+        .map((item) => {
+          const label = renamed.get(item.id);
+          return label ? { ...item, label } : item;
+        }),
+      ...created,
+    ];
+    if (failures.length === 0) {
+      const saved = reconcilePartialSave(
+        known,
+        draft,
+        pendingNew,
+        newLabel,
+        confirmedCreations,
+      );
+      setItems(saved.draft);
+      setDraft([]);
+      setPendingNew([]);
+      setNewLabel("");
+      setEditing(false);
+      setSaving(false);
+      return;
+    }
+
+    const server = await fetchAccommodations();
+    const next = reconcilePartialSave(
+      server ?? known,
+      draft,
+      pendingNew,
+      newLabel,
+      confirmedCreations,
+    );
+    setItems(next.items);
+    setDraft(next.draft);
+    setPendingNew(next.pendingNew);
+    setNewLabel(next.newLabel);
+    setError(failures.join(" "));
+    setSaving(false);
   }
 
   function removeFromDraft(id: string) {

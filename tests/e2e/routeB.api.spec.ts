@@ -11,9 +11,7 @@
  */
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-
-const HOUR = 60 * 60 * 1000;
-const MINUTE = 60 * 1000;
+import { pickupWindow, servicePickupTime } from "./routeTestHelpers";
 
 test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
   const student = await apiAs("student");
@@ -21,14 +19,12 @@ test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
   const driver = await apiAs("driver");
 
   // Different locations from the UI flow so the two never look alike in the admin table.
-  const pickup = new Date(Date.now() + 48 * HOUR);
+  const pickup = servicePickupTime(2, "09:00");
   const create = await student.post("/api/routes", {
     data: {
       pickupLocation: LOCATIONS.studentCenter.id,
       dropoffLocation: LOCATIONS.techSquare.id,
-      scheduledPickupTime: pickup.toISOString(),
-      pickupWindowStart: new Date(pickup.getTime() - 30 * MINUTE).toISOString(),
-      pickupWindowEnd: new Date(pickup.getTime() + 30 * MINUTE).toISOString(),
+      ...pickupWindow(pickup),
     },
   });
   expect(create.status(), await create.text()).toBe(201);

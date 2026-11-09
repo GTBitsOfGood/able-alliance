@@ -192,7 +192,9 @@ async function loadDay(date: string, client: Prisma.TransactionClient = db) {
 
   const toRide = (r: (typeof routes)[number]): Ride => {
     const accommodations =
-      r.student.studentInfo?.accessibilityNeeds.map((a) => a.label) ?? [];
+      r.student.studentInfo?.accessibilityNeeds.map(
+        (a) => a.accommodation.label,
+      ) ?? [];
     const needsWheelchair = accommodations.some((a) =>
       a.toLowerCase().includes("wheelchair"),
     );

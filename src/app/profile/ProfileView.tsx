@@ -58,7 +58,9 @@ export function ProfileView({
   );
   const [draftNotes, setDraftNotes] = useState(user.studentInfo?.notes ?? "");
   const [draftAccessibility, setDraftAccessibility] = useState<string[]>(
-    user.studentInfo?.accessibilityNeeds.map(({ label }) => label) ?? [],
+    user.studentInfo?.accessibilityNeeds.map(
+      ({ accommodation }) => accommodation.label,
+    ) ?? [],
   );
 
   const [displayUser, setDisplayUser] = useState(user);
@@ -110,8 +112,9 @@ export function ProfileView({
     setDraftPreferredName(displayUser.preferredName ?? "");
     setDraftNotes(displayUser.studentInfo?.notes ?? "");
     setDraftAccessibility(
-      displayUser.studentInfo?.accessibilityNeeds.map(({ label }) => label) ??
-        [],
+      displayUser.studentInfo?.accessibilityNeeds.map(
+        ({ accommodation }) => accommodation.label,
+      ) ?? [],
     );
     setSaveError(null);
     fetchAccommodations();
@@ -560,10 +563,10 @@ export function ProfileView({
                             displayUser.studentInfo?.accessibilityNeeds ?? []
                           ).map((need) => (
                             <span
-                              key={need.label}
+                              key={need.accommodation.label}
                               className={styles.sectionRowValue}
                             >
-                              {need.label}
+                              {need.accommodation.label}
                             </span>
                           ))
                         ) : (
