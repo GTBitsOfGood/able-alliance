@@ -20,7 +20,10 @@ app:
       set -eu
       HUSKY=0 npm ci --include=dev
       npx prisma generate
+      mkdir -p .next/cache "$PLATFORM_CACHE_DIR/next-cache"
+      cp -a "$PLATFORM_CACHE_DIR/next-cache/." .next/cache/
       npm run build
+      cp -a .next/cache/. "$PLATFORM_CACHE_DIR/next-cache/"
       npm prune --omit=dev
   mounts:
     /.next/cache:
