@@ -1,10 +1,9 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import { addDays } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { expect } from "./fixtures";
 import { PERSONAS, VEHICLE } from "./seed";
 
-const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
 import type { AdminRouteResponse, StudentRouteResponse } from "@/types/api";
@@ -20,6 +19,14 @@ export function nextServiceDate(): Date {
     date = estDateDaysFromNow(++offset);
   }
   return date;
+}
+
+/** A future weekday pickup in New York time, independent of the runner's timezone. */
+export function servicePickupTime(time: string): Date {
+  const date = nextServiceDate();
+  const [hours, minutes] = time.split(":").map(Number);
+  date.setHours(hours, minutes, 0, 0);
+  return fromZonedTime(date, "America/New_York");
 }
 
 type LocationField = "Pickup location" | "Dropoff location";
@@ -66,10 +73,14 @@ export async function scheduleRideInAdmin(page: Page, routeId: string) {
   await expect(
     dialog.getByRole("heading", { name: "Schedule ride", exact: true }),
   ).toBeVisible();
-  await dialog
-    .getByRole("button", { name: "Select...", exact: true })
-    .first()
-    .click();
+  // The vehicle is ready immediately; the driver waits for availability.
+  // Wait for both placeholders so the first match is the driver dropdown.
+  const unassigned = dialog.getByRole("button", {
+    name: "Select...",
+    exact: true,
+  });
+  await expect(unassigned).toHaveCount(2);
+  await unassigned.first().click();
   await page
     .getByRole("menuitem", {
       name: `${PERSONAS.driver.lastName}, ${PERSONAS.driver.firstName}`,
@@ -128,14 +139,14 @@ export async function createRequestedRide(
   {
     pickupLocation,
     dropoffLocation,
-    hoursFromNow,
+    pickupTime,
   }: {
     pickupLocation: string;
     dropoffLocation: string;
-    hoursFromNow: number;
+    pickupTime: string;
   },
 ): Promise<StudentRouteResponse> {
-  const pickup = new Date(Date.now() + hoursFromNow * HOUR);
+  const pickup = servicePickupTime(pickupTime);
   const res = await student.post("/api/routes", {
     data: {
       pickupLocation,

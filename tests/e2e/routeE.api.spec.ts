@@ -18,7 +18,7 @@ test("route E: driver marks student as no-show", async ({ apiAs }) => {
   const created = await createRequestedRide(student, {
     pickupLocation: LOCATIONS.exhibitionHall.id,
     dropoffLocation: LOCATIONS.studentCenter.id,
-    hoursFromNow: 56,
+    pickupTime: "17:00",
   });
   const routeId = created.id;
 

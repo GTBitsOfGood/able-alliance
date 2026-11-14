@@ -10,6 +10,7 @@
  * Stops at Scheduled — the full lifecycle lives in routeB.ui.spec.ts.
  */
 import type { Page } from "@playwright/test";
+import { startOfWeek } from "date-fns";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
 import {
@@ -71,14 +72,17 @@ test("route A: student creates, admin schedules (UI)", async ({
   const { id: routeId } = (await createRes.json()) as { id: string };
   await expect(student).toHaveURL(/\/rides$/);
 
-  // Weeks start Sunday; a lower weekday means the ride is in next week.
-  const weekTab =
-    rideDate.getDay() <= today.getDay() ? "Next week" : "This week";
-  await student.getByRole("tab", { name: weekTab, exact: true }).click();
+  // The list starts at the current Sunday-anchored week.
+  if (startOfWeek(rideDate).getTime() > startOfWeek(today).getTime()) {
+    await student
+      .getByRole("button", { name: "Next week", exact: true })
+      .click();
+  }
 
-  const studentCard = student.getByTestId("ride-card").filter({
-    hasText: PICKUP_TIME,
-  });
+  const studentCard = student
+    .getByRole("region", { name: "Upcoming Rides", exact: true })
+    .getByTestId("ride-card")
+    .filter({ has: student.locator(`a[href="/rides/${routeId}"]`) });
   await expect(studentCard).toHaveCount(1);
   await expect(
     studentCard.getByText("Requested", { exact: true }),

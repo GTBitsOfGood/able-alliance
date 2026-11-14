@@ -8,12 +8,13 @@
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
 import { estDateKey } from "@/utils/dateEst";
+import { servicePickupTime } from "./routeTestHelpers";
 
-const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 
 import type {
   AdminRouteResponse,
+  ChatMessageResponse,
   DriverRouteDetailResponse,
   RouteResponse,
   StudentRouteResponse,
@@ -31,7 +32,7 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
   const driver = await apiAs("driver");
 
   // Distinct locations/time from routeB.api.spec.ts so parallel runs don't collide.
-  const pickup = new Date(Date.now() + 30 * HOUR);
+  const pickup = servicePickupTime("12:00");
   const create = await student.post("/api/routes", {
     data: {
       pickupLocation: LOCATIONS.exhibitionHall.id,
@@ -144,7 +145,23 @@ test("route A: student creates, admin schedules, lists stay consistent", async (
 
   const messages = await student.get(`/api/routes/${routeId}/messages`);
   expect(messages.status(), await messages.text()).toBe(200);
-  expect(await messages.json()).toEqual([]);
+  const timeline = (await messages.json()) as ChatMessageResponse[];
+  expect(timeline).toEqual([
+    expect.objectContaining({
+      id: expect.stringMatching(/^system:/),
+      routeId,
+      senderId: null,
+      senderType: null,
+      text: "Ride requested.",
+    }),
+    expect.objectContaining({
+      id: expect.stringMatching(/^system:/),
+      routeId,
+      senderId: null,
+      senderType: null,
+      text: "Ride scheduled.",
+    }),
+  ]);
 
   const deleted = await admin.delete(`/api/routes/${routeId}`);
   expect(deleted.status(), await deleted.text()).toBe(200);
