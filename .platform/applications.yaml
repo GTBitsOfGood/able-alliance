@@ -10,6 +10,11 @@ app:
     flavor: none
   relationships:
     postgresql: postgresql:postgresql
+  crons:
+    ride-series:
+      spec: "0 5 * * *"
+      commands:
+        start: npm run cron:ride-series
   hooks:
     build: |
       set -eu

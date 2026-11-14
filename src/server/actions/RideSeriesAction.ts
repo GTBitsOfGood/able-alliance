@@ -2,7 +2,7 @@
  * Recurring ride series: creation and scheduled materialization.
  *
  * A series stores only the template. Actual rides are generated ahead of time by
- * `materializeDueSeries`, which the websocket server's cron triggers.
+ * `materializeDueSeries`, which the standalone recurring-ride script triggers.
  *
  * Three properties the job has to hold, and how:
  *
@@ -224,6 +224,7 @@ async function materializeSeries(
 /** Bring all active series up to the horizon; concurrent passes are safe. */
 export async function materializeDueSeries(
   now = new Date(),
+  { throwOnError = false }: { throwOnError?: boolean } = {},
 ): Promise<MaterializeResult> {
   const horizon = schedulingHorizon(now);
   const due = await db.rideSeries.findMany({
@@ -232,6 +233,7 @@ export async function materializeDueSeries(
   });
   let ridesCreated = 0;
   let ridesSkipped = 0;
+  const failures: unknown[] = [];
   for (const series of due) {
     try {
       const result = await materializeSeries(series.id, horizon);
@@ -240,7 +242,11 @@ export async function materializeDueSeries(
     } catch (error) {
       // One failing series must not stall the rest.
       console.error(`[RideSeries] series ${series.id} failed:`, error);
+      failures.push(error);
     }
+  }
+  if (throwOnError && failures.length > 0) {
+    throw new AggregateError(failures, `${failures.length} ride series failed`);
   }
   return { seriesProcessed: due.length, ridesCreated, ridesSkipped };
 }

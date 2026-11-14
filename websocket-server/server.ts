@@ -15,9 +15,11 @@ import { registerHttpRoutes } from "./httpRoutes.js";
 import { authenticateSocket, authenticateNotificationSocket } from "./auth.js";
 import { handleConnection } from "./handlers/connection.js";
 import { handleNotificationConnection } from "./handlers/notifications.js";
-import { startRideSeriesCron } from "./jobs/rideSeriesCron.js";
 
 dotenv.config();
+
+// Paths that should route to websocket-server and not Next.js
+const WEBSOCKET_HTTP_PATHS = new Set(["/notify", "/events"]);
 
 export async function startServer(requestHandler?: RequestListener) {
   const PORT = Number(process.env.PORT ?? 4000);
@@ -25,7 +27,14 @@ export async function startServer(requestHandler?: RequestListener) {
   const app = express();
   app.use(express.json());
 
-  const server = createServer(requestHandler ?? app);
+  const server = createServer((req, res) => {
+    const pathname = req.url?.split("?")[0] ?? "";
+    if (requestHandler && !WEBSOCKET_HTTP_PATHS.has(pathname)) {
+      requestHandler(req, res);
+    } else {
+      app(req, res);
+    }
+  });
   const io = new Server<
     ClientEvents,
     ServerEvents,
@@ -65,28 +74,6 @@ export async function startServer(requestHandler?: RequestListener) {
     notificationsNsp.on("connection", handleNotificationConnection);
 
     registerHttpRoutes(app, notificationsNsp);
-
-    // Recurring rides are generated on a schedule from this process.
-    const stopRideSeriesCron = startRideSeriesCron();
-    server.once("close", stopRideSeriesCron);
-
-    if (requestHandler) {
-      // Keep notification HTTP routes on a private loopback listener. Socket.IO
-      // and Next.js share the public server and its Platform-assigned port.
-      const internalServer = createServer(app);
-      await new Promise<void>((resolve, reject) => {
-        internalServer.once("error", reject);
-        internalServer.listen(0, "127.0.0.1", () => {
-          internalServer.off("error", reject);
-          resolve();
-        });
-      });
-      const address = internalServer.address();
-      if (address && typeof address !== "string") {
-        process.env.WEBSOCKET_INTERNAL_URL = `http://127.0.0.1:${address.port}`;
-      }
-      server.once("close", () => internalServer.close());
-    }
 
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);

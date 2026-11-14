@@ -16,7 +16,7 @@ export function registerHttpRoutes(
 
   // Internal endpoint: the Next.js app calls this after a ride-status
   // transition to push a toast to the affected user's /notifications room.
-  // Not exposed to browsers — protected by a shared secret, not user auth.
+  // Protected by a shared secret rather than a user session.
   app.post("/notify", (req, res) => {
     const secret = req.headers["x-internal-secret"];
     if (
