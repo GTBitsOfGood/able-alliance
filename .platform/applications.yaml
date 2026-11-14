@@ -4,8 +4,8 @@ app:
   type: nodejs:24
   size: S
   resources:
-    base_memory: 512
-    memory_ratio: 512
+    base_memory: 1024
+    memory_ratio: 1024
   build:
     flavor: none
   relationships:
