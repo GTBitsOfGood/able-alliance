@@ -19,10 +19,9 @@ app:
     build: |
       set -eu
       HUSKY=0 npm ci --include=dev
-      npm --prefix websocket-server ci --include=dev
       npx prisma generate
       npm run build
-      npm --prefix websocket-server prune --omit=dev
+      npm prune --omit=dev
   mounts:
     /.next/cache:
       source: local

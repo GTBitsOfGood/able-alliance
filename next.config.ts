@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // CI runs `npm run typecheck`; avoid running a second, memory-heavy TypeScript
+  // process inside `next build` on Upsun's 512 MB build container.
+  typescript: { ignoreBuildErrors: true },
   // HiGHS loads highs.wasm from beside its own loader at runtime.
   serverExternalPackages: ["highs"],
   // Avoid restoring stale loader state across Docker dev-server restarts.
