@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   // HiGHs loads WASM
   serverExternalPackages: ["highs"],
   experimental: {
-    // Limit concurrent workers on Upsun
-    ...(UPSUN ? { cpus: 1 } : {}),
+    // Limit concurrent workers on Upsun and enable GC to cleanup memory
+    ...(UPSUN ? { cpus: 1, turbopackGc: true } : {}),
     // Avoid restoring stale loader states in Docker dev server restarts
     turbopackFileSystemCacheForDev: false,
   },
