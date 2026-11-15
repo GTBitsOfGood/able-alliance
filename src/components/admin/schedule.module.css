@@ -1,5 +1,4 @@
 .page {
-  --schedule-blue: #dcecf8;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -8,7 +7,8 @@
   padding: var(--layout-content-pad-y) var(--layout-admin-pad-x) 0;
   color: var(--color-grey-text-strong);
   font-family: var(--font-paragraph);
-  font-size: 1.4rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
 }
 .header,
 .dayHeader,
@@ -25,7 +25,7 @@
   margin: 0;
 }
 .table select {
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.4rem;
   background: var(--color-solid-bg-sunken);
   padding: 0.8rem;
@@ -53,7 +53,7 @@
   min-width: 11rem;
   padding: 1rem 0.8rem;
   border: 0;
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
   background: transparent;
   color: var(--color-grey-text-strong);
   font: inherit;
@@ -61,12 +61,13 @@
   cursor: pointer;
 }
 .day small {
-  font-size: 1.1rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   color: var(--color-grey-text-weak);
   font-weight: 400;
 }
 .selectedDay {
-  border-bottom: 3px solid var(--color-brand-text);
+  border-bottom: 0.3rem solid var(--color-brand-text);
   color: var(--color-brand-text);
   font-weight: 700;
 }
@@ -85,14 +86,17 @@
   padding: 0.6rem;
   background: transparent;
   color: inherit;
-  font-size: 2rem;
+  font-size: var(--text-desktop-heading-4);
+  line-height: var(--text-desktop-heading-4--line-height);
   cursor: pointer;
 }
 .iconButton:hover:not(:disabled) {
   background: var(--color-grey-fill-weak);
 }
 .dayHeader h2 {
-  font: 700 2.4rem/3.2rem var(--font-heading);
+  font: 700
+    var(--text-desktop-heading-3)/var(--text-desktop-heading-3--line-height)
+    var(--font-heading);
 }
 .dayHeader p {
   margin: 0.4rem 0 0;
@@ -104,16 +108,19 @@
 }
 .generateControls small {
   color: var(--color-grey-text-weak);
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
 }
 .btnSecondary,
 .btnPrimary {
   padding: 0.9rem 1.6rem;
-  border: 1px solid var(--color-brand-stroke-strong);
+  border: 0.1rem solid var(--color-brand-stroke-strong);
   border-radius: 0.4rem;
   color: var(--color-brand-text);
   background: var(--color-solid-bg-base);
-  font: 600 1.6rem/2.2rem var(--font-paragraph);
+  font: 600
+    var(--text-desktop-paragraph-2)/var(--text-desktop-paragraph-2--line-height)
+    var(--font-paragraph);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -134,8 +141,8 @@
 }
 .page :is(button, input, select, a):focus-visible,
 .table tr:focus {
-  outline: 2px solid var(--color-brand-text);
-  outline-offset: 2px;
+  outline: 0.2rem solid var(--color-brand-text);
+  outline-offset: 0.2rem;
 }
 .reason {
   color: var(--color-status-red-text);
@@ -147,7 +154,9 @@
   gap: 1.2rem;
 }
 .section h3 {
-  font: 700 2rem/2.8rem var(--font-heading);
+  font: 700
+    var(--text-desktop-heading-4)/var(--text-desktop-heading-4--line-height)
+    var(--font-heading);
 }
 .sectionHeader {
   flex-wrap: wrap;
@@ -158,7 +167,8 @@
   flex-wrap: wrap;
   gap: 1.6rem;
   color: var(--color-grey-text-weak);
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
 }
 .legend span {
   display: inline-flex;
@@ -174,8 +184,8 @@
   background: var(--color-status-yellow);
 }
 .proposedSwatch {
-  background: var(--schedule-blue);
-  border: 1px dashed var(--color-brand-stroke-strong);
+  background: var(--color-brand-surface);
+  border: 0.1rem dashed var(--color-brand-stroke-strong);
 }
 .offShiftSwatch {
   background: var(--color-status-grey);
@@ -187,7 +197,7 @@
 }
 .timelineScroll {
   max-height: 56rem;
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
 }
 .timelineRow {
   display: grid;
@@ -200,15 +210,16 @@
 }
 .axisDriver,
 .axis {
-  background: var(--schedule-blue);
+  background: var(--color-brand-surface);
   height: 3.6rem;
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
 }
 .axisDriver {
   position: sticky;
   left: 0;
   padding: 1rem 1.2rem;
-  border-right: 1px solid var(--color-grey-stroke-weak);
+  border-right: 0.1rem solid var(--color-grey-stroke-weak);
   z-index: 5;
 }
 .axis {
@@ -218,7 +229,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: 1px solid var(--color-grey-stroke-weak);
+  border-left: 0.1rem solid var(--color-grey-stroke-weak);
   padding: 1rem;
   color: var(--color-grey-text-weak);
 }
@@ -232,15 +243,17 @@
   gap: 0.2rem;
   padding: 1rem 1.2rem;
   background: var(--color-solid-bg-base);
-  border-right: 1px solid var(--color-grey-stroke-weak);
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-right: 0.1rem solid var(--color-grey-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
 }
 .driver strong {
-  font-size: 1.3rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
   font-weight: 600;
 }
 .driver small {
-  font-size: 1.1rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   color: var(--color-grey-text-weak);
 }
 .track {
@@ -248,10 +261,10 @@
   background-color: var(--color-status-grey);
   background-image: linear-gradient(
     to right,
-    var(--color-grey-stroke-weak) 1px,
-    transparent 1px
+    var(--color-grey-stroke-weak) 0.1rem,
+    transparent 0.1rem
   );
-  border-bottom: 1px solid var(--color-grey-stroke-weak);
+  border-bottom: 0.1rem solid var(--color-grey-stroke-weak);
   overflow: hidden;
 }
 .unassignedTrack {
@@ -262,7 +275,8 @@
   top: 2.6rem;
   left: 1rem;
   color: var(--color-grey-stroke-strong);
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
 }
 .shift {
   position: absolute;
@@ -271,8 +285,8 @@
   background-color: var(--color-solid-bg-base);
   background-image: linear-gradient(
     to right,
-    var(--color-grey-fill-weak) 1px,
-    transparent 1px
+    var(--color-grey-fill-weak) 0.1rem,
+    transparent 0.1rem
   );
   background-size: 13rem 100%;
 }
@@ -281,7 +295,7 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0;
   align-items: flex-start;
   height: 6.4rem;
   padding: 0.4rem;
@@ -289,17 +303,21 @@
   color: var(--color-grey-text-strong);
   text-align: left;
   cursor: pointer;
-  font: 400 1.2rem/1.6rem var(--font-paragraph);
+  font: 400 var(--text-desktop-small)/var(--text-desktop-small--line-height)
+    var(--font-paragraph);
 }
 .ride strong {
   display: flex;
   align-items: center;
   gap: 0.2rem;
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   font-weight: 600;
   max-width: 100%;
 }
 .ride > * {
+  font-size: inherit;
+  line-height: inherit;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -307,48 +325,52 @@
 }
 .ride small {
   color: var(--color-grey-text-weak);
-  font-size: 1.1rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
 }
 .ride:hover {
   filter: brightness(0.96);
 }
 .existing {
   background: var(--color-status-yellow);
-  border: 1px solid transparent;
+  border: 0.1rem solid transparent;
 }
 .proposed {
-  background: var(--schedule-blue);
-  border: 1px dashed var(--color-brand-stroke-strong);
+  background: var(--color-brand-surface);
+  border: 0.1rem dashed var(--color-brand-stroke-strong);
 }
 .unassigned {
   background: var(--color-status-pink);
-  border: 1px solid transparent;
+  border: 0.1rem solid transparent;
 }
 .conflict {
-  outline: 2px solid var(--color-status-red-text);
-  outline-offset: -2px;
+  outline: 0.2rem solid var(--color-status-red-text);
+  outline-offset: -0.2rem;
 }
 .help {
   margin: 0;
   color: var(--color-grey-text-weak);
-  font-size: 1.3rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
 }
 .table {
   width: 100%;
   min-width: 100rem;
   border-collapse: collapse;
-  font-size: 1.3rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
 }
 .table th {
-  background: var(--schedule-blue);
+  background: var(--color-brand-surface);
   color: var(--color-grey-text-strong);
   text-align: left;
   padding: 1.6rem;
-  font-size: 1.4rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
 }
 .table td {
   padding: 1.4rem 1.6rem;
-  border-bottom: 1px solid var(--color-grey-fill-weak);
+  border-bottom: 0.1rem solid var(--color-grey-fill-weak);
   color: var(--color-grey-text-weak);
   vertical-align: middle;
 }
@@ -357,13 +379,15 @@
 }
 .table small {
   display: block;
-  font-size: 1.1rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   margin-top: 0.4rem;
 }
 .table select {
   max-width: 18rem;
   width: 100%;
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   border-color: var(--color-brand-stroke-strong);
 }
 .table a {
@@ -381,17 +405,18 @@
   white-space: nowrap;
   padding: 0.4rem 1.2rem;
   border-radius: 99rem;
-  font-size: 1.1rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   color: var(--color-grey-text-strong);
 }
 .chip.proposed {
-  border: 1px solid transparent;
+  border: 0.1rem solid transparent;
 }
 .empty {
   text-align: center;
   padding: 4rem 2rem;
   color: var(--color-grey-text-weak);
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.4rem;
 }
 .applyBar {
@@ -403,18 +428,20 @@
   gap: 1.6rem;
   padding: 1.6rem 0;
   margin-top: auto;
-  border-top: 1px solid var(--color-grey-stroke-weak);
+  border-top: 0.1rem solid var(--color-grey-stroke-weak);
   background: var(--color-solid-bg-base);
   box-shadow: 0 -1rem 1rem var(--color-solid-bg-base);
 }
 .applyBar p {
   margin: 0;
   flex: 1;
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   color: var(--color-grey-text-weak);
 }
 .applyBar > span {
-  font-size: 1.2rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   color: var(--color-grey-stroke-strong);
 }
 .page > .section:last-child {
@@ -430,7 +457,8 @@
     flex-wrap: wrap;
   }
   .header h1 {
-    font-size: 3.2rem;
+    font-size: var(--text-mobile-display);
+    line-height: var(--text-mobile-display--line-height);
   }
   .day {
     min-width: 10.5rem;
@@ -467,7 +495,7 @@
 }
 
 .dropTarget .driver {
-  background: var(--schedule-blue);
+  background: var(--color-brand-surface);
 }
 
 .dropTarget .track::after {
@@ -475,7 +503,7 @@
   position: absolute;
   inset: 0;
   z-index: 3;
-  border: 2px dashed var(--color-brand-text);
+  border: 0.2rem dashed var(--color-brand-text);
   background: var(--color-brand-fill);
   pointer-events: none;
 }
@@ -483,12 +511,13 @@
 .dragStatus {
   margin: 0;
   color: var(--color-brand-text);
-  font-size: 1.3rem;
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
 }
 
 .dragStatus:empty {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 0.1rem;
+  height: 0.1rem;
   overflow: hidden;
 }

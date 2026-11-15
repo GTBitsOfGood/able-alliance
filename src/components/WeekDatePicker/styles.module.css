@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: 8.4rem minmax(0, 1fr) 8.4rem;
   min-height: 9.2rem;
-  background: #efeded;
+  background: var(--color-status-grey);
   border-radius: 0.8rem;
 }
 
@@ -15,12 +15,12 @@
   border: 0;
   cursor: pointer;
   border-radius: 0.8rem 0 0 0.8rem;
-  border-right: 1px solid var(--color-grey-stroke-weak);
+  border-right: 0.1rem solid var(--color-grey-stroke-weak);
 }
 
 .weekButton:last-child {
   border: 0;
-  border-left: 1px solid var(--color-grey-stroke-weak);
+  border-left: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0 0.8rem 0.8rem 0;
 }
 
@@ -38,8 +38,8 @@
 
 .weekButton:focus-visible,
 .weekLabel:focus-visible {
-  outline: 2px solid var(--color-brand-text);
-  outline-offset: 3px;
+  outline: 0.2rem solid var(--color-brand-text);
+  outline-offset: 0.3rem;
 }
 
 .weekLabel {
@@ -52,7 +52,9 @@
   padding: 1.2rem;
   text-align: center;
   color: var(--color-grey-text-weak);
-  font: 400 1.8rem/2.4rem var(--font-paragraph);
+  font: 400
+    var(--text-desktop-paragraph-1)/var(--text-desktop-paragraph-1--line-height)
+    var(--font-paragraph);
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -69,13 +71,11 @@
   max-height: var(--radix-popover-content-available-height);
   overflow-y: auto;
   padding: 3.2rem 1.2rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 1.6rem;
   background: var(--color-solid-bg-base);
   color: var(--color-grey-text-strong);
-  box-shadow:
-    0 0.8rem 0.8rem -0.4rem rgb(0 0 0 / 4%),
-    0 2rem 2.4rem -0.4rem rgb(0 0 0 / 8%);
+  box-shadow: var(--shadow-popover);
   font-family: var(--font-paragraph);
 }
 
@@ -88,8 +88,8 @@
 }
 
 .calendarMonth {
-  font-size: 1.8rem;
-  line-height: 2.4rem;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
   font-weight: 700;
 }
 
@@ -117,8 +117,8 @@
   border-collapse: separate;
   border-spacing: 0 0.4rem;
   text-align: center;
-  font-size: 1.2rem;
-  line-height: 1.6rem;
+  font-size: var(--text-desktop-small);
+  line-height: var(--text-desktop-small--line-height);
   font-weight: 600;
 }
 
@@ -152,7 +152,7 @@
 }
 
 .selectedWeekDay {
-  background: #dcecf8;
+  background: var(--color-brand-surface);
 }
 
 .selectedWeekDay:nth-child(2) {
@@ -164,8 +164,8 @@
 }
 
 .calendarGrid .weekEndpoint {
-  background: #416ebc;
-  color: white;
+  background: var(--color-brand-accent);
+  color: var(--color-solid-bg-base);
 }
 
 .calendarGrid button:hover:not(:disabled),
@@ -179,8 +179,8 @@
 }
 
 .calendar button:focus-visible {
-  outline: 2px solid var(--color-brand-text);
-  outline-offset: 2px;
+  outline: 0.2rem solid var(--color-brand-text);
+  outline-offset: 0.2rem;
 }
 
 .calendarShortcuts {
@@ -196,14 +196,18 @@
   padding: 0.8rem;
   background: transparent;
   color: var(--color-brand-text);
-  font: 600 1.6rem/2rem var(--font-paragraph);
+  font: 600
+    var(--text-desktop-paragraph-2)/var(--text-desktop-paragraph-2--line-height)
+    var(--font-paragraph);
   cursor: pointer;
 }
 
 .weekDates {
   margin: 0;
   color: var(--color-grey-text-strong);
-  font: 400 3.2rem/4rem var(--font-heading);
+  font: 400
+    var(--text-desktop-heading-2)/var(--text-desktop-heading-2--line-height)
+    var(--font-heading);
 }
 
 @media (max-width: 767px) {
@@ -218,13 +222,13 @@
 
   .weekLabel {
     padding: 1.2rem 0.8rem;
-    font-size: 1.6rem;
-    line-height: 2rem;
+    font-size: var(--text-mobile-paragraph-1);
+    line-height: var(--text-mobile-paragraph-1--line-height);
   }
 
   .weekDates {
-    font-size: 2rem;
-    line-height: 2.8rem;
+    font-size: var(--text-desktop-heading-4);
+    line-height: var(--text-desktop-heading-4--line-height);
     text-wrap: balance;
   }
 }
@@ -234,7 +238,9 @@
   align-items: center;
   gap: 1rem;
   color: var(--color-grey-text-strong);
-  font: 400 1.4rem/2rem var(--font-paragraph);
+  font: 400
+    var(--text-mobile-paragraph-2)/var(--text-mobile-paragraph-2--line-height)
+    var(--font-paragraph);
 }
 .dateTrigger {
   display: inline-flex;
@@ -242,7 +248,7 @@
   justify-content: space-between;
   gap: 2rem;
   padding: 0.8rem;
-  border: 1px solid var(--color-grey-stroke-weak);
+  border: 0.1rem solid var(--color-grey-stroke-weak);
   border-radius: 0.4rem;
   background: var(--color-solid-bg-sunken);
   color: inherit;
@@ -253,8 +259,8 @@
   background: var(--color-grey-fill-weak);
 }
 .dateTrigger:focus-visible {
-  outline: 2px solid var(--color-brand-text);
-  outline-offset: 3px;
+  outline: 0.2rem solid var(--color-brand-text);
+  outline-offset: 0.3rem;
 }
 .dateTrigger:disabled {
   opacity: 0.5;

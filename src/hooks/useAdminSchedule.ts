@@ -20,6 +20,9 @@ async function readJson(response: Response) {
     .catch(() => ({ error: `Server responded ${response.status}` }));
 }
 
+type PendingScheduleAction =
+  { type: "changeDate"; date: string } | { type: "regenerate" };
+
 export function useAdminSchedule() {
   const { data: session } = useSession();
   const isAdmin =
@@ -38,7 +41,10 @@ export function useAdminSchedule() {
   const [stale, setStale] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [pendingAction, setPendingAction] =
+    useState<PendingScheduleAction | null>(null);
   const editPending = useRef(false);
+  const routeRevision = useRef(0);
   const requestId = useRef(0);
 
   const load = useCallback(
@@ -52,38 +58,55 @@ export function useAdminSchedule() {
       setLoading(true);
       setGenerating(generate);
       try {
-        const response = await fetch(
-          `/api/routes/auto-schedule?date=${selectedDate}${generate ? "" : "&view=overview"}`,
-        );
-        const body = await readJson(response);
+        while (!signal?.aborted && id === requestId.current) {
+          const revision = routeRevision.current;
+          const response = await fetch(
+            `/api/routes/auto-schedule?date=${selectedDate}${generate ? "" : "&view=overview"}`,
+          );
+          const body = await readJson(response);
 
-        if (id !== requestId.current || signal?.aborted) {
-          return;
-        }
+          if (id !== requestId.current || signal?.aborted) {
+            return;
+          }
 
-        if (!response.ok) {
-          throw new Error(body.error ?? "Unable to load schedule.");
-        }
+          if (!response.ok) {
+            throw new Error(body.error ?? "Unable to load schedule.");
+          }
 
-        const next = body as AutoSchedulePlan;
-        setPlan(next);
-        setDraft(next.assignments);
-        setGeneratedAt(generate ? new Date() : null);
-        setStale(false);
-        if (!quiet) {
-          const reviewIds = new Set([
-            ...next.doubleBookings.flatMap((conflict) =>
-              conflict.rides.map((ride) => ride.id),
-            ),
-            ...next.offShiftBookings.map(({ ride }) => ride.id),
-            ...(generate ? next.unassigned.map((ride) => ride.id) : []),
-          ]);
+          const changedDuringRequest = revision !== routeRevision.current;
 
-          if (reviewIds.size) {
+          // Read the overview again if an update arrived after this snapshot began.
+          if (!generate && changedDuringRequest) {
+            continue;
+          }
+
+          const next = body as AutoSchedulePlan;
+          setPlan(next);
+          setDraft(next.assignments);
+          setGeneratedAt(generate ? new Date() : null);
+          setStale(changedDuringRequest);
+
+          if (changedDuringRequest) {
             toast.warn(
-              `${reviewIds.size} ${reviewIds.size === 1 ? "ride needs" : "rides need"} review. Check the assignment details below.`,
+              "The schedule changed while generating. Re-generate before applying assignments.",
             );
           }
+          if (!quiet) {
+            const reviewIds = new Set([
+              ...next.doubleBookings.flatMap((conflict) =>
+                conflict.rides.map((ride) => ride.id),
+              ),
+              ...next.offShiftBookings.map(({ ride }) => ride.id),
+              ...(generate ? next.unassigned.map((ride) => ride.id) : []),
+            ]);
+
+            if (reviewIds.size) {
+              toast.warn(
+                `${reviewIds.size} ${reviewIds.size === 1 ? "ride needs" : "rides need"} review. Check the assignment details below.`,
+              );
+            }
+          }
+          break;
         }
       } catch (error) {
         if (id !== requestId.current || signal?.aborted) {
@@ -114,18 +137,18 @@ export function useAdminSchedule() {
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(
-      () => void load(date, false, false, controller.signal),
-      0,
-    );
+    // Loading the selected date intentionally synchronizes request state here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load(date, false, false, controller.signal);
 
     return () => {
-      clearTimeout(timer);
       controller.abort();
     };
   }, [date, isAdmin, load]);
 
   useRouteUpdates(() => {
+    routeRevision.current++;
+
     if (!isAdmin || applying || loading) {
       return;
     }
@@ -157,13 +180,49 @@ export function useAdminSchedule() {
       return;
     }
 
+    if (edited) {
+      setPendingAction({ type: "changeDate", date: next });
+      return;
+    }
+
+    selectDate(next);
+  };
+
+  function selectDate(next: string) {
     requestId.current++;
     setPlan(null);
     setDraft([]);
     setGeneratedAt(null);
     setLoading(true);
     setDate(next);
-  };
+  }
+
+  function generate() {
+    if (busy) {
+      return;
+    }
+
+    if (edited) {
+      setPendingAction({ type: "regenerate" });
+      return;
+    }
+
+    void load(date, true);
+  }
+
+  function confirmDiscard() {
+    if (!pendingAction) {
+      return;
+    }
+
+    setPendingAction(null);
+
+    if (pendingAction.type === "changeDate") {
+      selectDate(pendingAction.date);
+    } else {
+      void load(date, true);
+    }
+  }
 
   async function apply() {
     if (!plan || !draft.length || stale || editPending.current) {
@@ -336,5 +395,9 @@ export function useAdminSchedule() {
     load,
     apply,
     updateAssignment,
+    generate,
+    pendingAction,
+    dismissDiscard: () => setPendingAction(null),
+    confirmDiscard,
   };
 }

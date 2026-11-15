@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 
+import ConfirmActionModal from "@/components/ConfirmActionModal/ConfirmActionModal";
 import ScheduleDateNavigation from "@/components/admin/ScheduleDateNavigation";
 import ScheduleSummary from "@/components/admin/ScheduleSummary";
 import ScheduleTimeline from "@/components/admin/ScheduleTimeline";
@@ -44,7 +45,7 @@ export default function SchedulePage() {
         generating={schedule.generating}
         busy={schedule.busy}
         isAdmin={schedule.isAdmin}
-        onGenerate={() => void schedule.load(schedule.date, true)}
+        onGenerate={schedule.generate}
         onRefresh={() => void schedule.load(schedule.date)}
       />
       {schedule.loading && (
@@ -106,6 +107,21 @@ export default function SchedulePage() {
           apply={schedule.apply}
         />
       )}
+      <ConfirmActionModal
+        open={schedule.pendingAction !== null}
+        onOpenChange={(open) => {
+          if (!open) schedule.dismissDiscard();
+        }}
+        onConfirm={schedule.confirmDiscard}
+        title="Discard assignment changes?"
+        description="Your assignment edits have not been applied. Continuing will discard these edits."
+        confirmLabel={
+          schedule.pendingAction?.type === "regenerate"
+            ? "Discard and regenerate"
+            : "Discard and change date"
+        }
+        cancelLabel="Keep editing"
+      />
     </div>
   );
 }

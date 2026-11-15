@@ -54,9 +54,7 @@ export default function ScheduleRideBlock({
       }}
       onDragEnd={() => {
         onDragEnd();
-        setTimeout(() => {
-          suppressRideClick.current = false;
-        }, 0);
+        suppressRideClick.current = false;
       }}
       style={{
         left: `${left}%`,
