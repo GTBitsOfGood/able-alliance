@@ -49,3 +49,12 @@ export type AutoSchedulePlan = {
     ride: Ride;
   }[];
 };
+
+export type ScheduleAssignment = AutoSchedulePlan["assignments"][number];
+
+export type ScheduleRide = Ride & {
+  kind: "existing" | "proposed" | "unassigned";
+  driverName: string;
+  reason: string;
+  needsReview: boolean;
+};

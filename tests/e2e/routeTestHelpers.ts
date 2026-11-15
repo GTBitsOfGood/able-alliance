@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from "@playwright/test";
-import { addDays } from "date-fns";
+import { addDays, differenceInCalendarWeeks } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { expect } from "./fixtures";
 import { PERSONAS, VEHICLE } from "./seed";
@@ -123,6 +123,21 @@ export async function showCalendarMonth(page: Page, date: Date) {
     await page.getByRole("button", { name: "Next month" }).click();
   }
   await expect(page.getByText(month, { exact: true })).toBeVisible();
+}
+
+/** Select the target service week in the shared student/driver navigator. */
+export async function showRideWeek(page: Page, date: Date) {
+  const weekOffset = differenceInCalendarWeeks(date, estDateDaysFromNow(0));
+  const navigator = page.getByRole("navigation", {
+    name: "Browse rides by week",
+    exact: true,
+  });
+
+  for (let week = 0; week < weekOffset; week++) {
+    await navigator
+      .getByRole("button", { name: "Next week", exact: true })
+      .click();
+  }
 }
 
 export function formatEstTime(iso: string): string {

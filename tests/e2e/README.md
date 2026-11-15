@@ -33,7 +33,7 @@ read report using `npm run test:e2e:report`, open the HTML report + diagnostics
    because dev compiles routes on demand, hard-reloads pages mid-flow and
    races its own manifests, which made the UI flow flaky.
 2. `seed.ts` (global setup) wipes that db and inserts one student, one
-   driver on shift all week, one admin, three locations, one vehicle. Fixed
+   driver on shift Monday–Friday during service hours, one admin, three locations, one vehicle. Fixed
    ids. No rides: each flow creates its own.
 3. Specs log in by **minting the session cookie** (`fixtures.ts`) with the same
    `encode()` call the CAS callback uses. CAS is never involved.

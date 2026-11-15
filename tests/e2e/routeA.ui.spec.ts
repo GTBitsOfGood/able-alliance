@@ -10,16 +10,15 @@
  * Stops at Scheduled — the full lifecycle lives in routeB.ui.spec.ts.
  */
 import type { Page } from "@playwright/test";
-import { startOfWeek } from "date-fns";
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
 import {
   clearLocations,
-  estDateDaysFromNow,
   nextServiceDate,
   selectLocation,
   scheduleRideInAdmin,
   showCalendarMonth,
+  showRideWeek,
 } from "./routeTestHelpers";
 
 const PICKUP = LOCATIONS.techSquare;
@@ -35,102 +34,103 @@ async function pickTime(input: ReturnType<Page["locator"]>, label: string) {
 
 test("route A: student creates, admin schedules (UI)", async ({
   pageAs,
+  apiAs,
   diag,
 }) => {
   test.setTimeout(90_000);
 
   const student = await pageAs("student");
+  const adminApi = await apiAs("admin");
+  let routeId: string | undefined;
 
-  // ── Student requests a ride ────────────────────────────────────────────
-  await student.goto("/rides/new");
-  await expect(
-    student.getByRole("heading", { name: "Request Ride" }),
-  ).toBeVisible();
+  try {
+    // ── Student requests a ride ────────────────────────────────────────────
+    await student.goto("/rides/new");
+    await expect(
+      student.getByRole("heading", { name: "Request Ride" }),
+    ).toBeVisible();
 
-  const today = estDateDaysFromNow(0);
-  const rideDate = nextServiceDate();
-  await showCalendarMonth(student, rideDate);
-  await student
-    .getByRole("button", { name: String(rideDate.getDate()), exact: true })
-    .click();
-
-  const times = student.getByPlaceholder("hh:mm");
-  await pickTime(times.nth(0), PICKUP_TIME);
-  await pickTime(student.locator("#pickup-window-from"), "1:30 PM");
-  await pickTime(student.locator("#pickup-window-to"), "2:30 PM");
-
-  await clearLocations(student);
-  await selectLocation(student, "Pickup location", PICKUP.name);
-  await selectLocation(student, "Dropoff location", DROPOFF.name);
-
-  const created = student.waitForResponse(
-    (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",
-  );
-  await student.getByRole("button", { name: "Submit" }).click();
-  const createRes = await created;
-  expect(createRes.status(), await createRes.text()).toBe(201);
-  const { id: routeId } = (await createRes.json()) as { id: string };
-  await expect(student).toHaveURL(/\/rides$/);
-
-  // The list starts at the current Sunday-anchored week.
-  if (startOfWeek(rideDate).getTime() > startOfWeek(today).getTime()) {
+    const rideDate = nextServiceDate();
+    await showCalendarMonth(student, rideDate);
     await student
-      .getByRole("button", { name: "Next week", exact: true })
+      .getByRole("button", { name: String(rideDate.getDate()), exact: true })
       .click();
-  }
 
-  const studentCard = student
-    .getByRole("region", { name: "Upcoming Rides", exact: true })
-    .getByTestId("ride-card")
-    .filter({ has: student.locator(`a[href="/rides/${routeId}"]`) });
-  await expect(studentCard).toHaveCount(1);
-  await expect(
-    studentCard.getByText("Requested", { exact: true }),
-  ).toBeVisible();
+    const times = student.getByPlaceholder("hh:mm");
+    await pickTime(times.nth(0), PICKUP_TIME);
+    await pickTime(student.locator("#pickup-window-from"), "1:30 PM");
+    await pickTime(student.locator("#pickup-window-to"), "2:30 PM");
 
-  // ── Admin sees it and schedules ────────────────────────────────────────
-  const admin = await pageAs("admin");
-  await admin.goto("/admin/rides");
-  await scheduleRideInAdmin(admin, routeId);
+    await clearLocations(student);
+    await selectLocation(student, "Pickup location", PICKUP.name);
+    await selectLocation(student, "Dropoff location", DROPOFF.name);
 
-  // ── Driver sees the scheduled ride ─────────────────────────────────────
-  const driver = await pageAs("driver");
-  // The driver list only covers today and tomorrow, not Monday after a weekend.
-  if (rideDate.toDateString() === estDateDaysFromNow(1).toDateString()) {
-    await driver.goto("/rides");
-    await driver.getByText("Tomorrow", { exact: true }).click();
-    const driverCard = driver
+    const created = student.waitForResponse(
+      (r) => r.url().endsWith("/api/routes") && r.request().method() === "POST",
+    );
+    await student.getByRole("button", { name: "Submit" }).click();
+    const createRes = await created;
+    expect(createRes.status(), await createRes.text()).toBe(201);
+    routeId = ((await createRes.json()) as { id: string }).id;
+    await expect(student).toHaveURL(/\/rides$/);
+
+    await showRideWeek(student, rideDate);
+
+    const studentCard = student
+      .getByRole("region", { name: "Upcoming Rides", exact: true })
       .getByTestId("ride-card")
-      .filter({ hasText: PICKUP.name })
-      .filter({ hasText: DROPOFF.name });
+      .filter({ has: student.locator(`a[href="/rides/${routeId}"]`) });
+    await expect(studentCard).toHaveCount(1);
+    await expect(
+      studentCard.getByText("Requested", { exact: true }),
+    ).toBeVisible();
+
+    // ── Admin sees it and schedules ────────────────────────────────────────
+    const admin = await pageAs("admin");
+    await admin.goto("/admin/rides");
+    await scheduleRideInAdmin(admin, routeId);
+
+    // ── Driver sees the scheduled ride ─────────────────────────────────────
+    const driver = await pageAs("driver");
+    await driver.goto("/rides");
+    await showRideWeek(driver, rideDate);
+    const driverCard = driver
+      .getByRole("region", { name: "Driver ride schedule", exact: true })
+      .getByTestId("ride-card")
+      .filter({ has: driver.locator(`a[href="/rides/${routeId}"]`) });
     await expect(driverCard).toHaveCount(1);
     await expect(
       driverCard.getByText("Scheduled", { exact: true }),
     ).toBeVisible();
+    await driver.goto(`/rides/${routeId}`);
+    await expect(
+      driver
+        .getByRole("heading", { name: "Ride Details" })
+        .locator("xpath=following-sibling::span[1]"),
+    ).toHaveText("Scheduled");
+
+    // ── Student sees scheduled assignment ──────────────────────────────────
+    await student.goto(`/rides/${routeId}`);
+    await expect(
+      student
+        .getByRole("heading", { name: "Ride Details" })
+        .locator("xpath=following-sibling::span[1]"),
+    ).toHaveText("Scheduled");
+    await expect(student.getByText(PICKUP.name)).toBeVisible();
+    await expect(student.getByText(DROPOFF.name)).toBeVisible();
+    await expect(student.getByText(VEHICLE.name)).toBeVisible();
+    await expect(student.getByText(VEHICLE.licensePlate)).toBeVisible();
+    await expect(
+      student.getByText(
+        `${PERSONAS.driver.firstName} ${PERSONAS.driver.lastName}`,
+      ),
+    ).toBeVisible();
+
+    expect(diag.apiFailures, diag.summary()).toHaveLength(0);
+  } finally {
+    if (routeId) {
+      const deleted = await adminApi.delete(`/api/routes/${routeId}`);
+      expect(deleted.status(), await deleted.text()).toBe(200);
+    }
   }
-  await driver.goto(`/rides/${routeId}`);
-  await expect(
-    driver
-      .getByRole("heading", { name: "Ride Details" })
-      .locator("xpath=following-sibling::span[1]"),
-  ).toHaveText("Scheduled");
-
-  // ── Student sees scheduled assignment ──────────────────────────────────
-  await student.goto(`/rides/${routeId}`);
-  await expect(
-    student
-      .getByRole("heading", { name: "Ride Details" })
-      .locator("xpath=following-sibling::span[1]"),
-  ).toHaveText("Scheduled");
-  await expect(student.getByText(PICKUP.name)).toBeVisible();
-  await expect(student.getByText(DROPOFF.name)).toBeVisible();
-  await expect(student.getByText(VEHICLE.name)).toBeVisible();
-  await expect(student.getByText(VEHICLE.licensePlate)).toBeVisible();
-  await expect(
-    student.getByText(
-      `${PERSONAS.driver.firstName} ${PERSONAS.driver.lastName}`,
-    ),
-  ).toBeVisible();
-
-  expect(diag.apiFailures, diag.summary()).toHaveLength(0);
 });
