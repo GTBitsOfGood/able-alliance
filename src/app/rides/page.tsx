@@ -5,7 +5,7 @@ import { RouteStatus } from "@db/generated/enums";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { DropdownMenu } from "radix-ui";
-import RideWeekPicker from "./RideWeekPicker";
+import WeekDatePicker from "@/components/WeekDatePicker/WeekDatePicker";
 import UpNextHeading from "./UpNextHeading";
 import Link from "next/link";
 import BogButton from "@/components/BogButton/BogButton";
@@ -407,7 +407,7 @@ export default function RidesPage() {
           <h2 id="upcoming-heading" className={studentStyles.sectionTitle}>
             Upcoming Rides
           </h2>
-          <RideWeekPicker
+          <WeekDatePicker
             weekOffset={weekOffset}
             onWeekChange={setWeekOffset}
             ready={mounted}

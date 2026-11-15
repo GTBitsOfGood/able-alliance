@@ -8,6 +8,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@db/generated/client";
 import { E2E } from "./env";
+import { SERVICE_START_TIME, SERVICE_END_TIME } from "@/utils/consts";
 
 import type { User } from "@db/generated/browser";
 
@@ -110,21 +111,21 @@ function buildSeed() {
     email: p.email,
     types: p.types,
   });
-  // On shift every day, all day, so the flow never trips the availability check.
-  const allWeek = Array.from({ length: 7 }, (_, dayOfWeek) => ({
-    dayOfWeek,
-    startTime: "00:00",
-    endTime: "23:59",
+  // Match Fall/Spring paratransit service: weekdays, 7:30 AM–7:45 PM ET.
+  const serviceWeek = Array.from({ length: 5 }, (_, index) => ({
+    dayOfWeek: index + 1,
+    startTime: SERVICE_START_TIME,
+    endTime: SERVICE_END_TIME,
   }));
   return {
     users: [
       { ...user(PERSONAS.student), studentInfo: { create: {} } },
-      { ...user(PERSONAS.driver), shifts: { create: allWeek } },
+      { ...user(PERSONAS.driver), shifts: { create: serviceWeek } },
       user(PERSONAS.admin),
       {
         ...user(PERSONAS.multi),
         studentInfo: { create: {} },
-        shifts: { create: allWeek },
+        shifts: { create: serviceWeek },
       },
       user(PERSONAS.superAdmin),
     ],

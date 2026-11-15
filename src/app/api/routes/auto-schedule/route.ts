@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@db/generated/client";
+import { formatMinutes, isServiceDate } from "@/utils/rideTiming";
 import { isValidId } from "@/utils/ids";
 import { getUserFromRequest } from "@/utils/authUser";
 import { HTTP_STATUS_CODE } from "@/utils/consts";
@@ -9,11 +10,7 @@ import {
   scheduleRouteWhileLocked,
   withSchedulingLock,
 } from "@/server/actions/RouteAction";
-import {
-  planDay,
-  formatMinutes,
-  AutoScheduleConflictError,
-} from "@/server/autoSchedule";
+import { planDay, AutoScheduleConflictError } from "@/server/autoSchedule";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -50,7 +47,14 @@ export async function GET(req: NextRequest) {
     );
   }
   try {
-    return NextResponse.json(await planDay(date));
+    // An empty fixed assignment list returns the current day without proposing
+    // bookings or running the solver. Generation remains an explicit action.
+    const overview = req.nextUrl.searchParams.get("view") === "overview";
+    if (!isServiceDate(date))
+      return badRequest(
+        "Paratransit operates Monday–Friday. Choose a weekday.",
+      );
+    return NextResponse.json(await planDay(date, overview ? [] : undefined));
   } catch (e) {
     console.error("[GET /api/routes/auto-schedule]", e);
     return errorResponse(e);
@@ -69,12 +73,16 @@ function badRequest(error: string, details: string[] = []) {
 /** Returns field-level problems with a POST body, or [] when it is usable. */
 function validateBody(body: unknown): string[] {
   if (!body || typeof body !== "object") return ["Body must be a JSON object."];
-  const { date, assignments } = body as Record<string, unknown>;
+  const { date, assignments, validateOnly } = body as Record<string, unknown>;
   const problems: string[] = [];
+  if (validateOnly !== undefined && typeof validateOnly !== "boolean")
+    problems.push("validateOnly must be a boolean.");
   if (typeof date !== "string" || !DATE_RE.test(date))
     problems.push("date must be a string in YYYY-MM-DD format.");
   else if (Number.isNaN(Date.parse(`${date}T00:00:00Z`)))
     problems.push(`date "${date}" is not a real calendar date.`);
+  else if (!isServiceDate(date))
+    problems.push("Paratransit operates Monday–Friday. Choose a weekday.");
   if (!Array.isArray(assignments)) {
     problems.push("assignments must be an array.");
     return problems;
@@ -117,9 +125,14 @@ export async function POST(req: NextRequest) {
   }
   const problems = validateBody(body);
   if (problems.length) return badRequest("Invalid request.", problems);
-  const { date, assignments: rawAssignments } = body as {
+  const {
+    date,
+    assignments: rawAssignments,
+    validateOnly,
+  } = body as {
     date: string;
     assignments: Assignment[];
+    validateOnly?: boolean;
   };
 
   const assignments = rawAssignments.map((a) => ({
@@ -128,6 +141,14 @@ export async function POST(req: NextRequest) {
     vehicleId: a.vehicleId.toLowerCase(),
   }));
   try {
+    if (validateOnly) {
+      // Validate the entire draft against current bookings and each other.
+      // This path never books rides, writes audit entries, or notifies users.
+      await withSchedulingLock(schedulingLockKeys(assignments), (tx) =>
+        planDay(date, assignments, tx),
+      );
+      return NextResponse.json({ valid: true });
+    }
     // Validation and every write share one lock so concurrent applies or
     // manual bookings can't slip a conflicting ride in between.
     const results = await withSchedulingLock(

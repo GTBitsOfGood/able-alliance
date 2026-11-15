@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { addDays } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
-import RideWeekPicker from "./RideWeekPicker";
+import WeekDatePicker from "@/components/WeekDatePicker/WeekDatePicker";
 import UpNextHeading from "./UpNextHeading";
 import listStyles from "./student-rides.module.css";
 import { RideCard } from "./RideCard";
@@ -381,7 +381,7 @@ export default function DriverRidesView({ userId }: { userId: string }) {
         className={listStyles.upcoming}
         aria-label="Driver ride schedule"
       >
-        <RideWeekPicker
+        <WeekDatePicker
           weekOffset={weekOffset}
           onWeekChange={changeWeek}
           ready={mounted}
