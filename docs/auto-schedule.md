@@ -13,11 +13,11 @@ Both variables are binary.
 
 ## Objective
 
-$$
+```math
 \max \quad
 \underbrace{\sum_{r,d,v}(w_{\mathrm{ride}} - w_{\mathrm{access}}a_{rv})x_{rdv}}_{\text{Ride assignment reward}}
 - \underbrace{\sum_{d,v}c_{dv}y_{dv}}_{\text{New driver–vehicle pair penalty}}
-$$
+```
 
 - $w_{\mathrm{ride}} = 1000$ is the current base reward per assigned ride.
 - $w_{\mathrm{access}} = 0.1$ is the current penalty for assigning a wheelchair-accessible vehicle to a ride that does not require one.
