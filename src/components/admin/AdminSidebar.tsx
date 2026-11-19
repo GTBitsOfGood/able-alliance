@@ -74,6 +74,16 @@ export default function AdminSidebar() {
           id="admin-mobile-navigation"
           aria-label="Admin navigation"
         >
+          <Link
+            href="/admin/dashboard"
+            className={`${styles.navItem} ${isActive("/admin/dashboard") ? styles.active : ""}`}
+            aria-current={isActive("/admin/dashboard") ? "page" : undefined}
+            aria-label="dashboard"
+          >
+            <BogIcon name="info" size={20} weight="regular" />
+            <span>Dashboard</span>
+          </Link>
+
           {/* Rides */}
           <Link
             href="/admin/rides"

@@ -1,0 +1,834 @@
+.page {
+  --chart-text: var(--color-grey-text-weak);
+  --chart-surface: var(--color-solid-bg-base);
+  --chart-grid: var(--color-grey-stroke-weak);
+  --chart-volume: var(--color-brand-accent);
+  --chart-hours: var(--color-brand-text);
+  --chart-completed: var(--color-status-green-text);
+  --chart-cancelled: var(--color-status-red-text);
+  --chart-missing: var(--color-status-amber-text);
+  --chart-open: var(--color-brand-accent);
+  --chart-ranking-primary: var(--color-brand-text);
+  --chart-ranking-secondary: var(--color-brand-accent);
+
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+  flex: 1;
+  min-width: 0;
+  min-height: 100%;
+  padding: var(--layout-content-pad-y) var(--layout-admin-pad-x);
+  color: var(--color-grey-text-strong);
+  font-family: var(--font-paragraph);
+  font-size: var(--text-mobile-paragraph-2);
+  line-height: var(--text-mobile-paragraph-2--line-height);
+}
+
+.header,
+.reporting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.6rem;
+}
+
+.header h1,
+.panelHeader h2,
+.empty h2 {
+  margin: 0;
+}
+
+.header p,
+.panelHeader p,
+.empty p {
+  margin: 0.4rem 0 0;
+  color: var(--color-grey-text-weak);
+}
+
+.sections {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+}
+
+.sections a {
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  min-height: 4.8rem;
+  padding: 0.8rem 1.6rem;
+  border-bottom: 2px solid transparent;
+  color: var(--color-grey-text-weak);
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.sections a:hover {
+  background: var(--color-grey-fill-weak);
+  color: var(--color-grey-text-strong);
+}
+
+.sections a[aria-current] {
+  border-bottom-color: var(--color-grey-stroke-strong);
+  color: var(--color-grey-text-strong);
+  font-weight: 600;
+}
+
+.sectionIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.manageLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 4.4rem;
+  padding: 0.8rem 1.6rem;
+  border: 1px solid var(--color-brand-stroke-strong);
+  border-radius: 0.6rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-brand-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.manageLink:hover {
+  background: var(--color-brand-fill);
+}
+
+.reporting {
+  gap: 1.2rem;
+  padding-block: 0.4rem;
+  font-size: 1.4rem;
+}
+
+.periods {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  border-radius: 0.6rem;
+  background: var(--color-grey-fill-weak);
+}
+
+.periods a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.6rem;
+  padding: 0.4rem 1.2rem;
+  border-radius: 0.4rem;
+  color: var(--color-brand-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.periods a[aria-current] {
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
+}
+
+.periods a:not([aria-current]):hover {
+  background: var(--color-brand-fill);
+}
+
+.metrics,
+.panels {
+  display: grid;
+  gap: 1.6rem;
+}
+
+.metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1.6rem;
+  margin: 0;
+}
+
+.metric,
+.panel {
+  min-width: 0;
+  padding: 2.4rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.6rem;
+  background: var(--color-solid-bg-base);
+}
+
+.metricIcon {
+  box-sizing: content-box;
+  display: block;
+  padding: 0.6rem;
+  border-radius: 0.6rem;
+  background: var(--color-brand-fill);
+  color: var(--color-brand-text);
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.6rem;
+}
+
+.metric dt {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.metric dd {
+  grid-column: 2;
+  margin: 0;
+  font-size: var(--text-desktop-heading-2);
+}
+
+.metric dd,
+.donutCenter strong {
+  color: var(--color-brand-text);
+  font-family: var(--font-heading);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.donutCenter strong {
+  font-size: var(--text-desktop-heading-2);
+}
+
+.metricDescription {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--color-grey-text-weak);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.panelHeader p,
+.donutCenter span {
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.panels {
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.fullWidthPanel {
+  grid-column: 1 / -1;
+}
+
+.detailPanels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1.6rem;
+}
+
+.detailPanels > .panel {
+  height: auto;
+  scroll-margin-top: var(--layout-content-pad-y);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  height: auto;
+}
+
+.chart,
+.rankingChart,
+.donut {
+  position: relative;
+  min-width: 0;
+}
+
+.chart {
+  height: clamp(24rem, 28vw, 34rem);
+}
+
+.rankingViewport {
+  max-height: 45rem;
+  overflow-y: auto;
+}
+
+.rankingChart canvas[data-interactive] {
+  cursor: pointer;
+}
+
+.breakdownHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.2rem 2.4rem;
+}
+
+.rankingLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.6rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 1.4rem;
+}
+
+.rankingLegend li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rankingLegend li::before {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.2rem;
+  background: var(--swatch);
+  content: "";
+}
+
+.profilePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(100%, 25rem);
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.profilePicker select {
+  width: 100%;
+  min-height: 4.2rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--color-brand-stroke-weak);
+  border-radius: 0.6rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-grey-text-strong);
+  font: inherit;
+  font-weight: 400;
+}
+
+.weekdayButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.weekdayButtons button {
+  min-height: 4rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--color-brand-stroke-weak);
+  border-radius: 0.6rem;
+  background: var(--color-solid-bg-base);
+  color: var(--color-brand-text);
+  font-size: 1.4rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.weekdayButtons button:hover {
+  background: var(--color-brand-fill);
+}
+
+.weekdayButtons button[aria-pressed="true"] {
+  border-color: var(--color-brand-text);
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
+}
+
+.profileBar {
+  display: flex;
+  height: 1.6rem;
+  overflow: hidden;
+  border-radius: 0.8rem;
+}
+
+.profileBar span {
+  flex-basis: 0;
+}
+
+.profileLegend,
+.profileMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem 2.4rem;
+  margin: 0;
+}
+
+.profileLegend div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 1.4rem;
+}
+
+.profileLegend dt::before {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-right: 0.6rem;
+  border-radius: 50%;
+  background: var(--swatch);
+  content: "";
+}
+
+.profileLegend dd,
+.profileMetrics dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.profileMetrics {
+  gap: 0.8rem;
+  padding-top: 0.8rem;
+}
+
+.profileMetrics div {
+  flex: 1 1 12rem;
+  padding: 1.2rem;
+  border-radius: 0.6rem;
+  background: var(--color-brand-fill);
+}
+
+.profileMetrics dt {
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.profileMetrics dd {
+  margin-top: 0.2rem;
+  color: var(--color-brand-text);
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.donut {
+  align-self: center;
+  width: min(100%, 19rem);
+  aspect-ratio: 1;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.3rem;
+  pointer-events: none;
+  text-align: center;
+}
+
+.donutCenter span {
+  max-width: 12rem;
+  line-height: 1.25;
+}
+
+.outcomes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 1.6rem;
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.outcomes div {
+  --swatch: var(--chart-completed);
+
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.outcomes div:nth-child(2) {
+  --swatch: var(--chart-cancelled);
+}
+
+.outcomes div:nth-child(3) {
+  --swatch: var(--chart-missing);
+}
+
+.outcomes div:nth-child(4) {
+  --swatch: var(--chart-open);
+}
+
+.outcomes dt::before {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-right: 0.6rem;
+  border-radius: 50%;
+  background: var(--swatch);
+  content: "";
+}
+
+.outcomes dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.chartNote {
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.refreshNotice {
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  padding: 4rem 1.6rem;
+  text-align: center;
+}
+
+.empty svg {
+  color: var(--color-brand-text);
+}
+
+@media (width < 768px) {
+  .panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Shared interaction feedback for dashboard controls. */
+.page :is(a, button, select) {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.page :is(a, button, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-text);
+  outline-offset: 2px;
+}
+
+.profilePicker select:hover {
+  border-color: var(--color-brand-stroke-strong);
+}
+
+.periods a[aria-current]:hover,
+.weekdayButtons button[aria-pressed="true"]:hover {
+  background: var(--color-brand-hover);
+}
+
+.page :is(.periods a, .weekdayButtons button):active,
+.manageLink:active {
+  border-color: var(--color-brand-stroke-strong);
+  color: var(--color-brand-hover);
+}
+
+.periods a[aria-current]:active,
+.weekdayButtons button[aria-pressed="true"]:active {
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
+}
+
+@media (width < 768px) {
+  .reporting {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .panel {
+    padding: 1.6rem;
+  }
+
+  .profilePicker {
+    width: 100%;
+  }
+
+  .outcomes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page :is(a, button, select) {
+    transition: none;
+  }
+}
+
+.locationFilter {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.4rem;
+}
+
+.locationFilter label {
+  cursor: pointer;
+}
+
+.locationSettings {
+  padding: 1.6rem;
+  border: 1px solid var(--color-grey-stroke-weak);
+  border-radius: 0.6rem;
+  background: var(--color-solid-bg-base);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem 2.4rem;
+  font-size: 1.4rem;
+}
+
+.compactMetrics .metric {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 1.2rem 1.6rem;
+}
+
+.compactMetrics .metric dd {
+  grid-column: auto;
+  font-size: 2.4rem;
+}
+
+.metric dt .metricInfo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin: 0;
+  line-height: 1;
+  cursor: help;
+}
+
+.metricInfo > span[role="tooltip"] {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 0.8rem);
+  right: 0;
+  display: none;
+  width: min(24rem, 65vw);
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.4rem;
+  background: var(--color-brand-text);
+  color: var(--color-solid-bg-base);
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.metricInfo:hover > span[role="tooltip"],
+.metricInfo:focus > span[role="tooltip"] {
+  display: block;
+}
+
+.metricInfo:focus-visible {
+  outline: 2px solid var(--color-brand-text);
+  outline-offset: 2px;
+}
+
+.metricTotal {
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  font-size: 1.4rem;
+  white-space: nowrap;
+}
+
+.metricLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tripPairs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tripPairs li {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--color-grey-stroke-weak);
+}
+
+.tripPairs li:last-child {
+  border-bottom: 0;
+}
+
+.tripRank {
+  min-width: 2.4rem;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tripRoute {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tripPairs strong {
+  flex-shrink: 0;
+  color: var(--color-brand-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.tripPairs strong span {
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+  font-weight: 400;
+}
+
+.heatmapViewport {
+  overflow-x: auto;
+  padding: 0.4rem;
+}
+
+.heatmap {
+  width: 100%;
+  min-width: 110rem;
+  table-layout: fixed;
+  border-spacing: 0.4rem 0.6rem;
+  font-size: 1.2rem;
+}
+
+.heatmap th {
+  position: relative;
+  height: 4rem;
+  color: var(--color-grey-text-weak);
+  font-weight: 400;
+  text-align: left;
+}
+
+.heatmap th:first-child {
+  position: sticky;
+  z-index: 1;
+  left: 0;
+  width: 5.6rem;
+  background: var(--color-solid-bg-base);
+  font-weight: 600;
+}
+
+.heatmapTime {
+  position: absolute;
+  bottom: 0.6rem;
+  white-space: nowrap;
+}
+
+.heatmap td {
+  height: 4.8rem;
+  padding: 0;
+}
+
+.heatmap td button,
+.heatmapSwatch {
+  --heat-intensity: 0%;
+
+  border: 0;
+  border-radius: 0.3rem;
+  background: color-mix(
+    in srgb,
+    var(--color-brand-text) var(--heat-intensity),
+    var(--color-brand-fill)
+  );
+}
+
+.heatmap td button {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  cursor: crosshair;
+}
+
+.heatmap td button:hover {
+  outline: 2px solid var(--color-brand-text);
+  outline-offset: 1px;
+}
+
+.heatmap [data-level="1"],
+.heatmapLegend [data-level="1"] {
+  --heat-intensity: 25%;
+}
+.heatmap [data-level="2"],
+.heatmapLegend [data-level="2"] {
+  --heat-intensity: 50%;
+}
+.heatmap [data-level="3"],
+.heatmapLegend [data-level="3"] {
+  --heat-intensity: 75%;
+}
+.heatmap [data-level="4"],
+.heatmapLegend [data-level="4"] {
+  --heat-intensity: 100%;
+}
+
+.heatmapLegend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-grey-text-weak);
+  font-size: 1.2rem;
+}
+
+.heatmapSwatch {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.heatmapDetail {
+  min-height: 2.1rem;
+  margin: 0;
+  color: var(--color-grey-text-weak);
+  font-size: 1.4rem;
+}
+
+.heatmap th[data-last] .heatmapTime {
+  right: 0;
+}
+
+.metric dd:has(.metricTrend) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.metricTrend {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.4rem;
+  background: var(--color-grey-fill-weak);
+  color: var(--color-grey-text-weak);
+  font-family: var(--font-paragraph);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: help;
+}
+
+.metricTrend[data-tone="positive"] {
+  background: var(--color-status-green-fill);
+  color: var(--color-status-green-text);
+}
+
+.metricTrend[data-tone="negative"] {
+  background: var(--color-status-red-fill);
+  color: var(--color-status-red-text);
+}
