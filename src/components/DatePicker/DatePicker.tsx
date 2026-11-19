@@ -8,6 +8,7 @@ import {
   addYears,
   startOfMonth,
   startOfYear,
+  startOfWeek,
   differenceInCalendarWeeks,
   format,
 } from "date-fns";
@@ -78,7 +79,10 @@ export default function DatePicker({
       ? startOfMonth
       : mode === "year"
         ? startOfYear
-        : (date: Date) => addDays(date, 1 - date.getDay());
+        : (date: Date) =>
+            requestedMode === "week"
+              ? startOfWeek(date, { weekStartsOn: 1 })
+              : addDays(date, 1 - date.getDay());
   const periodName =
     mode === "month" ? "month" : mode === "year" ? "year" : "week";
   const today = parseCalendarDate(estDateKey(new Date()));

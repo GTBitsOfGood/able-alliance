@@ -155,8 +155,8 @@
   cursor: pointer;
 }
 .header strong {
-  font-size: 2rem;
-  line-height: 2.8rem;
+  font-size: var(--text-desktop-heading-4);
+  line-height: var(--text-desktop-heading-4--line-height);
 }
 .periodGrid {
   display: grid;
@@ -174,8 +174,8 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 1.8rem;
-  line-height: 2.4rem;
+  font-size: var(--text-desktop-paragraph-1);
+  line-height: var(--text-desktop-paragraph-1--line-height);
 }
 .periodGrid button {
   cursor: pointer;
