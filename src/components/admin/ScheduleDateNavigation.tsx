@@ -1,19 +1,10 @@
 "use client";
 
-import {
-  addDays,
-  differenceInCalendarWeeks,
-  format,
-  startOfWeek,
-} from "date-fns";
+import { addDays, format, startOfWeek } from "date-fns";
 
-import WeekDatePicker from "@/components/WeekDatePicker/WeekDatePicker";
+import DatePicker from "@/components/DatePicker/DatePicker";
 import BogIcon from "@/components/BogIcon/BogIcon";
-import {
-  estDateKey,
-  estNowWallClock,
-  parseCalendarDate,
-} from "@/utils/dateEst";
+import { estDateKey, parseCalendarDate } from "@/utils/dateEst";
 import type { RouteEntry } from "@/types/admin";
 
 import styles from "./schedule.module.css";
@@ -42,24 +33,8 @@ export default function ScheduleDateNavigation({
     <>
       <header className={styles.header}>
         <h1 className="text-heading-1">Schedule</h1>
-        <WeekDatePicker
+        <DatePicker
           appearance="date"
-          weekOffset={differenceInCalendarWeeks(
-            parseCalendarDate(date),
-            estNowWallClock(),
-          )}
-          onWeekChange={(offset) => {
-            const currentOffset = differenceInCalendarWeeks(
-              parseCalendarDate(date),
-              estNowWallClock(),
-            );
-            changeDate(
-              format(
-                addDays(parseCalendarDate(date), (offset - currentOffset) * 7),
-                "yyyy-MM-dd",
-              ),
-            );
-          }}
           ready={isAdmin}
           disabled={busy}
           selectedDate={date}

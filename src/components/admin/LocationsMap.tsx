@@ -16,7 +16,11 @@ const MAP_CLASS =
 
 interface LocationsMapProps {
   /** Existing locations, each rendered as a dot with a hover label. */
-  locations: Location[];
+  locations: (Pick<Location, "id" | "name" | "latitude" | "longitude"> & {
+    total?: number;
+  })[];
+  scaleByActivity?: boolean;
+  showLabels?: boolean;
   /** Point to mark with a pin, e.g. the location being created. */
   selected?: LngLat | null;
   /** When provided, clicking the map reports the clicked coordinates. */
@@ -24,20 +28,30 @@ interface LocationsMapProps {
   className?: string;
 }
 
-function createLocationDot(name: string): HTMLDivElement {
+function createLocationDot(
+  name: string,
+  size = 15,
+  showLabel = true,
+): HTMLDivElement {
   const wrapper = document.createElement("div");
   wrapper.className = "group flex items-center justify-center overflow-visible";
 
   const tooltip = document.createElement("div");
   tooltip.className =
-    "absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 z-10 px-[0.8rem] py-[0.4rem] rounded-[1.2rem] border border-[var(--color-grey-text-strong)] bg-[var(--color-brand-text)] text-[var(--color-solid-bg-base)] text-[1.1rem] font-semibold font-paragraph whitespace-nowrap pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100";
+    "absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 z-10 px-[0.8rem] py-[0.4rem] rounded-[1.2rem] border border-[var(--color-grey-text-strong)] bg-[var(--color-brand-text)] text-[var(--color-solid-bg-base)] text-[1.1rem] font-semibold font-paragraph whitespace-nowrap pointer-events-none opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus:opacity-100";
   tooltip.textContent = name;
 
   const dot = document.createElement("div");
   dot.className =
     "w-[1.5rem] h-[1.5rem] rounded-full border-[0.2rem] border-[var(--color-grey-text-strong)] bg-[var(--color-map-location-fill)]";
 
-  wrapper.appendChild(tooltip);
+  dot.style.width = `${size}px`;
+  dot.style.height = `${size}px`;
+  wrapper.setAttribute("aria-label", name);
+  if (showLabel) wrapper.tabIndex = 0;
+  else wrapper.style.pointerEvents = "none";
+
+  if (showLabel) wrapper.appendChild(tooltip);
   wrapper.appendChild(dot);
   return wrapper;
 }
@@ -67,6 +81,8 @@ function createPin(labelText: string): HTMLDivElement {
 export default function LocationsMap({
   locations,
   selected,
+  scaleByActivity = false,
+  showLabels = true,
   onSelect,
   className,
 }: LocationsMapProps) {
@@ -141,9 +157,16 @@ export default function LocationsMap({
     if (!map || !mapLoaded) return;
 
     dotMarkersRef.current.forEach((marker) => marker.remove());
+    const maxTotal = Math.max(1, ...locations.map(({ total }) => total ?? 0));
     dotMarkersRef.current = locations.map((loc) =>
       new mapboxgl.Marker({
-        element: createLocationDot(loc.name),
+        element: createLocationDot(
+          scaleByActivity ? `${loc.name}: ${loc.total ?? 0} stops` : loc.name,
+          scaleByActivity
+            ? Math.sqrt(36 + ((loc.total ?? 0) / maxTotal) * 1564)
+            : 15,
+          showLabels,
+        ),
         anchor: "center",
       })
         .setLngLat([loc.longitude, loc.latitude])
@@ -166,7 +189,7 @@ export default function LocationsMap({
         duration: 0,
       });
     }
-  }, [mapLoaded, locations]);
+  }, [mapLoaded, locations, scaleByActivity, showLabels]);
 
   useEffect(() => {
     const map = mapRef.current;

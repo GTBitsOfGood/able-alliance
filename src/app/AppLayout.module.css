@@ -1,13 +1,17 @@
 .adminLayout {
+  position: fixed;
+  inset: 0;
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 .adminMain {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 @media (width < 1024px) {
