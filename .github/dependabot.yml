@@ -4,13 +4,34 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      routine-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: npm
     directory: /websocket-server
     schedule:
       interval: weekly
+    groups:
+      routine-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: npm
     directory: /mock-cas-server
     schedule:
       interval: weekly
+    groups:
+      routine-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
