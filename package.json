@@ -37,7 +37,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
-    "dotenv": "^18.0.9",
+    "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "fast-xml-parser": "^5.11.2",
     "highs": "^1.15.4",
@@ -52,7 +52,7 @@
     "radix-ui": "^1.8.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-email": "6.11.0",
+    "react-email": "6.11.14",
     "react-toast": "^1.0.3",
     "react-use": "^17.6.1",
     "socket.io": "^4.8.4",
@@ -78,7 +78,7 @@
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "prettier": "^3.9.10",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3"
   }
 }
