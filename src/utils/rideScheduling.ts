@@ -6,6 +6,16 @@ const BASE_TURNAROUND_MINUTES = 5;
 const ROAD_DISTANCE_FACTOR = 1.4;
 const AVERAGE_SPEED_KMH = 30;
 
+/** A single shift must cover the full ride, including delay and boarding time. */
+export function shiftsCoverRide(
+  shifts: { start: number; end: number }[],
+  ride: { start: number; end: number },
+): boolean {
+  return shifts.some(
+    (shift) => shift.start <= ride.start && ride.end <= shift.end,
+  );
+}
+
 export function estimateTravelMinutes(
   from: Point | null,
   to: Point | null,

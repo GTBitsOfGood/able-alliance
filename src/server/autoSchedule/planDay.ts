@@ -1,4 +1,8 @@
-import { areRidesCompatible, rideTouchesDay } from "@/utils/rideScheduling";
+import {
+  areRidesCompatible,
+  rideTouchesDay,
+  shiftsCoverRide,
+} from "@/utils/rideScheduling";
 import type { Ride, AutoSchedulePlan } from "@/types/autoSchedule";
 import { db } from "@db";
 import type { Prisma } from "@db/generated/client";
@@ -66,10 +70,7 @@ export async function planDay(
 
     const d = drivers.find((dd) => dd.id === ride.driverId);
 
-    if (
-      !d ||
-      d.shifts.some((s) => s.start <= ride.start && ride.end <= s.end)
-    ) {
+    if (!d || shiftsCoverRide(d.shifts, ride)) {
       return [];
     }
 

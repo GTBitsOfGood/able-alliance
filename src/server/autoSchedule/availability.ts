@@ -1,5 +1,5 @@
 import { estDateKey } from "@/utils/dateEst";
-import { areRidesCompatible } from "@/utils/rideScheduling";
+import { areRidesCompatible, shiftsCoverRide } from "@/utils/rideScheduling";
 import { db } from "@db";
 import type { Prisma } from "@db/generated/client";
 
@@ -36,10 +36,10 @@ export async function findBookingConflicts(
     return [];
   }
 
-  const driver = drivers.find((d) => d.id === driverId) ?? {
-    id: driverId,
-    name: "The driver",
-  };
+  const driver = drivers.find((d) => d.id === driverId);
+  if (!driver || !shiftsCoverRide(driver.shifts, ride)) {
+    return ["Driver is not on shift for the whole ride."];
+  }
   const { byDriver, byVehicle } = indexBusy(busy);
 
   return bookingProblems(ride, driver, vehicle, byDriver, byVehicle);
@@ -78,9 +78,7 @@ export async function getAvailableDriversForRoute(
     .filter(
       (driver) =>
         driver.active &&
-        driver.shifts.some(
-          (shift) => shift.start <= ride.start && ride.end <= shift.end,
-        ) &&
+        shiftsCoverRide(driver.shifts, ride) &&
         (busyByDriver.get(driver.id) ?? []).every(
           (bookedRide) =>
             bookedRide.id === ride.id || areRidesCompatible(bookedRide, ride),

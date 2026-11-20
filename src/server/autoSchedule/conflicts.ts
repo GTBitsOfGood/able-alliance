@@ -3,7 +3,7 @@ import {
   isPickupInServiceHours,
   SERVICE_HOURS_LABEL,
 } from "@/utils/rideTiming";
-import { areRidesCompatible } from "@/utils/rideScheduling";
+import { areRidesCompatible, shiftsCoverRide } from "@/utils/rideScheduling";
 import type { AutoSchedulePlan, Ride } from "@/types/autoSchedule";
 
 import type { DayData } from "./loadDay";
@@ -138,7 +138,7 @@ function diagnoseAssignment(
     );
   }
 
-  if (!driver.shifts.some((s) => s.start <= ride.start && ride.end <= s.end)) {
+  if (!shiftsCoverRide(driver.shifts, ride)) {
     problems.push(
       `${who}: ${driver.name} is not on shift for the whole ride (${
         driver.shifts.length

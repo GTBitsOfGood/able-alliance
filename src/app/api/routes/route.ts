@@ -7,7 +7,10 @@ import {
   getRouteById,
   getRoutes,
 } from "@/server/actions/RouteAction";
-import { createRideSeries } from "@/server/actions/RideSeriesAction";
+import {
+  createRideBatch,
+  createRideSeries,
+} from "@/server/actions/RideSeriesAction";
 import { batchRideRequestSchema, createRouteSchema } from "@/schemas/ride";
 import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { RouteStatus } from "@db/generated/client";
@@ -217,34 +220,11 @@ export async function POST(request: NextRequest) {
             `Ride #${index + 1}: Pickup and dropoff locations must differ.`,
           );
       }
-      const created = [];
-      for (const ride of batch.data.rides) {
-        const routeData = {
-          pickupLocation: ride.pickupLocation,
-          dropoffLocation: ride.dropoffLocation,
-          student: session.user.userId,
-          scheduledPickupTime: ride.scheduledPickupTime,
-          pickupWindowStart: ride.pickupWindowStart,
-          pickupWindowEnd: ride.pickupWindowEnd,
-        };
-        const parsedRoute = createRouteSchema.safeParse(routeData);
-        if (!parsedRoute.success) {
-          return NextResponse.json(parsedRoute.error.format(), {
-            status: HTTP_STATUS_CODE.BAD_REQUEST,
-          });
-        }
-        created.push(
-          ride.recurring
-            ? (
-                await createRideSeries(
-                  parsedRoute.data,
-                  ride.recurring,
-                  user.userId,
-                )
-              ).firstRoute
-            : await createRoute(parsedRoute.data, { actorId: user.userId }),
-        );
-      }
+      const created = await createRideBatch(
+        batch.data.rides,
+        session.user.userId,
+        user.userId,
+      );
       return NextResponse.json(created, { status: HTTP_STATUS_CODE.CREATED });
     }
 

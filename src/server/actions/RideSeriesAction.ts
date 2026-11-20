@@ -27,7 +27,12 @@ import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { cancelRoute, createRoute, transitionRoute } from "./RouteAction";
 import type { MaterializeResult } from "@/types/rideSeries";
 import type { RecurrenceRequest } from "@/schemas/rideSeries";
-import { createRouteSchema, type CreateRouteInput } from "@/schemas/ride";
+import {
+  batchRideRequestSchema,
+  createRouteSchema,
+  type BatchRideRequest,
+  type CreateRouteInput,
+} from "@/schemas/ride";
 import { ArgumentError, ConflictError, NotFoundError } from "@/utils/errors";
 import { recurrenceRequestSchema } from "@/schemas/rideSeries";
 import { recordAudit } from "@db/audit";
@@ -262,6 +267,7 @@ export async function createRideSeries(
   data: CreateRouteInput,
   recurrence: RecurrenceRequest,
   actorId: string,
+  options?: { tx?: Prisma.TransactionClient },
 ) {
   data = createRouteSchema.parse(data);
   recurrence = recurrenceRequestSchema.parse(recurrence);
@@ -304,40 +310,40 @@ export async function createRideSeries(
 
   // The template and first ride become visible together. A failed first ride
   // rolls back the template, so the cron cannot generate orphaned future rides.
+  const persist = async (tx: Prisma.TransactionClient) => {
+    const series = await tx.rideSeries.create({
+      data: {
+        studentId: data.student.toLowerCase(),
+        pickupLocation: data.pickupLocation.toLowerCase(),
+        dropoffLocation: data.dropoffLocation.toLowerCase(),
+        frequency: recurrence.frequency,
+        daysOfWeek,
+        firstPickupTime: data.scheduledPickupTime,
+        endsAt,
+        pickupWindowStartOffsetMs: windowStartOffset,
+        pickupWindowEndOffsetMs: windowEndOffset,
+        materializedThrough: data.scheduledPickupTime,
+      },
+    });
+    await recordAudit(tx, {
+      actorId,
+      entityType: "RideSeries",
+      entityId: series.id,
+      action: "Create",
+      after: seriesAuditSnapshot(series),
+    });
+    const firstRoute = await createRoute(data, {
+      seriesId: series.id,
+      tx,
+      actorId,
+    });
+    return { series, firstRoute };
+  };
   let created;
   try {
-    created = await db.$transaction(
-      async (tx) => {
-        const series = await tx.rideSeries.create({
-          data: {
-            studentId: data.student.toLowerCase(),
-            pickupLocation: data.pickupLocation.toLowerCase(),
-            dropoffLocation: data.dropoffLocation.toLowerCase(),
-            frequency: recurrence.frequency,
-            daysOfWeek,
-            firstPickupTime: data.scheduledPickupTime,
-            endsAt,
-            pickupWindowStartOffsetMs: windowStartOffset,
-            pickupWindowEndOffsetMs: windowEndOffset,
-            materializedThrough: data.scheduledPickupTime,
-          },
-        });
-        await recordAudit(tx, {
-          actorId,
-          entityType: "RideSeries",
-          entityId: series.id,
-          action: "Create",
-          after: seriesAuditSnapshot(series),
-        });
-        const firstRoute = await createRoute(data, {
-          seriesId: series.id,
-          tx,
-          actorId,
-        });
-        return { series, firstRoute };
-      },
-      { timeout: 60000 },
-    );
+    created = options?.tx
+      ? await persist(options.tx)
+      : await db.$transaction(persist, { timeout: 60000 });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -349,16 +355,59 @@ export async function createRideSeries(
   }
   const { series, firstRoute } = created;
 
-  emitRouteUpdate(firstRoute);
-
-  // Fill forward now; a transient failure is retried by the scheduled job.
-  try {
-    await materializeSeries(series.id, schedulingHorizon());
-  } catch (error) {
-    console.error("[RideSeries] initial fill-forward failed:", error);
+  if (!options?.tx) {
+    emitRouteUpdate(firstRoute);
+    await fillForwardCreatedSeries(series.id);
   }
 
   return { series, firstRoute };
+}
+
+async function fillForwardCreatedSeries(seriesId: string) {
+  // Fill forward now; a transient failure is retried by the scheduled job.
+  try {
+    await materializeSeries(seriesId, schedulingHorizon());
+  } catch (error) {
+    console.error("[RideSeries] initial fill-forward failed:", error);
+  }
+}
+
+/** Commit every requested ride and series together before publishing or filling forward. */
+export async function createRideBatch(
+  rides: BatchRideRequest["rides"],
+  studentId: string,
+  actorId: string,
+) {
+  const batch = batchRideRequestSchema.parse({ rides });
+  const created = await db.$transaction(
+    async (tx) => {
+      const routes = [];
+      const seriesIds: string[] = [];
+      for (const { recurring, ...ride } of batch.rides) {
+        const data = { ...ride, student: studentId };
+        if (recurring) {
+          const { series, firstRoute } = await createRideSeries(
+            data,
+            recurring,
+            actorId,
+            { tx },
+          );
+          routes.push(firstRoute);
+          seriesIds.push(series.id);
+        } else {
+          routes.push(await createRoute(data, { tx, actorId }));
+        }
+      }
+      return { routes, seriesIds };
+    },
+    { timeout: 60000 },
+  );
+
+  for (const route of created.routes) emitRouteUpdate(route);
+  for (const seriesId of created.seriesIds)
+    await fillForwardCreatedSeries(seriesId);
+
+  return created.routes;
 }
 
 /** Stop future generation for a series without touching rides already created. */

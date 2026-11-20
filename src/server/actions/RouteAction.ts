@@ -21,7 +21,7 @@ import {
   HttpError,
 } from "@/utils/errors";
 import { getMapboxTravelDuration } from "@/server/mapbox";
-import { estDateKey, estDayOfWeek, estTimeStr } from "@/utils/dateEst";
+import { estDateKey, estTimeStr } from "@/utils/dateEst";
 import { emitRouteUpdate } from "@/server/notifications/emitRouteUpdate";
 import {
   MAX_DELAY_MINUTES,
@@ -100,6 +100,12 @@ export async function createRoute(
   if (!pickup) throw new ArgumentError("Pickup location not found");
   if (!dropoff) throw new ArgumentError("Dropoff location not found");
   if (!student) throw new ArgumentError("Student not found");
+  if (pickup.status !== "active")
+    throw new ArgumentError("Pickup location is inactive");
+  if (dropoff.status !== "active")
+    throw new ArgumentError("Dropoff location is inactive");
+  if (student.status !== "active")
+    throw new ArgumentError("Student is inactive");
   if (!hasUserType(student, "Student"))
     throw new ArgumentError("Referenced user is not a student");
   const existing = await client.route.findUnique({
@@ -232,12 +238,17 @@ export async function getRoutes(
     : db.route.findMany({ include: studentRouteInclude, where });
 }
 
-export const completeRoute = (routeId: string, actorId: string) =>
+export const completeRoute = (
+  routeId: string,
+  actorId: string,
+  driverId?: string,
+) =>
   transitionRoute(
     routeId,
     [RouteStatus.Pickedup],
     RouteStatus.Completed,
     actorId,
+    { driverId },
   );
 
 export async function cancelRoute(
@@ -344,10 +355,19 @@ export const startRoute = (routeId: string, actorId: string) =>
     [RouteStatus.Scheduled],
     RouteStatus.EnRoute,
     actorId,
+    { driverId: actorId },
   );
 
 export const arriveRoute = (routeId: string, actorId: string) =>
-  transitionRoute(routeId, [RouteStatus.EnRoute], RouteStatus.Arrived, actorId);
+  transitionRoute(
+    routeId,
+    [RouteStatus.EnRoute],
+    RouteStatus.Arrived,
+    actorId,
+    {
+      driverId: actorId,
+    },
+  );
 
 export const pickupStudent = (routeId: string, actorId: string) =>
   transitionRoute(
@@ -355,10 +375,19 @@ export const pickupStudent = (routeId: string, actorId: string) =>
     [RouteStatus.Arrived],
     RouteStatus.Pickedup,
     actorId,
+    { driverId: actorId },
   );
 
 export const markRouteMissing = (routeId: string, actorId: string) =>
-  transitionRoute(routeId, [RouteStatus.Arrived], RouteStatus.Missing, actorId);
+  transitionRoute(
+    routeId,
+    [RouteStatus.Arrived],
+    RouteStatus.Missing,
+    actorId,
+    {
+      driverId: actorId,
+    },
+  );
 
 const LOCK_WAIT_MS = 10_000;
 const LOCK_RETRY_MS = 150;
@@ -512,19 +541,6 @@ async function assignRoute(
         "Vehicle is archived and cannot be assigned",
       );
     const driver = driverRow;
-    const startTime = estTimeStr(route.scheduledPickupTime);
-    const day = estDayOfWeek(route.scheduledPickupTime);
-    if (
-      !driver.shifts?.some(
-        (shift) =>
-          shift.dayOfWeek === day &&
-          shift.startTime <= startTime &&
-          startTime <= shift.endTime,
-      )
-    )
-      throw new AssignmentUnavailableError(
-        "Driver is not available during the scheduled time",
-      );
     const conflicts = await findBookingConflicts(
       routeId,
       driverId,
@@ -596,7 +612,11 @@ export async function transitionRoute(
   status: RouteStatus,
   actorId: string,
   /** Transaction callers publish events and notifications after committing. */
-  options?: { notify?: boolean; tx?: Prisma.TransactionClient },
+  options?: {
+    notify?: boolean;
+    tx?: Prisma.TransactionClient;
+    driverId?: string;
+  },
 ) {
   routeId = routeId.toLowerCase();
   const update = async (tx: Prisma.TransactionClient) => {
@@ -606,15 +626,26 @@ export async function transitionRoute(
       where: {
         id: routeId,
         status: { in: expected },
+        ...(options?.driverId
+          ? { driverId: options.driverId.toLowerCase() }
+          : {}),
       },
       data: { status: status },
     });
     if (count === 0) {
       const current = await tx.route.findUnique({
         where: { id: routeId },
-        select: { id: true },
+        select: { id: true, driverId: true },
       });
       if (!current) throw new NotFoundError("Route not found");
+      if (
+        options?.driverId &&
+        current.driverId !== options.driverId.toLowerCase()
+      )
+        throw new HttpError(
+          HTTP_STATUS_CODE.FORBIDDEN,
+          "Forbidden: you are not the assigned driver for this route",
+        );
       throw new ConflictError("Route is in an incompatible state");
     }
     if (
