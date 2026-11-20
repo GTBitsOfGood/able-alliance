@@ -4,7 +4,11 @@ import {
   isPickupInServiceHours,
   SERVICE_HOURS_LABEL,
 } from "@/utils/rideTiming";
-import { areRidesCompatible, rideTouchesDay } from "@/utils/rideScheduling";
+import {
+  areRidesCompatible,
+  rideTouchesDay,
+  shiftsCoverRide,
+} from "@/utils/rideScheduling";
 
 import type { DayData } from "./loadDay";
 import {
@@ -60,9 +64,7 @@ export async function solveDay(data: DayData, fixed?: Assignment[]) {
     const onShift = drivers
       .map((driver, driverIndex) => ({ driver, driverIndex }))
       .filter(
-        ({ driver }) =>
-          driver.active &&
-          driver.shifts.some((s) => s.start <= ride.start && ride.end <= s.end),
+        ({ driver }) => driver.active && shiftsCoverRide(driver.shifts, ride),
       );
     const freeDrivers = onShift.filter(({ driver }) =>
       (busyByDriver.get(driver.id) ?? []).every((b) =>
