@@ -1,5 +1,5 @@
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
-import { addDays, format } from "date-fns";
+import { addDays, differenceInCalendarWeeks, format } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { expect } from "./fixtures";
 import { PERSONAS, VEHICLE } from "./seed";
@@ -36,6 +36,14 @@ export function nextServiceDate(): Date {
 export function futureSlot(weekdaysAhead: number, time: string): Date {
   const day = format(serviceDateWeekdaysAhead(weekdaysAhead), "yyyy-MM-dd");
   return fromZonedTime(`${day}T${time}:00`, TZ);
+}
+
+/** A future weekday pickup in New York time, independent of the runner's timezone. */
+export function servicePickupTime(time: string): Date {
+  const date = nextServiceDate();
+  const [hours, minutes] = time.split(":").map(Number);
+  date.setHours(hours, minutes, 0, 0);
+  return fromZonedTime(date, "America/New_York");
 }
 
 type LocationField = "Pickup location" | "Dropoff location";
@@ -146,6 +154,21 @@ export async function showCalendarMonth(page: Page, date: Date) {
   await expect(page.getByText(month, { exact: true })).toBeVisible();
 }
 
+/** Select the target service week in the shared student/driver navigator. */
+export async function showRideWeek(page: Page, date: Date) {
+  const weekOffset = differenceInCalendarWeeks(date, estDateDaysFromNow(0));
+  const navigator = page.getByRole("navigation", {
+    name: "Browse rides by week",
+    exact: true,
+  });
+
+  for (let week = 0; week < weekOffset; week++) {
+    await navigator
+      .getByRole("button", { name: "Next week", exact: true })
+      .click();
+  }
+}
+
 export function formatEstTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", {
     timeZone: "America/New_York",
@@ -160,14 +183,14 @@ export async function createRequestedRide(
   {
     pickupLocation,
     dropoffLocation,
-    pickup,
+    pickupTime,
   }: {
     pickupLocation: string;
     dropoffLocation: string;
-    /** Use `futureSlot` so parallel flows on the shared personas never overlap. */
-    pickup: Date;
+    pickupTime: string;
   },
 ): Promise<StudentRouteResponse> {
+  const pickup = servicePickupTime(pickupTime);
   const res = await student.post("/api/routes", {
     data: {
       pickupLocation,

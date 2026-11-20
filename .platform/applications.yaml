@@ -4,20 +4,27 @@ app:
   type: nodejs:24
   size: S
   resources:
-    base_memory: 512
-    memory_ratio: 512
+    base_memory: 1024
+    memory_ratio: 1024
   build:
     flavor: none
   relationships:
     postgresql: postgresql:postgresql
+  crons:
+    ride-series:
+      spec: "0 5 * * *"
+      commands:
+        start: npm run cron:ride-series
   hooks:
     build: |
       set -eu
       HUSKY=0 npm ci --include=dev
-      npm --prefix websocket-server ci --include=dev
       npx prisma generate
+      mkdir -p .next/cache "$PLATFORM_CACHE_DIR/next-cache"
+      cp -a "$PLATFORM_CACHE_DIR/next-cache/." .next/cache/
       npm run build
-      npm --prefix websocket-server prune --omit=dev
+      cp -a .next/cache/. "$PLATFORM_CACHE_DIR/next-cache/"
+      npm prune --omit=dev
   mounts:
     /.next/cache:
       source: local

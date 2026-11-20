@@ -1,11 +1,18 @@
 import type { NextConfig } from "next";
 
+// Upsun has little memory for the build container, so we throttle it
+const UPSUN = Boolean(process.env.PLATFORM_APPLICATION);
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // HiGHS loads highs.wasm from beside its own loader at runtime.
+  // Forgo TypeScript check on Upsun
+  typescript: { ignoreBuildErrors: UPSUN },
+  // HiGHs loads WASM
   serverExternalPackages: ["highs"],
-  // Avoid restoring stale loader state across Docker dev-server restarts.
   experimental: {
+    // Limit concurrent workers on Upsun and enable GC to cleanup memory
+    ...(UPSUN ? { cpus: 1, turbopackGc: true } : {}),
+    // Avoid restoring stale loader states in Docker dev server restarts
     turbopackFileSystemCacheForDev: false,
   },
   // Opt in only on hosts whose Docker file sharing does not forward changes to the container.

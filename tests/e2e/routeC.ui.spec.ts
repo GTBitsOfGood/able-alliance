@@ -4,11 +4,7 @@
  */
 import { test, expect } from "./fixtures";
 import { LOCATIONS } from "./seed";
-import {
-  createRequestedRide,
-  expectRouteStatus,
-  futureSlot,
-} from "./routeTestHelpers";
+import { createRequestedRide, expectRouteStatus } from "./routeTestHelpers";
 
 test("route C: student cancellation requires confirmation (UI)", async ({
   apiAs,
@@ -22,7 +18,7 @@ test("route C: student cancellation requires confirmation (UI)", async ({
   const created = await createRequestedRide(studentApi, {
     pickupLocation: LOCATIONS.studentCenter.id,
     dropoffLocation: LOCATIONS.exhibitionHall.id,
-    pickup: futureSlot(3, "10:00"),
+    pickupTime: "16:00",
   });
   const routeId = created.id;
 

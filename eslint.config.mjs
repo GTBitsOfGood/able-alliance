@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "db/generated/**",
     "websocket-server/dist/**",
+    "playwright-report/",
   ]),
 ]);
 

@@ -74,6 +74,16 @@ export default function AdminSidebar() {
           id="admin-mobile-navigation"
           aria-label="Admin navigation"
         >
+          <Link
+            href="/admin/dashboard"
+            className={`${styles.navItem} ${isActive("/admin/dashboard") ? styles.active : ""}`}
+            aria-current={isActive("/admin/dashboard") ? "page" : undefined}
+            aria-label="dashboard"
+          >
+            <BogIcon name="info" size={20} weight="regular" />
+            <span>Dashboard</span>
+          </Link>
+
           {/* Rides */}
           <Link
             href="/admin/rides"
@@ -112,14 +122,15 @@ export default function AdminSidebar() {
             <span>Shifts</span>
           </Link>
 
-          {/* Auto-Schedule */}
+          {/* Schedule */}
           <Link
-            href="/admin/auto-schedule"
-            className={`${styles.navItem} ${pathname.startsWith("/admin/auto-schedule") ? styles.active : ""}`}
-            aria-label="Auto-Schedule"
+            href="/admin/schedule"
+            className={`${styles.navItem} ${isActive("/admin/schedule") ? styles.active : ""}`}
+            aria-current={isActive("/admin/schedule") ? "page" : undefined}
+            aria-label="Schedule"
           >
             <Image src="/calendar.svg" alt="" width={20} height={20} />
-            <span>Auto-Schedule</span>
+            <span>Schedule</span>
           </Link>
 
           <Link

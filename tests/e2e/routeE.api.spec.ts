@@ -7,7 +7,6 @@ import { LOCATIONS } from "./seed";
 import {
   createRequestedRide,
   expectRouteStatus,
-  futureSlot,
   scheduleRide,
 } from "./routeTestHelpers";
 
@@ -19,7 +18,7 @@ test("route E: driver marks student as no-show", async ({ apiAs }) => {
   const created = await createRequestedRide(student, {
     pickupLocation: LOCATIONS.exhibitionHall.id,
     dropoffLocation: LOCATIONS.studentCenter.id,
-    pickup: futureSlot(3, "13:00"),
+    pickupTime: "17:00",
   });
   const routeId = created.id;
 

@@ -21,6 +21,7 @@ import {
 import type { LocationInput } from "@/schemas/location";
 import type { VehicleInput } from "@/schemas/vehicle";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { SERVICE_START_TIME, SERVICE_END_TIME } from "@/utils/consts";
 
 const DATABASE_URL =
   process.argv[2] ??
@@ -211,7 +212,6 @@ async function seed() {
           { dayOfWeek: 1, startTime: "13:00", endTime: "19:00" },
           { dayOfWeek: 3, startTime: "13:00", endTime: "19:00" },
           { dayOfWeek: 5, startTime: "13:00", endTime: "19:00" },
-          { dayOfWeek: 6, startTime: "10:00", endTime: "16:00" },
         ],
       },
     },
@@ -228,7 +228,6 @@ async function seed() {
       types: ["Driver"],
       shifts: {
         create: [
-          { dayOfWeek: 0, startTime: "09:00", endTime: "15:00" },
           { dayOfWeek: 2, startTime: "09:00", endTime: "15:00" },
           { dayOfWeek: 4, startTime: "09:00", endTime: "15:00" },
         ],
@@ -393,6 +392,15 @@ async function seed() {
     vehicles[def.vehicleId] = v;
   }
 
+  // Remove obsolete weekend shifts from older versions of these local fixtures.
+  // Keep weekday shifts and all existing rides intact when reseeding.
+  await db.shift.deleteMany({
+    where: {
+      userId: { in: [driver1.id, driver2.id, driver3.id] },
+      dayOfWeek: { in: [0, 6] },
+    },
+  });
+
   // ---------- Routes ----------
   // Explicit fixture durations keep the sample schedule repeatable offline.
   const tripMinutes = 20;
@@ -447,14 +455,23 @@ async function seed() {
   for (let dayOffset = -2; dayOffset < 14; dayOffset++) {
     const day = new Date(`${today}T00:00:00Z`);
     day.setUTCDate(day.getUTCDate() + dayOffset);
+    if (day.getUTCDay() === 0 || day.getUTCDay() === 6) continue;
     const date = day.toISOString().slice(0, 10);
+    const serviceStart = fromZonedTime(
+      `${date}T${SERVICE_START_TIME}:00`,
+      "America/New_York",
+    );
+    const serviceEnd = fromZonedTime(
+      `${date}T${SERVICE_END_TIME}:00`,
+      "America/New_York",
+    );
     for (const [driverIndex, driver] of drivers.entries()) {
       const vehicle = fleet[(dayOffset + 2 + driverIndex) % fleet.length];
       for (const shift of driver.shifts.filter(
         (shift) => shift.dayOfWeek === day.getUTCDay(),
       )) {
         const shiftStart = fromZonedTime(
-          `${date}T${shift.startTime}:00`,
+          `${date}T${shift.startTime < SERVICE_START_TIME ? SERVICE_START_TIME : shift.startTime}:00`,
           "America/New_York",
         );
         const shiftEnd = fromZonedTime(
@@ -472,7 +489,14 @@ async function seed() {
           );
           const windowEnd = new Date(pickup.getTime() + windowMinutes * 60000);
           const dropoff = new Date(pickup.getTime() + tripMinutes * 60000);
-          if (windowEnd > shiftEnd || dropoff > shiftEnd) continue;
+          if (
+            windowStart < serviceStart ||
+            windowEnd > serviceEnd ||
+            dropoff > serviceEnd ||
+            windowEnd > shiftEnd ||
+            dropoff > shiftEnd
+          )
+            continue;
           const requested = slot === 2;
           if (requested && pickup <= now) continue;
           const pickupLocation =

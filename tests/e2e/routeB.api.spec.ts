@@ -11,7 +11,7 @@
  */
 import { test, expect } from "./fixtures";
 import { PERSONAS, LOCATIONS, VEHICLE } from "./seed";
-import { futureSlot } from "./routeTestHelpers";
+import { servicePickupTime } from "./routeTestHelpers";
 
 const MINUTE = 60 * 1000;
 
@@ -21,7 +21,7 @@ test("route B: driver start → pickup → dropoff", async ({ apiAs }) => {
   const driver = await apiAs("driver");
 
   // Different locations from the UI flow so the two never look alike in the admin table.
-  const pickup = futureSlot(2, "13:00");
+  const pickup = servicePickupTime("13:00");
   const create = await student.post("/api/routes", {
     data: {
       pickupLocation: LOCATIONS.studentCenter.id,
