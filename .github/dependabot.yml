@@ -4,8 +4,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
     groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
       routine-updates:
         patterns:
           - "*"
@@ -17,8 +21,12 @@ updates:
     directory: /websocket-server
     schedule:
       interval: weekly
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
     groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
       routine-updates:
         patterns:
           - "*"
@@ -30,8 +38,12 @@ updates:
     directory: /mock-cas-server
     schedule:
       interval: weekly
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 5
     groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
       routine-updates:
         patterns:
           - "*"
