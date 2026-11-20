@@ -74,8 +74,11 @@ test("scheduling availability: checks shifts and travel time", async ({
       driver.id,
       secondVehicle.id,
     );
+    const offShiftBody = (await offShift.json()) as {
+      details?: string[];
+    };
     expect(offShift.status()).toBe(409);
-    expect(await offShift.text()).toMatch(/not available/i);
+    expect(offShiftBody.details?.join(" ")).toMatch(/not on shift/i);
     expect((await routeState(admin, offShiftRoute)).status).toBe("Requested");
   } finally {
     await Promise.all(clients.map((client) => client.dispose()));
